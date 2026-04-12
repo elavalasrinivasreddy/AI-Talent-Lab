@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Talent Lab — Prototype</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  
+  <div class="app-container">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">🧪</div>
+        <div class="brand-text">
+          <h1>AI Talent Lab</h1>
+          <span>Workspace: TechCorp</span>
+        </div>
+      </div>
+      
+      <div class="sidebar-new-hire">
+        <button class="btn-new-hire" onclick="navigateTo('chat', 'new')">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+          New Hire
+        </button>
+      </div>
+
+      <nav class="sidebar-nav mt-8">
+        <div class="nav-item active" data-nav="dashboard" onclick="navigateTo('dashboard')">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-nav="talent-pool" onclick="navigateTo('talent-pool')">
+          <span class="nav-icon">🏊</span>
+          <span>Talent Pool</span>
+        </div>
+        <div class="nav-item" data-nav="settings" onclick="navigateTo('settings')">
+          <span class="nav-icon">⚙️</span>
+          <span>Settings</span>
+        </div>
+      </nav>
+
+      <div class="sidebar-section-label">Active Sessions</div>
+      <div class="sidebar-sessions">
+        <div class="session-item" data-nav="chat" data-id="1" onclick="navigateTo('chat', '1')">
+          <div class="session-dot"></div>
+          <span>Senior Python Developer</span>
+        </div>
+        <div class="session-item" data-nav="chat" data-id="2" onclick="navigateTo('chat', '2')">
+          <div class="session-dot"></div>
+          <span>ML Engineer</span>
+        </div>
+        <div class="session-item" data-nav="chat" data-id="3" onclick="navigateTo('chat', '3')">
+          <div class="session-dot draft"></div>
+          <span>Product Designer (Draft)</span>
+        </div>
+      </div>
+
+      <div class="sidebar-user">
+        <div class="user-avatar">SR</div>
+        <div class="user-info">
+          <div class="name">Srinivas R</div>
+          <div class="role">Admin</div>
+        </div>
+        <button class="btn-logout" title="Logout">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Topbar / Notification Area -->
+      <div style="position: sticky; top: 0; background: var(--bg-primary); z-index: 10; padding: 16px 32px; display: flex; justify-content: flex-end; border-bottom: 1px solid var(--border);">
+        <div class="notification-bell">
+          <span class="bell-icon">🔔</span>
+          <span class="unread-count">3</span>
+        </div>
+      </div>
+
+      <div class="page-container">
+        
+        <!-- DASHBOARD PAGE -->
+        <section id="page-dashboard" class="page active">
+          <div class="page-header flex justify-between items-center">
+            <div>
+              <h2>Dashboard</h2>
+              <p>Overview of your organization's hiring pipeline</p>
+            </div>
+            <div class="flex gap-12">
+              <div class="select" style="background-color: var(--bg-primary);">
+                <option>Engineering (My Dept)</option>
+                <option>All Departments (Admin)</option>
+              </div>
+              <div class="select" style="background-color: var(--bg-primary);">
+                <option>Last 30 Days</option>
+                <option>Last Week</option>
+                <option>Yesterday</option>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-label">Open Positions</span>
+                <span class="stat-icon">🎯</span>
+              </div>
+              <div class="stat-value">12</div>
+              <div class="stat-trend up">↑ 2 from last month</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-label">Total Candidates</span>
+                <span class="stat-icon">👥</span>
+              </div>
+              <div class="stat-value">248</div>
+              <div class="stat-trend up">↑ 34 this week</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-label">Interviews Scheduled</span>
+                <span class="stat-icon">🎙️</span>
+              </div>
+              <div class="stat-value">8</div>
+              <div class="stat-trend down">↓ 1 from yesterday</div>
+            </div>
+          </div>
+
+          <div class="grid-2 mt-24">
+            <!-- Positions Table -->
+            <div class="table-container">
+              <div class="table-header">
+                <div class="flex items-center gap-8">
+                  <h3>Recent Positions</h3>
+                  <span class="text-xs text-secondary">(Last 10)</span>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="navigateTo('positions')">View All</button>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Role</th>
+                    <th>Dept</th>
+                    <th>Candidates</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr onclick="navigateTo('position-detail', '1')">
+                    <td class="fw-600">Senior Python Dev</td>
+                    <td class="text-secondary">Engineering</td>
+                    <td>24</td>
+                    <td><span class="badge badge-success">Open</span></td>
+                  </tr>
+                  <tr onclick="navigateTo('position-detail', '2')">
+                    <td class="fw-600">ML Engineer</td>
+                    <td class="text-secondary">Data</td>
+                    <td>18</td>
+                    <td><span class="badge badge-success">Open</span></td>
+                  </tr>
+                  <tr onclick="navigateTo('position-detail', '3')">
+                    <td class="fw-600">Product Manager</td>
+                    <td class="text-secondary">Product</td>
+                    <td>42</td>
+                    <td><span class="badge badge-warning">On Hold</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Activity Feed -->
+            <div class="card" style="display: flex; flex-direction: column; max-height: 480px;">
+              <h3 class="mb-16 flex justify-between items-center" style="font-size: 16px; font-weight: 600; flex-shrink: 0;">
+                Recent Activity
+                <span class="text-xs text-secondary fw-400">Engineering Dept</span>
+              </h3>
+              <div class="timeline" style="overflow-y: auto; flex: 1; padding-right: 8px;">
+                <div class="timeline-item">
+                  <div class="timeline-icon">💬</div>
+                  <div class="timeline-content">
+                    <div class="event-title">New comment on Priya S</div>
+                    <div class="event-detail">"Strong technical skills, let's move to R2" — Neha P.</div>
+                    <div class="event-time">10 mins ago</div>
+                  </div>
+                </div>
+                <div class="timeline-item">
+                  <div class="timeline-icon">✅</div>
+                  <div class="timeline-content">
+                    <div class="event-title">Scorecard submitted</div>
+                    <div class="event-detail">Raj K. submitted tech scorecard for Amit R. (4.5/5)</div>
+                    <div class="event-time">2 hours ago</div>
+                  </div>
+                </div>
+                <div class="timeline-item">
+                  <div class="timeline-icon">🤖</div>
+                  <div class="timeline-content">
+                    <div class="event-title">AI sourced 5 candidates</div>
+                    <div class="event-detail">Found 5 matches for Senior Python Developer from Talent Pool.</div>
+                    <div class="event-time">5 hours ago</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ALL POSITIONS PAGE -->
+        <section id="page-positions" class="page">
+          <div class="back-link" onclick="navigateTo('dashboard')">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Dashboard
+          </div>
+          <div class="page-header flex justify-between items-center">
+            <div>
+              <h2>All Positions</h2>
+              <p>Manage and filter all hiring requisitions</p>
+            </div>
+            <button class="btn btn-primary" onclick="navigateTo('chat', 'new')">+ New Hire</button>
+          </div>
+          
+          <div class="card">
+            <div class="table-header flex justify-between items-center mb-16">
+              <div class="flex gap-8">
+                <input type="text" class="input input-search" placeholder="Search by role or ID..." style="width: 250px;">
+                <div class="select"><option>Status: All</option><option>Open</option><option>Hold</option><option>Draft</option></div>
+                <div class="select"><option>Dept: Engineering</option><option>Dept: All</option></div>
+              </div>
+              <button class="btn btn-secondary btn-sm">Export CSV</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th>Created</th>
+                  <th>Dept</th>
+                  <th>Candidates</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr onclick="navigateTo('position-detail', '1')">
+                  <td class="fw-600">Senior Python Dev</td>
+                  <td class="text-secondary text-sm">Apr 5, 2026</td>
+                  <td class="text-secondary">Engineering</td>
+                  <td>24</td>
+                  <td><span class="badge badge-danger">Urgent</span></td>
+                  <td><span class="badge badge-success">Open</span></td>
+                </tr>
+                <tr onclick="navigateTo('position-detail', '2')">
+                  <td class="fw-600">ML Engineer</td>
+                  <td class="text-secondary text-sm">Apr 2, 2026</td>
+                  <td class="text-secondary">Engineering</td>
+                  <td>18</td>
+                  <td><span class="badge badge-warning">High</span></td>
+                  <td><span class="badge badge-success">Open</span></td>
+                </tr>
+                <tr onclick="navigateTo('position-detail', '3')">
+                  <td class="fw-600">Product Manager</td>
+                  <td class="text-secondary text-sm">Mar 28, 2026</td>
+                  <td class="text-secondary">Product</td>
+                  <td>42</td>
+                  <td><span class="badge badge-primary">Normal</span></td>
+                  <td><span class="badge badge-warning">On Hold</span></td>
+                </tr>
+                <tr onclick="navigateTo('position-detail', '4')">
+                  <td class="fw-600">DevOps Engineer</td>
+                  <td class="text-secondary text-sm">Mar 15, 2026</td>
+                  <td class="text-secondary">Engineering</td>
+                  <td>45</td>
+                  <td><span class="badge badge-primary">Normal</span></td>
+                  <td><span class="badge badge-default">Closed</span></td>
+                </tr>
+              </tbody>
+            </table>
+            
+            <div class="flex justify-center mt-24">
+              <div class="flex items-center gap-12 text-sm text-secondary">
+                <button class="btn btn-ghost btn-sm" disabled>← Prev</button>
+                <span>Page 1 of 6</span>
+                <button class="btn btn-ghost btn-sm">Next →</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- CHAT PAGE -->
+        <section id="page-chat" class="page" style="margin: -28px -32px; padding: 0;">
+          <div class="chat-container">
+            <div class="chat-topbar">
+              <div class="flex items-center gap-12 flex-1">
+                <h3 contenteditable="true" style="padding: 4px; border-radius: 4px; outline: none; border: 1px solid transparent; transition: border-color 0.2s; cursor: text;" onfocus="this.style.borderColor='var(--border)'" onblur="this.style.borderColor='transparent'">Senior Python Developer</h3>
+                <span class="badge badge-info">Draft</span>
+              </div>
+              <div class="flex gap-8">
+                <button class="btn btn-secondary btn-sm">Discard</button>
+                <button class="btn btn-primary btn-sm" onclick="navigateTo('position-detail', 'new')">Save & Finalize JD</button>
+              </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+              <!-- AI Message -->
+              <div class="message assistant">
+                <div class="msg-avatar ai">A</div>
+                <div class="msg-bubble">
+                  Hello! I'm your AI Hiring Assistant. Let's draft a new position. Do you have an existing Job Description document, or would you like to build one from scratch based on a few prompts?
+                </div>
+              </div>
+              
+              <!-- User Message -->
+              <div class="message user">
+                <div class="msg-avatar human">SR</div>
+                <div class="msg-bubble">
+                  I need a Senior Python Developer for our backend team. They should know FastAPI, Docker, and write clean code.
+                </div>
+              </div>
+
+              <!-- AI Message with Recommendations -->
+              <div class="message assistant">
+                <div class="msg-avatar ai">A</div>
+                <div class="msg-bubble">
+                  Got it. I've started drafting the JD. Based on market trends for a Senior Python Developer working with FastAPI and Docker, here are a few recommended skills to include. Click any to add them to the requirements.
+                  
+                  <div class="card mt-16" style="background: var(--bg-primary); padding: 16px;">
+                    <div class="fw-600 text-sm mb-8">Recommended Technical Skills</div>
+                    <div class="chips-row">
+                      <span class="chip chip-blue cursor-pointer">PostgreSQL +</span>
+                      <span class="chip chip-blue cursor-pointer">Redis +</span>
+                      <span class="chip chip-blue cursor-pointer">AWS (ECS/EKS) +</span>
+                      <span class="chip chip-gray cursor-pointer">CI/CD Pipelines +</span>
+                      <span class="chip chip-gray cursor-pointer">System Design +</span>
+                    </div>
+                  </div>
+                  
+                  <div class="mt-16 text-sm" style="color: var(--accent-primary); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    Preview current JD draft
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="chat-input-area">
+              <div class="chat-input-wrapper">
+                <button class="btn-ghost" style="padding: 8px; border-radius: 8px; flex-shrink: 0;" title="Upload context document">
+                  <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                </button>
+                <textarea class="chat-input" placeholder="Type your message here or upload a file..." rows="1" oninput="this.style.height = ''; this.style.height = Math.min(this.scrollHeight, 120) + 'px'"></textarea>
+                <button class="btn-send">
+                  <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                </button>
+              </div>
+              <div class="text-xs text-secondary mt-8 text-center" style="opacity: 0.6;">
+                AI responses can be inaccurate. Review the final JD before publishing.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- POSITION DETAIL -->
+        <section id="page-position-detail" class="page">
+          <div class="back-link" onclick="navigateTo('dashboard')">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Dashboard
+          </div>
+          
+          <!-- Detail Header -->
+          <div class="detail-header">
+            <div class="title-row">
+              <div class="flex items-center gap-12">
+                <h2>Senior Python Developer</h2>
+                <div class="select" style="padding: 4px 28px 4px 10px; background-color: var(--bg-primary); font-weight: 600;">
+                  <option>Open</option>
+                  <option>On Hold</option>
+                  <option>Closed</option>
+                </div>
+              </div>
+              <div class="flex gap-8">
+                <button class="btn btn-secondary btn-sm" onclick="alert('Copied Magic Link to clipboard')">🔗 Copy Application Link</button>
+                <button class="btn btn-primary btn-sm">Auto-Search Pool</button>
+              </div>
+            </div>
+            
+            <div class="meta-row">
+              <span class="flex items-center gap-4"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg> Engineering</span>
+              <span class="text-tertiary">•</span>
+              <span>Created Apr 5, 2026 by Srinivas R</span>
+              <span class="text-tertiary">•</span>
+              <span class="badge badge-danger">Priority: Urgent</span>
+              <span class="text-tertiary">•</span>
+              <span>Headcount: 2</span>
+            </div>
+
+            <!-- Pipeline Stats Row -->
+            <div class="grid-row mt-24">
+              <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+                <div class="text-xs fw-600 text-secondary text-uppercase text-center">Sourced</div>
+                <div class="text-center" style="font-size: 24px; font-weight: 700;">24</div>
+              </div>
+              <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+                <div class="text-xs fw-600 text-secondary text-uppercase text-center">Emailed</div>
+                <div class="text-center" style="font-size: 24px; font-weight: 700;">18</div>
+              </div>
+              <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 4px; background: rgba(34,197,94,0.05); border-color: rgba(34,197,94,0.2);">
+                <div class="text-xs fw-600 text-success text-uppercase text-center" style="color: var(--accent-success);">Applied</div>
+                <div class="text-center" style="font-size: 24px; font-weight: 700;">8</div>
+              </div>
+              <div class="card" style="padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+                <div class="text-xs fw-600 text-secondary text-uppercase text-center">Interviewing</div>
+                <div class="text-center" style="font-size: 24px; font-weight: 700;">3</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Position Tabs -->
+          <div class="tabs" id="positionTabs">
+            <div class="tab active" onclick="switchPositionTab('pipeline')">Pipeline</div>
+            <div class="tab" onclick="switchPositionTab('candidates')">All Candidates</div>
+            <div class="tab" onclick="switchPositionTab('jd')">Job Description</div>
+            <div class="tab" onclick="switchPositionTab('interview-kit')">Interview Kit 🎯</div>
+            <div class="tab" onclick="switchPositionTab('activity')">Activity Feed</div>
+            <div class="tab" onclick="switchPositionTab('settings')">Settings</div>
+          </div>
+
+          <!-- Tab Contents -->
+          <div id="pos-tab-pipeline" class="tab-content active">
+            <div class="kanban-board">
+              <!-- Sourced -->
+              <div class="kanban-column">
+                <div class="kanban-column-header" style="border-top: 3px solid var(--text-tertiary);">
+                  <span>Sourced</span>
+                  <span class="badge badge-default">24</span>
+                </div>
+                <div class="kanban-column-body">
+                  <div class="kanban-card" onclick="navigateTo('candidate-detail', '1')">
+                    <div class="card-name">Rahul Kumar</div>
+                    <div class="card-meta">
+                      <span>TechCorp • 6 yrs exp</span>
+                    </div>
+                    <div class="card-score">
+                      <span class="text-xs fw-600" style="color: var(--accent-success);">92% match</span>
+                      <div class="bar"><div class="bar-fill" style="width: 92%; background: var(--accent-success);"></div></div>
+                    </div>
+                  </div>
+                  <div class="kanban-card">
+                    <div class="card-name">Sneha P.</div>
+                    <div class="card-meta">
+                      <span>Infosys • 4 yrs exp</span>
+                    </div>
+                    <div class="card-score">
+                      <span class="text-xs fw-600" style="color: var(--accent-success);">85% match</span>
+                      <div class="bar"><div class="bar-fill" style="width: 85%; background: var(--accent-success);"></div></div>
+                    </div>
+                  </div>
+                  <div class="kanban-card">
+                    <div class="card-name">Arjun T.</div>
+                    <div class="card-meta">
+                      <span>Wipro • 3 yrs exp</span>
+                    </div>
+                    <div class="card-score">
+                      <span class="text-xs fw-600" style="color: var(--accent-warning);">72% match</span>
+                      <div class="bar"><div class="bar-fill" style="width: 72%; background: var(--accent-warning);"></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Emailed -->
+              <div class="kanban-column">
+                <div class="kanban-column-header" style="border-top: 3px solid var(--accent-info);">
+                  <span>Emailed</span>
+                  <span class="badge badge-info text-white">18</span>
+                </div>
+                <div class="kanban-column-body">
+                  <div class="kanban-card">
+                    <div class="card-name">Lisa W.</div>
+                    <div class="card-meta">
+                      <span>Amazon • 5 yrs exp</span>
+                      <span class="text-xs mt-4">📧 Delivered Yesterday</span>
+                    </div>
+                    <div class="card-score">
+                      <span class="text-xs fw-600" style="color: var(--accent-success);">88% match</span>
+                      <div class="bar"><div class="bar-fill" style="width: 88%; background: var(--accent-success);"></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Applied -->
+              <div class="kanban-column">
+                <div class="kanban-column-header" style="border-top: 3px solid var(--accent-success);">
+                  <span>Applied</span>
+                  <span class="badge badge-success">8</span>
+                </div>
+                <div class="kanban-column-body">
+                  <div class="kanban-card">
+                    <div class="card-name">Amit R.</div>
+                    <div class="card-meta">
+                      <span>Flipkart • 7 yrs exp</span>
+                      <span class="text-xs mt-4">📋 Screening form complete</span>
+                    </div>
+                    <div class="card-score">
+                      <span class="text-xs fw-600" style="color: var(--accent-success);">95% match</span>
+                      <div class="bar"><div class="bar-fill" style="width: 95%; background: var(--accent-success);"></div></div>
+                    </div>
+                  </div>
+                  <div class="kanban-card">
+                    <div class="card-name">Vikram S.</div>
+                    <div class="card-meta">
+                      <span>TCS • 5 yrs exp</span>
+                    </div>
+                    <div class="card-score">
+                      <span class="text-xs fw-600" style="color: var(--accent-success);">82% match</span>
+                      <div class="bar"><div class="bar-fill" style="width: 82%; background: var(--accent-success);"></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Interviewing -->
+              <div class="kanban-column">
+                <div class="kanban-column-header" style="border-top: 3px solid var(--accent-primary);">
+                  <span>Interviewing</span>
+                  <span class="badge badge-primary">3</span>
+                </div>
+                <div class="kanban-column-body">
+                  <div class="kanban-card">
+                    <div class="flex justify-between items-center mb-4">
+                      <div class="card-name mb-0">Priya Sharma</div>
+                      <div class="score-circle score-high" style="width: 32px; height: 32px; font-size: 11px;">4.2</div>
+                    </div>
+                    <div class="card-meta">
+                      <span>Google • 5 yrs exp</span>
+                      <span class="text-xs mt-4" style="color: var(--accent-primary);">🎙️ Next: R2 Manager (Apr 15)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Offer / Hired -->
+              <div class="kanban-column" style="opacity: 0.7;">
+                <div class="kanban-column-header" style="border-top: 3px solid var(--accent-success);">
+                  <span>Offer Extended</span>
+                  <span class="badge badge-default">0</span>
+                </div>
+                <div class="kanban-column-body" style="align-items: center; justify-content: center; color: var(--text-tertiary);">
+                  <div class="text-sm">Drag candidates here</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Other tab placeholders for Position Detail -->
+          <div id="pos-tab-candidates" class="tab-content table-container">
+            <div class="table-header">
+              <div class="flex items-center gap-12">
+                <input type="text" class="input input-search" placeholder="Search candidates..." style="width: 250px; background-color: var(--bg-primary);">
+                <div class="select"><option>Score: High to Low</option><option>Newest Active</option></div>
+              </div>
+              <button class="btn btn-secondary">📧 Bulk Email (0)</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th><input type="checkbox"></th>
+                  <th>Candidate</th>
+                  <th>Match Status</th>
+                  <th>Pipeline Stage</th>
+                  <th>Source</th>
+                  <th>Exp</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr onclick="navigateTo('candidate-detail', '1')">
+                  <td onclick="event.stopPropagation()"><input type="checkbox"></td>
+                  <td class="fw-600">Rahul Kumar</td>
+                  <td><span class="badge badge-success">92% Match</span></td>
+                  <td><span class="badge badge-default">Sourced</span></td>
+                  <td>AI Simulation</td>
+                  <td>6 yrs</td>
+                </tr>
+                <tr onclick="navigateTo('candidate-detail', '2')">
+                  <td onclick="event.stopPropagation()"><input type="checkbox"></td>
+                  <td class="fw-600">Priya Sharma</td>
+                  <td><span class="badge badge-success">88% Match</span></td>
+                  <td><span class="badge badge-primary">Interviewing (R2)</span></td>
+                  <td>Magic Link</td>
+                  <td>5 yrs</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div id="pos-tab-jd" class="tab-content card">
+            <div class="flex justify-between items-center mb-16">
+              <h3 class="fw-600">Job Description Content</h3>
+              <div class="flex gap-8">
+                <button class="btn btn-secondary btn-sm">PDF Download</button>
+                <button class="btn btn-secondary btn-sm">Edit</button>
+              </div>
+            </div>
+            <div style="padding: 24px; background: var(--bg-primary); border-radius: var(--radius-md); border: 1px solid var(--border);">
+              <h1 style="font-size: 24px; margin-bottom: 16px;">Senior Python Developer</h1>
+              <h2 style="font-size: 18px; margin-bottom: 8px; margin-top: 24px;">About TechCorp</h2>
+              <p style="margin-bottom: 16px; color: var(--text-secondary);">We are a fast-growing technology company building next-generation AI tools...</p>
+              <h2 style="font-size: 18px; margin-bottom: 8px; margin-top: 24px;">Role Overview</h2>
+              <p style="margin-bottom: 16px; color: var(--text-secondary);">We are seeking an experienced Backend developer with deep Python expertise to build our core APIs...</p>
+              <h2 style="font-size: 18px; margin-bottom: 8px; margin-top: 24px;">Requirements</h2>
+              <ul style="list-style-type: disc; padding-left: 20px; color: var(--text-secondary);">
+                <li>5+ years of Python software engineering</li>
+                <li>Experience with FastAPI and async programming</li>
+                <li>Strong Docker and containerization experience</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div id="pos-tab-interview-kit" class="tab-content card">
+            <div class="flex justify-between items-center mb-16">
+              <h3 class="fw-600">🎯 AI Generated Interview Kit</h3>
+              <div class="flex gap-8">
+                <button class="btn btn-secondary btn-sm">Regenerate</button>
+                <button class="btn btn-primary btn-sm">🔗 Share to Interviewers</button>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div style="padding: 16px; background: var(--bg-primary); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                <div class="fw-600 mb-12" style="color: var(--accent-primary);">Technical Questions (5)</div>
+                <ol style="padding-left: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 12px;">
+                  <li>
+                    <div class="fw-600">Explain how Python's GIL affects multithreading and async performance.</div>
+                    <div class="text-xs text-secondary mt-4">Expected: Should articulate CPU-bound vs IO-bound differences and multiprocessing.</div>
+                  </li>
+                  <li>
+                    <div class="fw-600">How would you design a scalable rate-limiting middleware in FastAPI?</div>
+                    <div class="text-xs text-secondary mt-4">Expected: Mention Redis, token bucket/sliding window algorithms.</div>
+                  </li>
+                </ol>
+              </div>
+              <div style="padding: 16px; background: var(--bg-primary); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                <div class="fw-600 mb-12">Scorecard Template</div>
+                <div class="flex flex-col gap-8">
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm">Technical Skills</span>
+                    <span class="text-xs fw-600 text-tertiary">40% weight</span>
+                  </div>
+                  <div class="progress-bar"><div class="progress-fill" style="width: 40%"></div></div>
+                  
+                  <div class="flex items-center justify-between mt-8">
+                    <span class="text-sm">System Design</span>
+                    <span class="text-xs fw-600 text-tertiary">30% weight</span>
+                  </div>
+                  <div class="progress-bar"><div class="progress-fill" style="width: 30%"></div></div>
+                  
+                  <div class="flex items-center justify-between mt-8">
+                    <span class="text-sm">Communication</span>
+                    <span class="text-xs fw-600 text-tertiary">15% weight</span>
+                  </div>
+                  <div class="progress-bar"><div class="progress-fill" style="width: 15%"></div></div>
+                  
+                  <div class="flex items-center justify-between mt-8">
+                    <span class="text-sm">Culture Fit</span>
+                    <span class="text-xs fw-600 text-tertiary">15% weight</span>
+                  </div>
+                  <div class="progress-bar"><div class="progress-fill" style="width: 15%"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div id="pos-tab-activity" class="tab-content card">
+            <h3 class="fw-600 mb-16">Team Activity feed</h3>
+            <div class="timeline">
+              <div class="timeline-item">
+                <div class="timeline-icon">📝</div>
+                <div class="timeline-content">
+                  <div class="event-title">Srinivas R finalized the JD</div>
+                  <div class="event-time">Apr 5, 2026 at 10:00 AM</div>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-icon" style="background: rgba(34,197,94,0.1); border-color: #22c55e;">🤖</div>
+                <div class="timeline-content">
+                  <div class="event-title">AI Simulation completed</div>
+                  <div class="event-detail">Sourced 24 candidates, flagged 8 as High Match.</div>
+                  <div class="event-time">Apr 6, 2026 at 11:30 AM</div>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-icon">💬</div>
+                <div class="timeline-content">
+                  <div class="event-title">Neha P commented on Priya Sharma</div>
+                  <div class="event-detail">"Strong technical skills, let's move to R2."</div>
+                  <div class="event-time">10 mins ago</div>
+                </div>
+              </div>
+            </div>
+            <div class="comment-box">
+              <div class="msg-avatar human">SR</div>
+              <textarea placeholder="Write a comment... @mention team members to notify them"></textarea>
+              <div class="flex flex-col justify-end">
+                <button class="btn btn-primary" style="padding: 10px 16px;">Post</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="pos-tab-settings" class="tab-content card">
+            <h3 class="fw-600 mb-16">Position Settings</h3>
+            <div class="grid-2">
+              <div class="form-group">
+                <label>Auto-Sourcing Engine</label>
+                <div class="flex items-center gap-12 p-16" style="background: var(--bg-primary); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                  <div style="flex: 1;">
+                    <div class="fw-600 text-sm">Continuous Search</div>
+                    <div class="text-xs text-secondary mt-4">AI will scan the talent pool to find new matches every 72 hours.</div>
+                  </div>
+                  <button class="btn btn-secondary btn-sm">Pause Search</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>ATS Screening Threshold</label>
+                <div class="select w-full">
+                  <option>Minimum 80% Match Score</option>
+                  <option>Minimum 70% Match Score</option>
+                  <option>Minimum 60% Match Score</option>
+                </div>
+              </div>
+            </div>
+            <div class="separator"></div>
+            <div class="flex justify-end gap-12">
+              <button class="btn btn-danger btn-sm">Close Position</button>
+              <button class="btn btn-primary btn-sm">Save Preferences</button>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- CANDIDATE DETAIL -->
+        <section id="page-candidate-detail" class="page">
+          <div class="back-link" onclick="navigateTo('position-detail', '1')">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Senior Python Developer
+          </div>
+          
+          <div class="detail-header">
+            <div class="title-row">
+              <div class="flex items-center gap-16">
+                <div class="msg-avatar ai" style="width: 56px; height: 56px; font-size: 20px;">RK</div>
+                <div>
+                  <h2 style="font-size: 20px;">Rahul Kumar</h2>
+                  <div class="flex items-center gap-8 text-sm text-secondary mt-4">
+                    <span>📍 Bangalore</span>
+                    <span class="text-tertiary">•</span>
+                    <span>✉️ rahul@example.com</span>
+                    <span class="text-tertiary">•</span>
+                    <span>🔗 LinkedIn</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex gap-8">
+                <button class="btn btn-secondary btn-sm" onclick="navigateTo('talent-pool')">🏊 Add to Pool</button>
+                <div class="select" style="padding: 6px 32px 6px 12px; font-weight: 600; background-color: var(--accent-primary); color: white; border: none;">
+                  <option>Sourced</option>
+                  <option>Emailed</option>
+                  <option>Applied</option>
+                  <option>Interviewing</option>
+                  <option>Offer</option>
+                  <option>Hired</option>
+                  <option>Rejected</option>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid-row mt-24">
+              <div class="card flex-1 flex items-center gap-16 p-16" style="border-color: var(--accent-success);">
+                <div class="score-circle score-high" style="width: 56px; height: 56px; font-size: 20px;">92%</div>
+                <div>
+                  <div class="fw-600 text-sm">Overall Match Score</div>
+                  <div class="text-xs text-secondary mt-4">Calculated from JD and Resume</div>
+                </div>
+              </div>
+              <div class="card flex-1 p-16">
+                <div class="fw-600 text-sm mb-12 text-secondary">Tags</div>
+                <div class="chips-row">
+                  <span class="chip chip-blue">python</span>
+                  <span class="chip chip-blue">fastapi</span>
+                  <span class="chip chip-gray">docker</span>
+                  <span class="chip chip-green">strong-communicator</span>
+                  <span class="chip chip-gray cursor-pointer">+ Add</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tabs" id="candidateTabs">
+            <div class="tab active" onclick="switchCandidateTab('skills')">Skills Match</div>
+            <div class="tab" onclick="switchCandidateTab('application')">Application</div>
+            <div class="tab" onclick="switchCandidateTab('resume')">Resume Viewer</div>
+            <div class="tab" onclick="switchCandidateTab('interviews')">Interviews & Scorecards</div>
+            <div class="tab" onclick="switchCandidateTab('communication')">Communication Hub</div>
+            <div class="tab" onclick="switchCandidateTab('history')">Activity History</div>
+          </div>
+
+          <div id="cand-tab-skills" class="tab-content active">
+            <div class="grid-2">
+              <div class="card">
+                <h3 class="fw-600 mb-16">Match Breakdown</h3>
+                <div class="flex flex-col gap-12">
+                  <div class="flex justify-between items-center text-sm"><span>Technical Skills</span><span class="fw-600 text-success">95%</span></div>
+                  <div class="flex justify-between items-center text-sm"><span>Experience Info</span><span class="fw-600 text-success">90%</span></div>
+                  <div class="flex justify-between items-center text-sm"><span>Domain Knowledge</span><span class="fw-600 text-warning">75%</span></div>
+                  <div class="flex justify-between items-center text-sm"><span>Location/Logistics</span><span class="fw-600 text-success">100%</span></div>
+                </div>
+                <div class="separator"></div>
+                <h3 class="fw-600 mb-12 text-sm text-secondary text-uppercase">AI Summary</h3>
+                <p class="text-sm text-secondary">Rahul has exactly the right stack (Python, FastAPI, Postgres) mapped to our JD. He spent 3 years at TechCorp building high-throughput APIs. The only missing element is deep Kubernetes experience which wasn't heavily featured on his CV, hence the slightly lower Domain Knowledge score.</p>
+              </div>
+              <div class="card">
+                <h3 class="fw-600 mb-16">Missing Skills</h3>
+                <ul style="padding-left: 20px; font-size: 14px; color: var(--text-secondary); display: flex; flex-direction: column; gap: 8px;">
+                  <li>Docker Swarm / Kubernetes (Has basic Docker)</li>
+                  <li>No explicit mention of GraphQL</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          <div id="cand-tab-application" class="tab-content card">
+            <h3 class="fw-600 mb-16">Screening Responses</h3>
+            <div class="flex flex-col gap-16">
+              <div>
+                <div class="text-sm fw-600 mb-4">What is your expected CTC?</div>
+                <div class="text-sm text-secondary px-12 py-8 bg-tertiary" style="background: var(--bg-primary); border-radius: var(--radius-sm); border-left: 3px solid var(--accent-primary);">30 LPA</div>
+              </div>
+              <div>
+                <div class="text-sm fw-600 mb-4">Are you willing to work from our Bangalore office 3 days a week?</div>
+                <div class="text-sm text-secondary px-12 py-8 bg-tertiary" style="background: var(--bg-primary); border-radius: var(--radius-sm); border-left: 3px solid var(--accent-primary);">Yes, currently based in HSR Layout.</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="cand-tab-resume" class="tab-content">
+            <div class="flex gap-16" style="height: 600px;">
+              <div class="card flex-1 flex items-center justify-center" style="background: var(--bg-primary);">
+                <div class="text-center">
+                  <div class="text-4xl mb-12" style="font-size: 48px;">📄</div>
+                  <div class="fw-600">rahul_kumar_resume.pdf</div>
+                  <button class="btn btn-primary mt-16">Download PDF</button>
+                </div>
+              </div>
+              <div class="card" style="width: 300px; overflow-y: auto;">
+                <h3 class="fw-600 text-sm text-uppercase text-secondary mb-16">Extracted Entities</h3>
+                <div class="mb-16">
+                  <div class="text-xs fw-600 mb-8">Companies</div>
+                  <ul class="text-sm flex flex-col gap-4 text-primary">
+                    <li>TechCorp (2023 - Present)</li>
+                    <li>StartupXYZ (2020 - 2023)</li>
+                  </ul>
+                </div>
+                <div class="mb-16">
+                  <div class="text-xs fw-600 mb-8">Education</div>
+                  <ul class="text-sm flex flex-col gap-4 text-primary">
+                    <li>B.Tech CS, IIT Madras (2020)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="cand-tab-interviews" class="tab-content">
+            <div class="flex justify-between items-center mb-16">
+              <h3 class="fw-600">Interview Pipeline</h3>
+              <button class="btn btn-primary btn-sm">📅 Schedule Interview</button>
+            </div>
+            <div class="card mb-16" style="border-left: 4px solid var(--accent-success);">
+              <div class="flex justify-between items-center">
+                <div>
+                  <div class="fw-600 mb-4">Round 1: Technical Screening</div>
+                  <div class="text-sm text-secondary">Conducted on Apr 10, 2026 by Neha P.</div>
+                </div>
+                <div class="score-circle score-high" style="width: 40px; height: 40px;">4.5</div>
+              </div>
+              <div class="mt-16 pt-16" style="border-top: 1px solid var(--border);">
+                <div class="text-sm fw-600 mb-8">Interviewer Feedback</div>
+                <p class="text-sm text-secondary">"Excellent understanding of async Python. Answered the rate-limiting question perfectly using Redis sliding window. Clean code."</p>
+                <button class="btn btn-secondary btn-sm mt-12 text-xs">View Full Scorecard</button>
+              </div>
+            </div>
+            <div class="card" style="border-left: 4px solid var(--accent-warning);">
+              <div class="flex justify-between items-center">
+                <div>
+                  <div class="fw-600 mb-4">Round 2: System Design</div>
+                  <div class="text-sm text-secondary">Scheduled for Apr 15, 2026 at 2:00 PM with Srinivas R.</div>
+                </div>
+                <div class="badge badge-warning">Pending</div>
+              </div>
+              <div class="mt-16 flex gap-8">
+                <button class="btn btn-primary btn-sm text-xs">Send Reminder</button>
+                <button class="btn btn-secondary btn-sm text-xs">Reschedule</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="cand-tab-communication" class="tab-content card" style="padding: 0; display: flex; flex-direction: column; height: 600px;">
+            <div class="padding-16 flex justify-between items-center" style="padding: 16px; border-bottom: 1px solid var(--border);">
+              <h3 class="fw-600">Interaction History</h3>
+              <div class="flex gap-8 text-sm">
+                <span class="badge badge-success">Email Connected</span>
+                <span class="badge badge-success">WhatsApp Verified</span>
+              </div>
+            </div>
+            <div class="flex-1 overflow-y-auto padding-16" style="padding: 24px; display: flex; flex-direction: column; gap: 24px;">
+              
+              <div style="align-self: center; background: var(--bg-tertiary); padding: 4px 12px; border-radius: 12px; font-size: 11px; color: var(--text-tertiary);">Apr 6, 2026</div>
+              
+              <div class="card" style="align-self: flex-start; max-width: 80%; background: var(--bg-tertiary);">
+                <div class="flex items-center justify-between mb-8">
+                  <div class="text-xs fw-600">Srinivas R <span class="text-tertiary fw-400">via Email</span></div>
+                  <div class="text-xs text-secondary">10:30 AM</div>
+                </div>
+                <div class="text-sm">Hi Rahul, we found your profile on LinkedIn and think you'd be a great fit for our Senior Python Developer role. Are you open to a quick chat?</div>
+              </div>
+
+              <div class="card" style="align-self: flex-end; max-width: 80%; border-color: var(--accent-primary);">
+                <div class="flex items-center justify-between mb-8">
+                  <div class="text-xs fw-600">Rahul Kumar <span class="text-tertiary fw-400">via Email</span></div>
+                  <div class="text-xs text-secondary">11:45 AM</div>
+                </div>
+                <div class="text-sm">Hi Srinivas, thanks for reaching out. Yes, I'm currently exploring new opportunities. What time works for you this week?</div>
+              </div>
+
+              <div style="align-self: center; background: var(--bg-tertiary); padding: 4px 12px; border-radius: 12px; font-size: 11px; color: var(--text-tertiary);">System Events</div>
+              
+              <div class="text-center text-sm text-secondary">
+                🪄 Magic Link for self-scheduling sent via WhatsApp (Apr 6, 11:50 AM)
+              </div>
+              <div class="text-center text-sm text-secondary">
+                ✅ Candidate scheduled interview for Apr 10, 10:00 AM
+              </div>
+            </div>
+            <div style="padding: 16px; border-top: 1px solid var(--border); background: var(--bg-secondary);">
+              <div class="flex gap-8 mb-8">
+                <button class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 8px;">Template: Interview Invite</button>
+                <button class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 8px;">Template: Rejection</button>
+              </div>
+              <div class="flex gap-12">
+                <div class="select" style="padding: 8px 24px 8px 8px; width: 120px;">
+                  <option>Email</option>
+                  <option>WhatsApp</option>
+                </div>
+                <input type="text" class="input flex-1" placeholder="Type your message...">
+                <button class="btn btn-primary">Send</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="cand-tab-history" class="tab-content card">
+            <h3 class="fw-600 mb-16">Candidate Activity</h3>
+            <div class="timeline">
+              <div class="timeline-item">
+                <div class="timeline-icon">📄</div>
+                <div class="timeline-content">
+                  <div class="event-title">Resume parsed and profile created</div>
+                  <div class="event-time">Apr 6, 2026 - 10:25 AM</div>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-icon">📧</div>
+                <div class="timeline-content">
+                  <div class="event-title">Sourced email sent</div>
+                  <div class="event-time">Apr 6, 2026 - 10:30 AM</div>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-icon" style="background: rgba(34,197,94,0.1); border-color: #22c55e;">✅</div>
+                <div class="timeline-content">
+                  <div class="event-title">Moved to Applied stage</div>
+                  <div class="event-detail">Candidate filled the application form.</div>
+                  <div class="event-time">Apr 6, 2026 - 11:45 AM</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TALENT POOL -->
+        <section id="page-talent-pool" class="page">
+          <div class="page-header flex justify-between items-center">
+            <div>
+              <h2>Talent Pool</h2>
+              <p>Org-wide candidate database — 1,247 candidates</p>
+            </div>
+            <button class="btn btn-primary">🤖 AI Suggest Matches</button>
+          </div>
+          
+          <div class="flex gap-12 mb-24">
+            <input type="text" class="input input-search" placeholder="Search by name, skills, title, company..." style="max-width: 400px; background-color: var(--bg-secondary);">
+            <div class="select"><option>All Locations</option></div>
+            <div class="select"><option>All Sources</option></div>
+            <div class="select"><option>Pool Reason</option><option>Rejected</option><option>Position Closed</option></div>
+            <button class="btn btn-secondary">Clear Filters</button>
+          </div>
+
+          <div class="grid-3">
+            <div class="card card-clickable" onclick="navigateTo('candidate-detail', '1')">
+              <div class="flex justify-between items-start mb-12">
+                <div>
+                  <h3 class="fw-600">Rahul Kumar</h3>
+                  <div class="text-sm text-secondary">Senior Python Developer @ TechCorp</div>
+                </div>
+                <span class="badge badge-danger text-xs">Rejected</span>
+              </div>
+              <div class="text-xs text-secondary mb-12">
+                📍 Bangalore • 6 yrs exp
+              </div>
+              <div class="chips-row mb-12">
+                <span class="chip chip-blue">python</span>
+                <span class="chip chip-blue">fastapi</span>
+                <span class="chip chip-gray">docker</span>
+              </div>
+              <div class="separator mt-16 mb-16" style="margin: 12px 0;"></div>
+              <div class="flex justify-between items-center">
+                <div class="text-xs text-tertiary">Added: Jan 15, 2026</div>
+                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation()">Re-engage</button>
+              </div>
+            </div>
+            
+            <div class="card card-clickable" onclick="navigateTo('candidate-detail', '2')">
+              <div class="flex justify-between items-start mb-12">
+                <div>
+                  <h3 class="fw-600">Priya Sharma</h3>
+                  <div class="text-sm text-secondary">ML Engineer @ Google</div>
+                </div>
+                <span class="badge badge-warning text-xs">Pos. Closed</span>
+              </div>
+              <div class="text-xs text-secondary mb-12">
+                📍 Hyderabad • 4 yrs exp
+              </div>
+              <div class="chips-row mb-12">
+                <span class="chip chip-blue">ml</span>
+                <span class="chip chip-blue">pytorch</span>
+                <span class="chip chip-gray">nlp</span>
+              </div>
+              <div class="separator mt-16 mb-16" style="margin: 12px 0;"></div>
+              <div class="flex justify-between items-center">
+                <div class="text-xs text-tertiary">Added: Mar 22, 2026</div>
+                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation()">Re-engage</button>
+              </div>
+            </div>
+            
+            <div class="card card-clickable text-center flex-col justify-center align-center" style="border: 1px dashed var(--accent-primary); background: rgba(102,126,234,0.05);">
+              <div class="text-4xl mb-8" style="font-size: 32px;">📑</div>
+              <div class="fw-600 mb-4" style="color: var(--accent-primary);">Bulk Upload Resumes</div>
+              <div class="text-xs text-secondary">Add offline candidates</div>
+            </div>
+          </div>
+          
+          <div class="flex justify-center mt-32">
+            <div class="flex items-center gap-12 text-sm text-secondary">
+              <button class="btn btn-ghost btn-sm">← Prev</button>
+              <span>Page 1 of 42</span>
+              <button class="btn btn-ghost btn-sm">Next →</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section id="page-settings" class="page">
+          <div class="page-header">
+            <h2>Organization Settings</h2>
+            <p>Manage your workspace, users, and default configurations</p>
+          </div>
+          
+          <div class="settings-layout">
+            <div class="settings-tabs" id="settingsTabs">
+              <div class="section-title" style="padding-left: 14px;">General</div>
+              <div class="settings-tab active" onclick="switchSettingsTab('profile')">My Profile</div>
+              <div class="settings-tab" onclick="switchSettingsTab('org')">Organization</div>
+              <div class="settings-tab" onclick="switchSettingsTab('team')">Team Members</div>
+              <div class="settings-tab" onclick="switchSettingsTab('depts')">Departments</div>
+              
+              <div class="section-title" style="padding-left: 14px; margin-top: 16px;">Hiring & ATS</div>
+              <div class="settings-tab" onclick="switchSettingsTab('screening')">Screening Questions</div>
+              <div class="settings-tab" onclick="switchSettingsTab('msg-templates')">Message Templates</div>
+              <div class="settings-tab" onclick="switchSettingsTab('int-templates')">Interview Templates</div>
+              <div class="settings-tab" onclick="switchSettingsTab('competitors')">Competitor Intel</div>
+              
+              <div class="section-title" style="padding-left: 14px; margin-top: 16px;">Workspace</div>
+              <div class="settings-tab" onclick="switchSettingsTab('integrations')">Integrations</div>
+              <div class="settings-tab" onclick="switchSettingsTab('appearance')">Appearance</div>
+              <div class="settings-tab" onclick="switchSettingsTab('security')">Security & SSO</div>
+            </div>
+
+            <div class="settings-content">
+              
+              <!-- Profile Tab -->
+              <div id="sett-tab-profile" class="tab-content active card">
+                <h3 class="fw-600 mb-16">My Profile</h3>
+                <div class="flex items-center gap-16 mb-24">
+                  <div class="user-avatar" style="width: 80px; height: 80px; font-size: 24px;">SR</div>
+                  <button class="btn btn-secondary btn-sm">Upload Photo</button>
+                  <button class="btn btn-ghost btn-sm">Remove</button>
+                </div>
+                <div class="grid-2">
+                  <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" class="input" value="Srinivas R">
+                  </div>
+                  <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" class="input" value="srinivas@techcorp.com" disabled style="opacity: 0.7;">
+                  </div>
+                  <div class="form-group">
+                    <label>Role</label>
+                    <input type="text" class="input" value="Admin / Owner" disabled style="opacity: 0.7;">
+                  </div>
+                  <div class="form-group">
+                    <label>Timezone</label>
+                    <div class="select w-full">
+                      <option>Asia/Kolkata (IST)</option>
+                    </div>
+                  </div>
+                </div>
+                <div class="separator"></div>
+                <button class="btn btn-primary">Save Changes</button>
+              </div>
+
+              <!-- Org Tab (Placeholder) -->
+              <div id="sett-tab-org" class="tab-content card">
+                <h3 class="fw-600 mb-16">Organization Profile</h3>
+                <p class="text-sm text-secondary">Manage company details, logo, and billing.</p>
+              </div>
+              
+              <!-- Team Tab (Placeholder) -->
+              <div id="sett-tab-team" class="tab-content card">
+                <h3 class="fw-600 mb-16">Team Members</h3>
+                <p class="text-sm text-secondary">Invite users and manage roles.</p>
+              </div>
+              
+              <!-- Depts Tab (Placeholder) -->
+              <div id="sett-tab-depts" class="tab-content card">
+                <h3 class="fw-600 mb-16">Departments</h3>
+                <p class="text-sm text-secondary">Manage department-level data isolation.</p>
+              </div>
+
+              <!-- Screening Questions Tab -->
+              <div id="sett-tab-screening" class="tab-content card">
+                <div class="flex justify-between items-center mb-16">
+                  <h3 class="fw-600">Global Screening Questions</h3>
+                  <button class="btn btn-primary btn-sm">+ Add Question</button>
+                </div>
+                <p class="text-sm text-secondary mb-16">These questions will be asked to all candidates who apply via regular link or magic link.</p>
+                <div class="flex flex-col gap-12">
+                  <div class="flex items-center justify-between p-16" style="border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-tertiary);">
+                    <div>
+                      <div class="fw-600 text-sm">What is your expected CTC?</div>
+                      <div class="text-xs text-secondary mt-4">Type: Number • Required: Yes • Dept: All</div>
+                    </div>
+                    <div class="flex gap-8">
+                      <button class="btn btn-ghost btn-sm">Edit</button>
+                      <button class="btn btn-ghost btn-sm text-danger" style="color: var(--accent-danger);">Delete</button>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between p-16" style="border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-tertiary);">
+                    <div>
+                      <div class="fw-600 text-sm">Notice Period (in days)</div>
+                      <div class="text-xs text-secondary mt-4">Type: Dropdown • Required: Yes • Dept: Default</div>
+                    </div>
+                    <div class="flex gap-8">
+                      <button class="btn btn-ghost btn-sm">Edit</button>
+                      <button class="btn btn-ghost btn-sm text-danger" style="color: var(--accent-danger);">Delete</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Integrations Tab -->
+              <div id="sett-tab-integrations" class="tab-content card">
+                <h3 class="fw-600 mb-16">Integrations</h3>
+                <div class="integration-grid">
+                  <div class="integration-card" style="border-color: var(--accent-primary);">
+                    <div class="text-3xl mb-8" style="font-size: 24px;">📧</div>
+                    <div class="int-name">Google Workspace</div>
+                    <div class="int-status text-success fw-600" style="color: var(--accent-success);">Connected</div>
+                    <button class="btn btn-secondary btn-sm w-full">Manage</button>
+                  </div>
+                  <div class="integration-card" style="border-color: var(--accent-primary);">
+                    <div class="text-3xl mb-8" style="font-size: 24px;">💬</div>
+                    <div class="int-name">WhatsApp API</div>
+                    <div class="int-status text-success fw-600" style="color: var(--accent-success);">Connected</div>
+                    <button class="btn btn-secondary btn-sm w-full">Manage</button>
+                  </div>
+                  <div class="integration-card">
+                    <div class="text-3xl mb-8" style="font-size: 24px;">📅</div>
+                    <div class="int-name">Microsoft Outlook</div>
+                    <div class="int-status text-tertiary">Not connected</div>
+                    <button class="btn btn-primary btn-sm w-full">Connect</button>
+                  </div>
+                  <div class="integration-card">
+                    <div class="text-3xl mb-8" style="font-size: 24px;">🔗</div>
+                    <div class="int-name">LinkedIn Recruiter</div>
+                    <div class="int-status text-tertiary">Not connected</div>
+                    <button class="btn btn-primary btn-sm w-full">Connect</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Other Placeholders -->
+              <div id="sett-tab-msg-templates" class="tab-content card"><h3 class="fw-600">Message Templates</h3><p class="text-sm text-secondary">Manage WhatsApp/Email templates.</p></div>
+              <div id="sett-tab-int-templates" class="tab-content card"><h3 class="fw-600">Interview Templates</h3><p class="text-sm text-secondary">Manage standardized templates per department.</p></div>
+              <div id="sett-tab-competitors" class="tab-content card"><h3 class="fw-600">Competitors</h3><p class="text-sm text-secondary">AI context mapping.</p></div>
+              <div id="sett-tab-appearance" class="tab-content card"><h3 class="fw-600">Appearance</h3><p class="text-sm text-secondary">Theme customization.</p></div>
+              <div id="sett-tab-security" class="tab-content card"><h3 class="fw-600">Security</h3><p class="text-sm text-secondary">SSO configuration.</p></div>
+
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

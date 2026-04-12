@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apply: Senior Python Developer — TechCorp</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .public-page { background: #f9fafb; color: #111827; }
+    .public-header { background: #ffffff; border-bottom: 1px solid #e5e7eb; padding: 16px 40px; }
+    .apply-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 40px; max-width: 700px; margin: 40px auto; box-shadow: 0 4px 24px rgba(0,0,0,0.04); }
+    .input { background: white; border: 1px solid #d1d5db; color: #111827; }
+    .input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    label { color: #374151; font-weight: 600; }
+  </style>
+</head>
+<body class="public-page">
+  
+  <header class="public-header flex justify-between items-center">
+    <div class="flex items-center gap-12 cursor-pointer" onclick="window.location.href='careers.html'">
+      <div style="width: 32px; height: 32px; background: #2563eb; color: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold;">T</div>
+      <h1 style="font-size: 18px; font-weight: 700; margin: 0;">TechCorp</h1>
+    </div>
+    <a href="careers.html" style="font-size: 14px; font-weight: 600; color: #4b5563;">← Back to Jobs</a>
+  </header>
+
+  <main style="flex: 1; padding: 0 24px;">
+    <div class="apply-card">
+      <div style="margin-bottom: 32px; border-bottom: 1px solid #e5e7eb; padding-bottom: 24px;">
+        <h1 style="font-size: 28px; font-weight: 800; margin-bottom: 8px;">Senior Python Developer</h1>
+        <div class="flex items-center gap-16 text-sm" style="color: #6b7280;">
+          <span class="flex items-center gap-4 text-primary">📍 Bangalore / Hybrid</span>
+          <span class="text-tertiary">•</span>
+          <span class="flex items-center gap-4 text-primary">💼 Engineering</span>
+        </div>
+      </div>
+
+      <!-- Application Form -->
+      <form onsubmit="event.preventDefault(); showSuccess();">
+        <div id="form-content">
+          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px;">1. Upload Resume</h3>
+          <div style="border: 2px dashed #d1d5db; border-radius: 8px; padding: 40px 20px; text-align: center; margin-bottom: 32px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#2563eb'; this.style.backgroundColor='#eff6ff'" onmouseout="this.style.borderColor='#d1d5db'; this.style.backgroundColor='transparent'">
+            <div style="font-size: 32px; margin-bottom: 12px;">📄</div>
+            <div style="font-weight: 600; font-size: 14px;" class="mb-4">Click to upload or drag & drop</div>
+            <div style="font-size: 12px; color: #6b7280;">PDF, DOCX up to 5MB</div>
+          </div>
+
+          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px;">2. Personal Details</h3>
+          <div class="grid-2 mb-16">
+            <div class="form-group">
+              <label>Full Name *</label>
+              <input type="text" class="input" required>
+            </div>
+            <div class="form-group">
+              <label>Email Address *</label>
+              <input type="email" class="input" required>
+            </div>
+          </div>
+          <div class="grid-2 mb-32">
+            <div class="form-group">
+              <label>Phone Number *</label>
+              <input type="tel" class="input" required>
+            </div>
+            <div class="form-group">
+              <label>LinkedIn Profile URL</label>
+              <input type="url" class="input">
+            </div>
+          </div>
+
+          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px;">3. Screening Questions</h3>
+          <div class="form-group mb-16">
+            <label>What is your expected CTC? (LPA) *</label>
+            <input type="number" class="input" required>
+          </div>
+          <div class="form-group mb-32">
+            <label>Notice Period (in days) *</label>
+            <select class="input" style="padding: 10px 14px; background-color: white;" required>
+              <option value="">Select...</option>
+              <option>Immediate / Serving Notice</option>
+              <option>15 Days</option>
+              <option>30 Days</option>
+              <option>60 Days</option>
+              <option>90 Days</option>
+            </select>
+          </div>
+
+          <div style="padding: 16px; background: #f3f4f6; border-radius: 8px; font-size: 13px; color: #4b5563; margin-bottom: 24px;">
+            By submitting your application, you agree to allow TechCorp to store your personal data for recruitment purposes and receive updates via Email or WhatsApp.
+          </div>
+
+          <button type="submit" class="btn btn-primary w-full btn-lg" style="background: #2563eb; border: none; box-shadow: none;">Submit Application</button>
+        </div>
+        
+        <!-- Success State (hidden by default) -->
+        <div id="success-state" style="display: none; text-align: center; padding: 40px 20px;">
+          <div style="font-size: 64px; margin-bottom: 16px;">🎉</div>
+          <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 8px;">Application Submitted!</h2>
+          <p style="color: #4b5563; margin-bottom: 24px;">Thank you for applying. We've received your application and our AI hiring assistant will review your profile shortly. Keep an eye on your email/WhatsApp for the next steps.</p>
+          <button type="button" class="btn btn-secondary w-full" onclick="window.location.href='careers.html'" style="color: #111827; border-color: #d1d5db;">Return to Careers Page</button>
+        </div>
+      </form>
+    </div>
+  </main>
+  
+  <footer style="background: white; border-top: 1px solid #e5e7eb; padding: 40px; text-align: center; color: #6b7280; font-size: 14px;">
+    Powered by <a href="#" style="color: #2563eb; font-weight: 600;">AI Talent Lab</a>
+  </footer>
+
+  <script>
+    function showSuccess() {
+      document.getElementById('form-content').style.display = 'none';
+      document.getElementById('success-state').style.display = 'block';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+### Backend
+Working directory: /media/elavala-srinivas-reddy/HDD/2026/AI Talent Lab
+./backend/.venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+
+### Frontend
+Working directory: /media/elavala-srinivas-reddy/HDD/2026/AI Talent Lab/frontend
+npm run dev

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Careers at TechCorp</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Specific overrides for Carrera page branding matching settings */
+    .public-page { background: #f9fafb; color: #111827; }
+    .public-header { background: #ffffff; border-bottom: 1px solid #e5e7eb; padding: 16px 40px; }
+    .job-card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; transition: all 0.2s; cursor: pointer; }
+    .job-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-color: #667eea; }
+    .hero { background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%); color: white; padding: 80px 40px; text-align: center; }
+  </style>
+</head>
+<body class="public-page">
+  
+  <header class="public-header">
+    <div class="flex items-center gap-12 flex-1">
+      <div style="width: 32px; height: 32px; background: #2563eb; color: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold;">T</div>
+      <h1 style="font-size: 18px; font-weight: 700; margin: 0;">TechCorp</h1>
+    </div>
+    <div class="flex gap-16 text-sm fw-600">
+      <a href="#" style="color: #4b5563;">About Us</a>
+      <a href="#" style="color: #4b5563;">Benefits</a>
+      <a href="#" style="color: #2563eb;">Open Roles</a>
+    </div>
+  </header>
+
+  <div class="hero">
+    <h1 style="font-size: 48px; font-weight: 800; margin-bottom: 16px;">Build the future of AI with us.</h1>
+    <p style="font-size: 18px; opacity: 0.9; max-width: 600px; margin: 0 auto;">We are a fast-growing technology company building next-generation AI tools on a mission to empower everyone.</p>
+  </div>
+
+  <main style="max-width: 900px; margin: 0 auto; padding: 60px 24px; flex: 1; width: 100%;">
+    
+    <div class="flex justify-between items-center mb-32">
+      <h2 style="font-size: 24px; font-weight: 700;">Open Positions (12)</h2>
+      <div class="flex gap-12">
+        <select class="select" style="background-color: white; border-color: #e5e7eb; color: #111827;">
+          <option>All Departments</option>
+          <option>Engineering</option>
+          <option>Product</option>
+        </select>
+        <select class="select" style="background-color: white; border-color: #e5e7eb; color: #111827;">
+          <option>All Locations</option>
+          <option>Bangalore</option>
+          <option>Remote</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="job-list flex flex-col gap-16">
+      
+      <!-- Engineering -->
+      <h3 style="font-size: 16px; font-weight: 600; color: #6b7280; margin-top: 16px; margin-bottom: 8px;">Engineering</h3>
+      
+      <div class="job-card" onclick="window.location.href='apply.html'">
+        <div class="flex justify-between items-start mb-12">
+          <h2 style="font-size: 18px; font-weight: 600; margin: 0;">Senior Python Developer</h2>
+          <span style="font-size: 12px; font-weight: 600; padding: 4px 10px; background: #eff6ff; color: #2563eb; border-radius: 4px;">Full-time</span>
+        </div>
+        <div class="flex items-center gap-16 text-sm" style="color: #6b7280;">
+          <span class="flex items-center gap-4">📍 Bangalore / Hybrid</span>
+          <span class="flex items-center gap-4">💼 5+ years exp</span>
+        </div>
+      </div>
+
+      <div class="job-card" onclick="window.location.href='apply.html'">
+        <div class="flex justify-between items-start mb-12">
+          <h2 style="font-size: 18px; font-weight: 600; margin: 0;">Machine Learning Engineer</h2>
+          <span style="font-size: 12px; font-weight: 600; padding: 4px 10px; background: #eff6ff; color: #2563eb; border-radius: 4px;">Full-time</span>
+        </div>
+        <div class="flex items-center gap-16 text-sm" style="color: #6b7280;">
+          <span class="flex items-center gap-4">📍 Remote</span>
+          <span class="flex items-center gap-4">💼 3+ years exp</span>
+        </div>
+      </div>
+
+      <!-- Product -->
+      <h3 style="font-size: 16px; font-weight: 600; color: #6b7280; margin-top: 32px; margin-bottom: 8px;">Product</h3>
+      
+      <div class="job-card" onclick="window.location.href='apply.html'">
+        <div class="flex justify-between items-start mb-12">
+          <h2 style="font-size: 18px; font-weight: 600; margin: 0;">Senior Product Manager</h2>
+          <span style="font-size: 12px; font-weight: 600; padding: 4px 10px; background: #eff6ff; color: #2563eb; border-radius: 4px;">Full-time</span>
+        </div>
+        <div class="flex items-center gap-16 text-sm" style="color: #6b7280;">
+          <span class="flex items-center gap-4">📍 Bangalore</span>
+          <span class="flex items-center gap-4">💼 6+ years exp</span>
+        </div>
+      </div>
+
+    </div>
+  </main>
+  
+  <footer style="background: white; border-top: 1px solid #e5e7eb; padding: 40px; text-align: center; color: #6b7280; font-size: 14px;">
+    Powered by <a href="#" style="color: #2563eb; font-weight: 600;">AI Talent Lab</a>
+  </footer>
+
+</body>
+</html>
