@@ -116,6 +116,7 @@ backend/
 │   ├── rejection_drafter.py         # AI drafts rejection emails from feedback data
 │   ├── feedback_enricher.py         # AI enriches rough panel notes → professional feedback
 │   ├── candidate_chat.py            # Candidate magic link chat controller (linear flow)
+│   ├── resume_parser.py             # AI extracts structured data, trajectory analysis, red flags
 │   ├── nodes/                       # Individual LangGraph agent nodes
 │   │   ├── __init__.py
 │   │   ├── interviewer.py           # Intake — gathers requirements from recruiter
@@ -133,7 +134,8 @@ backend/
 │   │   ├── interview_kit.md
 │   │   ├── rejection_drafter.md
 │   │   ├── feedback_enricher.md
-│   │   └── candidate_chat.md
+│   │   ├── candidate_chat.md
+│   │   └── resume_parser.md
 │   └── tools/                       # Agent tool functions
 │       ├── __init__.py
 │       ├── search.py                # Tavily API wrapper
@@ -580,6 +582,19 @@ CREATE TABLE talent_pool_suggestions (
     actioned         BOOLEAN DEFAULT 0,
     UNIQUE(position_id, candidate_id)
 );
+
+-- Candidate Tags (free-form labels for talent pool management)
+-- Used to tag candidates with recruiter observations for future re-engagement
+-- Examples: "strong communicator", "relocation needed", "overqualified", "great culture fit"
+CREATE TABLE candidate_tags (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    org_id           INTEGER NOT NULL REFERENCES organizations(id),
+    candidate_id     INTEGER NOT NULL REFERENCES candidates(id),
+    tag              TEXT NOT NULL,                   -- Free-form label (lowercase, trimmed)
+    created_by       INTEGER REFERENCES users(id),
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(org_id, candidate_id, tag)                -- No duplicate tags per candidate per org
+);
 ```
 
 ### 4.5 Chat Session Tables
@@ -697,6 +712,9 @@ CREATE TABLE candidate_session_messages (
 | POST | `/{id}/draft-rejection` | JWT | AI drafts rejection email |
 | POST | `/{id}/send-rejection` | JWT | Send drafted rejection |
 | POST | `/{id}/mark-selected` | JWT | Mark as selected (final HR action) |
+| GET | `/{id}/tags` | JWT | List tags for candidate |
+| POST | `/{id}/tags` | JWT | Add tag to candidate (`{ tag: "string" }`) |
+| DELETE | `/{id}/tags/{tag}` | JWT | Remove a specific tag |
 
 ### Interviews — `/api/v1/interviews`
 
@@ -948,3 +966,138 @@ settings = Settings()  # Fails on startup if JWT_SECRET missing
   }
 }
 ```
+
+---
+
+## 12. Automated Follow-up System
+
+One of the core value propositions — eliminates candidate ghosting. Runs as a scheduled background task.
+
+### How It Works
+
+```python
+# tasks/email_outreach.py (extended)
+
+async def send_followup_reminders():
+    """
+    Runs every hour via scheduled task.
+    
+    Finds all candidate_applications where:
+        status = 'emailed'                       -- outreach sent but no response yet
+        magic_link_sent_at IS NOT NULL           -- outreach was actually sent
+        magic_link_clicked_at IS NULL            -- link NOT yet clicked
+        magic_link_sent_at <= NOW() - 48h        -- 48 hours have passed
+        rejection_sent_at IS NULL                -- not already rejected
+        followup_sent_at IS NULL                 -- not already followed up
+    
+    For each match:
+    1. Load candidate + position + org
+    2. Check position.status = 'open' (skip if closed)
+    3. Render follow-up email from message_templates (category: 'follow_up')
+    4. Send via EmailAdapter
+    5. Update: candidate_applications.followup_sent_at = NOW()
+    6. Create PipelineEvent: event_type = 'followup_sent'
+    """
+```
+
+### Schema Addition for Follow-up Tracking
+
+Add `followup_sent_at TIMESTAMP` column to `candidate_applications` table. This prevents double-sending and allows the timeline to show when a follow-up was sent.
+
+```sql
+-- Add to candidate_applications table:
+followup_sent_at      TIMESTAMP,   -- When 48h follow-up email was sent (NULL = not sent)
+```
+
+### Configurable Per Position
+
+The follow-up delay (default 48h) is configurable. Add `followup_delay_hours INTEGER DEFAULT 48` to the `positions` table so recruiters can set different delays per role:
+
+```sql
+-- Add to positions table:
+followup_delay_hours  INTEGER DEFAULT 48,  -- Hours to wait before auto follow-up (0 = disabled)
+```
+
+### Where This Is Visible
+
+- **04_position_detail.md → Settings Tab:** "Auto follow-up" toggle with delay selector (24h / 48h / 72h / Disabled)
+- **06_settings.md → Message Templates:** "Follow-up" template category — recruiter customizes the email body
+- **05_candidate_detail.md → Timeline:** Shows as `📧 Follow-up email sent` event when triggered
+- **04_position_detail.md → Activity Tab:** Shows as team activity event when triggered for any candidate
+
+---
+
+## 13. Resume Intelligence — Structured Parsing, Trajectory & Red Flags
+
+```python
+# agents/resume_parser.py
+
+async def parse_and_analyze_resume(resume_text: str, position_jd: str) -> dict:
+    """
+    Called after resume upload (bulk upload, apply chat, or manual upload).
+    Uses LLM to extract structured data AND perform trajectory analysis.
+    
+    Returns:
+    {
+        "structured": {
+            "name": str,
+            "email": str,
+            "phone": str,
+            "skills": ["Python", "FastAPI", ...],
+            "education": [{"degree": "B.Tech", "institution": "IIT Delhi", "year": 2018}],
+            "companies": [
+                {
+                    "name": "TechCorp",
+                    "title": "Senior Developer",
+                    "start": "2022-01",
+                    "end": null,          # null = current
+                    "duration_months": 26
+                }
+            ],
+            "certifications": ["AWS Solutions Architect"],
+            "total_experience_years": 6
+        },
+        "trajectory": {
+            "pattern": "steady_growth" | "job_hopper" | "career_pivot" | "specialist",
+            "avg_tenure_months": 24,
+            "progression_note": "Clear upward progression from Junior → Senior → Lead roles",
+        },
+        "red_flags": [
+            {
+                "type": "short_tenure",        # or "employment_gap" | "title_regression" | "frequent_switches"
+                "description": "3 roles in 2 years (2020–2022)",
+                "severity": "low" | "medium" | "high"
+            }
+        ],
+        "summary": "6-year backend engineer with steady growth trajectory at established companies..."
+    }
+    """
+```
+
+### Where This Appears in the UI
+
+**Candidate Detail → Skills Match Tab (extended):**
+
+```
+┌── AI Analysis ──────────────────────────────────────────────────┐
+│                                                                 │
+│  📈 Career Trajectory: Steady Growth                           │
+│  "Clear upward progression: Junior → Senior → Lead.           │
+│   Average tenure 26 months — well above industry average."    │
+│                                                                 │
+│  ⚠️ Red Flags: None detected                                   │
+│  (or if found):                                                │
+│  ⚠️ Short tenure detected: 3 roles in 2 years (2020–2022)     │
+│     Severity: Medium — worth discussing in screening call      │
+│                                                                 │
+│  💬 Overall: Strong backend developer with consistent growth.  │
+│   Main gaps are Kubernetes and Terraform...                     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Trigger points:**
+- Bulk upload to talent pool → auto-parsed on ingest
+- Candidate applies via magic link chat → parsed on resume upload
+- Manual resume upload on candidate detail → parsed immediately
+- Stored in `candidates.resume_parsed` (JSON) — never re-parsed unless new resume uploaded
