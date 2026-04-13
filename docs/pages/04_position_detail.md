@@ -216,6 +216,13 @@ Add to Talent Pool
 │  Minimum match score:  [80%  ▼]                                     │
 │  (60% / 70% / 75% / 80% / 85% / 90%)                               │
 │                                                                      │
+│  ── Auto Follow-up (Outreach Reminder) ─────────────────────────    │
+│  If candidate doesn't click link within:                            │
+│  [48 hours ▼]  (Disabled / 24h / 48h / 72h)                        │
+│  → System auto-sends follow-up email using "Follow-up" template     │
+│  Note: Only one follow-up per candidate per position. Never sent    │
+│  to candidates who have already clicked or applied.                 │
+│                                                                      │
 │  ── Position Details ───────────────────────────────────────────    │
 │  Headcount:    [2]                                                   │
 │  Priority:     [Urgent ▼]                                           │

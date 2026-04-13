@@ -84,6 +84,19 @@ navigate(`/candidates/${id}`, {
 
 **"Draft Rejection Email":** Triggers AI to draft a professional rejection email based on the candidate's profile and rejection reason. Opens review modal → recruiter edits if needed → clicks Send. Appears on timeline as "Rejection email sent." Button disabled if already rejected.
 
+**Tags row (below action buttons):**
+Free-form recruiter labels for the candidate. Displayed as chips below the action row. Used for talent pool filtering and re-engagement targeting.
+
+```
+Tags: [python] [strong-communicator] [open-to-relocation] [+ Add tag]
+```
+
+- Click `+ Add tag` → inline text input → press Enter to add
+- Click any existing tag → removes it (with confirmation for pool candidates)
+- Tags are org-scoped — visible to all org members, not the candidate
+- Examples: `strong-communicator`, `relocation-needed`, `overqualified`, `great-culture-fit`, `revisit-q3`
+- Stored in `candidate_tags` table, returned with candidate detail API
+
 **"Mark as Selected":**
 - Only visible when recruiter manually enables (all rounds reviewed)
 - Confirmation: "Mark Rahul Kumar as Selected for Senior Python Developer?"
@@ -115,10 +128,23 @@ navigate(`/candidates/${id}`, {
 │   Main gaps are in infrastructure tooling (Kubernetes, Terraform)   │
 │   which are preferred but not required. Overall: strong candidate." │
 │                                                                      │
+│  📈 Career Trajectory: Steady Growth                                │
+│  "Clear upward progression: Junior → Senior in 3 years.            │
+│   Average tenure 26 months — above industry average."               │
+│                                                                      │
+│  ⚠️ Red Flags: None detected                                        │
+│  (When detected, shows e.g.:)                                       │
+│  ⚠️ Short tenure: 3 roles in 2 years (2020–2022)                   │
+│     Severity: Medium — worth discussing in interview                │
+│                                                                      │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
 Chip colors: Matched = green · Missing = red · Additional = blue (info).
+
+**Trajectory patterns:** `steady_growth` / `job_hopper` / `career_pivot` / `specialist`
+**Red flag types:** short tenure · employment gap · title regression · frequent switches
+**Severity levels:** low (informational) · medium (worth discussing) · high (strong concern)
 
 ---
 
