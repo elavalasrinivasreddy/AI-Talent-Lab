@@ -1,17 +1,18 @@
 # Page Design: Position Detail
-
-> Deep-dive into a single position — pipeline board, candidate list, JD view, interview kit, and team collaboration.
+> **Version 2.1 — Updated**
+> Deep-dive into a single hiring position. Tabs: Pipeline, Candidates, JD, Interview Kit, Activity, Settings.
+> All candidate navigation is context-aware. API endpoints updated to /api/v1/ prefix.
 
 ---
 
 ## 1. Overview
 
 | Aspect | Detail |
-|--------|--------|
-| Route | `/positions/:id` |
+|---|---|
+| Route | `/positions/:id` · `/positions/:id/:tab` |
 | Auth | Required (JWT) |
-| Entry Point | Dashboard → click position card |
-| Layout | Sidebar + Full-width detail page with tabs |
+| Entry Points | Dashboard → click position row · Sidebar → active sessions |
+| Layout | Sidebar + full-width detail with tabs |
 
 ---
 
@@ -19,30 +20,25 @@
 
 ```
 ┌──────┬──────────────────────────────────────────────────────────┐
-│      │  ┌─ Header ─────────────────────────────────────────┐   │
-│      │  │ ← Dashboard                                      │   │
-│      │  │                                                   │   │
-│      │  │ Senior Python Developer          Status: [Open ▼] │   │
-│      │  │ Engineering · Created Apr 5 · by Srinivas         │   │
-│      │  │ Priority: 🔴 Urgent  ·  Headcount: 2             │   │
-│      │  └──────────────────────────────────────────────────┘   │
-│ S    │                                                          │
-│ I    │  ┌─ Stats Row ──────────────────────────────────────┐   │
-│ D    │  │ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐     │   │
-│ E    │  │ │ 👥 24  │ │ 📧 18  │ │ 📝 8   │ │ 🎙️ 3  │     │   │
-│ B    │  │ │Sourced │ │Emailed │ │Applied │ │Interv. │     │   │
-│ A    │  │ └────────┘ └────────┘ └────────┘ └────────┘     │   │
-│ R    │  └──────────────────────────────────────────────────┘   │
+│      │  ← Dashboard                                            │
 │      │                                                          │
-│      │  ┌─ Tabs ───────────────────────────────────────────┐   │
-│      │  │ [Pipeline][Candidates][JD][Interview Kit][Activity][Settings]│
-│      │  └──────────────────────────────────────────────────┘   │
+│      │  ┌── POSITION HEADER ─────────────────────────────────┐ │
+│ S    │  │  Senior Python Developer        Status: [Open ▼]   │ │
+│ I    │  │  Engineering · Created Apr 5 · by Srinivas R        │ │
+│ D    │  │  Priority: 🔴 Urgent  ·  Headcount: 2  ·  Deadline: May 15 │
+│ E    │  └────────────────────────────────────────────────────┘ │
+│ B    │                                                          │
+│ A    │  ┌── STATS ROW ───────────────────────────────────────┐ │
+│ R    │  │  👥 24 Sourced  │ 📧 18 Emailed  │ 📝 8 Applied  │ 🎙️ 3 Interview │
+│      │  └────────────────────────────────────────────────────┘ │
 │      │                                                          │
-│      │  ┌─ Tab Content (Pipeline shown) ───────────────────┐   │
-│      │  │                                                   │   │
-│      │  │  (See section 3 for each tab's content)          │   │
-│      │  │                                                   │   │
-│      │  └──────────────────────────────────────────────────┘   │
+│      │  ┌── TABS ────────────────────────────────────────────┐ │
+│      │  │ [Pipeline][Candidates][JD][Interview Kit][Activity][Settings] │
+│      │  └────────────────────────────────────────────────────┘ │
+│      │                                                          │
+│      │  ┌── TAB CONTENT ─────────────────────────────────────┐ │
+│      │  │  (see sections below)                              │ │
+│      │  └────────────────────────────────────────────────────┘ │
 └──────┴──────────────────────────────────────────────────────────┘
 ```
 
@@ -53,218 +49,222 @@
 ### 3.1 Pipeline Tab (Kanban Board)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Candidate Pipeline                            │
-│                                                                  │
-│ Sourced (8)  │ Emailed (6)  │ Applied (4)  │ Interview (2) │ ✅ │
-│ ──────────── │ ──────────── │ ──────────── │ ────────────── │ ── │
-│ ┌──────────┐ │ ┌──────────┐ │ ┌──────────┐ │ ┌──────────┐  │   │
-│ │ Rahul K  │ │ │ Priya S  │ │ │ Amit R   │ │ │ Sanya M  │  │   │
-│ │ 85% match│ │ │ 78% match│ │ │ 92% match│ │ │ 88% match│  │   │
-│ │ TechCorp │ │ │ InfoSys  │ │ │ Flipkart │ │ │ Google   │  │   │
-│ │ 6 yrs    │ │ │ 4 yrs    │ │ │ 7 yrs    │ │ │ 5 yrs    │  │   │
-│ └──────────┘ │ └──────────┘ │ └──────────┘ │ └──────────┘  │   │
-│ ┌──────────┐ │ ┌──────────┐ │ ┌──────────┐ │              │   │
-│ │ Neha P   │ │ │ Arjun T  │ │ │ Lisa W   │ │              │   │
-│ │ 72% match│ │ │ 81% match│ │ │ 81% match│ │              │   │
-│ │ Wipro    │ │ │ Amazon   │ │ │ Microsoft│ │              │   │
-│ │ 3 yrs    │ │ │ 5 yrs    │ │ │ 8 yrs    │ │              │   │
-│ └──────────┘ │ └──────────┘ │ └──────────┘ │              │   │
-│              │              │              │              │   │
-└──────────────┴──────────────┴──────────────┴──────────────┴───┘
+Sourced (8)   │ Emailed (6)  │ Applied (4)  │ Screening (2) │ Interview (3) │ ✅(1) │ ❌(4)
+──────────────┼──────────────┼──────────────┼───────────────┼───────────────┼──────┼──────
+┌──────────┐  │ ┌──────────┐ │ ┌──────────┐ │ ┌──────────┐  │ ┌──────────┐  │      │
+│ Rahul K  │  │ │ Priya S  │ │ │ Amit R   │ │ │ Neha P   │  │ │ Sanya M  │  │      │
+│ 85% ●    │  │ │ 78% ●    │ │ │ 92% ●    │ │ │ 74% ●    │  │ │ 88% ●    │  │      │
+│ TechCorp │  │ │ InfoSys  │ │ │ Flipkart │ │ │ Wipro    │  │ │ Google   │  │      │
+│ 6 yrs    │  │ │ 4 yrs    │ │ │ 7 yrs    │ │ │ 3 yrs    │  │ │ 5 yrs    │  │      │
+│ [...]    │  │ │ [...]    │ │ │ [...]    │ │ │ [...]    │  │ │ [...]    │  │      │
+└──────────┘  │ └──────────┘ │ └──────────┘ │ └──────────┘  │ └──────────┘  │      │
 ```
 
-**Interactions:**
-- Each candidate card is clickable → opens Candidate Detail Page
-- Drag & drop cards between columns to change status (future enhancement)
-- Status change dropdown on each card (click "..." menu → move to...)
+**Card interactions:**
+- Click card → navigate to `/candidates/:id` (with position context in location.state)
+- Click `[...]` menu → "Move to..." status submenu, "Schedule Interview", "Draft Rejection"
+- Horizontal scroll when columns overflow
 - Column header shows count
-- Horizontal scroll if many columns don't fit screen
-- Color-coded column borders matching stage colors
+
+**"..." menu options:**
+```
+Move to: Emailed | Applied | Screening | Interview | On Hold
+Schedule Interview
+Draft Rejection Email
+Add to Talent Pool
+```
+
+---
 
 ### 3.2 Candidates Tab (List View)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  [Status ▼] [Score ▼] [Source ▼] [🔍 Search]     [📧 Email All] │
-│                                                                  │
-│  ☐ │ Name         │ Score │ Status    │ Source     │ Experience  │
-│  ──┼──────────────┼───────┼───────────┼────────────┼────────────│
-│  ☐ │ Amit R       │ 92%   │ 📝Applied│ simulation │ 7 years    │
-│  ☐ │ Sanya M      │ 88%   │ 🎙️Interv│ simulation │ 5 years    │
-│  ☐ │ Rahul K      │ 85%   │ 🔍Sourced│ simulation │ 6 years    │
-│  ☐ │ Arjun T      │ 81%   │ 📧Emailed│ simulation │ 5 years    │
-│  ☐ │ Lisa W       │ 81%   │ 📝Applied│ simulation │ 8 years    │
-│                                                                  │
-│  ☐ Select all  │  With selected: [📧 Email] [⏭️ Status ▼]       │
-│                                                                  │
-│  [← Prev]  Page 1 of 3  [Next →]                               │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ [Status ▼] [Score ▼] [Source ▼] [🔍 Search...]      [📧 Bulk Email] │
+│                                                                      │
+│ ☐ │ Name          │ Score    │ Status      │ Source      │ Exp      │
+│ ──┼───────────────┼──────────┼─────────────┼─────────────┼──────────│
+│ ☐ │ Amit R        │ ●92%     │ Applied     │ Simulation  │ 7 yrs   │
+│ ☐ │ Sanya M       │ ●88%     │ Interview   │ Simulation  │ 5 yrs   │
+│ ☐ │ Rahul K       │ ●85%     │ Sourced     │ Simulation  │ 6 yrs   │
+│ ☐ │ Arjun T       │ ○81%     │ Emailed     │ Simulation  │ 5 yrs   │
+│ ☐ │ Lisa W        │ ○72%     │ Screening   │ Career Page │ 8 yrs   │
+│                                                                      │
+│ Bulk: [Select all]  With selected: [📧 Send Email] [⏭ Status ▼]    │
+│ ← Prev  Page 1 of 3  Next →                                         │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-**Features:**
-- Sortable columns (click header to sort)
-- Checkbox column for bulk actions
-- Bulk actions: send email, change status
-- Click row → Candidate Detail Page
-- Score column: color-coded (≥80 green, 60–79 yellow, <60 red)
+- Score dots: ● green (≥80%), ● amber (60–79%), ○ red (<60%)
+- Click row → `/candidates/:id` with position + tab context
+- Sortable columns (click header)
+- Bulk actions: send outreach email, change status
+
+---
 
 ### 3.3 JD Tab
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  📄 Job Description                      [✏️ Edit] [📥 Download]│
-│  ─────────────────────────────────────────────────────────────  │
-│                                                                  │
-│  # Senior Python Developer                                      │
-│                                                                  │
-│  ## About {Organization}                                        │
-│  We are a leading technology company...                          │
-│                                                                  │
-│  ## Role Overview                                               │
-│  We are seeking an experienced Python developer...              │
-│                                                                  │
-│  ## Responsibilities                                            │
-│  - Design and develop backend systems...                         │
-│  - ...                                                          │
-│                                                                  │
-│  ## Requirements                                                │
-│  **Must-Have:**                                                 │
-│  - 5+ years of Python...                                        │
-│  - ...                                                          │
-│                                                                  │
-│  (rendered markdown)                                             │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  📄 Job Description         [✏️ Edit]  [📥 PDF]  [📥 Markdown]       │
+│  ────────────────────────────────────────────────────────────────    │
+│                                                                      │
+│  # Senior Python Developer                                           │
+│                                                                      │
+│  ## About TechCorp                                                   │
+│  {org.about_us content from settings — pulled automatically}        │
+│                                                                      │
+│  ## Role Overview  ...                                               │
+│  ## Responsibilities  ...                                            │
+│  ## Requirements  ...                                                │
+│  ## Benefits  ...                                                    │
+│                                                                      │
+│  (rendered markdown)                                                 │
+│                                                                      │
+│  [View original chat session →]                                     │
+│  [🌐 Showing on career page]  ·  [Hide from career page]            │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-**Features:**
-- Read-only rendered markdown by default
-- Edit mode: switch to textarea with raw markdown
-- Download: PDF or Markdown
-- JD shows the org-specific "About Us" section pulled from settings
-- "View original chat" link → navigates to the chat session
+**Edit mode:** Click Edit → textarea with raw markdown. Click Save → re-renders.
+**Career page toggle:** Shows whether position is visible on public career page. Toggle hides/shows it without changing position status.
 
-### 3.5 Interview Kit Tab
+---
+
+### 3.4 Interview Kit Tab
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  🎯 Interview Kit           [🔄 Regenerate] [📤 Share Link]    │
-│                                                                  │
-│  ── Technical Questions (5) ─────────────────────────────────   │
-│  1. Explain how Python's GIL affects multithreading...
-│     Difficulty: Senior │ Expected: Memory management context...
-│  2. Design a rate-limiting middleware in FastAPI...
-│     Difficulty: Senior │ Expected: Token bucket algorithm...
-│                                                                  │
-│  ── Behavioral Questions (3) ────────────────────────────────   │
-│  1. Describe a time you had to debug a production issue...
-│     Expected: STAR format, shows ownership...
-│                                                                  │
-│  ── Scorecard Template ──────────────────────────────────────   │
-│  Dimensions: Technical (40%), Problem Solving (25%),            │
-│  Communication (20%), Culture Fit (15%)                         │
-│  [✏️ Edit Dimensions]                                           │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  🎯 Interview Kit      [🔄 Regenerate]  [📤 Share Link to Interviewers] │
+│                                                                      │
+│  ── Technical Questions (5) ─────────────────────────────────────   │
+│  1. Explain how Python's GIL affects multithreading performance.    │
+│     Difficulty: Senior | Expected: CPU-bound vs IO-bound...         │
+│  2. Design a rate-limiting middleware in FastAPI.                   │
+│     Difficulty: Senior | Expected: Redis, token bucket...           │
+│                                                                      │
+│  ── Behavioral Questions (3) ────────────────────────────────────   │
+│  1. Describe a time you had to debug a critical production issue.   │
+│     Expected: STAR format, shows ownership and systematic approach  │
+│                                                                      │
+│  ── Situational Questions (2) ───────────────────────────────────   │
+│  1. If you inherited a poorly documented codebase, what would...    │
+│                                                                      │
+│  ── Culture Fit Questions (2) ───────────────────────────────────   │
+│  1. What does remote-first collaboration look like to you?          │
+│     (Based on org culture keyword: "remote-first")                  │
+│                                                                      │
+│  ── Scorecard Template ──────────────────────────────────────────   │
+│  Technical Skills (40%) │ Problem Solving (30%) │                   │
+│  Communication (15%)    │ Culture Fit (15%)                         │
+│  [✏️ Edit Dimensions]                                                │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Generated by AI** after JD is finalized (or manually triggered)
-- Questions grouped by: Technical, Behavioral, Situational, Culture Fit
-- Each question has difficulty level and expected answer guidelines
-- Scorecard template auto-generated from JD but editable
-- **Share Link** — creates a token-based URL for interviewers who may not have full access
+- Generated by AI after JD is finalized (auto-triggered or manually via button)
+- Share Link generates a shareable URL for interviewers (no platform account needed)
+- Questions categorized: Technical, Behavioral, Situational, Culture Fit
+- Culture Fit questions derive from org's `culture_keywords` in settings
+- Scorecard template pulled from Settings → Interview Templates (or org default)
 
-### 3.6 Activity Tab (Team Collaboration)
+---
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  📜 Activity Feed                    [Filter: All ▼]            │
-│                                                                  │
-│  Apr 12, 15:30  💬 @Neha P commented on Priya Sharma           │
-│                 "Strong technical skills, recommend round 2"    │
-│                                                                  │
-│  Apr 12, 14:00  📝 Raj K submitted scorecard for Priya S       │
-│                 Overall: 4.2/5 │ Recommendation: Yes            │
-│                                                                  │
-│  Apr 11, 10:00  📅 Interview scheduled: Priya S — Technical    │
-│                 Apr 12, 2PM │ With: Raj K, Neha P               │
-│                                                                  │
-│  Apr 10, 14:32  📝 Amit R applied via magic link               │
-│                                                                  │
-│  ── Add Comment ──────────────────────────────────────────────  │
-│  ┌──────────────────────────────────────────────────────┐      │
-│  │ Write a comment... @mention team members    [Post]  │      │
-│  └──────────────────────────────────────────────────────┘      │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-- Shows ALL activity on this position: comments, status changes, emails, scorecards, interviews
-- **@mention** support — type `@` to see team members, mention generates notification
-- Filter by: All, Comments Only, Emails, Scorecards, Status Changes
-
-### 3.7 Settings Tab
+### 3.5 Activity Tab
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  ⚙️ Position Settings                                          │
-│                                                                  │
-│  ┌── Auto Search ──────────────────────────────────────────┐   │
-│  │  🔄 Automatically search for new candidates             │   │
-│  │  Frequency: [Every 72 hours ▼]                          │   │
-│  │  Last searched: Apr 10, 2026 at 14:30                   │   │
-│  │  [🔍 Search Now]  [⏸ Pause]                             │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  ┌── ATS Threshold ────────────────────────────────────────┐   │
-│  │  Minimum match score: [80] %                            │   │
-│  │  Candidates below this will be flagged                  │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  ┌── Position Details ─────────────────────────────────────┐   │
-│  │  Headcount: [2]                                         │   │
-│  │  Priority: [Urgent ▼]                                   │   │
-│  │  Deadline: [2026-05-15]                                 │   │
-│  │  Assigned to: [Srinivas ▼]                              │   │
-│  │  Department: [Engineering ▼]                            │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                  │
-│  [💾 Save Changes]                                              │
-│                                                                  │
-│  ┌── Danger Zone ──────────────────────────────────────────┐   │
-│  │  [🟡 Put on Hold]  [🔴 Close Position]  [🗑️ Archive]    │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  📜 Team Activity                           [Filter: All ▼]         │
+│                                                                      │
+│  Apr 12, 15:30  💬 Neha P commented on Priya Sharma                 │
+│                 "Strong technical skills, let's go to round 2"      │
+│                                                                      │
+│  Apr 12, 14:00  📋 Raj K submitted scorecard for Priya S            │
+│                 Overall: 4.2/5 · Recommendation: Yes                │
+│                                                                      │
+│  Apr 11, 10:00  📅 Interview scheduled: Priya S — Round 1 Technical │
+│                 Apr 12 · 2:00 PM · Raj K, Neha P                   │
+│                                                                      │
+│  Apr 10, 14:32  📝 Amit R applied via magic link                    │
+│                                                                      │
+│  Apr 9, 11:00   🤖 AI search completed: 24 candidates found         │
+│                 8 above 80% threshold, 16 below                     │
+│                                                                      │
+│  ── Comment ─────────────────────────────────────────────────────   │
+│  [SR]  Write a comment... @mention team members         [Post]      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+- Shows ALL activity on this position: candidate events, comments, interviews, scorecards
+- @mention support: type `@` to see team members → mention creates notification for that person
+- Filter options: All, Comments, Emails, Scorecards, Status Changes, Interviews
+
+---
+
+### 3.6 Settings Tab
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  ⚙️ Position Settings                                               │
+│                                                                      │
+│  ── Auto Candidate Search ──────────────────────────────────────    │
+│  Frequency:  [Daily ▼]  (Manual / Daily / Every 2 days / Weekly)    │
+│  Last run:   Apr 12, 2026 at 10:30 AM                               │
+│  Next run:   Apr 13, 2026 at 10:30 AM                               │
+│  [🔍 Run Now]     [⏸ Pause Search]                                  │
+│                                                                      │
+│  ── ATS Threshold ──────────────────────────────────────────────    │
+│  Minimum match score:  [80%  ▼]                                     │
+│  (60% / 70% / 75% / 80% / 85% / 90%)                               │
+│                                                                      │
+│  ── Position Details ───────────────────────────────────────────    │
+│  Headcount:    [2]                                                   │
+│  Priority:     [Urgent ▼]                                           │
+│  Deadline:     [2026-05-15]                                         │
+│  Assigned to:  [Srinivas R ▼]                                       │
+│  Department:   [Engineering ▼]                                       │
+│                                                                      │
+│  ── Career Page ────────────────────────────────────────────────    │
+│  [🌐 Visible on career page]  Toggle to hide from public page       │
+│  Career URL: aitalentlab.com/techcorp/careers (view ↗)             │
+│                                                                      │
+│  [💾 Save Changes]                                                  │
+│                                                                      │
+│  ── Danger Zone ────────────────────────────────────────────────    │
+│  [🟡 Put on Hold]  [🔴 Close Position]  [🗑️ Archive]               │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 4. Backend Integration
+## 4. Position Status Rules
 
-| Action | API Endpoint | Method |
-|--------|-------------|--------|
-| Load position | `/api/positions/:id` | GET |
-| Load pipeline | `/api/dashboard/pipeline/:id` | GET |
-| Load candidates | `/api/candidates/position/:id` | GET |
-| Update status | `/api/positions/:id` | PATCH |
-| Update settings | `/api/positions/:id/search-config` | PATCH |
-| Trigger search | `/api/positions/:id/search-now` | POST |
-| Change candidate status | `/api/candidates/:id/status` | PATCH |
-| Send messages | `/api/candidates/send-messages-async` | POST |
-| Load interview kit | `/api/interview-kit/position/:id` | GET |
-| Generate interview kit | `/api/interview-kit/position/:id/generate` | POST |
-| Share interview kit | `/api/interview-kit/position/:id/share-link` | GET |
-| Load comments | `/api/comments/position/:id` | GET |
-| Add comment | `/api/comments/position/:id` | POST |
-| Schedule interview | `/api/interviews/` | POST |
-| Load interviews | `/api/interviews/position/:id` | GET |
-
----
-
-## 5. Status Management
-
-| Position Status | Color | Actions Available |
-|----------------|-------|-------------------|
+| Status | Color | Actions Available |
+|---|---|---|
 | Draft | Gray | Open, Delete |
-| Open | Green | On Hold, Close, Search |
-| On Hold | Yellow | Reopen, Close |
+| Open | Green | On Hold, Close, Run Search, Edit Settings |
+| On Hold | Amber | Reopen, Close |
 | Closed | Red | Archive, Reopen |
-| Archived | Dark gray | Delete (admin only) |
+| Archived | Dark Gray | Delete (admin only) |
+
+Auto-pool rule: When position closed/archived, all non-selected candidates auto-added to talent pool.
+
+---
+
+## 5. API Endpoints
+
+| Action | Endpoint | Method |
+|---|---|---|
+| Load position | `GET /api/v1/positions/:id` | GET |
+| Load pipeline (Kanban) | `GET /api/v1/dashboard/pipeline/:id` | GET |
+| Load candidates (list) | `GET /api/v1/candidates/position/:id` | GET |
+| Update status | `PATCH /api/v1/positions/:id/status` | PATCH |
+| Update settings | `PATCH /api/v1/positions/:id` | PATCH |
+| Trigger search | `POST /api/v1/positions/:id/search-now` | POST |
+| Change candidate status | `PATCH /api/v1/candidates/:id/status` | PATCH |
+| Send outreach emails | `POST /api/v1/candidates/send-outreach` | POST |
+| Load interview kit | `GET /api/v1/positions/:id/interview-kit` | GET |
+| Generate interview kit | `POST /api/v1/positions/:id/interview-kit/generate` | POST |
+| Load interviews | `GET /api/v1/interviews/position/:id` | GET |
+| Schedule interview | `POST /api/v1/interviews/` | POST |
+| Load activity | `GET /api/v1/dashboard/activity?position_id=:id` | GET |
+| Add comment | `POST /api/v1/pipeline-events` (comment type) | POST |

@@ -1,145 +1,211 @@
 # Page Design: Dashboard
-
-> The home screen — aggregate stats, hiring funnel, positions list, and quick access to everything.
+> **Version 2.1 — Updated**
+> Home screen after login. Stats cards controlled by one global period selector.
+> Positions table + activity feed side by side. Hiring funnel below stats.
 
 ---
 
 ## 1. Overview
 
 | Aspect | Detail |
-|--------|--------|
+|---|---|
 | Route | `/` (default after login) |
 | Auth | Required (JWT) |
-| Layout | Sidebar + Full-width dashboard |
-| Sections | Stats cards, Hiring funnel, Activity timeline, Positions table |
+| Layout | Sidebar + full-width dashboard |
+| Dept scope | Admin: sees [All Departments ▼] selector. Recruiters/Hiring Managers: their dept only. |
 
 ---
 
 ## 2. Page Layout
 
 ```
-┌──────┬─────────────────────────────────────────────────────────┐
-│      │  ┌─ Header ─────────────────────────────────────────┐   │
-│      │  │ 📊 Dashboard              [Filters ▼] [Refresh]  │   │
-│      │  │ Welcome back, {user.name}                        │   │
-│      │  └──────────────────────────────────────────────────┘   │
-│      │                                                         │
-│ S    │  ┌─ Stats Cards ────────────────────────────────────┐   │
-│ I    │  │ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────┐  │   │
-│ D    │  │ │ 💼 12    │ │ 👥 156   │ │ 📧 89    │ │ 📝 34│  │   │
-│ E    │  │ │ Open     │ │ Total    │ │ Emails   │ │ Apps  │ │   │
-│ B    │  │ │ Positions│ │ Candidates│ │ Sent     │ │      │  │  │
-│ A    │  │ │ ↑2 this  │ │ ↑23 this │ │ ↑12 this │ │ ↑5   │   │  │
-│ R    │  │ │   week   │ │   week   │ │   week   │ │ today│   │  │
-│      │  │ └──────────┘ └──────────┘ └──────────┘ └──────┘   │  │
-│      │  └──────────────────────────────────────────────────┘   │
-│      │                                                         │
-│      │  ┌─ Two Column ─────────────────────────────────────┐   │
-│      │  │ ┌── Hiring Funnel ────┐ ┌── Activity ──────────┐│    │
-│      │  │ │ Sourced   ████ 156  │ │ 🟢 3 new apps today  ││    │
-│      │  │ │ Emailed   ███  89   │ │ 🔵 5 candidates scored││   │
-│      │  │ │ Applied   ██   34   │ │ 📧 2 emails delivered ││   │
-│      │  │ │ Screening █    18   │ │ 💼 1 position opened  ││   │
-│      │  │ │ Interview ▌    12   │ │ ✅ 1 candidate select ││   │
-│      │  │ │ Selected  ▏     4   │ │                       ││   │
-│      │  │ │ Rejected  ▏     8   │ │ Yesterday             ││   │
-│      │  │ └─────────────────────┘ │ 🔵 12 sourced for ML  ││   │
-│      │  │                         │ 📧 8 emails sent      ││   │
-│      │  │                         └───────────────────────┘│   │
-│      │  └──────────────────────────────────────────────────┘   │
-│      │                                                         │
-│      │  ┌─ Positions Table ────────────────────────────────┐   │
-│      │  │ 💼 Open Positions (12)                           │   │
-│      │  │ ┌────────────────────────────────────────────────│   │
-│      │  │ │ [Status ▼] [Priority ▼] [Dept ▼] [🔍 Search] │ │   │
-│      │  │ └────────────────────────────────────────────────│   │
-│      │  │                                                  │   │
-│      │  │ ┌────────────────────────────────────────────────│   │
-│      │  │ │ Position          │ Cands │ Apps │ Status │ Pri│   │
-│      │  │ ├────────────────────────────────────────────────│   │
-│      │  │ │ Sr Python Dev     │  24   │  8   │ 🟢 Open│ 🔴││   │
-│      │  │ │ ML Engineer       │  18   │  3   │ 🟢 Open│ 🟡││   │
-│      │  │ │ Product Manager   │  12   │  5   │ 🟡 Hold│ 🟢││   │
-│      │  │ │ DevOps Engineer   │   0   │  0   │ 📝Draft│ 🟢││   │
-│      │  │ └────────────────────────────────────────────────│   │
-│      │  │                                                  │   │
-│      │  │ [← Prev]  Page 1 of 2  [Next →]                  │   │
-│      │  └──────────────────────────────────────────────────┘   │
-└──────┴─────────────────────────────────────────────────────────┘
+┌──────┬─────────────────────────────────────────────────────────────┐
+│      │  ┌── HEADER ──────────────────────────────────────────────┐ │
+│      │  │  📊 Dashboard  ·  Welcome back, Srinivas               │ │
+│      │  │                      [Today]  [This Week]  [This Month] │ │
+│      │  └────────────────────────────────────────────────────────┘ │
+│ S    │                                                             │
+│ I    │  ┌── STATS CARDS (4 in a row) ─────────────────────────────┐│
+│ D    │  │  [Open Positions]  [Total Candidates]  [Interviews]  [Applications] ││
+│ E    │  └────────────────────────────────────────────────────────┘ │
+│ B    │                                                             │
+│ A    │  ┌── HIRING FUNNEL ───────────────────────────────────────┐ │
+│ R    │  │  (horizontal bar chart)                                │ │
+│      │  └────────────────────────────────────────────────────────┘ │
+│      │                                                             │
+│      │  ┌── POSITIONS TABLE (60%) ─┐  ┌── ACTIVITY FEED (40%) ──┐ │
+│      │  │  (filterable list)       │  │  (event timeline)        │ │
+│      │  └──────────────────────────┘  └──────────────────────────┘ │
+└──────┴─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Section Design Details
+## 3. Global Period Selector
 
-### 3.1 Stats Cards
-- 4 cards in a row (responsive: 2x2 on tablet, 1x4 stack on mobile)
-- Each card: large number, label, trend indicator (↑/↓ with period)
-- Subtle gradient left border matching theme
-- Hover: slight scale-up animation
-- Click: navigates to filtered view (e.g., click "Open Positions" → filters positions table)
+```
+                    [Today]  [This Week]  [This Month]
+```
 
-### 3.2 Hiring Funnel
-- Horizontal bar chart, widest at top (sourced), narrowest at bottom (selected)
-- Each bar: colored by stage, shows count label
-- Animate bars on load (width transition)
-- Click on a stage: shows breakdown by position
+**One selector controls all 4 stat cards simultaneously.** No per-card toggles.
 
-### 3.3 Activity Timeline
-- Chronological feed, grouped by day ("Today", "Yesterday", "This Week")
-- Each event: emoji icon + description + timestamp
-- Max 10 items, with "View all" link
-- Real-time updates (poll every 30 seconds, or WebSocket later)
-
-### 3.4 Positions Table/Grid
-- Toggle between **card view** (default) and **table view**
-- Card view: Each position is a card with role name, stats, status badge, priority badge
-- Table view: Compact rows with sortable columns
-- Filters: Status, Priority, Department, Created By, Date Range
-- Search: Free text search across role name
-- Sort: By name, candidate count, date created, priority
-- Pagination: 10 items per page
-- Click row → navigates to Position Detail Page
+Delta comparisons:
+- Today → vs yesterday
+- This Week → vs last week
+- This Month → vs last month
 
 ---
 
-## 4. Filters & Search
+## 4. Stats Cards
+
+4 cards in a row. 2×2 on tablet, stacked on mobile.
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│ Status: [All ▼]  Priority: [All ▼]  Dept: [All ▼]         │
-│ Date: [Last 30 days ▼]  Created by: [All ▼]  [🔍 Search] │
-└────────────────────────────────────────────────────────────┘
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│  🎯             │ │  👥             │ │  🎙️            │ │  📝             │
+│  Open           │ │  Total          │ │  Interviews     │ │  Applications   │
+│  Positions      │ │  Candidates     │ │  This Week      │ │  This Week      │
+│                 │ │                 │ │                 │ │                 │
+│      12         │ │      248        │ │       8         │ │      34         │
+│                 │ │                 │ │                 │ │                 │
+│  ↑ 2 this week  │ │  ↑ 23 this week │ │  ↓ 1 from last  │ │  ↑ 5 today      │
+└─────────────────┘ └─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
+
+**Design:**
+- Large number (`--text-3xl`, weight 600)
+- Icon top-right corner
+- Trend: green ↑ for positive growth, red ↓ where increase is bad (e.g. rejections)
+- Subtle left border gradient in accent color
+- Hover: `transform: scale(1.02)` animation
+- Clickable: "Open Positions" → filters positions table to `status: open`
+
+---
+
+## 5. Hiring Funnel
+
+Horizontal bar chart. Each bar animated on page load.
+
+```
+┌── Hiring Funnel ─────────────────────────────────────────────────┐
+│  Engineering Dept · This Month                                   │
+│                                                                  │
+│  Sourced     ████████████████████████████████████████  156      │
+│  Emailed     ████████████████████████████████          89       │
+│  Applied     ████████████████████                      34       │
+│  Screening   ██████████████                            18       │
+│  Interview   █████████                                 12       │
+│  Selected    ██                                         4       │
+│  Rejected    █████                                      8       │
+│                                                                  │
+│  Click a stage → filter positions table to that stage           │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+Each bar uses the pipeline status color. Clicking a stage filters the positions table.
+
+---
+
+## 6. Positions Table
+
+Left side (~60% width). Filterable, paginated.
+
+```
+┌── Recent Positions ──────────────────────────────── [View All →] ─┐
+│                                                                    │
+│  [🔍 Search...]  [Status ▼]  [Priority ▼]  [Dept ▼]              │
+│                                                                    │
+│  Role                  Dept    Candidates  Status    Priority      │
+│  ──────────────────────────────────────────────────────────────   │
+│  Sr Python Developer   Eng     24          ● Open    🔴 Urgent     │
+│  ML Engineer           Data    18          ● Open    🟡 High       │
+│  Product Manager       Prod    42          ● Hold    🟢 Normal     │
+│  DevOps Engineer       Eng      5          ✏ Draft   🟢 Normal     │
+│                                                                    │
+│  ← Prev  Page 1 of 3  Next →                                      │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**Row click:** Opens `/positions/:id`.
+
+**Candidates count hover tooltip:**
+```
+Total: 24
+├── In Progress: 12
+├── Rejected: 10
+└── Selected: 2
+```
+
+**Filters:**
 
 | Filter | Options | Default |
-|--------|---------|---------|
-| Status | All, Open, Draft, On Hold, Closed, Archived | All |
-| Priority | All, Urgent, High, Normal, Low | All |
-| Department | All + list from org departments | All |
-| Date Range | Last 7 days, 30 days, 90 days, All time, Custom | Last 30 days |
-| Created By | All + list of org users | All |
-| Search | Free text (debounced 300ms) | Empty |
+|---|---|---|
+| Status | All / Open / Draft / On Hold / Closed / Archived | All |
+| Priority | All / Urgent / High / Normal / Low | All |
+| Department | All + dept list (admin only) | Dept (non-admin) |
+| Search | Free text across role name | Empty |
 
 ---
 
-## 5. Backend Integration
+## 7. Activity Feed
 
-| Data | API Endpoint | Polling |
-|------|-------------|---------|
-| Stats cards | `GET /api/dashboard/stats` | On page load + manual refresh |
-| Positions list | `GET /api/dashboard/positions?status=&priority=&dept=&page=&search=` | On filter change |
-| Hiring funnel | `GET /api/dashboard/funnel` | On page load |
-| Activity timeline | `GET /api/dashboard/activity?limit=10` | Poll every 30s |
+Right side (~40% width). Scrollable, max-height matches positions table. Polls every 30s.
+
+```
+┌── Recent Activity ───────────────────────── Engineering Dept ──────┐
+│                                                                    │
+│  TODAY                                                             │
+│  ────────────────────────────────────────────────────────────     │
+│  💬  New comment on Priya S.                          10 min ago  │
+│      "Strong skills, recommend round 2" — Neha P.                │
+│                                                                    │
+│  ✅  Scorecard submitted                              2 hrs ago   │
+│      Raj K. rated Amit R. 4.5/5 (Technical Round)               │
+│                                                                    │
+│  🤖  AI sourced 5 candidates                          5 hrs ago   │
+│      Found 5 matches for Sr Python Developer                      │
+│                                                                    │
+│  YESTERDAY                                                         │
+│  ────────────────────────────────────────────────────────────     │
+│  📝  Priya S. applied via magic link                              │
+│  📧  8 outreach emails sent — ML Engineer                         │
+│  📅  Interview scheduled — Rahul K. Round 2                      │
+│                                                                    │
+│  [View All Activity →]                                            │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+Grouped: Today / Yesterday / This Week / Earlier. Clicking events navigates to relevant position or candidate.
 
 ---
 
-## 6. Empty States
+## 8. Department Filter (Topbar — Admin Only)
 
-| When | Display |
-|------|---------|
-| No positions | "📋 No positions yet. Click **+ New Hire** to create your first JD." with illustration |
-| No candidates | Stats show 0, funnel hidden |
-| No activity | "No recent activity. Start by creating a new hire." |
-| Loading | Skeleton cards with pulsing animation (no spinning wheel) |
-| Error | "Failed to load dashboard. [Retry]" with error details in console |
+```
+Topbar right side:   [Engineering ▼]  (Admin sees All Departments option)
+```
+
+Switching dept changes all dashboard data. Recruiters and Hiring Managers see their dept only — no selector shown.
+
+---
+
+## 9. Empty States
+
+| Condition | Display |
+|---|---|
+| No positions | Illustration + "No positions yet. Click **+ New Hire** in the sidebar." |
+| No candidates | Stats 0, funnel hidden + "Create a position to start sourcing" |
+| No activity | "No recent activity. Create a position to get started." |
+| Loading | Skeleton cards — NOT spinning wheels |
+| Error | "Failed to load. [Retry]" in-place |
+
+---
+
+## 10. API Endpoints
+
+| Data | Endpoint | Refresh |
+|---|---|---|
+| Stats cards | `GET /api/v1/dashboard/stats?period=week` | On load + period change |
+| Hiring funnel | `GET /api/v1/dashboard/funnel` | On load |
+| Positions table | `GET /api/v1/dashboard/positions?status=&priority=&page=` | On filter change |
+| Activity feed | `GET /api/v1/dashboard/activity?limit=15` | Poll every 30s |
