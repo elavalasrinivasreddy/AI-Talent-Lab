@@ -57,10 +57,6 @@ def get_llm(streaming: bool = False):
         )
     else:  # Default: groq
         from langchain_groq import ChatGroq
-        # model = ChatGroq(
-        #     model="openai/gpt-oss-120b",
-        #     api_key="your_groq_api_key_here",
-        # )
         model = ChatGroq(
             model = GROQ_MODEL,
             api_key = GROQ_API_KEY,

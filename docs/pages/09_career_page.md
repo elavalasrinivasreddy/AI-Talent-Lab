@@ -1,192 +1,203 @@
 # Page Design: Career Page & Job Board
-
-> Public-facing page showing all open positions for organic candidate acquisition.
-
----
-
-## 1. Page Purpose
-
-The Career Page is a **public, SEO-optimized** page that displays all of an organization's open positions. Candidates can browse, filter, and apply directly — no outreach email needed. This creates an organic acquisition channel that reduces dependency on paid job portals.
-
-**URL**: `/careers/{org_slug}` (e.g., `/careers/techcorp`)
+> **Version 2.1 — Updated**
+> **Phase 1 Feature.** Public-facing job board per organization. Auto-publishes open positions.
+> Candidates find and apply without needing an outreach email.
 
 ---
 
-## 2. Page Layout
+## 1. Overview
+
+| Aspect | Detail |
+|---|---|
+| Route | `/careers/:orgSlug` · `/careers/:orgSlug/:positionId` |
+| Auth | None — fully public |
+| Layout | No sidebar — public layout, mobile-first |
+| Auto-publish | Positions appear automatically when `status = 'open'` AND `is_on_career_page = true` |
+| Phase | Phase 1 (MVP) |
+
+---
+
+## 2. Auto-Publishing Behavior
+
+Organizations do **not** need to manually publish positions. The career page works automatically:
+
+- Position `status` set to `open` + `is_on_career_page = true` → **immediately appears** on career page
+- Position `status` changed to anything other than `open` → **immediately disappears**
+- `is_on_career_page` can be toggled per position in Position Detail → Settings Tab
+- All new positions default to `is_on_career_page = true`
+
+**Career page URL format:**
+```
+https://aitalentlab.com/careers/techcorp
+https://aitalentlab.com/careers/techcorp-ai     (org with spaces in name)
+```
+Org slug is auto-generated at registration and is immutable.
+
+---
+
+## 3. Career Page Layout (`/careers/:orgSlug`)
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│  ┌─ Org Header ────────────────────────────────────────────┐   │
-│  │  [Logo]  TechCorp                                        │   │
-│  │  "Building the future of fintech in India"               │   │
-│  │  🌐 techcorp.com  │  📍 Bangalore, Mumbai  │  👥 250+    │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌─ About Section ─────────────────────────────────────────┐   │
-│  │  About TechCorp                                          │   │
-│  │  {org.about_us content from settings}                    │   │
-│  │                                                          │   │
-│  │  🎯 Our Culture: Innovation, Remote-first, Diversity     │   │
-│  │  🎁 Benefits: Health insurance, ESOPs, Learning budget   │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌─ Open Positions ({count}) ──────────────────────────────┐   │
-│  │  [🔍 Search roles...]                                    │   │
-│  │  [All Depts ▼] [All Locations ▼] [All Types ▼]          │   │
-│  │                                                          │   │
-│  │  ── Engineering (3 positions) ──────────────────────────  │   │
-│  │  ┌────────────────────────────────────────────────────┐  │   │
-│  │  │ Senior Python Developer           📍 Bangalore     │  │   │
-│  │  │ 5-8 years │ Full-time │ Remote                     │  │   │
-│  │  │ Python, FastAPI, PostgreSQL, AWS                   │  │   │
-│  │  │ Posted 3 days ago                    [View & Apply] │  │   │
-│  │  └────────────────────────────────────────────────────┘  │   │
-│  │  ┌────────────────────────────────────────────────────┐  │   │
-│  │  │ ML Engineer                        📍 Hyderabad    │  │   │
-│  │  │ 3-6 years │ Full-time │ Hybrid                     │  │   │
-│  │  │ Python, TensorFlow, PyTorch, MLOps                 │  │   │
-│  │  │ Posted 1 week ago                    [View & Apply] │  │   │
-│  │  └────────────────────────────────────────────────────┘  │   │
-│  │                                                          │   │
-│  │  ── Product (2 positions) ──────────────────────────────  │   │
-│  │  ┌────────────────────────────────────────────────────┐  │   │
-│  │  │ Product Manager                    📍 Mumbai       │  │   │
-│  │  │ 4-7 years │ Full-time │ Onsite                     │  │   │
-│  │  │ Agile, Data Analytics, B2B SaaS                    │  │   │
-│  │  │ Posted 2 days ago                    [View & Apply] │  │   │
-│  │  └────────────────────────────────────────────────────┘  │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌─ Footer ────────────────────────────────────────────────┐   │
-│  │  Powered by AI Talent Lab │ Privacy Policy │ Contact    │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────────────┘
-```
-
-### Position Detail View (`/careers/{org_slug}/{position_id}`)
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│  [← Back to all positions]                                     │
-│                                                                 │
-│  ┌─ Position Header ──────────────────────────────────────┐    │
-│  │  Senior Python Developer                                │    │
-│  │  TechCorp │ 📍 Bangalore │ Remote │ Full-time           │    │
-│  │  5-8 years │ ₹25-40 LPA │ Posted 3 days ago            │    │
-│  │                                          [Apply Now ▶]  │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                 │
-│  ┌─ JD Content (Markdown Rendered) ───────────────────────┐    │
-│  │  ## About the Role                                      │    │
-│  │  {jd_markdown rendered as HTML}                         │    │
-│  │                                                         │    │
-│  │  ## Requirements                                        │    │
-│  │  - 5+ years Python experience...                        │    │
-│  │  - FastAPI, Django...                                   │    │
-│  │                                                         │    │
-│  │  ## About TechCorp                                      │    │
-│  │  {org.about_us}                                         │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                                                                 │
-│  ┌─ Application Form ────────────────────────────────────┐     │
-│  │  Apply for Senior Python Developer                     │     │
-│  │                                                        │     │
-│  │  Name *           [________________]                   │     │
-│  │  Email *          [________________]                   │     │
-│  │  Phone            [________________]                   │     │
-│  │  Resume *         [Upload PDF/DOCX]                    │     │
-│  │                                                        │     │
-│  │  {Dynamic screening questions from settings}            │     │
-│  │  Notice Period *  [Immediate ▼]                        │     │
-│  │  Expected Salary  [________________]                   │     │
-│  │  ...                                                   │     │
-│  │                                                        │     │
-│  │                              [Submit Application]      │     │
-│  └────────────────────────────────────────────────────────┘     │
+│  ┌── Org Header ─────────────────────────────────────────────┐ │
+│  │  [Logo]  TechCorp                                         │ │
+│  │  "Building the future of AI in India"  (from about_us)    │ │
+│  │  🌐 techcorp.com  │  📍 Bangalore  │  👥 SMB              │ │
+│  │  [LinkedIn ↗]  [Glassdoor ↗]                             │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│                                                                │
+│  ┌── About ─────────────────────────────────────────────────┐ │
+│  │  About TechCorp                                           │ │
+│  │  {org.about_us content}                                   │ │
+│  │                                                           │ │
+│  │  🎯 Culture: innovation · remote-first · diversity        │ │
+│  │  🎁 Benefits: Health insurance · ESOPs · Learning budget  │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│                                                                │
+│  ┌── Open Positions (8) ────────────────────────────────────┐ │
+│  │  [🔍 Search roles...]                                     │ │
+│  │  [All Departments ▼]  [All Locations ▼]  [All Types ▼]   │ │
+│  │                                                           │ │
+│  │  ── Engineering (3) ──────────────────────────────────   │ │
+│  │  ┌──────────────────────────────────────────────────┐   │ │
+│  │  │ Senior Python Developer        📍 Bangalore/Hybrid│   │ │
+│  │  │ 5–8 years · Full-time                            │   │ │
+│  │  │ Python · FastAPI · PostgreSQL · AWS               │   │ │
+│  │  │ Posted 3 days ago              [View & Apply →]   │   │ │
+│  │  └──────────────────────────────────────────────────┘   │ │
+│  │  ┌──────────────────────────────────────────────────┐   │ │
+│  │  │ ML Engineer                    📍 Remote          │   │ │
+│  │  │ 3–6 years · Full-time                            │   │ │
+│  │  │ Python · TensorFlow · MLOps                      │   │ │
+│  │  │ Posted 1 week ago              [View & Apply →]   │   │ │
+│  │  └──────────────────────────────────────────────────┘   │ │
+│  │                                                           │ │
+│  │  ── Product (2) ─────────────────────────────────────   │ │
+│  │  ┌──────────────────────────────────────────────────┐   │ │
+│  │  │ Senior Product Manager         📍 Bangalore       │   │ │
+│  │  │ ...                                              │   │ │
+│  │  └──────────────────────────────────────────────────┘   │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│                                                                │
+│  ┌── Footer ─────────────────────────────────────────────────┐ │
+│  │  Powered by AI Talent Lab  ·  Privacy Policy  ·  Contact │ │
+│  └───────────────────────────────────────────────────────────┘ │
 └────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Sections
+## 4. Position Detail View (`/careers/:orgSlug/:positionId`)
 
-### 3.1 Org Header
-- Organization logo, name, tagline (from `about_us` first line or culture keywords)
-- Website link, headquarters, company size
-- All data pulled from org settings
+```
+┌────────────────────────────────────────────────────────────────┐
+│  [← Back to all positions at TechCorp]                        │
+│                                                                │
+│  ┌── Position Header ─────────────────────────────────────┐   │
+│  │  Senior Python Developer                               │   │
+│  │  TechCorp · 📍 Bangalore · Hybrid · Full-time          │   │
+│  │  5–8 years · Posted 3 days ago                         │   │
+│  │                                           [Apply Now ▶]│   │
+│  └────────────────────────────────────────────────────────┘   │
+│                                                                │
+│  ┌── Full Job Description ────────────────────────────────┐   │
+│  │  {jd_markdown rendered as HTML}                        │   │
+│  │                                                        │   │
+│  │  ## About the Role                                     │   │
+│  │  ...                                                   │   │
+│  │  ## Requirements                                       │   │
+│  │  - 5+ years Python experience                         │   │
+│  │  ...                                                   │   │
+│  │  ## About TechCorp                                     │   │
+│  │  {org.about_us}                                        │   │
+│  └────────────────────────────────────────────────────────┘   │
+│                                                                │
+│  ┌── Apply Section ────────────────────────────────────────┐  │
+│  │  Interested in this role?                               │  │
+│  │                                                        │  │
+│  │  [Apply for Senior Python Developer →]                 │  │
+│  │                                                        │  │
+│  │  Clicking will start a short chat to collect           │  │
+│  │  your basic details (3–4 minutes).                     │  │
+│  └────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────┘
+```
 
-### 3.2 About Section
-- Full `about_us` content from organization settings
-- Culture keywords displayed as tags
-- Benefits template displayed
-
-### 3.3 Positions List
-- Grouped by department
-- Each card: role name, location, experience range, employment type, work type, key skills
-- "Posted X ago" timestamp
-- Search and filter by department, location, work type
-- Only positions with `status = 'open'` are shown
-
-### 3.4 Position Detail View
-- Full JD rendered as HTML from markdown
-- Organization "About Us" section appended
-- **Application form** with:
-  - Required: name, email, resume upload
-  - Dynamic screening questions (from `screening_questions` table for the position's department)
-  - Submit button → creates candidate + application records
-
-### 3.5 Footer
-- "Powered by AI Talent Lab" branding
-- Privacy policy link
-- Contact link (org email)
+Clicking "Apply for ..." starts the same candidate chat flow as the magic link apply page.
+A new `candidate_session` is created with `source = 'career_page'`.
 
 ---
 
-## 4. Backend APIs Used
+## 5. Filters
+
+| Filter | Options |
+|---|---|
+| Search | Free text across role name |
+| Department | All + list from org departments |
+| Location | All + unique locations from open positions |
+| Work Type | All, Remote, Hybrid, Onsite |
+
+---
+
+## 6. SEO
+
+Each position page has:
+- `<title>` — `{role_name} at {org_name} — Apply Now`
+- `<meta description>` — First 160 chars of JD content
+- Open Graph tags for LinkedIn/WhatsApp sharing
+- `schema.org/JobPosting` structured data for Google Jobs indexing
+- Canonical URL: `/careers/{org_slug}/{position_id}`
+
+Career page root has:
+- `<title>` — `Careers at {org_name}`
+- `sitemap.xml` auto-generated at `/careers/{org_slug}/sitemap.xml`
+
+---
+
+## 7. API Endpoints
 
 | Action | Endpoint | Method |
-|--------|----------|--------|
-| Load career page | `/api/careers/{org_slug}` | GET |
-| Load position detail | `/api/careers/{org_slug}/positions/{id}` | GET |
-| Submit application | `/api/careers/{org_slug}/positions/{id}/apply` | POST |
+|---|---|---|
+| Load career page | `GET /api/v1/careers/:orgSlug` | GET |
+| Load position detail | `GET /api/v1/careers/:orgSlug/positions/:id` | GET |
+| Start application | `POST /api/v1/careers/:orgSlug/positions/:id/apply` | POST |
 
----
-
-## 5. SEO & Sharing
-
-- **Title tag**: `{Role Name} at {Org Name} — AI Talent Lab`
-- **Meta description**: First 160 chars of JD content
-- **Open Graph tags**: For LinkedIn/WhatsApp sharing with role name, org name, location
-- **Canonical URL**: `/careers/{org_slug}/{position_id}`
-- **Schema.org**: `JobPosting` structured data for Google Jobs indexing
-- **Sitemap**: Auto-generated `/careers/{org_slug}/sitemap.xml`
-
----
-
-## 6. Embed Widget
-
-Organizations can embed their career page on their own website:
-
-```html
-<iframe 
-  src="https://aitalentlab.com/careers/techcorp/embed"
-  width="100%" 
-  height="600"
-  frameborder="0"
-></iframe>
+**Career page response structure:**
+```json
+{
+  "org": {
+    "name": "TechCorp",
+    "logo_url": "...",
+    "about_us": "...",
+    "culture_keywords": "innovation, remote-first",
+    "benefits_text": "...",
+    "website": "...",
+    "headquarters": "Bangalore, India",
+    "size": "smb"
+  },
+  "positions": [
+    {
+      "id": 42,
+      "role_name": "Senior Python Developer",
+      "department": "Engineering",
+      "location": "Bangalore",
+      "work_type": "hybrid",
+      "employment_type": "full_time",
+      "experience_min": 5,
+      "experience_max": 8,
+      "created_at": "2026-04-09T10:00:00Z",
+      "key_skills": ["Python", "FastAPI", "PostgreSQL", "AWS"]
+    }
+  ]
+}
 ```
 
-Or a simple widget:
-```html
-<script src="https://aitalentlab.com/widget.js" data-org="techcorp"></script>
-```
-
 ---
 
-## 7. Design Principles
+## 8. Design Principles
 
-- **Mobile-first** — Candidates browse on phones
-- **Fast loading** — No auth, no heavy JS framework needed (could be SSR)
-- **Branded** — Uses org logo, colors if available
-- **Accessible** — WCAG 2.1 AA compliance
-- **No AI Talent Lab branding in premium plans** — White-label option
+- **Mobile-first** — candidates browse on phones
+- **Fast loading** — no auth overhead, minimal JS
+- **Branded** — uses org logo and About Us from settings
+- **No AI Talent Lab branding in hero** — the page represents the organization, not the platform
+- Small "Powered by AI Talent Lab" footer only

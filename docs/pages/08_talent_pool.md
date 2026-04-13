@@ -1,122 +1,195 @@
-# Page Design: Talent Pool / CRM
-
-> Org-wide candidate database for re-engagement and historical search.
+# Page Design: Talent Pool
+> **Version 2.1 — Updated**
+> Org-wide candidate database. Bulk upload zone appears FIRST (most prominent).
+> AI suggestions panel. Auto-add rules. Context-aware back navigation.
 
 ---
 
-## 1. Page Purpose
+## 1. Overview
 
-The Talent Pool page provides a searchable, filterable view of ALL candidates across the organization — regardless of which position they were originally sourced for. Candidates who were rejected, passed-over, or whose positions were closed are automatically added to the pool. Recruiters can search the pool before sourcing new candidates, saving time and money.
+| Aspect | Detail |
+|---|---|
+| Route | `/talent-pool` |
+| Auth | Required (JWT) |
+| Layout | Sidebar + full-width page |
+| Entry | Sidebar navigation link |
 
 ---
 
 ## 2. Page Layout
 
 ```
-┌──────┬─────────────────────────────────────────────────────────┐
-│      │  ┌─ Header ─────────────────────────────────────────┐   │
-│      │  │ 🗃 Talent Pool              [AI Suggest ▼]        │   │
-│      │  │ 1,247 candidates across all positions             │   │
-│      │  └──────────────────────────────────────────────────┘   │
-│      │                                                         │
-│ S    │  ┌─ Search & Filters ───────────────────────────────┐   │
-│ I    │  │ [🔍 Search skills, name, company...]              │   │
-│ D    │  │ [Location ▼] [Source ▼] [Tags ▼] [Score ▼]       │   │
-│ E    │  │ [Experience ▼] [Added Date ▼] [Clear Filters]    │   │
-│ B    │  └──────────────────────────────────────────────────┘   │
-│ A    │                                                         │
-│ R    │  ┌─ Candidate Grid ─────────────────────────────────┐   │
-│      │  │ ┌─────────────────────────────────────────────┐   │   │
-│      │  │ │ 👤 Priya Sharma          87% match (avg)    │   │   │
-│      │  │ │ Senior Python Developer @ TCS               │   │   │
-│      │  │ │ 📍 Bangalore │ 6 yrs exp │ linkedin         │   │   │
-│      │  │ │ 🏷 python react strong-communicator          │   │   │
-│      │  │ │ Pool reason: Position closed (Sr Dev #42)   │   │   │
-│      │  │ │ [View Profile] [Re-engage] [Remove]         │   │   │
-│      │  │ └─────────────────────────────────────────────┘   │   │
-│      │  │ ┌─────────────────────────────────────────────┐   │   │
-│      │  │ │ 👤 Rahul Verma            72% match (avg)   │   │   │
-│      │  │ │ ML Engineer @ Flipkart                      │   │   │
-│      │  │ │ 📍 Hyderabad │ 4 yrs exp │ naukri           │   │   │
-│      │  │ │ 🏷 machine-learning tensorflow               │   │   │
-│      │  │ │ Pool reason: Rejected (ML Eng #38)          │   │   │
-│      │  │ │ [View Profile] [Re-engage] [Remove]         │   │   │
-│      │  │ └─────────────────────────────────────────────┘   │   │
-│      │  │                                                   │   │
-│      │  │ [← Prev]  Page 1 of 25  [Next →]                │   │
-│      │  └──────────────────────────────────────────────────┘   │
-│      │                                                         │
-│      │  ┌─ AI Suggestions Panel (when position selected) ──┐   │
-│      │  │ 🤖 3 pool candidates match "Sr Python Dev #55"   │   │
-│      │  │ ┌───────────┐ ┌───────────┐ ┌───────────┐        │   │
-│      │  │ │ Priya S.  │ │ Ankit M.  │ │ Deepa R.  │        │   │
-│      │  │ │ 87% match │ │ 82% match │ │ 79% match │        │   │
-│      │  │ │ [Add to   │ │ [Add to   │ │ [Add to   │        │   │
-│      │  │ │ Pipeline] │ │ Pipeline] │ │ Pipeline] │        │   │
-│      │  │ └───────────┘ └───────────┘ └───────────┘        │   │
-│      │  └──────────────────────────────────────────────────┘   │
-└──────┴─────────────────────────────────────────────────────────┘
+┌──────┬──────────────────────────────────────────────────────────┐
+│      │  ┌── HEADER ─────────────────────────────────────────┐   │
+│      │  │  🗃 Talent Pool  ·  1,247 candidates · Org-wide   │   │
+│      │  └────────────────────────────────────────────────────┘   │
+│ S    │                                                            │
+│ I    │  ┌── BULK UPLOAD ZONE (FIRST — most prominent) ────────┐  │
+│ D    │  │  Drop resumes here or click to upload               │  │
+│ E    │  │  [+ Upload Resumes]                                 │  │
+│ B    │  └────────────────────────────────────────────────────┘   │
+│ A    │                                                            │
+│ R    │  ┌── AI SUGGEST PANEL ─────────────────────────────────┐  │
+│      │  │  Match pool → position: [Select position ▼] [Find]  │  │
+│      │  └────────────────────────────────────────────────────┘   │
+│      │                                                            │
+│      │  ┌── SEARCH + FILTERS ─────────────────────────────────┐  │
+│      │  │  [🔍 Search...]  [Location ▼]  [Source ▼]  [Reason ▼]│  │
+│      │  └────────────────────────────────────────────────────┘   │
+│      │                                                            │
+│      │  ┌── CANDIDATE GRID (3 columns) ───────────────────────┐  │
+│      │  │  [Card] [Card] [Card] [Card] [Card] [Card]          │  │
+│      │  └────────────────────────────────────────────────────┘   │
+└──────┴──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Sections
+## 3. Bulk Upload Zone
 
-### 3.1 Header
-- Page title with total pool count
-- **AI Suggest dropdown**: Select an open position → shows matching pool candidates
+Full-width, dashed border, **always visible above candidate grid**:
 
-### 3.2 Search & Filters
-- **Full-text search** across skills, name, company, title
-- **Filters**: Location, source portal, tags, score range, experience range, date added
-- **Clear all filters** button
-- Search is debounced (300ms)
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                                                                  │
+│   ┌──────────────────────────────────────────────────────────┐  │
+│   │                                                          │  │
+│   │   📁                                                     │  │
+│   │                                                          │  │
+│   │   Drop resumes here to add offline candidates            │  │
+│   │   or    [+ Upload Resumes]                               │  │
+│   │                                                          │  │
+│   │   PDF or DOCX · Up to 50 files · Max 5MB each           │  │
+│   └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+│  AI will automatically: parse resumes · extract skills ·         │
+│  detect duplicates · add new profiles to pool                   │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
 
-### 3.3 Candidate Grid
-- Card-based layout (not table — better for scanning profiles)
-- Each card shows: name, title, company, location, experience, source, tags, pool reason
-- **Average match score** from their original position scoring
-- Actions per card: View Profile, Re-engage (send email/WhatsApp), Remove from pool
-- Pagination (20 per page)
+**Upload results summary (shown after processing):**
+```
+┌── Upload Results ──────────────────────────────────────────────┐
+│  Processed 12 resumes                                          │
+│                                                                │
+│  ✅ 9 new candidates added to pool                             │
+│                                                                │
+│  ⚠️  3 duplicates detected:                                    │
+│  • Priya Sharma (priya@email.com) — last updated 3 months ago │
+│    [Update Profile]  [Skip]                                    │
+│  • Rahul Mehta — last updated 2 days ago                       │
+│    [Skip — recent profile]  (auto-suggested)                   │
+│  • Ananya K. — last updated 8 months ago                       │
+│    [Update Profile]  [Skip]                                    │
+│                                                                │
+│  [Done]                                                        │
+└────────────────────────────────────────────────────────────────┘
+```
 
-### 3.4 AI Suggestions Panel
-- Appears when a position is selected from the header dropdown
-- Shows top candidates from pool that match the selected position's JD
-- Each suggestion has a match score and "Add to Pipeline" button
-- Adding moves the candidate from pool to the position's pipeline (status: sourced)
+**Duplicate logic:**
+- Match on email (primary) or phone (secondary) within same org only
+- Updated ≤ 7 days → auto-suggest "Skip — recent profile"
+- Updated > 7 days → suggest "Update Profile"
+- "Update Profile" refreshes: resume, parsed data, `updated_at`
 
 ---
 
-## 4. Backend APIs Used
+## 4. AI Suggest Panel
+
+```
+┌── 🤖 AI Match Suggestions ────────────────────────────────────────┐
+│                                                                    │
+│  Find pool candidates for a new position before sourcing:         │
+│                                                                    │
+│  [Sr Python Developer (Apr 2026) ▼]    [Find Matches]             │
+│                                                                    │
+│  ── Results ───────────────────────────────────────────────────   │
+│  Found 3 pool candidates above 70% match:                         │
+│                                                                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐            │
+│  │ Priya Sharma │  │ Ankit Mehta  │  │ Deepa R.     │            │
+│  │ 87% match    │  │ 82% match    │  │ 79% match    │            │
+│  │ Rejected     │  │ Pool Closed  │  │ Rejected     │            │
+│  │              │  │              │  │              │            │
+│  │ [Add to      │  │ [Add to      │  │ [Add to      │            │
+│  │  Pipeline]   │  │  Pipeline]   │  │  Pipeline]   │            │
+│  └──────────────┘  └──────────────┘  └──────────────┘            │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+"Add to Pipeline" → creates new `candidate_applications` record for that position at `status = 'sourced'`. Candidate appears in position's pipeline.
+
+---
+
+## 5. Candidate Cards Grid
+
+3-column grid (2 on tablet, 1 on mobile). 20 cards per page.
+
+```
+┌── Candidate Card ──────────────────────────────────────┐
+│                                                        │
+│  [PR]  Priya Sharma                   [Rejected ●]    │
+│        Sr Developer @ TCS                             │
+│        📍 Bangalore · 5 yrs exp · LinkedIn            │
+│                                                        │
+│  [python]  [react]  [fastapi]  [docker]               │
+│                                                        │
+│  ──────────────────────────────────────────────────   │
+│                                                        │
+│  Pool reason: Rejected (Sr Python Dev #42)            │
+│  Added: Mar 22, 2026                                   │
+│                                                        │
+│  [Re-engage]              [View Profile]              │
+└────────────────────────────────────────────────────────┘
+```
+
+**Pool reason badge colors:**
+- "Rejected" → red
+- "Position Closed" → amber
+- "Position Archived" → gray
+- "Manual" → blue
+
+**Card click:** Navigate to `/candidates/:id` with `from: '/talent-pool'` in location state.
+
+**Re-engage:** Opens compose panel to send outreach email about a new opening.
+
+---
+
+## 6. Filters
+
+| Filter | Options |
+|---|---|
+| Search | Free text — name, skills, title, company |
+| Location | All + unique locations in pool |
+| Source | All / LinkedIn / Naukri / Upload / Career Page / Manual / Simulation |
+| Pool Reason | All / Rejected / Position Closed / Position Archived / Manual |
+
+---
+
+## 7. Auto-Pool Rules
+
+Candidates automatically added when:
+1. `candidate_applications.status` → `rejected`
+2. `positions.status` → `closed` or `archived` (all non-selected candidates)
+3. Recruiter manually clicks "Add to Pool" on Candidate Detail
+
+System sets:
+- `candidates.in_talent_pool = true`
+- `candidates.talent_pool_reason = 'rejected' | 'position_closed' | 'position_archived' | 'manual'`
+- `candidates.talent_pool_added_at = NOW()`
+- PipelineEvent created: `event_type = 'added_to_pool'`
+
+---
+
+## 8. API Endpoints
 
 | Action | Endpoint | Method |
-|--------|----------|--------|
-| Load pool candidates | `/api/talent-pool/` | GET |
-| AI suggest matches | `/api/talent-pool/suggest/{position_id}` | POST |
-| Add to pipeline | `/api/talent-pool/{candidate_id}/add` (from pool to position) | POST |
-| Remove from pool | `/api/talent-pool/{candidate_id}/remove` | DELETE |
-| Add tag | `/api/candidates/{id}/tags` | POST |
-| Remove tag | `/api/candidates/{id}/tags/{tag}` | DELETE |
-| Re-engage | `/api/communications/send` | POST |
-| Find duplicates | `/api/talent-pool/deduplicate` | POST |
-
----
-
-## 5. Auto-Pool Rules
-
-Candidates are automatically added to the talent pool when:
-1. **Candidate rejected** — status changed to `rejected` for any position
-2. **Position closed** — all candidates in `sourced`, `emailed` status are pooled
-3. **Position archived** — all non-selected candidates are pooled
-4. **Manual add** — recruiter clicks "Add to Pool" on any candidate
-
-Pool reason is tracked for context: `"rejected"`, `"position_closed"`, `"position_archived"`, `"manual"`.
-
----
-
-## 6. Deduplication
-
-- **Trigger**: Manual "Find Duplicates" button or automatic when new candidates are sourced
-- **Match criteria**: Same email address (primary) or same name + company (secondary)
-- **Merge UI**: Side-by-side comparison → pick which profile data to keep
-- **After merge**: All position links, scores, and tags are combined
+|---|---|---|
+| Load pool | `GET /api/v1/talent-pool/` | GET |
+| Search/filter | `GET /api/v1/talent-pool/?q=&location=&source=&reason=&page=` | GET |
+| Bulk upload | `POST /api/v1/candidates/bulk-upload` | POST (multipart) |
+| AI suggest | `POST /api/v1/talent-pool/suggest/:position_id` | POST |
+| Add to pipeline | `POST /api/v1/talent-pool/:candidate_id/add-to-position` | POST |
+| Manual add | `POST /api/v1/talent-pool/:candidate_id/add` | POST |
+| Remove from pool | `DELETE /api/v1/talent-pool/:candidate_id/remove` | DELETE |
