@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interview Feedback — AI Talent Lab</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="public-body">
+<header class="public-header">
+  <div class="public-brand">
+    <div class="public-brand-logo">T</div>
+    <div>
+      <div class="public-brand-name">TechCorp</div>
+      <div class="public-poweredby">Interview Feedback · Powered by AI Talent Lab</div>
+    </div>
+  </div>
+</header>
+
+<div class="panel-layout">
+  <!-- Attendance check first -->
+  <div id="attendanceCheck" class="card mb-20" style="text-align:center;padding:32px;">
+    <div style="font-size:36px;margin-bottom:12px;">🎙️</div>
+    <h3 class="fw-700 mb-8">Were you present in this interview?</h3>
+    <p class="text-muted text-sm mb-20">Round 1 — Technical Interview · Rahul Kumar · Apr 12, 2026</p>
+    <div class="flex gap-12" style="justify-content:center;">
+      <button class="btn btn-primary" onclick="showFeedbackForm()">Yes, I attended</button>
+      <button class="btn btn-secondary" onclick="showNotAttended()">I was not present</button>
+    </div>
+  </div>
+
+  <!-- Feedback form (hidden initially) -->
+  <div id="feedbackForm" style="display:none;">
+    <div class="panel-context">
+      <div class="panel-context-title">Rahul Kumar — Senior Python Developer</div>
+      <div class="panel-context-meta">Round 1: Technical Interview · Apr 12, 2026 · 2:00 PM · 60 min</div>
+    </div>
+
+    <!-- Candidate info expandables -->
+    <div class="flex gap-10 mb-20">
+      <button class="btn btn-secondary btn-sm" onclick="toggleSection('resumeSection', this)">📄 View Resume ▾</button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleSection('jdSection', this)">📋 View JD ▾</button>
+    </div>
+    <div id="resumeSection" style="display:none;" class="card mb-16">
+      <div class="fw-600 mb-8">Rahul Kumar — Resume</div>
+      <div class="text-sm text-muted" style="line-height:1.8;">
+        <strong style="color:var(--text-primary);">Senior Developer @ TechCorp (2022–Present)</strong><br>
+        • Built microservices architecture serving 2M+ daily users<br>
+        • Led migration from monolith to FastAPI + PostgreSQL<br><br>
+        <strong style="color:var(--text-primary);">Skills:</strong> Python · FastAPI · PostgreSQL · Docker · AWS · Redis · GraphQL
+      </div>
+    </div>
+    <div id="jdSection" style="display:none;" class="card mb-16">
+      <div class="fw-600 mb-8">Role Requirements</div>
+      <div class="text-sm text-muted" style="line-height:1.8;">
+        <strong style="color:var(--text-primary);">Required Skills:</strong> Python (5–8 yrs) · FastAPI · PostgreSQL · AWS · Docker<br>
+        <strong style="color:var(--text-primary);">Preferred:</strong> GraphQL · gRPC · Kubernetes<br>
+        <strong style="color:var(--text-primary);">Level:</strong> Senior · Hybrid Bangalore
+      </div>
+    </div>
+
+    <!-- Ratings -->
+    <div class="card mb-16">
+      <h3 class="fw-700 mb-20">Skill Ratings</h3>
+      <div class="rating-row">
+        <div class="rating-label">Technical Skills</div>
+        <div class="rating-desc">Assess technical depth, problem-solving approach, code quality</div>
+        <div class="stars">
+          <span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span>
+        </div>
+        <input type="text" class="input" placeholder="Brief note on technical assessment..." style="font-size:12.5px;">
+      </div>
+      <div class="sep"></div>
+      <div class="rating-row">
+        <div class="rating-label">Problem Solving</div>
+        <div class="rating-desc">Ability to break down complex problems systematically</div>
+        <div class="stars">
+          <span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span>
+        </div>
+        <input type="text" class="input" placeholder="Note on problem-solving approach..." style="font-size:12.5px;">
+      </div>
+      <div class="sep"></div>
+      <div class="rating-row">
+        <div class="rating-label">Communication</div>
+        <div class="rating-desc">Clarity, listening skills, articulation</div>
+        <div class="stars">
+          <span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span>
+        </div>
+        <input type="text" class="input" placeholder="Note on communication..." style="font-size:12.5px;">
+      </div>
+      <div class="sep"></div>
+      <div class="rating-row">
+        <div class="rating-label">Culture Fit</div>
+        <div class="rating-desc">Alignment with team values and working style</div>
+        <div class="stars">
+          <span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span>
+        </div>
+        <input type="text" class="input" placeholder="Note on culture fit..." style="font-size:12.5px;">
+      </div>
+    </div>
+
+    <!-- Written feedback with AI enrich -->
+    <div class="card mb-16">
+      <h3 class="fw-700 mb-16">Written Feedback</h3>
+      <div class="form-group">
+        <label>Strengths</label>
+        <textarea id="strengthsInput" class="input" rows="3" style="resize:vertical;" placeholder="e.g. strong python, built similar systems, good async patterns..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Areas of Concern</label>
+        <textarea id="concernsInput" class="input" rows="3" style="resize:vertical;" placeholder="e.g. k8s not strong, never managed prod infra directly..."></textarea>
+      </div>
+      <button class="btn btn-secondary" onclick="aiEnrich()">✨ AI Enrich — Make this more professional</button>
+
+      <div id="enrichedPreview" style="display:none;margin-top:16px;">
+        <div style="background:var(--bg-tertiary);border:1px solid var(--border-accent);border-radius:var(--radius-lg);padding:14px;">
+          <div class="text-xs fw-600 mb-8" style="color:var(--accent-light);text-transform:uppercase;letter-spacing:.5px;">AI-Enriched Preview</div>
+          <div class="text-sm text-muted mb-4"><strong style="color:var(--text-primary);">Strengths:</strong> Candidate demonstrates strong proficiency in Python with hands-on experience building high-throughput asynchronous systems. Shows solid understanding of FastAPI patterns and event-driven architecture.</div>
+          <div class="text-sm text-muted"><strong style="color:var(--text-primary);">Concerns:</strong> Limited exposure to Kubernetes in production environments. Has not independently managed production infrastructure, which may require ramp-up time during initial months.</div>
+        </div>
+        <div class="flex gap-8 mt-10">
+          <button class="btn btn-primary btn-sm" onclick="useEnriched()">Use Enriched Version</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('enrichedPreview').style.display='none'">Keep My Original</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recommendation -->
+    <div class="card mb-16">
+      <h3 class="fw-700 mb-16">Hiring Recommendation</h3>
+      <div class="rec-buttons">
+        <button class="rec-btn" onclick="selectRec(this)">💪 Strong Yes</button>
+        <button class="rec-btn selected" onclick="selectRec(this)">👍 Yes</button>
+        <button class="rec-btn" onclick="selectRec(this)">😐 Neutral</button>
+        <button class="rec-btn" onclick="selectRec(this)">👎 No</button>
+        <button class="rec-btn" onclick="selectRec(this)">❌ Strong No</button>
+      </div>
+      <div class="form-group mt-12">
+        <label>Additional Comments (optional)</label>
+        <textarea class="input" rows="2" style="resize:vertical;" placeholder="Any final thoughts for the hiring team..."></textarea>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="card">
+      <div style="background:var(--bg-tertiary);border-radius:var(--radius-md);padding:12px;margin-bottom:16px;font-size:12.5px;color:var(--text-muted);">
+        By submitting, you confirm this is your independent assessment based on the interview conducted.
+      </div>
+      <div class="flex gap-10 justify-between">
+        <button class="btn btn-secondary" onclick="showToast('Draft saved — you can return to this link to complete','💾')">Save Draft</button>
+        <button class="btn btn-primary" onclick="submitFeedback()">Submit Feedback</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success state (hidden) -->
+  <div id="successState" style="display:none;" class="card" style="text-align:center;padding:48px;">
+    <div style="font-size:56px;margin-bottom:16px;text-align:center;">✅</div>
+    <h2 class="fw-700 mb-8" style="text-align:center;">Feedback Submitted!</h2>
+    <p class="text-muted text-sm" style="text-align:center;max-width:360px;margin:0 auto;">Thank you for assessing Rahul Kumar. Your feedback has been shared with the hiring team.</p>
+    <div style="margin-top:20px;background:var(--bg-tertiary);border-radius:var(--radius-md);padding:14px;text-align:center;">
+      <div class="fw-600 text-sm">Overall Score: 4.0/5 · Recommendation: 👍 Yes</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast toast-success" id="panelToast">
+  <span class="toast-icon">✅</span>
+  <span class="toast-msg">Done</span>
+</div>
+
+<script src="app.js"></script>
+<script>
+function showFeedbackForm() {
+  document.getElementById('attendanceCheck').style.display = 'none';
+  document.getElementById('feedbackForm').style.display = 'block';
+  // Init stars
+  document.querySelectorAll('.stars').forEach(group => {
+    const stars = group.querySelectorAll('.star');
+    stars.forEach((star, idx) => {
+      star.addEventListener('click', () => {
+        stars.forEach((s, i) => s.style.filter = i <= idx ? 'none' : 'grayscale(1) opacity(.3)');
+      });
+    });
+    // Set default 4 stars
+    stars.forEach((s, i) => { if (i < 4) s.style.filter = 'none'; else s.style.filter = 'grayscale(1) opacity(.3)'; });
+  });
+}
+
+function showNotAttended() {
+  document.getElementById('attendanceCheck').innerHTML = `
+    <div style="font-size:36px;margin-bottom:12px;">ℹ️</div>
+    <h3 class="fw-700 mb-8">Noted</h3>
+    <p class="text-muted text-sm">We've recorded that you were not present. No feedback required.</p>`;
+}
+
+function toggleSection(id, btn) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  btn.textContent = btn.textContent.includes('▾')
+    ? btn.textContent.replace('▾', '▲')
+    : btn.textContent.replace('▲', '▾');
+}
+
+function aiEnrich() {
+  showToast('AI enriching your notes...', '✨');
+  setTimeout(() => {
+    document.getElementById('enrichedPreview').style.display = 'block';
+  }, 1000);
+}
+
+function useEnriched() {
+  document.getElementById('strengthsInput').value = 'Demonstrates strong proficiency in Python with hands-on experience building high-throughput asynchronous systems.';
+  document.getElementById('concernsInput').value = 'Limited Kubernetes exposure in production environments; may require ramp-up time.';
+  document.getElementById('enrichedPreview').style.display = 'none';
+  showToast('Enriched feedback applied', '✅');
+}
+
+function selectRec(btn) {
+  document.querySelectorAll('.rec-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function submitFeedback() {
+  document.getElementById('feedbackForm').style.display = 'none';
+  document.getElementById('successState').style.display = 'block';
+  document.getElementById('successState').style.textAlign = 'center';
+  document.getElementById('successState').style.padding = '48px';
+}
+
+function showToast(msg, icon) {
+  const t = document.getElementById('panelToast');
+  t.querySelector('.toast-msg').textContent = msg;
+  t.querySelector('.toast-icon').textContent = icon;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

@@ -1,116 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Apply: Senior Python Developer — TechCorp</title>
-  <link rel="stylesheet" href="styles.css">
-  <style>
-    .public-page { background: #f9fafb; color: #111827; }
-    .public-header { background: #ffffff; border-bottom: 1px solid #e5e7eb; padding: 16px 40px; }
-    .apply-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 40px; max-width: 700px; margin: 40px auto; box-shadow: 0 4px 24px rgba(0,0,0,0.04); }
-    .input { background: white; border: 1px solid #d1d5db; color: #111827; }
-    .input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-    label { color: #374151; font-weight: 600; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apply — Senior Python Developer at TechCorp</title>
+<link rel="stylesheet" href="styles.css">
 </head>
-<body class="public-page">
-  
-  <header class="public-header flex justify-between items-center">
-    <div class="flex items-center gap-12 cursor-pointer" onclick="window.location.href='careers.html'">
-      <div style="width: 32px; height: 32px; background: #2563eb; color: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold;">T</div>
-      <h1 style="font-size: 18px; font-weight: 700; margin: 0;">TechCorp</h1>
+<body class="public-body">
+<header class="public-header">
+  <div class="public-brand">
+    <div class="public-brand-logo">T</div>
+    <div>
+      <div class="public-brand-name">TechCorp</div>
+      <div class="public-poweredby">Powered by AI Talent Lab</div>
     </div>
-    <a href="careers.html" style="font-size: 14px; font-weight: 600; color: #4b5563;">← Back to Jobs</a>
-  </header>
+  </div>
+  <a href="careers.html" style="font-size:13px;font-weight:600;color:var(--text-secondary);">← Back to Careers</a>
+</header>
 
-  <main style="flex: 1; padding: 0 24px;">
-    <div class="apply-card">
-      <div style="margin-bottom: 32px; border-bottom: 1px solid #e5e7eb; padding-bottom: 24px;">
-        <h1 style="font-size: 28px; font-weight: 800; margin-bottom: 8px;">Senior Python Developer</h1>
-        <div class="flex items-center gap-16 text-sm" style="color: #6b7280;">
-          <span class="flex items-center gap-4 text-primary">📍 Bangalore / Hybrid</span>
-          <span class="text-tertiary">•</span>
-          <span class="flex items-center gap-4 text-primary">💼 Engineering</span>
+<div class="apply-layout">
+  <div class="apply-position-strip">
+    <div>
+      <div class="apply-pos-info">💼 Senior Python Developer</div>
+      <div class="apply-pos-meta">TechCorp · 📍 Bangalore / Hybrid · Full-time</div>
+    </div>
+    <button id="jdToggle" onclick="toggleJD()" style="font-size:12.5px;font-weight:600;color:var(--accent-light);background:none;border:none;cursor:pointer;">View Full JD ▾</button>
+  </div>
+
+  <div id="jdPanel" style="display:none;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px;font-size:13px;color:var(--text-secondary);line-height:1.7;max-height:260px;overflow-y:auto;">
+    <strong style="color:var(--text-primary);">About TechCorp</strong><br>
+    We are a fast-growing technology company building next-generation AI tools...<br><br>
+    <strong style="color:var(--text-primary);">Role Overview</strong><br>
+    We're seeking a Senior Python Developer to build our core backend services...<br><br>
+    <strong style="color:var(--text-primary);">Requirements</strong><br>
+    • 5–8 years Python experience<br>• FastAPI, PostgreSQL, Docker expertise<br>• AWS experience<br>
+    <button onclick="toggleJD()" style="margin-top:10px;font-size:12px;font-weight:600;color:var(--accent-light);background:none;border:none;cursor:pointer;">Collapse ▲</button>
+  </div>
+
+  <!-- Chat messages -->
+  <div class="apply-messages" id="applyMessages">
+    <div class="msg msg-ai">
+      <div class="msg-avatar ai">🤖</div>
+      <div class="msg-bubble">
+        Hi Rahul! 👋<br><br>
+        I'm an AI assistant for TechCorp's hiring team. We came across your profile and think you might be a great fit for the <strong>Senior Python Developer</strong> role.<br><br>
+        This will take about 3–4 minutes. Are you currently open to exploring this opportunity?
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="quickReply('Yes, I\'m interested!')">Yes, I'm interested! 🙌</button>
+          <button class="btn btn-secondary btn-sm" onclick="quickReply('No, thanks')">No, thanks</button>
         </div>
       </div>
-
-      <!-- Application Form -->
-      <form onsubmit="event.preventDefault(); showSuccess();">
-        <div id="form-content">
-          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px;">1. Upload Resume</h3>
-          <div style="border: 2px dashed #d1d5db; border-radius: 8px; padding: 40px 20px; text-align: center; margin-bottom: 32px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#2563eb'; this.style.backgroundColor='#eff6ff'" onmouseout="this.style.borderColor='#d1d5db'; this.style.backgroundColor='transparent'">
-            <div style="font-size: 32px; margin-bottom: 12px;">📄</div>
-            <div style="font-weight: 600; font-size: 14px;" class="mb-4">Click to upload or drag & drop</div>
-            <div style="font-size: 12px; color: #6b7280;">PDF, DOCX up to 5MB</div>
-          </div>
-
-          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px;">2. Personal Details</h3>
-          <div class="grid-2 mb-16">
-            <div class="form-group">
-              <label>Full Name *</label>
-              <input type="text" class="input" required>
-            </div>
-            <div class="form-group">
-              <label>Email Address *</label>
-              <input type="email" class="input" required>
-            </div>
-          </div>
-          <div class="grid-2 mb-32">
-            <div class="form-group">
-              <label>Phone Number *</label>
-              <input type="tel" class="input" required>
-            </div>
-            <div class="form-group">
-              <label>LinkedIn Profile URL</label>
-              <input type="url" class="input">
-            </div>
-          </div>
-
-          <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px;">3. Screening Questions</h3>
-          <div class="form-group mb-16">
-            <label>What is your expected CTC? (LPA) *</label>
-            <input type="number" class="input" required>
-          </div>
-          <div class="form-group mb-32">
-            <label>Notice Period (in days) *</label>
-            <select class="input" style="padding: 10px 14px; background-color: white;" required>
-              <option value="">Select...</option>
-              <option>Immediate / Serving Notice</option>
-              <option>15 Days</option>
-              <option>30 Days</option>
-              <option>60 Days</option>
-              <option>90 Days</option>
-            </select>
-          </div>
-
-          <div style="padding: 16px; background: #f3f4f6; border-radius: 8px; font-size: 13px; color: #4b5563; margin-bottom: 24px;">
-            By submitting your application, you agree to allow TechCorp to store your personal data for recruitment purposes and receive updates via Email or WhatsApp.
-          </div>
-
-          <button type="submit" class="btn btn-primary w-full btn-lg" style="background: #2563eb; border: none; box-shadow: none;">Submit Application</button>
-        </div>
-        
-        <!-- Success State (hidden by default) -->
-        <div id="success-state" style="display: none; text-align: center; padding: 40px 20px;">
-          <div style="font-size: 64px; margin-bottom: 16px;">🎉</div>
-          <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 8px;">Application Submitted!</h2>
-          <p style="color: #4b5563; margin-bottom: 24px;">Thank you for applying. We've received your application and our AI hiring assistant will review your profile shortly. Keep an eye on your email/WhatsApp for the next steps.</p>
-          <button type="button" class="btn btn-secondary w-full" onclick="window.location.href='careers.html'" style="color: #111827; border-color: #d1d5db;">Return to Careers Page</button>
-        </div>
-      </form>
     </div>
-  </main>
-  
-  <footer style="background: white; border-top: 1px solid #e5e7eb; padding: 40px; text-align: center; color: #6b7280; font-size: 14px;">
-    Powered by <a href="#" style="color: #2563eb; font-weight: 600;">AI Talent Lab</a>
-  </footer>
+  </div>
 
-  <script>
-    function showSuccess() {
-      document.getElementById('form-content').style.display = 'none';
-      document.getElementById('success-state').style.display = 'block';
-    }
-  </script>
+  <div class="apply-input-wrap">
+    <div class="chat-input-row">
+      <textarea id="applyInput" placeholder="Type your reply..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendApply();}"></textarea>
+      <button class="chat-send" onclick="sendApply()">
+        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+      </button>
+    </div>
+    <div style="text-align:center;font-size:11px;color:var(--text-tertiary);margin-top:8px;">Your responses are kept confidential. CTC visible to HR only.</div>
+  </div>
+</div>
+
+<script>
+let applyStep = 0;
+const flow = [
+  { q: "Great! Let's get started 🎉<br><br>We have you listed as <strong>Senior Developer @ TechCorp Pvt Ltd</strong> — is that still your current role?", btns: ["Yes, that's correct", "No, let me update"] },
+  { q: "How many years of total professional experience do you have?<br>And how many are directly relevant to backend development?" },
+  { q: "A couple of questions about compensation — this helps ensure the role is the right fit:<br><br>1. What is your current annual CTC?<br>2. What are you expecting for this role?" },
+  { q: "What is your notice period at your current company?", btns: ["Immediate", "15 days", "30 days", "60 days", "90+ days"] },
+  { q: "Almost done! Please share your latest resume.<br><br><button class='btn btn-secondary btn-sm' onclick=\"document.getElementById('resumeUpload').click()\">📎 Upload Resume (PDF/DOCX)</button><input type='file' id='resumeUpload' style='display:none' onchange='resumeUploaded(this)'>" },
+  { q: "One last question — are you comfortable working from our Bangalore office 3 days per week?", btns: ["Yes, that works", "No, prefer fully remote"] },
+];
+
+function addMsg(role, html) {
+  const c = document.getElementById('applyMessages');
+  const d = document.createElement('div');
+  d.className = `msg ${role === 'ai' ? 'msg-ai' : 'msg-user'}`;
+  d.innerHTML = role === 'ai'
+    ? `<div class="msg-avatar ai">🤖</div><div class="msg-bubble">${html}</div>`
+    : `<div class="msg-bubble">${html}</div><div class="msg-avatar user">RK</div>`;
+  c.appendChild(d);
+  c.scrollTop = c.scrollHeight;
+}
+
+function quickReply(val) {
+  addMsg('user', val);
+  if (val === "No, thanks") {
+    setTimeout(() => addMsg('ai', "No problem at all! We appreciate you letting us know. Your profile will be noted for future opportunities. Best of luck! 🍀"), 600);
+    document.querySelector('.apply-input-wrap').style.opacity = '.4';
+    document.querySelector('.apply-input-wrap').style.pointerEvents = 'none';
+    return;
+  }
+  setTimeout(() => nextStep(), 700);
+}
+
+function sendApply() {
+  const inp = document.getElementById('applyInput');
+  const val = inp.value.trim();
+  if (!val) return;
+  addMsg('user', val);
+  inp.value = '';
+  setTimeout(() => nextStep(), 700);
+}
+
+function nextStep() {
+  if (applyStep >= flow.length) {
+    showComplete();
+    return;
+  }
+  const step = flow[applyStep++];
+  let html = step.q;
+  if (step.btns) {
+    html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
+      step.btns.map(b => `<button class="btn btn-secondary btn-sm" onclick="quickReply('${b}')">${b}</button>`).join('') +
+      '</div>';
+  }
+  addMsg('ai', html);
+}
+
+function resumeUploaded(inp) {
+  if (inp.files[0]) {
+    addMsg('user', `📄 ${inp.files[0].name}`);
+    setTimeout(() => {
+      addMsg('ai', "✅ Resume received! Thank you.");
+      setTimeout(() => nextStep(), 600);
+    }, 700);
+  }
+}
+
+function showComplete() {
+  setTimeout(() => {
+    addMsg('ai', `That's everything! 🎉<br><br>
+Your application for <strong>Senior Python Developer at TechCorp</strong> has been submitted.<br><br>
+Here's what to expect next:<br>
+• Our team will review your profile shortly<br>
+• TechCorp typically conducts <strong>3 interview rounds</strong>: Technical → Manager → HR<br>
+• If shortlisted, you'll receive an email with next steps<br><br>
+Good luck! 🍀`);
+    document.querySelector('.apply-input-wrap').style.opacity = '.4';
+    document.querySelector('.apply-input-wrap').style.pointerEvents = 'none';
+  }, 500);
+}
+
+function toggleJD() {
+  const p = document.getElementById('jdPanel');
+  const t = document.getElementById('jdToggle');
+  if (p.style.display === 'none') { p.style.display = 'block'; t.textContent = 'Collapse ▲'; }
+  else { p.style.display = 'none'; t.textContent = 'View Full JD ▾'; }
+}
+</script>
 </body>
 </html>
