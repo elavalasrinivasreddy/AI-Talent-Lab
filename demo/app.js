@@ -333,6 +333,39 @@ Does this look right?`);
     setTimeout(() => this.showFinalJD(), 900);
   },
 
+  showBiasCheck() {
+    const cardHtml = `
+<div class="chat-card bias-card" style="margin-left: 40px;">
+  <div class="chat-card-header">
+    <span class="icon">🔍</span>
+    <span class="chat-card-title">Bias Check — 2 suggestions</span>
+  </div>
+  <p class="chat-card-sub">AI found potentially exclusionary phrases in your JD:</p>
+  <div style="display:flex;flex-direction:column;gap:8px;margin:12px 0;">
+    <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <div>
+        <span style="font-size:12.5px;color:var(--danger);">"rockstar developer"</span>
+        <span style="color:var(--text-tertiary);font-size:12px;margin:0 6px;">→</span>
+        <span style="font-size:12.5px;color:var(--success);">"exceptional developer"</span>
+      </div>
+      <button class="btn btn-sm" style="background:var(--success-dim);color:var(--success);border:1px solid var(--success);border-radius:var(--radius-sm);padding:3px 10px;font-size:11.5px;font-weight:700;" onclick="this.textContent='✅ Fixed'">Fix</button>
+    </div>
+    <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <div>
+        <span style="font-size:12.5px;color:var(--danger);">"fast-paced environment"</span>
+        <span style="color:var(--text-tertiary);font-size:12px;margin:0 6px;">→</span>
+        <span style="font-size:12.5px;color:var(--success);">"iterative delivery"</span>
+      </div>
+      <button class="btn btn-sm" style="background:var(--success-dim);color:var(--success);border:1px solid var(--success);border-radius:var(--radius-sm);padding:3px 10px;font-size:11.5px;font-weight:700;" onclick="this.textContent='✅ Fixed'">Fix</button>
+    </div>
+  </div>
+  <div class="card-actions">
+    <button class="btn btn-ghost btn-sm" onclick="this.closest('.chat-card').style.opacity='.5';this.closest('.chat-card').style.pointerEvents='none';">Dismiss</button>
+  </div>
+</div>`;
+    this.addChatMessage('', cardHtml, 'card');
+  },
+
   showFinalJD() {
     const cardHtml = `
 <div class="jd-final-card" style="margin-left: 40px;">
@@ -363,6 +396,7 @@ Does this look right?`);
 </div>`;
     this.addChatMessage('', cardHtml, 'card');
     this.updateStageIndicator(5);
+    setTimeout(() => this.showBiasCheck(), 800);
     const saveBtn = document.getElementById('chatSaveBtn');
     if (saveBtn) saveBtn.disabled = false;
   },

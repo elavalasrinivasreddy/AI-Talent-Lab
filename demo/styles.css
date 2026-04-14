@@ -1508,3 +1508,161 @@ label {
 .toast.show { transform: translateY(0); opacity: 1; }
 .toast-success { border-left: 3px solid var(--success); }
 .toast-icon { font-size: 16px; }
+
+/* ═══════════════════════════════════════════════════════════
+   UI POLISH v2.1 — 4 targeted improvements
+   ═══════════════════════════════════════════════════════════ */
+
+/* 1. Kanban columns — colored top borders per stage */
+.kanban-col[data-stage="sourced"]   { border-top: 3px solid var(--stage-sourced); }
+.kanban-col[data-stage="emailed"]   { border-top: 3px solid var(--stage-emailed); }
+.kanban-col[data-stage="applied"]   { border-top: 3px solid var(--stage-applied); }
+.kanban-col[data-stage="screening"] { border-top: 3px solid var(--stage-screening); }
+.kanban-col[data-stage="interview"] { border-top: 3px solid var(--stage-interview); }
+.kanban-col[data-stage="selected"]  { border-top: 3px solid var(--stage-selected); }
+.kanban-col[data-stage="rejected"]  { border-top: 3px solid var(--stage-rejected); }
+
+/* 2. JD variant cards — color-coded accent headers */
+.jd-variant-card:nth-child(1) { border-top: 2px solid var(--stage-applied); }
+.jd-variant-card:nth-child(2) { border-top: 2px solid var(--stage-selected); }
+.jd-variant-card:nth-child(3) { border-top: 2px solid var(--accent); }
+
+.jd-variant-card:nth-child(1) .jvc-label { color: var(--stage-applied); }
+.jd-variant-card:nth-child(2) .jvc-label { color: var(--stage-selected); }
+.jd-variant-card:nth-child(3) .jvc-label { color: var(--accent-light); }
+
+/* 3. Stat cards — subtle sparkline-style accent bar at bottom */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  opacity: 0.4;
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: statBarReveal 0.8s ease forwards;
+}
+
+.stat-card:nth-child(1)::after { animation-delay: 0.1s; }
+.stat-card:nth-child(2)::after { animation-delay: 0.2s; background: var(--info); }
+.stat-card:nth-child(3)::after { animation-delay: 0.3s; background: var(--warning); }
+.stat-card:nth-child(4)::after { animation-delay: 0.4s; background: var(--success); }
+
+@keyframes statBarReveal {
+  to { transform: scaleX(1); opacity: 0.6; }
+}
+
+/* Stat card number — count-up animation feel with slight scale */
+.stat-value {
+  animation: statValueIn 0.5s ease both;
+}
+
+@keyframes statValueIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 4. ATS score circle — proper arc style */
+.score-arc-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
+.score-arc-wrap svg {
+  transform: rotate(-90deg);
+}
+
+.score-arc-bg {
+  fill: none;
+  stroke: var(--bg-tertiary);
+  stroke-width: 5;
+}
+
+.score-arc-fill {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 176;
+  stroke-dashoffset: 176;
+  transition: stroke-dashoffset 1s ease 0.3s;
+}
+
+.score-arc-fill.score-high { stroke: var(--success); }
+.score-arc-fill.score-med  { stroke: var(--warning); }
+.score-arc-fill.score-low  { stroke: var(--danger); }
+
+.score-arc-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+/* Bias check card special treatment */
+.bias-card {
+  border-color: var(--warning);
+  background: linear-gradient(135deg, var(--bg-secondary), rgba(245,158,11,0.05));
+}
+
+.bias-card .chat-card-header .icon { font-size: 16px; }
+
+/* Enhanced chat card hover */
+.chat-card {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.chat-card:hover {
+  border-color: var(--border-accent);
+  box-shadow: 0 0 0 1px var(--accent-dim);
+}
+
+/* Kanban card improved hover */
+.kanban-card {
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+
+.kanban-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 0 1px var(--border-accent);
+  border-color: var(--accent);
+}
+
+/* Tab active underline polish */
+.tabs .tab.active {
+  position: relative;
+}
+
+.tabs .tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+}
+
+/* Smooth page transitions */
+.page {
+  animation: pageIn 0.2s ease both;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

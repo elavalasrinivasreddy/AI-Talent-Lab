@@ -1,103 +1,727 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Careers at TechCorp</title>
-  <link rel="stylesheet" href="styles.css">
-  <style>
-    /* Specific overrides for Carrera page branding matching settings */
-    .public-page { background: #f9fafb; color: #111827; }
-    .public-header { background: #ffffff; border-bottom: 1px solid #e5e7eb; padding: 16px 40px; }
-    .job-card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; transition: all 0.2s; cursor: pointer; }
-    .job-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-color: #667eea; }
-    .hero { background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%); color: white; padding: 80px 40px; text-align: center; }
-  </style>
-</head>
-<body class="public-page">
-  
-  <header class="public-header">
-    <div class="flex items-center gap-12 flex-1">
-      <div style="width: 32px; height: 32px; background: #2563eb; color: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold;">T</div>
-      <h1 style="font-size: 18px; font-weight: 700; margin: 0;">TechCorp</h1>
-    </div>
-    <div class="flex gap-16 text-sm fw-600">
-      <a href="#" style="color: #4b5563;">About Us</a>
-      <a href="#" style="color: #4b5563;">Benefits</a>
-      <a href="#" style="color: #2563eb;">Open Roles</a>
-    </div>
-  </header>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Careers at TechCorp — AI Talent Lab</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+/* ── Careers page specific ─────────────────────────────── */
+.careers-hero {
+  background: linear-gradient(135deg, #0d0d1f 0%, #12122b 50%, #16163a 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 0;
+}
 
-  <div class="hero">
-    <h1 style="font-size: 48px; font-weight: 800; margin-bottom: 16px;">Build the future of AI with us.</h1>
-    <p style="font-size: 18px; opacity: 0.9; max-width: 600px; margin: 0 auto;">We are a fast-growing technology company building next-generation AI tools on a mission to empower everyone.</p>
+.careers-hero-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 48px 24px 40px;
+}
+
+.careers-org-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.careers-org-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  flex-shrink: 0;
+}
+
+.careers-org-name {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.careers-org-meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.careers-org-meta a {
+  color: var(--accent-light);
+  font-weight: 500;
+}
+
+.careers-tagline {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  max-width: 600px;
+  margin-bottom: 20px;
+}
+
+.careers-culture-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.culture-chip {
+  background: var(--accent-dim);
+  color: var(--accent-light);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-full);
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── Main content ─────────────────────────────────────── */
+.careers-main {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+.careers-filters-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.careers-search {
+  flex: 1;
+  min-width: 200px;
+  height: 40px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0 14px 0 36px;
+  color: var(--text-primary);
+  font-size: 13.5px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%235c5c80' stroke-width='2' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 12px center;
+}
+.careers-search:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.careers-search::placeholder { color: var(--text-tertiary); }
+
+.careers-select {
+  height: 40px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0 32px 0 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%235c5c80' stroke-width='2' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.dept-section { margin-bottom: 36px; }
+
+.dept-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.job-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.job-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-dim), var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.job-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.job-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.job-badge {
+  background: var(--accent-dim);
+  color: var(--accent-light);
+  border: 1px solid var(--border-accent);
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.job-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.job-skills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.job-skill {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px 9px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.job-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+}
+
+.job-posted {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.job-apply-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.job-apply-btn:hover {
+  background: var(--accent-light);
+  box-shadow: var(--accent-glow);
+}
+
+/* ── Position detail overlay ─────────────────────────── */
+.pos-detail-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(8,8,18,0.85);
+  backdrop-filter: blur(4px);
+  overflow-y: auto;
+  padding: 40px 16px;
+}
+
+.pos-detail-overlay.open { display: block; }
+
+.pos-detail-panel {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+.pos-detail-header {
+  padding: 28px 32px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.pos-detail-title { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 8px; }
+
+.pos-detail-meta {
+  display: flex;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.pos-detail-close {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.pos-detail-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.pos-detail-body { padding: 28px 32px; }
+
+.jd-section { margin-bottom: 24px; }
+.jd-section h4 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-light);
+  margin-bottom: 10px;
+}
+.jd-section p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
+.jd-section ul { padding-left: 16px; }
+.jd-section ul li { font-size: 14px; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.6; }
+.jd-section ul li::marker { color: var(--accent); }
+
+.pos-detail-footer {
+  padding: 20px 32px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-primary);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* ── Footer ─────────────────────────────────────────── */
+.careers-footer {
+  border-top: 1px solid var(--border);
+  padding: 24px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  background: var(--bg-primary);
+}
+
+.careers-footer a { color: var(--accent-light); font-weight: 600; }
+
+/* ── Benefits strip ─────────────────────────────────── */
+.benefits-strip {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.benefit-item .bi-icon {
+  font-size: 15px;
+}
+</style>
+</head>
+<body class="public-body">
+
+<!-- Header -->
+<header class="public-header">
+  <div class="public-brand">
+    <div class="public-brand-logo">T</div>
+    <div>
+      <div class="public-brand-name">TechCorp</div>
+      <div class="public-poweredby">Powered by AI Talent Lab</div>
+    </div>
+  </div>
+  <nav style="display:flex;gap:20px;align-items:center;">
+    <a href="#about" style="font-size:13px;font-weight:600;color:var(--text-secondary);">About Us</a>
+    <a href="#jobs" style="font-size:13px;font-weight:700;color:var(--accent-light);">Open Roles ↓</a>
+  </nav>
+</header>
+
+<!-- Hero -->
+<div class="careers-hero">
+  <div class="careers-hero-inner">
+    <div class="careers-org-row">
+      <div class="careers-org-logo">TC</div>
+      <div>
+        <div class="careers-org-name">TechCorp</div>
+        <div class="careers-org-meta">
+          <span>🌐 techcorp.com</span>
+          <span>📍 Bangalore, India</span>
+          <span>👥 SMB (51–200 people)</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="about" class="careers-tagline">
+      We are a fast-growing technology company building next-generation AI tools, empowering businesses through intelligent automation. We believe great software starts with great teams — and we're building both.
+    </div>
+
+    <div class="careers-culture-row">
+      <span class="culture-chip">🚀 Innovation-first</span>
+      <span class="culture-chip">🏠 Remote-friendly</span>
+      <span class="culture-chip">🤝 Collaborative</span>
+      <span class="culture-chip">🌱 Learning culture</span>
+      <span class="culture-chip">⚡ High ownership</span>
+    </div>
   </div>
 
-  <main style="max-width: 900px; margin: 0 auto; padding: 60px 24px; flex: 1; width: 100%;">
-    
-    <div class="flex justify-between items-center mb-32">
-      <h2 style="font-size: 24px; font-weight: 700;">Open Positions (12)</h2>
-      <div class="flex gap-12">
-        <select class="select" style="background-color: white; border-color: #e5e7eb; color: #111827;">
-          <option>All Departments</option>
-          <option>Engineering</option>
-          <option>Product</option>
-        </select>
-        <select class="select" style="background-color: white; border-color: #e5e7eb; color: #111827;">
-          <option>All Locations</option>
-          <option>Bangalore</option>
-          <option>Remote</option>
-        </select>
+  <!-- Benefits strip -->
+  <div class="benefits-strip">
+    <div class="benefit-item"><span class="bi-icon">🏥</span> Health Insurance</div>
+    <div class="benefit-item"><span class="bi-icon">📈</span> ESOPs</div>
+    <div class="benefit-item"><span class="bi-icon">📚</span> Learning Budget (₹50k/yr)</div>
+    <div class="benefit-item"><span class="bi-icon">🏖️</span> Flexible PTO</div>
+    <div class="benefit-item"><span class="bi-icon">💻</span> MacBook + Setup Allowance</div>
+  </div>
+</div>
+
+<!-- Jobs list -->
+<div class="careers-main" id="jobs">
+  <div class="careers-filters-row">
+    <input type="text" class="careers-search" placeholder="Search roles...">
+    <select class="careers-select">
+      <option>All Departments</option>
+      <option>Engineering</option>
+      <option>Product</option>
+      <option>Marketing</option>
+    </select>
+    <select class="careers-select">
+      <option>All Locations</option>
+      <option>Bangalore</option>
+      <option>Remote</option>
+      <option>Hyderabad</option>
+    </select>
+    <select class="careers-select">
+      <option>All Types</option>
+      <option>Full-time</option>
+      <option>Contract</option>
+    </select>
+  </div>
+
+  <div style="font-size:14px;color:var(--text-secondary);margin-bottom:28px;">
+    <strong style="color:var(--text-primary);">8 open positions</strong> across 3 departments
+  </div>
+
+  <!-- Engineering -->
+  <div class="dept-section">
+    <div class="dept-label">Engineering</div>
+
+    <a class="job-card" onclick="openPosition('sr-python')">
+      <div class="job-card-top">
+        <div class="job-title">Senior Python Developer</div>
+        <span class="job-badge">Full-time</span>
+      </div>
+      <div class="job-meta">
+        <span>📍 Bangalore / Hybrid</span>
+        <span>💼 5–8 years exp</span>
+        <span>🧪 Engineering</span>
+      </div>
+      <div class="job-skills">
+        <span class="job-skill">Python</span>
+        <span class="job-skill">FastAPI</span>
+        <span class="job-skill">PostgreSQL</span>
+        <span class="job-skill">AWS</span>
+        <span class="job-skill">Docker</span>
+      </div>
+      <div class="job-footer">
+        <span class="job-posted">Posted 3 days ago</span>
+        <button class="job-apply-btn" onclick="event.stopPropagation();window.location.href='apply.html'">Apply Now →</button>
+      </div>
+    </a>
+
+    <a class="job-card" onclick="openPosition('ml-engineer')">
+      <div class="job-card-top">
+        <div class="job-title">Machine Learning Engineer</div>
+        <span class="job-badge">Full-time</span>
+      </div>
+      <div class="job-meta">
+        <span>📍 Remote</span>
+        <span>💼 3–6 years exp</span>
+        <span>🧪 Engineering</span>
+      </div>
+      <div class="job-skills">
+        <span class="job-skill">Python</span>
+        <span class="job-skill">TensorFlow</span>
+        <span class="job-skill">PyTorch</span>
+        <span class="job-skill">MLOps</span>
+        <span class="job-skill">LLMs</span>
+      </div>
+      <div class="job-footer">
+        <span class="job-posted">Posted 1 week ago</span>
+        <button class="job-apply-btn" onclick="event.stopPropagation();window.location.href='apply.html'">Apply Now →</button>
+      </div>
+    </a>
+
+    <a class="job-card" onclick="openPosition('devops')">
+      <div class="job-card-top">
+        <div class="job-title">DevOps / Platform Engineer</div>
+        <span class="job-badge">Full-time</span>
+      </div>
+      <div class="job-meta">
+        <span>📍 Bangalore / Hybrid</span>
+        <span>💼 4–7 years exp</span>
+        <span>🧪 Engineering</span>
+      </div>
+      <div class="job-skills">
+        <span class="job-skill">Kubernetes</span>
+        <span class="job-skill">Terraform</span>
+        <span class="job-skill">AWS</span>
+        <span class="job-skill">CI/CD</span>
+      </div>
+      <div class="job-footer">
+        <span class="job-posted">Posted 2 weeks ago</span>
+        <button class="job-apply-btn" onclick="event.stopPropagation();window.location.href='apply.html'">Apply Now →</button>
+      </div>
+    </a>
+  </div>
+
+  <!-- Product -->
+  <div class="dept-section">
+    <div class="dept-label">Product</div>
+
+    <a class="job-card" onclick="openPosition('sr-pm')">
+      <div class="job-card-top">
+        <div class="job-title">Senior Product Manager</div>
+        <span class="job-badge">Full-time</span>
+      </div>
+      <div class="job-meta">
+        <span>📍 Bangalore</span>
+        <span>💼 6–9 years exp</span>
+        <span>📦 Product</span>
+      </div>
+      <div class="job-skills">
+        <span class="job-skill">B2B SaaS</span>
+        <span class="job-skill">Agile</span>
+        <span class="job-skill">Data Analytics</span>
+        <span class="job-skill">Stakeholder Mgmt</span>
+      </div>
+      <div class="job-footer">
+        <span class="job-posted">Posted 2 days ago</span>
+        <button class="job-apply-btn" onclick="event.stopPropagation();window.location.href='apply.html'">Apply Now →</button>
+      </div>
+    </a>
+
+    <a class="job-card" onclick="openPosition('ux-designer')">
+      <div class="job-card-top">
+        <div class="job-title">Product Designer (UX/UI)</div>
+        <span class="job-badge">Full-time</span>
+      </div>
+      <div class="job-meta">
+        <span>📍 Remote</span>
+        <span>💼 3–6 years exp</span>
+        <span>📦 Product</span>
+      </div>
+      <div class="job-skills">
+        <span class="job-skill">Figma</span>
+        <span class="job-skill">Design Systems</span>
+        <span class="job-skill">User Research</span>
+      </div>
+      <div class="job-footer">
+        <span class="job-posted">Posted 5 days ago</span>
+        <button class="job-apply-btn" onclick="event.stopPropagation();window.location.href='apply.html'">Apply Now →</button>
+      </div>
+    </a>
+  </div>
+
+  <!-- Marketing -->
+  <div class="dept-section">
+    <div class="dept-label">Marketing & Growth</div>
+
+    <a class="job-card" onclick="openPosition('growth')">
+      <div class="job-card-top">
+        <div class="job-title">Growth Marketing Manager</div>
+        <span class="job-badge">Full-time</span>
+      </div>
+      <div class="job-meta">
+        <span>📍 Bangalore / Remote</span>
+        <span>💼 4–7 years exp</span>
+        <span>📣 Marketing</span>
+      </div>
+      <div class="job-skills">
+        <span class="job-skill">PLG</span>
+        <span class="job-skill">SEO / SEM</span>
+        <span class="job-skill">Performance Mktg</span>
+        <span class="job-skill">Analytics</span>
+      </div>
+      <div class="job-footer">
+        <span class="job-posted">Posted 1 week ago</span>
+        <button class="job-apply-btn" onclick="event.stopPropagation();window.location.href='apply.html'">Apply Now →</button>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- Position Detail Overlay -->
+<div class="pos-detail-overlay" id="posDetailOverlay" onclick="if(event.target===this)closePosition()">
+  <div class="pos-detail-panel">
+    <div class="pos-detail-header">
+      <div>
+        <div class="pos-detail-title" id="pdTitle">Senior Python Developer</div>
+        <div class="pos-detail-meta" id="pdMeta">
+          <span>TechCorp</span>
+          <span>📍 Bangalore / Hybrid</span>
+          <span>Full-time</span>
+          <span>5–8 years exp</span>
+        </div>
+      </div>
+      <button class="pos-detail-close" onclick="closePosition()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="pos-detail-body" id="pdBody">
+      <div class="jd-section">
+        <h4>About TechCorp</h4>
+        <p>We are a fast-growing technology company building next-generation AI tools. Our mission is to empower businesses through intelligent automation and make enterprise-grade AI accessible to every company.</p>
+      </div>
+      <div class="jd-section">
+        <h4>Role Overview</h4>
+        <p>We're looking for a Senior Python Developer to join our Engineering team. You'll architect and build our core backend services, drive technical decisions, and help shape the future of our AI platform. This is a high-impact role — you'll be working directly with the founding team.</p>
+      </div>
+      <div class="jd-section">
+        <h4>What You'll Do</h4>
+        <ul>
+          <li>Design and build scalable backend APIs using FastAPI and Python</li>
+          <li>Architect database schemas for performance and reliability (PostgreSQL)</li>
+          <li>Collaborate with the AI team to integrate LLM-based features</li>
+          <li>Set up and maintain cloud infrastructure on AWS</li>
+          <li>Mentor junior engineers and drive code quality through reviews</li>
+        </ul>
+      </div>
+      <div class="jd-section">
+        <h4>Requirements</h4>
+        <ul>
+          <li>5–8 years of Python engineering experience in production environments</li>
+          <li>Deep expertise in FastAPI, async programming, and REST API design</li>
+          <li>Strong PostgreSQL experience — schema design, indexing, performance</li>
+          <li>Experience with Docker, container orchestration, CI/CD pipelines</li>
+          <li>AWS proficiency (ECS, RDS, S3, CloudWatch)</li>
+          <li>GraphQL or gRPC exposure is a strong plus</li>
+        </ul>
+      </div>
+      <div class="jd-section">
+        <h4>Benefits</h4>
+        <ul>
+          <li>Comprehensive health insurance (self + family)</li>
+          <li>ESOPs — meaningful equity stake from day one</li>
+          <li>Annual learning budget of ₹50,000</li>
+          <li>MacBook Pro + ergonomic home office setup allowance</li>
+          <li>Flexible working hours — async-first culture</li>
+        </ul>
       </div>
     </div>
 
-    <div class="job-list flex flex-col gap-16">
-      
-      <!-- Engineering -->
-      <h3 style="font-size: 16px; font-weight: 600; color: #6b7280; margin-top: 16px; margin-bottom: 8px;">Engineering</h3>
-      
-      <div class="job-card" onclick="window.location.href='apply.html'">
-        <div class="flex justify-between items-start mb-12">
-          <h2 style="font-size: 18px; font-weight: 600; margin: 0;">Senior Python Developer</h2>
-          <span style="font-size: 12px; font-weight: 600; padding: 4px 10px; background: #eff6ff; color: #2563eb; border-radius: 4px;">Full-time</span>
-        </div>
-        <div class="flex items-center gap-16 text-sm" style="color: #6b7280;">
-          <span class="flex items-center gap-4">📍 Bangalore / Hybrid</span>
-          <span class="flex items-center gap-4">💼 5+ years exp</span>
-        </div>
-      </div>
-
-      <div class="job-card" onclick="window.location.href='apply.html'">
-        <div class="flex justify-between items-start mb-12">
-          <h2 style="font-size: 18px; font-weight: 600; margin: 0;">Machine Learning Engineer</h2>
-          <span style="font-size: 12px; font-weight: 600; padding: 4px 10px; background: #eff6ff; color: #2563eb; border-radius: 4px;">Full-time</span>
-        </div>
-        <div class="flex items-center gap-16 text-sm" style="color: #6b7280;">
-          <span class="flex items-center gap-4">📍 Remote</span>
-          <span class="flex items-center gap-4">💼 3+ years exp</span>
-        </div>
-      </div>
-
-      <!-- Product -->
-      <h3 style="font-size: 16px; font-weight: 600; color: #6b7280; margin-top: 32px; margin-bottom: 8px;">Product</h3>
-      
-      <div class="job-card" onclick="window.location.href='apply.html'">
-        <div class="flex justify-between items-start mb-12">
-          <h2 style="font-size: 18px; font-weight: 600; margin: 0;">Senior Product Manager</h2>
-          <span style="font-size: 12px; font-weight: 600; padding: 4px 10px; background: #eff6ff; color: #2563eb; border-radius: 4px;">Full-time</span>
-        </div>
-        <div class="flex items-center gap-16 text-sm" style="color: #6b7280;">
-          <span class="flex items-center gap-4">📍 Bangalore</span>
-          <span class="flex items-center gap-4">💼 6+ years exp</span>
-        </div>
-      </div>
-
+    <div class="pos-detail-footer">
+      <button class="btn btn-ghost" onclick="closePosition()">← Back to Jobs</button>
+      <button class="btn btn-primary" onclick="window.location.href='apply.html'">Apply for this Role →</button>
     </div>
-  </main>
-  
-  <footer style="background: white; border-top: 1px solid #e5e7eb; padding: 40px; text-align: center; color: #6b7280; font-size: 14px;">
-    Powered by <a href="#" style="color: #2563eb; font-weight: 600;">AI Talent Lab</a>
-  </footer>
+  </div>
+</div>
 
+<!-- Footer -->
+<footer class="careers-footer">
+  Powered by <a href="#">AI Talent Lab</a> · 
+  <a href="#">Privacy Policy</a> · 
+  <a href="mailto:careers@techcorp.com">careers@techcorp.com</a>
+</footer>
+
+<script>
+const positions = {
+  'sr-python': {
+    title: 'Senior Python Developer',
+    meta: 'TechCorp · 📍 Bangalore / Hybrid · Full-time · 5–8 years exp'
+  },
+  'ml-engineer': {
+    title: 'Machine Learning Engineer',
+    meta: 'TechCorp · 📍 Remote · Full-time · 3–6 years exp'
+  },
+  'devops': {
+    title: 'DevOps / Platform Engineer',
+    meta: 'TechCorp · 📍 Bangalore / Hybrid · Full-time · 4–7 years exp'
+  },
+  'sr-pm': {
+    title: 'Senior Product Manager',
+    meta: 'TechCorp · 📍 Bangalore · Full-time · 6–9 years exp'
+  },
+  'ux-designer': {
+    title: 'Product Designer (UX/UI)',
+    meta: 'TechCorp · 📍 Remote · Full-time · 3–6 years exp'
+  },
+  'growth': {
+    title: 'Growth Marketing Manager',
+    meta: 'TechCorp · 📍 Bangalore / Remote · Full-time · 4–7 years exp'
+  }
+};
+
+function openPosition(id) {
+  const pos = positions[id];
+  if (!pos) return;
+  document.getElementById('pdTitle').textContent = pos.title;
+  document.getElementById('pdMeta').innerHTML = pos.meta.split(' · ').map(s => `<span>${s}</span>`).join('');
+  document.getElementById('posDetailOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePosition() {
+  document.getElementById('posDetailOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// Simple search filter
+document.querySelector('.careers-search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.job-card').forEach(card => {
+    const text = card.textContent.toLowerCase();
+    card.style.display = text.includes(q) ? '' : 'none';
+  });
+});
+</script>
 </body>
 </html>
