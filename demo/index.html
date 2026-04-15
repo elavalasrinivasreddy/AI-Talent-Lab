@@ -1252,11 +1252,22 @@
     </div>
     <div style="background:var(--bg-tertiary);border-radius:var(--radius-md);padding:12px;font-size:12.5px;margin-bottom:16px;">
       <div class="flex items-center gap-8 mb-6"><input type="checkbox" checked> <span>Send interview invitation to candidate</span></div>
-      <div class="flex items-center gap-8 mb-6"><input type="checkbox" checked> <span>Send feedba<!-- Toast Notification (was missing) -->
+      <div class="flex items-center gap-8 mb-6"><input type="checkbox" checked> <span>Send feedback magic link to panel members</span></div>
+      <div class="flex items-center gap-8"><input type="checkbox" checked> <span>Auto-send reminder 24h before interview</span></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="App.closeModal('scheduleModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="App.closeModal('scheduleModal');App.showToast('Interview scheduled! Invites sent to candidate and panel.','📅')">Schedule Interview</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification -->
 <div id="toast" style="position:fixed;bottom:24px;right:24px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-lg);z-index:9999;transform:translateY(80px);opacity:0;transition:transform 0.3s ease,opacity 0.3s ease;pointer-events:none;">
   <span class="toast-icon" style="font-size:18px;">ℹ️</span>
   <span class="toast-msg" style="font-size:13.5px;font-weight:500;color:var(--text-primary);">Notification</span>
 </div>
-<style>
-#toast.show { transform: translateY(0) !important; opacity: 1 !important; pointer-events: auto !important; }
-</style>
+
+<script src="app.js"></script>
+</body>
+</html>
