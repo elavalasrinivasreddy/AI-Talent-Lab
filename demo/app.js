@@ -58,6 +58,7 @@ const App = {
     }
     if (page === 'candidate') {
       this.switchCandidateTab(opts.tab || 'skills');
+      setTimeout(() => this.animateScoreArcs(), 100);
     }
     if (page === 'settings') {
       this.switchSettingsTab(opts.tab || 'profile');
@@ -463,3 +464,15 @@ Does this look right?`);
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());
+
+  // Score arc animation — called when candidate page opens
+  animateScoreArcs() {
+    document.querySelectorAll('.score-arc-fill').forEach(arc => {
+      const offset = arc.style.strokeDashoffset || '0';
+      arc.style.strokeDashoffset = '176';
+      requestAnimationFrame(() => {
+        arc.style.transition = 'stroke-dashoffset 1s ease 0.4s';
+        arc.style.strokeDashoffset = offset;
+      });
+    });
+  },

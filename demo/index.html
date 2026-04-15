@@ -621,7 +621,15 @@
               </div>
             </div>
             <div class="cand-score-block">
-              <div class="score-circle high">92%</div>
+              <div class="score-arc-wrap">
+                <svg width="72" height="72" viewBox="0 0 72 72">
+                  <circle class="score-arc-bg" cx="36" cy="36" r="28"/>
+                  <circle class="score-arc-fill score-high" cx="36" cy="36" r="28"
+                    style="stroke-dashoffset: calc(176 - 176 * 0.92)"
+                    onload="this.style.strokeDashoffset='calc(176 - 176 * 0.92)'"/>
+                </svg>
+                <div class="score-arc-label" style="color:var(--success);">92%</div>
+              </div>
               <div>
                 <div class="fw-700 text-sm">ATS Score</div>
                 <div class="cand-score-label">Strong Match ✅</div>
