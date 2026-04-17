@@ -461,9 +461,6 @@ Does this look right?`);
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 3500);
   },
-};
-
-document.addEventListener('DOMContentLoaded', () => App.init());
 
   // Score arc animation — called when candidate page opens
   animateScoreArcs() {
@@ -475,4 +472,7 @@ document.addEventListener('DOMContentLoaded', () => App.init());
         arc.style.strokeDashoffset = offset;
       });
     });
-  },
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => App.init());
