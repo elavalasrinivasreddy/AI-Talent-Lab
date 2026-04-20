@@ -1,1 +1,1 @@
-# services package
+"""Business logic layer — no HTTP, no SQL"""

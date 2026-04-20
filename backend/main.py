@@ -1,68 +1,81 @@
 """
-main.py – FastAPI application entry point
+main.py – FastAPI app factory.
+Registers all middleware, auth router, startup/shutdown events.
+Health check at /api/v1/health, root at /.
 """
-import json,os
-import sys
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from backend.config import FRONTEND_URL, DEBUG
-from backend.routers import chat, jd, auth, candidates, apply, dashboard, notifications
+import logging
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+
+from fastapi import FastAPI
+
+from backend.config import settings
+from backend.db.connection import init_db, close_pool, health_check
+from backend.exceptions import register_exception_handlers
+from backend.middleware.cors import setup_cors
+from backend.middleware.rate_limiter import setup_rate_limiter
+from backend.middleware.request_logger import setup_request_logger
+from backend.middleware.tenant_context import setup_tenant_context
+from backend.routers import auth as auth_router
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.DEBUG if settings.DEBUG else logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+# ── Lifespan ───────────────────────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup: init DB + run migrations. Shutdown: close pool."""
+    logger.info("Starting AI Talent Lab API...")
+    await init_db(settings.DATABASE_URL)
+    logger.info("API ready.")
+    yield
+    logger.info("Shutting down...")
+    await close_pool()
+
+
+# ── App Factory ────────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="AI Talent Lab API",
     description="AI-powered hiring assistant backend",
-    version="1.0.0",
+    version=settings.APP_VERSION,
+    lifespan=lifespan,
 )
 
-# ── Detailed Error Logging ──────────────────────────────────────────────────
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    try:
-        body = await request.json()
-    except:
-        body = await request.body()
-    print(f"❌ Validation Error: {request.method} {request.url}", file=sys.stderr)
-    print(f"  Errors: {exc.errors()}", file=sys.stderr)
-    print(f"  Body: {body}", file=sys.stderr)
-    return JSONResponse(
-        status_code=400,
-        content={"detail": exc.errors(), "body": str(body)},
-    )
+# Register exception handlers
+register_exception_handlers(app)
 
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    print(f"DEBUG: {request.method} {request.url}")
-    response = await call_next(request)
-    print(f"DEBUG Response: {response.status_code}")
-    return response
+# Register middleware (order matters — outermost first)
+setup_cors(app)
+setup_rate_limiter(app)
+setup_request_logger(app)
+setup_tenant_context(app)
 
-# ── CORS ───────────────────────────────────────────────────────────────────────
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Permissive for debugging
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Register routers
+app.include_router(auth_router.router)
 
-# ── Routers ────────────────────────────────────────────────────────────────────
-app.include_router(auth.router)
-app.include_router(chat.router)
-app.include_router(jd.router)
-app.include_router(candidates.router)
-app.include_router(apply.router)
-app.include_router(dashboard.router)
-app.include_router(notifications.router)
 
+# ── Root & Health ──────────────────────────────────────────────────────────────
 
 @app.get("/")
+async def root():
+    """Root — basic status."""
+    return {"status": "ok"}
+
+
+@app.get("/api/v1/health")
 async def health():
+    """Health check — returns DB status, version, timestamp."""
+    db_connected = await health_check()
     return {
-        "status": "ok",
-        "app": "AI Talent Lab API",
-        "version": "1.0.0",
-        "debug": DEBUG,
-        "llm_provider": os.getenv("LLM_PROVIDER", "unknown")
+        "status": "ok" if db_connected else "degraded",
+        "db": "connected" if db_connected else "disconnected",
+        "version": settings.APP_VERSION,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }

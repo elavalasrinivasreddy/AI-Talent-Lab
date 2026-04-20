@@ -1,235 +1,241 @@
 """
-routers/auth.py – Authentication endpoints (JWT-based)
-Handles user registration, login, and role management.
+routers/auth.py – /api/v1/auth/* endpoints.
+Thin HTTP layer — validates input via Pydantic, calls AuthService.
+See docs/BACKEND_PLAN.md §5 Auth section.
 """
-import os
-import jwt
-import bcrypt
-from datetime import datetime, timedelta
-from fastapi import APIRouter, HTTPException, Depends, Request
-from pydantic import BaseModel, EmailStr
-from typing import Optional
-from backend.db.database import get_connection
+from fastapi import APIRouter, Depends, Request
+from typing import List
 
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+import asyncpg
 
-# JWT Configuration
-JWT_SECRET = os.environ.get("JWT_SECRET", "ai-talent-lab-jwt-secret-change-in-production")
-JWT_ALGORITHM = "HS256"
-JWT_EXPIRY_HOURS = 168  # 7 days
+from backend.dependencies import get_db, get_current_user, require_admin
+from backend.services.auth_service import AuthService
+from backend.models.auth import (
+    LoginRequest,
+    RegisterRequest,
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+    UpdateProfileRequest,
+    AddUserRequest,
+    UpdateUserRequest,
+    TokenResponse,
+    UserResponse,
+    MeResponse,
+)
+from backend.middleware.rate_limiter import limiter
 
-
-# ── Models ────────────────────────────────────────────────────────────────────
-
-class RegisterRequest(BaseModel):
-    org_name: str
-    email: str
-    password: str
-    name: str
-    segment: str = "Technology"
-    size: str = "startup"
-    website: str = ""
-    about_us: str = ""
-
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-class AddUserRequest(BaseModel):
-    email: str
-    password: str
-    name: str
-    role: str = "recruiter"
-
-class AuthResponse(BaseModel):
-    token: str
-    user: dict
+router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-def _check_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
-
-def _create_token(user_id: int, org_id: int, role: str, email: str, name: str) -> str:
-    payload = {
-        "sub": str(user_id),
-        "org_id": org_id,
-        "role": role,
-        "email": email,
-        "name": name,
-        "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRY_HOURS),
-        "iat": datetime.utcnow(),
-    }
-    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
-
-def decode_token(token: str) -> dict:
-    """Decode and validate a JWT token."""
-    try:
-        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+def _get_ip(request: Request) -> str:
+    """Extract client IP from request."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
-def get_current_user(request: Request) -> dict:
-    """FastAPI dependency — extracts user from Authorization header."""
-    auth_header = request.headers.get("authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
-    token = auth_header.split(" ", 1)[1]
-    return decode_token(token)
-
-
-# ── Endpoints ─────────────────────────────────────────────────────────────────
-
-@router.post("/register", response_model=AuthResponse)
-async def register(req: RegisterRequest):
-    """
-    Register a new organization + admin user.
-    This is the entry point for new tenants.
-    """
-    with get_connection() as conn:
-        # Check if email already exists
-        existing = conn.execute(
-            "SELECT id FROM users WHERE email = ?", (req.email,)
-        ).fetchone()
-        if existing:
-            raise HTTPException(status_code=409, detail="Email already registered")
-
-        # Check if org name already exists
-        existing_org = conn.execute(
-            "SELECT id FROM organizations WHERE name = ?", (req.org_name,)
-        ).fetchone()
-        if existing_org:
-            raise HTTPException(status_code=409, detail="Organization name already taken")
-
-        # Create organization
-        conn.execute("""
-            INSERT INTO organizations (name, segment, size, website, about_us)
-            VALUES (?, ?, ?, ?, ?)
-        """, (req.org_name, req.segment, req.size, req.website, req.about_us))
-
-        org_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-
-        # Create admin user
-        password_hash = _hash_password(req.password)
-        conn.execute("""
-            INSERT INTO users (org_id, email, password_hash, role, name)
-            VALUES (?, ?, ?, 'admin', ?)
-        """, (org_id, req.email, password_hash, req.name))
-
-        user_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-
-    token = _create_token(user_id, org_id, "admin", req.email, req.name)
-    return AuthResponse(
-        token=token,
-        user={
-            "id": user_id,
-            "org_id": org_id,
-            "email": req.email,
-            "name": req.name,
-            "role": "admin",
-            "org_name": req.org_name,
-        }
-    )
-
-
-@router.post("/login", response_model=AuthResponse)
-async def login(req: LoginRequest):
-    """
-    Login with email + password. Returns JWT token.
-    """
-    with get_connection() as conn:
-        user = conn.execute("""
-            SELECT u.*, o.name as org_name
-            FROM users u
-            JOIN organizations o ON u.org_id = o.id
-            WHERE u.email = ? AND u.is_active = 1
-        """, (req.email,)).fetchone()
-
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid email or password")
-
-        if not _check_password(req.password, user["password_hash"]):
-            raise HTTPException(status_code=401, detail="Invalid email or password")
-
-    token = _create_token(user["id"], user["org_id"], user["role"], user["email"], user["name"])
-    return AuthResponse(
-        token=token,
-        user={
-            "id": user["id"],
-            "org_id": user["org_id"],
-            "email": user["email"],
-            "name": user["name"],
-            "role": user["role"],
-            "org_name": user["org_name"],
-        }
-    )
-
-
-@router.post("/add-user")
-async def add_user(req: AddUserRequest, current_user: dict = Depends(get_current_user)):
-    """
-    Admin-only: Add a new recruiter or hiring_manager to the org.
-    """
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Only admins can add users")
-
-    with get_connection() as conn:
-        existing = conn.execute(
-            "SELECT id FROM users WHERE email = ?", (req.email,)
-        ).fetchone()
-        if existing:
-            raise HTTPException(status_code=409, detail="Email already registered")
-
-        password_hash = _hash_password(req.password)
-        conn.execute("""
-            INSERT INTO users (org_id, email, password_hash, role, name)
-            VALUES (?, ?, ?, ?, ?)
-        """, (current_user["org_id"], req.email, password_hash, req.role, req.name))
-
-        user_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-
+def _user_response(user: dict) -> dict:
+    """Convert DB user dict to response-safe format (exclude password_hash)."""
     return {
-        "success": True,
-        "user": {
-            "id": user_id,
-            "email": req.email,
-            "name": req.name,
-            "role": req.role,
-        }
+        "id": user["id"],
+        "org_id": user["org_id"],
+        "email": user["email"],
+        "name": user["name"],
+        "role": user["role"],
+        "phone": user.get("phone"),
+        "avatar_url": user.get("avatar_url"),
+        "timezone": user.get("timezone", "Asia/Kolkata"),
+        "is_active": user.get("is_active", True),
+        "department_id": user.get("department_id"),
+        "created_at": user.get("created_at"),
     }
 
+
+# ── POST /register ────────────────────────────────────────────────────────────
+
+@router.post("/register")
+@limiter.limit("10/minute")
+async def register(
+    request: Request,
+    body: RegisterRequest,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Register a new organization + admin user."""
+    result = await AuthService.register(
+        conn=db,
+        org_name=body.org_name,
+        segment=body.segment,
+        size=body.size,
+        name=body.name,
+        email=body.email,
+        password=body.password,
+        website=body.website,
+        ip_address=_get_ip(request),
+    )
+    return {
+        "token": result["token"],
+        "user": _user_response(result["user"]),
+    }
+
+
+# ── POST /login ───────────────────────────────────────────────────────────────
+
+@router.post("/login")
+@limiter.limit("10/minute")
+async def login(
+    request: Request,
+    body: LoginRequest,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Authenticate user and return JWT."""
+    result = await AuthService.login(
+        conn=db,
+        email=body.email,
+        password=body.password,
+        ip_address=_get_ip(request),
+    )
+    return {
+        "token": result["token"],
+        "user": _user_response(result["user"]),
+    }
+
+
+# ── GET /me ───────────────────────────────────────────────────────────────────
 
 @router.get("/me")
-async def get_me(current_user: dict = Depends(get_current_user)):
-    """Return the current user's profile."""
-    with get_connection() as conn:
-        user = conn.execute("""
-            SELECT u.id, u.email, u.name, u.role, u.org_id, o.name as org_name
-            FROM users u
-            JOIN organizations o ON u.org_id = o.id
-            WHERE u.id = ?
-        """, (current_user["sub"],)).fetchone()
+async def me(
+    user: dict = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Get current user + org data."""
+    result = await AuthService.get_me(db, user["user_id"], user["org_id"])
+    return {
+        "user": _user_response(result["user"]),
+        "org": result["org"],
+    }
 
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
 
-    return dict(user)
+# ── GET /users (admin) ────────────────────────────────────────────────────────
 
 @router.get("/users")
-async def get_org_users(current_user: dict = Depends(get_current_user)):
-    """Return all users for the given organization."""
-    with get_connection() as conn:
-        users = conn.execute("""
-            SELECT id, email, name, role
-            FROM users
-            WHERE org_id = ? AND is_active = 1
-        """, (current_user["org_id"],)).fetchall()
-    return {"users": [dict(u) for u in users]}
+async def list_users(
+    user: dict = Depends(require_admin),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """List all org users (admin only)."""
+    users = await AuthService.list_users(db, user["org_id"])
+    return {"users": [_user_response(u) for u in users]}
 
+
+# ── POST /add-user (admin) ────────────────────────────────────────────────────
+
+@router.post("/add-user")
+async def add_user(
+    request: Request,
+    body: AddUserRequest,
+    user: dict = Depends(require_admin),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Add a new team member (admin only)."""
+    new_user = await AuthService.add_user(
+        conn=db,
+        org_id=user["org_id"],
+        email=body.email,
+        name=body.name,
+        password=body.password,
+        role=body.role,
+        department_id=body.department_id,
+        admin_user_id=user["user_id"],
+        ip_address=_get_ip(request),
+    )
+    return {"user": _user_response(new_user)}
+
+
+# ── PATCH /users/{id} (admin) ─────────────────────────────────────────────────
+
+@router.patch("/users/{user_id}")
+async def update_user(
+    user_id: int,
+    request: Request,
+    body: UpdateUserRequest,
+    user: dict = Depends(require_admin),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Update user role, department, or active status (admin only)."""
+    fields = body.model_dump(exclude_none=True)
+    updated = await AuthService.update_user(
+        conn=db,
+        user_id=user_id,
+        org_id=user["org_id"],
+        admin_user_id=user["user_id"],
+        ip_address=_get_ip(request),
+        **fields,
+    )
+    return {"user": _user_response(updated)}
+
+
+# ── PATCH /profile ─────────────────────────────────────────────────────────────
+
+@router.patch("/profile")
+async def update_profile(
+    body: UpdateProfileRequest,
+    user: dict = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Update own name, phone, avatar."""
+    fields = body.model_dump(exclude_none=True)
+    updated = await AuthService.update_profile(
+        conn=db,
+        user_id=user["user_id"],
+        org_id=user["org_id"],
+        **fields,
+    )
+    return {"user": _user_response(updated)}
+
+
+# ── POST /change-password ─────────────────────────────────────────────────────
+
+@router.post("/change-password")
+async def change_password(
+    body: ChangePasswordRequest,
+    user: dict = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Change own password."""
+    await AuthService.change_password(
+        conn=db,
+        user_id=user["user_id"],
+        current_password=body.current_password,
+        new_password=body.new_password,
+    )
+    return {"message": "Password updated successfully"}
+
+
+# ── POST /forgot-password ─────────────────────────────────────────────────────
+
+@router.post("/forgot-password")
+@limiter.limit("5/minute")
+async def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Send password reset email. Always returns success."""
+    await AuthService.forgot_password(db, body.email)
+    return {
+        "message": "If that email exists, we've sent a reset link. Valid for 24 hours."
+    }
+
+
+# ── POST /reset-password ──────────────────────────────────────────────────────
+
+@router.post("/reset-password")
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Reset password using magic link token."""
+    await AuthService.reset_password(db, body.token, body.new_password)
+    return {"message": "Password reset successfully. Please login with your new password."}

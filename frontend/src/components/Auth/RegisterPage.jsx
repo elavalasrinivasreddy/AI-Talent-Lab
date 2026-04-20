@@ -1,143 +1,168 @@
-// components/Auth/RegisterPage.jsx
-import { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import './Auth.css';
+import { useState, useMemo } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import '../../styles/auth.css'
 
-export default function RegisterPage({ onSwitchToLogin }) {
-    const { register, isLoading, error, clearError } = useAuth();
-    const [form, setForm] = useState({
-        org_name: '',
-        name: '',
-        email: '',
-        password: '',
-        segment: 'Technology',
-        size: 'startup',
-        website: '',
-    });
+function slugify(text) {
+  return text.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim().slice(0, 50)
+}
 
-    const handleChange = (field) => (e) => {
-        setForm(prev => ({ ...prev, [field]: e.target.value }));
-    };
+export default function RegisterPage() {
+  const { register } = useAuth()
+  const navigate = useNavigate()
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        clearError();
-        try {
-            await register(form);
-        } catch (err) {
-            // Error is handled in context
-        }
-    };
+  const [form, setForm] = useState({
+    org_name: '',
+    segment: '',
+    size: 'startup',
+    website: '',
+    name: '',
+    email: '',
+    password: '',
+  })
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-    return (
-        <div className="auth-page">
-            <div className="auth-card auth-card--register">
-                <div className="auth-header">
-                    <div className="auth-logo">🤖</div>
-                    <h1 className="auth-title">AI Talent Lab</h1>
-                    <p className="auth-subtitle">Create your organization account</p>
-                </div>
+  const slug = useMemo(() => slugify(form.org_name), [form.org_name])
 
-                <form onSubmit={handleSubmit} className="auth-form">
-                    {error && <div className="auth-error">{error}</div>}
+  const update = (field) => (e) => setForm({ ...form, [field]: e.target.value })
 
-                    <div className="auth-row">
-                        <div className="auth-field">
-                            <label htmlFor="org_name">Organization Name</label>
-                            <input
-                                id="org_name"
-                                type="text"
-                                value={form.org_name}
-                                onChange={handleChange('org_name')}
-                                placeholder="Acme Corp"
-                                required
-                            />
-                        </div>
-                        <div className="auth-field">
-                            <label htmlFor="segment">Industry Segment</label>
-                            <select id="segment" value={form.segment} onChange={handleChange('segment')}>
-                                <option value="Technology">Technology</option>
-                                <option value="Healthcare">Healthcare</option>
-                                <option value="Finance">Finance</option>
-                                <option value="Manufacturing">Manufacturing</option>
-                                <option value="Retail">Retail</option>
-                                <option value="Education">Education</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                    </div>
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
 
-                    <div className="auth-row">
-                        <div className="auth-field">
-                            <label htmlFor="name">Your Name</label>
-                            <input
-                                id="name"
-                                type="text"
-                                value={form.name}
-                                onChange={handleChange('name')}
-                                placeholder="John Doe"
-                                required
-                            />
-                        </div>
-                        <div className="auth-field">
-                            <label htmlFor="size">Company Size</label>
-                            <select id="size" value={form.size} onChange={handleChange('size')}>
-                                <option value="startup">Startup (1-50)</option>
-                                <option value="smb">SMB (51-500)</option>
-                                <option value="enterprise">Enterprise (500+)</option>
-                            </select>
-                        </div>
-                    </div>
+    try {
+      await register(form)
+      navigate('/chat', { replace: true })
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-                    <div className="auth-field">
-                        <label htmlFor="reg-email">Email</label>
-                        <input
-                            id="reg-email"
-                            type="email"
-                            value={form.email}
-                            onChange={handleChange('email')}
-                            placeholder="admin@company.com"
-                            required
-                        />
-                    </div>
-
-                    <div className="auth-row">
-                        <div className="auth-field">
-                            <label htmlFor="reg-password">Password</label>
-                            <input
-                                id="reg-password"
-                                type="password"
-                                value={form.password}
-                                onChange={handleChange('password')}
-                                placeholder="••••••••"
-                                required
-                                minLength={6}
-                            />
-                        </div>
-                        <div className="auth-field">
-                            <label htmlFor="website">Website (optional)</label>
-                            <input
-                                id="website"
-                                type="url"
-                                value={form.website}
-                                onChange={handleChange('website')}
-                                placeholder="https://company.com"
-                            />
-                        </div>
-                    </div>
-
-                    <button type="submit" className="auth-btn" disabled={isLoading}>
-                        {isLoading ? 'Creating account…' : 'Create Account'}
-                    </button>
-                </form>
-
-                <div className="auth-footer">
-                    <span>Already have an account?</span>
-                    <button className="auth-link" onClick={onSwitchToLogin}>
-                        Sign in
-                    </button>
-                </div>
-            </div>
+  return (
+    <div className="auth-layout">
+      <div className="auth-card" style={{ maxWidth: '520px' }}>
+        <div className="auth-logo">
+          <h1>AI <span>Talent</span> Lab</h1>
+          <p>Create your workspace</p>
         </div>
-    );
+
+        {error && <div className="auth-error">{error}</div>}
+
+        <form className="auth-form" onSubmit={handleSubmit}>
+          {/* Organization */}
+          <div className="form-group">
+            <label htmlFor="reg-org">Organization Name</label>
+            <input
+              id="reg-org"
+              type="text"
+              placeholder="Acme Corp"
+              value={form.org_name}
+              onChange={update('org_name')}
+              required
+              autoFocus
+            />
+            {slug && <span className="slug-preview">yourcompany.aitalentlab.com/{slug}</span>}
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="reg-segment">Industry Segment</label>
+              <input
+                id="reg-segment"
+                type="text"
+                placeholder="e.g. SaaS, Fintech"
+                value={form.segment}
+                onChange={update('segment')}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="reg-size">Company Size</label>
+              <select
+                id="reg-size"
+                value={form.size}
+                onChange={update('size')}
+              >
+                <option value="startup">Startup (1–50)</option>
+                <option value="smb">SMB (51–500)</option>
+                <option value="enterprise">Enterprise (500+)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="reg-website">Website (optional)</label>
+            <input
+              id="reg-website"
+              type="url"
+              placeholder="https://yourcompany.com"
+              value={form.website}
+              onChange={update('website')}
+            />
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1px solid var(--color-border-light)', margin: 'var(--space-2) 0' }} />
+
+          {/* User */}
+          <div className="form-group">
+            <label htmlFor="reg-name">Your Name</label>
+            <input
+              id="reg-name"
+              type="text"
+              placeholder="Jane Doe"
+              value={form.name}
+              onChange={update('name')}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="reg-email">Work Email</label>
+            <input
+              id="reg-email"
+              type="email"
+              placeholder="jane@acme.com"
+              value={form.email}
+              onChange={update('email')}
+              required
+              autoComplete="email"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="reg-password">Password</label>
+            <input
+              id="reg-password"
+              type="password"
+              placeholder="Create a strong password"
+              value={form.password}
+              onChange={update('password')}
+              required
+              autoComplete="new-password"
+            />
+            <span className="password-hint">
+              Min 8 chars, 1 uppercase, 1 number, 1 special character
+            </span>
+          </div>
+
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={loading || !form.org_name || !form.name || !form.email || !form.password || !form.segment}
+          >
+            {loading ? 'Creating workspace...' : 'Create Workspace'}
+          </button>
+        </form>
+
+        <div className="auth-footer">
+          Already have an account?{' '}
+          <Link to="/login">Sign in</Link>
+        </div>
+      </div>
+    </div>
+  )
 }

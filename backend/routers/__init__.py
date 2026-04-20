@@ -1,1 +1,1 @@
-# routers/__init__.py
+"""HTTP endpoints — thin layer, validates input, calls services"""
