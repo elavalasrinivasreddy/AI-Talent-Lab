@@ -1,66 +1,86 @@
 """
-config.py – LLM provider configuration
-Switching providers = change LLM_PROVIDER in .env
+config.py – Pydantic BaseSettings for all environment variables.
+Validates on startup. App fails if JWT_SECRET is not set.
+See docs/BACKEND_PLAN.md §10.
 """
-import os
-from pathlib import Path
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from typing import Optional
 
-# Load from root .env
-ROOT_ENV = Path(__file__).resolve().parent.parent / ".env"
-load_dotenv(ROOT_ENV)
 
-# ── Active provider ────────────────────────────────────────────────────────────
-LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "groq").lower()
-DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
+class Settings(BaseSettings):
+    """Application settings — loaded from .env file or environment variables."""
 
-# ── Groq ───────────────────────────────────────────────────────────────────────
-GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
-GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama3-8b-8192")
+    # ── App ────────────────────────────────────────────────────────────────
+    APP_VERSION: str = "1.0.0"
+    FRONTEND_URL: str = "http://localhost:5173"
+    MAGIC_LINK_BASE_URL: str = "http://localhost:5173"
+    DEBUG: bool = False
 
-# ── OpenAI ─────────────────────────────────────────────────────────────────────
-OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "").strip().strip('"').strip("'")
-OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o")
+    # ── Database ───────────────────────────────────────────────────────────
+    DATABASE_URL: str = "postgresql://talentlab:talentlab@localhost:5432/talentlab_dev"
 
-# ── Google Gemini ──────────────────────────────────────────────────────────────
-GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip().strip('"').strip("'")
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+    # ── Redis ──────────────────────────────────────────────────────────────
+    REDIS_URL: str = "redis://localhost:6379/0"
 
-# ── App ────────────────────────────────────────────────────────────────────────
-BACKEND_PORT: int = int(os.getenv("BACKEND_PORT", 8000))
-FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    # ── Auth ───────────────────────────────────────────────────────────────
+    JWT_SECRET: str  # REQUIRED — no default, app fails without it
+    JWT_EXPIRY_HOURS: int = 24
 
-# ── Mock user (phase-1) ────────────────────────────────────────────────────────
-USER_NAME: str = os.getenv("USER_NAME", "Admin")
-USER_EMAIL: str = os.getenv("USER_EMAIL", "admin@aitalentlab.com")
+    # ── LLM ────────────────────────────────────────────────────────────────
+    LLM_PROVIDER: str = "groq"
+    GROQ_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
 
-def get_llm(streaming: bool = False):
-    """
-    Returns the configured LangChain LLM instance.
-    To switch provider: set LLM_PROVIDER env var.
-    """
-    if LLM_PROVIDER == "openai":
-        from langchain_openai import ChatOpenAI
-        return ChatOpenAI(
-            model=OPENAI_MODEL,
-            api_key=OPENAI_API_KEY,
-            streaming=streaming,
-            temperature=0.7,
-        )
-    elif LLM_PROVIDER == "gemini":
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        return ChatGoogleGenerativeAI(
-            model=GEMINI_MODEL,
-            google_api_key=GEMINI_API_KEY,
-            streaming=streaming,
-            temperature=0.7,
-        )
-    else:  # Default: groq
-        from langchain_groq import ChatGroq
-        model = ChatGroq(
-            model = GROQ_MODEL,
-            api_key = GROQ_API_KEY,
-            streaming=streaming,
-            temperature=0.5,
-        )
-        return model
+    # ── Web Search ─────────────────────────────────────────────────────────
+    TAVILY_API_KEY: str = ""
+
+    # ── Email ──────────────────────────────────────────────────────────────
+    EMAIL_PROVIDER: str = "simulation"
+    RESEND_API_KEY: str = ""
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    FROM_EMAIL: str = "hiring@aitalentlab.com"
+    FROM_NAME: str = "AI Talent Lab"
+
+    # ── Candidate Sourcing ─────────────────────────────────────────────────
+    CANDIDATE_SOURCE_ADAPTER: str = "simulation"
+
+    # ── Magic Link Expiry ──────────────────────────────────────────────────
+    APPLY_LINK_EXPIRY_HOURS: int = 72
+    PANEL_LINK_EXPIRY_HOURS: int = 168
+    RESET_LINK_EXPIRY_HOURS: int = 24
+
+    # ── Encryption ─────────────────────────────────────────────────────────
+    ENCRYPTION_KEY: str = ""
+
+    # ── Celery ─────────────────────────────────────────────────────────────
+    CELERY_BROKER_URL: str = ""
+
+    @field_validator("JWT_SECRET")
+    @classmethod
+    def jwt_secret_must_be_set(cls, v: str) -> str:
+        if not v or v == "CHANGE_ME_generate_with_secrets_token_urlsafe_48":
+            raise ValueError(
+                "JWT_SECRET must be set to a strong random string. "
+                "Generate with: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+            )
+        return v
+
+    @property
+    def celery_broker(self) -> str:
+        """Return Celery broker URL, defaulting to REDIS_URL."""
+        return self.CELERY_BROKER_URL or self.REDIS_URL
+
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
+
+
+# Singleton — fails on import if JWT_SECRET missing
+settings = Settings()

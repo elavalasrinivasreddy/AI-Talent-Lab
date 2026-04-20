@@ -1,1 +1,11 @@
 .env
+.env_old
+.venv
+node_modules
+AGENT_PROMPT.md
+assets
+.agents
+Product Concept & Workflow Document.md
+run.txt
+old_backend/
+old_frontend/

@@ -1,80 +1,82 @@
-// context/AuthContext.jsx – Authentication state management
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import api, { setTokenGetter } from '../utils/api'
 
-const AuthContext = createContext(null);
-const TOKEN_KEY = 'aitl_token';
-const USER_KEY = 'aitl_user';
+const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-    const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
-    const [user, setUser] = useState(() => {
-        const stored = localStorage.getItem(USER_KEY);
-        return stored ? JSON.parse(stored) : null;
-    });
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState(null);
+  const [user, setUser] = useState(null)
+  const [org, setOrg] = useState(null)
+  const [token, setToken] = useState(null) // In memory only — never localStorage
+  const [loading, setLoading] = useState(true)
 
-    const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  // Wire up the axios interceptor with the current token
+  useEffect(() => {
+    setTokenGetter(() => token)
+  }, [token])
 
-    const isAuthenticated = !!token && !!user;
+  // On mount, try to restore session (token in memory → lost on refresh)
+  useEffect(() => {
+    setLoading(false) // No persistence — fresh session on refresh
+  }, [])
 
-    const _request = useCallback(async (url, body) => {
-        setIsLoading(true);
-        setError(null);
-        try {
-            const res = await fetch(`${BASE_URL}${url}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            });
-            const data = await res.json();
-            if (!res.ok) {
-                throw new Error(data.detail || 'Request failed');
-            }
-            return data;
-        } catch (err) {
-            setError(err.message);
-            throw err;
-        } finally {
-            setIsLoading(false);
-        }
-    }, [BASE_URL]);
+  const login = useCallback(async (email, password) => {
+    const { data } = await api.post('/auth/login', { email, password })
+    setToken(data.token)
+    setUser(data.user)
+    // Fetch org info
+    try {
+      setTokenGetter(() => data.token)
+      const meRes = await api.get('/auth/me')
+      setOrg(meRes.data.org)
+    } catch (e) {
+      // Non-critical — user can still use the app
+    }
+    return data
+  }, [])
 
-    const login = useCallback(async (email, password) => {
-        const data = await _request('/api/auth/login', { email, password });
-        localStorage.setItem(TOKEN_KEY, data.token);
-        localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-        setToken(data.token);
-        setUser(data.user);
-        return data;
-    }, [_request]);
+  const register = useCallback(async (formData) => {
+    const { data } = await api.post('/auth/register', formData)
+    setToken(data.token)
+    setUser(data.user)
+    // Fetch org info
+    try {
+      setTokenGetter(() => data.token)
+      const meRes = await api.get('/auth/me')
+      setOrg(meRes.data.org)
+    } catch (e) {
+      // Non-critical
+    }
+    return data
+  }, [])
 
-    const register = useCallback(async (formData) => {
-        const data = await _request('/api/auth/register', formData);
-        localStorage.setItem(TOKEN_KEY, data.token);
-        localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-        setToken(data.token);
-        setUser(data.user);
-        return data;
-    }, [_request]);
+  const logout = useCallback(() => {
+    setToken(null)
+    setUser(null)
+    setOrg(null)
+  }, [])
 
-    const logout = useCallback(() => {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-        setToken(null);
-        setUser(null);
-    }, []);
+  const value = {
+    user,
+    org,
+    token,
+    loading,
+    isAuthenticated: !!token && !!user,
+    login,
+    register,
+    logout,
+  }
 
-    const clearError = useCallback(() => setError(null), []);
-
-    return (
-        <AuthContext.Provider value={{
-            token, user, isAuthenticated, isLoading, error,
-            login, register, logout, clearError,
-        }}>
-            {children}
-        </AuthContext.Provider>
-    );
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (!context) throw new Error('useAuth must be used inside AuthProvider')
+  return context
+}
+
+export default AuthContext

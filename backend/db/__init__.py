@@ -1,1 +1,1 @@
-# db/ — Data access layer (ChromaDB, SQLite, Web Search)
+"""Database layer — connection, migrations, repositories"""
