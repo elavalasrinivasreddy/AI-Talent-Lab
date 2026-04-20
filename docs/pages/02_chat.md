@@ -340,15 +340,49 @@ Solid dot = position saved. Gray dot = still in progress. Right-click → rename
 
 ---
 
-## 10. Edge Cases
+## 10. Edge Cases & Error Recovery
+
+### Stage-by-Stage Failure Behavior
+
+Each stage in the pipeline has a defined failure mode — either a **hard stop** (cannot continue) or a **soft skip** (optional, proceed without it). Full technical implementation is in `BACKEND_PLAN.md § 14`.
+
+| Stage | Failure Type | What the User Sees |
+|---|---|---|
+| **Intake** | Hard stop | "I had trouble processing that. Could you rephrase?" — stays at intake, user retries by typing again. Max 3 failures → "Please start a new session." |
+| **Internal Check** | Soft skip | Muted system message: "No past role data found. Moving to market research..." — auto-advances, no user action |
+| **Market Research** | Soft skip | "Market research unavailable right now. Continuing with what we have." — auto-advances. If no competitors configured: link to Settings shown. |
+| **JD Variants** | Hard stop + retry | Auto-retries once silently. If retry fails → "Trouble generating variants. [Retry]" button appears. Session preserved. |
+| **Final JD** | Hard stop + retry | Auto-retries once silently. If stream is interrupted mid-generation → partial JD shown with "[Regenerate JD]" button. |
+| **Bias Check** | Soft skip | Silently skipped. No bias card shown. Save button stays enabled. |
+| **Position Save** | Hard stop | Modal stays open, toast: "Failed to save. Please try again." Data not lost. |
+
+### Network & Connection Failures
 
 | Scenario | Behavior |
 |---|---|
-| SSE drops mid-stream | Reconnection banner. "Retry last message" button. |
-| LLM timeout (>60s) | Error on message. "Try again" button. Session state preserved. |
-| No competitors configured | Market card skipped with explanation + link to settings |
-| No past JDs (empty ChromaDB) | Internal check card: "No past data. Skipping." Auto-proceeds. |
-| Unreadable PDF upload | "Could not read this file. Try a different format." |
-| Browser refresh mid-chat | Session restored from server. Streaming does not auto-resume. |
-| Empty About Us in org settings | JD generated without About Us. Warning shown: "Add About Us in Settings → Organization." |
-| User asks AI to refine after final JD | AI rewrites + re-streams. Bias check re-runs. Save button stays enabled. |
+| SSE drops mid-stream | Yellow reconnection banner at top of chat. "Retry" button on last message. Session state preserved — no data lost. |
+| LLM timeout (>60s) | Error on current message. "Try again" button. Input re-enabled. |
+| Browser refresh mid-chat | Session fully restored from server (graph_state persisted after each stage). Streaming does not auto-resume — user sends a message to continue. |
+| Server restart during session | Session recovered from DB on next request. Same behavior as browser refresh. |
+
+### Input & Upload Failures
+
+| Scenario | Behavior |
+|---|---|
+| Unreadable PDF upload | "Could not read this file. Please try a different PDF or paste the JD as text." |
+| PDF too large (>10MB) | "File too large. Maximum 10MB." Shown before upload. |
+| No competitors configured | Market card skipped. System message: "No competitor companies configured. [Add in Settings →]" |
+| No past JDs (empty ChromaDB) | Internal check auto-skipped. System message: "No past hiring data yet. Skipping internal check." |
+| Empty About Us in org settings | JD generated without About Us section. Warning: "Your About Us is empty — add it in [Settings → Organization] to include it in JDs." |
+
+### Recovery Rule
+
+**The user should never need to restart from scratch due to a technical failure.** Session state (all intake data, skills accepted, variant selected) is saved after every successful stage. At worst, the user retries the failed stage — not the entire workflow.
+
+### Post-JD Refinement
+
+| Scenario | Behavior |
+|---|---|
+| User asks AI to refine after final JD | AI rewrites and re-streams the full JD. Bias check re-runs automatically. Save button stays enabled throughout. |
+| User edits JD manually (Edit mode) | Direct textarea edit. Saved on "Done". Bias check does NOT re-run (user edited intentionally). |
+| User wants to change variant after final JD | Type "Go back to variants" or "Show me the skill-focused version" → orchestrator re-runs from JD_VARIANTS stage only. |

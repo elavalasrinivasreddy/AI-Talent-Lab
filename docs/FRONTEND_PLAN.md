@@ -462,3 +462,235 @@ const THEMES = ['dark', 'light', 'system'];
 // Applied as class on <html>: 'theme-dark' or 'theme-light'
 // Changes apply instantly — no page reload
 ```
+
+---
+
+## 11. UI/UX Standards — Production Quality Requirements
+
+These are not optional polish — they are the difference between a product that feels professional and one that feels like a prototype.
+
+### 11.1 AI Typing Indicator (Chat Window)
+
+When the AI is generating a response (SSE streaming active), the input area must show a clear "thinking" state. A disabled textarea is not enough — it makes the product feel broken.
+
+**Required behavior:**
+```
+While streaming:
+  - Chat input: disabled + placeholder changes to "AI is thinking..."
+  - Typing indicator: 3-dot pulsing animation appears in a message bubble BEFORE
+    any tokens arrive — so the user always sees immediate feedback
+  - Send button: spinner icon replaces arrow icon
+  - Stage pill in topbar: subtle pulse animation
+
+When streaming stops (done / error):
+  - Input re-enabled immediately
+  - Placeholder returns to normal
+  - Typing indicator bubble is replaced by the actual content
+```
+
+```jsx
+// components/Chat/StreamedText.jsx
+// Show typing indicator before first token arrives
+const TypingIndicator = () => (
+  <div className="msg msg-ai">
+    <div className="msg-avatar ai">🤖</div>
+    <div className="msg-bubble typing-indicator">
+      <span className="dot" /><span className="dot" /><span className="dot" />
+    </div>
+  </div>
+);
+
+// CSS:
+// .typing-indicator .dot { animation: dotPulse 1.4s infinite ease-in-out; }
+// .typing-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
+// .typing-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
+```
+
+### 11.2 Pipeline Stage Colors — System-Wide Consistency
+
+The pipeline status color system is defined once in `constants.js` and used everywhere. No component should define its own status colors inline.
+
+```javascript
+// utils/constants.js
+export const PIPELINE_STAGES = {
+  sourced:   { label: "Sourced",    color: "#06b6d4", bg: "rgba(6,182,212,0.1)"  },
+  emailed:   { label: "Emailed",    color: "#8b5cf6", bg: "rgba(139,92,246,0.1)" },
+  applied:   { label: "Applied",    color: "#3b82f6", bg: "rgba(59,130,246,0.1)" },
+  screening: { label: "Screening",  color: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
+  interview: { label: "Interviewing",color:"#6c63ff", bg: "rgba(108,99,255,0.1)" },
+  selected:  { label: "Selected",   color: "#22c55e", bg: "rgba(34,197,94,0.1)"  },
+  rejected:  { label: "Rejected",   color: "#ef4444", bg: "rgba(239,68,68,0.1)"  },
+  on_hold:   { label: "On Hold",    color: "#6b7280", bg: "rgba(107,114,128,0.1)"},
+};
+```
+
+```jsx
+// components/common/Badge.jsx — the ONLY place status color logic lives
+export const StatusBadge = ({ status }) => {
+  const stage = PIPELINE_STAGES[status] || PIPELINE_STAGES.sourced;
+  return (
+    <span style={{
+      background: stage.bg,
+      color: stage.color,
+      border: `1px solid ${stage.color}40`,
+      borderRadius: '9999px',
+      padding: '2px 10px',
+      fontSize: '12px',
+      fontWeight: 700,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '5px'
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: stage.color }} />
+      {stage.label}
+    </span>
+  );
+};
+```
+
+**Every surface that shows candidate status uses `<StatusBadge status={...} />`:**
+- Dashboard → positions table candidate count breakdown
+- Position Detail → Candidates tab list
+- Position Detail → Pipeline Kanban column headers
+- Candidate Detail → header status dropdown label
+- Talent Pool → candidate cards
+- Notifications → candidate mentions
+
+### 11.3 Empty State Screens
+
+Every page that can have zero data needs a designed empty state. These are not error states — they are the first impression for every new user.
+
+**Priority order (build these first):**
+
+**1. New Org Empty Dashboard** — seen by every new customer after registration
+```
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│         🚀                                                    │
+│         Welcome to AI Talent Lab, TechCorp!                  │
+│                                                              │
+│         Here's how to get started:                           │
+│                                                              │
+│         1  Click "New Hire" to create your first JD         │
+│            via AI conversation (takes 3–5 minutes)          │
+│                                                              │
+│         2  AI will source matching candidates automatically  │
+│                                                              │
+│         3  Manage your pipeline from this dashboard         │
+│                                                              │
+│         [+ Create Your First Position →]                    │
+│                                                              │
+│         ── Or set up your organization first ──             │
+│         [⚙️ Complete Settings (recommended)]                 │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**2. No Candidates in Pipeline** — seen when a position has no candidates yet
+```
+│  No candidates yet                                          │
+│  AI is searching for matches in the background.            │
+│  You'll be notified when results arrive.                   │
+│  [🔍 Run Search Now]  [📧 Outreach Manually]               │
+```
+
+**3. Empty Talent Pool** — before any candidates are added
+```
+│  Your talent pool is empty                                 │
+│  Candidates rejected or passed over will appear here       │
+│  automatically so you can re-engage them for future roles. │
+│  [📁 Bulk Upload Resumes]                                  │
+```
+
+**4. No Chat Sessions** — sidebar when no JD sessions exist
+```
+│  No active sessions                                        │
+│  [+ New Hire]                                             │
+```
+
+**5. Notification Bell — No Notifications**
+```
+│  You're all caught up! 🎉                                  │
+│  Notifications appear here for candidate activity,         │
+│  feedback submissions, and search results.                 │
+```
+
+```jsx
+// components/common/EmptyState.jsx
+export const EmptyState = ({ icon, title, description, actions }) => (
+  <div className="empty-state">
+    <div className="empty-icon">{icon}</div>
+    <h3 className="empty-title">{title}</h3>
+    <p className="empty-desc">{description}</p>
+    {actions && <div className="empty-actions">{actions}</div>}
+  </div>
+);
+```
+
+### 11.4 ATS Score Circle — SVG Arc (Not a Plain Number)
+
+The ATS score is the most-seen data point on the candidate page. It should be rendered as a circular progress arc with color, not a plain number in a box.
+
+```jsx
+// components/common/ScoreCircle.jsx
+export const ScoreCircle = ({ score }) => {
+  const radius = 28;
+  const circumference = 2 * Math.PI * radius;  // ~176
+  const offset = circumference - (score / 100) * circumference;
+  const color = score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#ef4444';
+
+  return (
+    <div className="score-circle-wrap">
+      <svg width="72" height="72" viewBox="0 0 72 72" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx="36" cy="36" r={radius} fill="none" stroke="var(--bg-tertiary)" strokeWidth="5" />
+        <circle
+          cx="36" cy="36" r={radius}
+          fill="none" stroke={color} strokeWidth="5"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 1s ease 0.3s' }}
+        />
+      </svg>
+      <div className="score-circle-label" style={{ color }}>{score}%</div>
+    </div>
+  );
+};
+```
+
+### 11.5 Skeleton Loading States
+
+Every data-loaded view must show skeleton cards during loading — not spinning wheels, not blank pages.
+
+```jsx
+// components/common/SkeletonCard.jsx
+// Used while data is fetching. Shows shimmer animation.
+// Dimensions match the real card so layout doesn't jump when data loads.
+
+const shimmerStyle = {
+  background: 'linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-hover) 50%, var(--bg-tertiary) 75%)',
+  backgroundSize: '200% 100%',
+  animation: 'shimmer 1.5s infinite',
+  borderRadius: 'var(--radius-md)',
+};
+
+// Usage:
+// <SkeletonCard lines={3} />   → shows 3 shimmer lines
+// <SkeletonKanban />           → shows kanban skeleton
+// <SkeletonStatCard />         → shows stat card skeleton
+```
+
+---
+
+## 12. Accessibility Baseline
+
+Production-grade means usable by people with disabilities. Minimum requirements:
+
+- All interactive elements are keyboard-navigable (Tab order logical)
+- All icon-only buttons have `aria-label` or `title`
+- Color is never the only signal — status badges have text label + dot
+- Form inputs have associated `<label>` elements
+- Focus indicators are visible (not suppressed with `outline: none` globally)
+- Images have `alt` text
+- Modals trap focus when open and restore focus on close
+- Toast notifications are announced to screen readers via `role="status"` on the toast container

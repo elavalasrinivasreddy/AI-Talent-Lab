@@ -19,7 +19,7 @@
 | **Web Search** | Tavily API | Market research, competitor JD analysis |
 | **Email** | Resend / SMTP / Simulation | Adapter pattern — swap without code changes |
 | **Candidate Sourcing** | Simulation (MVP) → LinkedIn/Naukri (Phase 3) | Adapter pattern |
-| **Background Tasks** | FastAPI BackgroundTasks → Celery + Redis (prod) | Async for search, email, scoring |
+| **Background Tasks** | Celery + Redis | From day one. Never FastAPI BackgroundTasks in any environment. |
 | **Streaming** | SSE (Server-Sent Events) | Token-by-token chat streaming |
 
 ---
@@ -915,6 +915,39 @@ async def send_outreach_batch(application_ids):
 | Magic links | Time-limited signed JWT, single-use for panel feedback |
 | Audit trail | `audit_log` table for all auth + admin actions |
 | Tenant isolation | Every query filtered by `org_id` (enforced in `tenant_context.py`) |
+| PostgreSQL RLS | Row-Level Security as second defense — DB blocks leakage even if app code has a bug |
+
+### PostgreSQL Row-Level Security
+
+Applied to every tenant-scoped table. Application-level `org_id` filtering is the first layer. RLS is the second — the database itself enforces isolation.
+
+```sql
+-- Enable on every business table
+ALTER TABLE positions               ENABLE ROW LEVEL SECURITY;
+ALTER TABLE candidates              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE candidate_applications  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE interviews              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE scorecards              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pipeline_events         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE talent_pool_suggestions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE candidate_tags          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE jd_variants             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE departments             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE competitors             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE screening_questions     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE message_templates       ENABLE ROW LEVEL SECURITY;
+
+-- Policy template (repeat for each table):
+CREATE POLICY tenant_isolation ON positions
+    USING (org_id = current_setting('app.current_org_id', true)::int);
+
+-- In middleware/tenant_context.py, set per-request before any query:
+-- await db.execute("SET LOCAL app.current_org_id = :org_id", {"org_id": user.org_id})
+-- SET LOCAL is scoped to current transaction only — safe for connection pools
+```
+
+**Dev note:** RLS is PostgreSQL-only. It does not apply to SQLite in dev. Since we use PostgreSQL in dev via Docker (see docker-compose.yml), RLS applies in dev too. This means you catch RLS errors in dev, not in production.
 
 ---
 
@@ -925,7 +958,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     FRONTEND_URL: str = "http://localhost:5173"
     MAGIC_LINK_BASE_URL: str = "http://localhost:5173"
-    DATABASE_URL: str = "sqlite:///data/talent_lab.db"
+    DATABASE_URL: str = "postgresql://talentlab:talentlab@localhost:5432/talentlab_dev"  # Docker local
     JWT_SECRET: str                        # REQUIRED — no default, app fails without it
     JWT_EXPIRY_HOURS: int = 24
     LLM_PROVIDER: str = "groq"             # groq / openai / gemini
@@ -1101,3 +1134,583 @@ async def parse_and_analyze_resume(resume_text: str, position_jd: str) -> dict:
 - Candidate applies via magic link chat → parsed on resume upload
 - Manual resume upload on candidate detail → parsed immediately
 - Stored in `candidates.resume_parsed` (JSON) — never re-parsed unless new resume uploaded
+
+---
+
+## 14. Agent Error Recovery — Chat Window Resilience
+
+### Failure Philosophy
+
+Every LangGraph node can fail. The system must handle failures gracefully — the recruiter should never see a blank screen, a crash, or lose their progress. Two categories of failure:
+
+**Hard stop (cannot continue without this):** intake, JD variants, final JD generation
+**Soft skip (optional data, can proceed without):** internal check, market research, bias check
+
+### Per-Node Error Strategy
+
+```python
+# ── INTAKE (interviewer.py) ── HARD STOP
+# Cannot generate a JD without requirements.
+# Failure mode: LLM returns garbage, fails to extract role/skills, times out.
+#
+# On failure:
+#   → SSE event: {"event": "error", "code": "INTAKE_FAILED", "recoverable": true}
+#   → Chat message: "I had trouble processing that. Could you rephrase your requirements?"
+#   → Stage stays at INTAKE — do not advance
+#   → Session state preserved — user can retry from same point
+#   → Max 3 consecutive LLM failures → hard error message + "Start Over" button
+#
+# Never advance to INTERNAL_CHECK with incomplete intake data.
+
+# ── INTERNAL CHECK (internal_analyst.py) ── SOFT SKIP
+# ChromaDB query for past JD similarity. Completely optional — new orgs have no data.
+# Failure mode: ChromaDB unavailable, query timeout, no results.
+#
+# On failure:
+#   → Log error server-side (do not surface to user)
+#   → SSE event: {"event": "stage_change", "stage": "market_research", ...}
+#   → Chat message: "No past role data found. Moving to market research..."
+#   → Advance to MARKET_RESEARCH automatically
+#   → No user action required
+#
+# AgentState: set internal_skills_found = [] and internal_skipped = True
+
+# ── MARKET RESEARCH (market_intelligence.py + benchmarking.py) ── SOFT SKIP
+# Tavily web search for competitor JDs. Optional — adds value but not required.
+# Failure mode: Tavily API down, rate limited, no competitors configured, timeout.
+#
+# On failure:
+#   → Log error server-side
+#   → If no competitors configured: message explains why and offers link to Settings
+#   → If Tavily failed: "Market research unavailable right now. Continuing with what we have."
+#   → Advance to JD_VARIANTS automatically
+#   → Do not expose Tavily error details to user
+#
+# AgentState: set market_skills_found = [] and market_skipped = True
+# The drafting node must handle empty market_skills_found gracefully.
+
+# ── JD VARIANTS (drafting.py — first call) ── HARD STOP with retry
+# Must generate 3 variants. Without variants the recruiter cannot select a style.
+# Failure mode: LLM timeout, malformed JSON response, empty content.
+#
+# On failure attempt 1:
+#   → Retry automatically (same prompt, immediately)
+#   → Show "Generating..." indicator — user does not see the retry
+#
+# On failure attempt 2 (retry also failed):
+#   → SSE event: {"event": "error", "code": "VARIANTS_FAILED", "recoverable": true}
+#   → Chat message: "I had trouble generating the JD variants. Click Retry to try again."
+#   → Show [Retry] button in chat
+#   → Session state preserved at JD_VARIANTS stage
+#   → User clicks Retry → orchestrator re-runs drafting node only (not full pipeline)
+#
+# On 3rd failure:
+#   → "There seems to be a persistent issue. Please try again in a few minutes."
+#   → Session saved, user can return later
+
+# ── FINAL JD (drafting.py — second call) ── HARD STOP with retry
+# Must generate the final complete JD. Same retry logic as variants.
+# Failure mode: LLM timeout during streaming, connection dropped mid-stream.
+#
+# On stream interrupted mid-generation:
+#   → Chat shows partial JD with "[Connection lost]" at the end
+#   → Show [Regenerate JD] button
+#   → User clicks → re-run final JD generation only, full re-stream
+#   → Do NOT re-run intake/internal/market/variants
+#
+# On failure before any tokens arrive:
+#   → Same as variants failure — retry once automatically, then show Retry button
+
+# ── BIAS CHECK (bias_checker.py) ── SOFT SKIP
+# Completely optional post-processing. Never blocks saving the JD.
+# Failure mode: LLM timeout, API error.
+#
+# On failure:
+#   → Silently skip — show no bias card at all
+#   → Log server-side only
+#   → JD save button remains enabled
+
+# ── POSITION SETUP (save) ── HARD STOP
+# Must succeed to create the position.
+# Failure mode: DB write error, validation error.
+#
+# On failure:
+#   → Close modal, show toast: "Failed to save position. Please try again."
+#   → Modal can be reopened, data is not lost
+#   → Retry is user-triggered (click Save again)
+```
+
+### AgentState Error Fields
+
+```python
+class AgentState(TypedDict):
+    # ... existing fields ...
+
+    # Error tracking
+    error_stage: Optional[str]         # Which stage failed: "intake"|"variants"|"final_jd"
+    error_code: Optional[str]          # Machine-readable code for frontend handling
+    error_message: Optional[str]       # Human-readable message shown in chat
+    retry_count: int                   # How many retries have been attempted
+    
+    # Skip tracking (soft skips don't set error fields)
+    internal_skipped: bool             # True if internal check was skipped
+    market_skipped: bool               # True if market research was skipped
+    bias_skipped: bool                 # True if bias check was skipped
+```
+
+### SSE Error Events
+
+```
+# Recoverable error — show retry button
+data: {"event": "error", "code": "VARIANTS_FAILED", "recoverable": true,
+       "message": "Trouble generating JD variants. Click Retry to try again."}
+
+# Non-recoverable — show start over button
+data: {"event": "error", "code": "INTAKE_FAILED", "recoverable": false,
+       "message": "Session error. Please start a new hire chat."}
+
+# Soft skip — informational only, no user action needed
+data: {"event": "stage_skipped", "stage": "market_research",
+       "message": "Market research unavailable. Continuing..."}
+
+# Stream interrupted mid-JD
+data: {"event": "stream_interrupted", "partial_content_saved": true,
+       "message": "Connection interrupted. Click Regenerate to continue."}
+```
+
+### Frontend Response to Errors
+
+| SSE Event | UI Action |
+|---|---|
+| `error` + `recoverable: true` | Show [Retry] button below last message. Input stays disabled. |
+| `error` + `recoverable: false` | Show [Start New Chat] button. Disable input permanently. |
+| `stage_skipped` | Show muted system message. Auto-advance. No user action. |
+| `stream_interrupted` | Show partial JD with "[Interrupted]" marker. Show [Regenerate] button. |
+| 3 consecutive `error` events | Show "Persistent issue — try again later." Preserve session. |
+
+### Session State Preservation Rule
+
+**The session state (graph_state JSON in chat_sessions table) must be saved after every successful node completion.** This means if the server restarts or the user closes the browser mid-way through, they can return to the same session and continue from the last successful stage — not from the beginning.
+
+```python
+# In orchestrator.py, after each node completes successfully:
+async def save_state_checkpoint(session_id: str, state: AgentState, db):
+    await db.execute(
+        "UPDATE chat_sessions SET graph_state = :state, workflow_stage = :stage, updated_at = NOW() WHERE id = :id",
+        {"state": json.dumps(state), "stage": state["stage"], "id": session_id}
+    )
+# Called after: intake ✓, internal_check ✓, market_research ✓, jd_variants ✓, final_jd ✓
+```
+
+---
+
+## 15. Semantic ATS Scoring — Full Strategy
+
+### Why Not Keyword Matching
+
+Keyword matching fails because:
+- Candidate writes "Postgres" → JD says "PostgreSQL" → no match
+- Candidate has 8 years of Python but lists it once → low score
+- JD says "AWS preferred" → keyword matcher treats it same as "AWS required"
+
+Semantic scoring understands meaning, not just strings.
+
+### Architecture: Two-Step Scoring
+
+**Step 1 — Embedding similarity (fast, cheap, runs for every candidate)**
+**Step 2 — LLM structured analysis (deeper, runs only above embedding threshold)**
+
+```python
+# services/candidate_service.py
+
+async def compute_ats_score(
+    candidate_id: int,
+    application_id: int,
+    position_id: int,
+    db,
+    llm
+) -> dict:
+    """
+    Two-step semantic ATS scoring.
+    Returns: {score, matched_skills, missing_skills, extra_skills, summary, method}
+    """
+
+    # ── Step 1: Load pre-computed embeddings ──────────────────────
+    position = await PositionRepository.get(position_id, db)
+    candidate = await CandidateRepository.get(candidate_id, db)
+
+    # JD embedding — computed once when position is created, stored in positions.jd_embedding
+    jd_embedding = json.loads(position.jd_embedding)  # list[float]
+
+    # Resume embedding — computed once on resume upload/parse, stored in candidates.resume_embedding
+    resume_embedding = json.loads(candidate.resume_embedding)  # list[float]
+
+    if not jd_embedding or not resume_embedding:
+        # Fall back to LLM-only scoring if embeddings missing
+        return await llm_only_scoring(candidate, position, llm)
+
+    # Cosine similarity
+    embedding_score = cosine_similarity(jd_embedding, resume_embedding)  # 0.0–1.0
+
+    # If embedding score is very low — skip expensive LLM call, mark as poor match
+    if embedding_score < 0.35:
+        return {
+            "score": round(embedding_score * 100, 1),
+            "matched_skills": [],
+            "missing_skills": [],
+            "extra_skills": [],
+            "summary": "Embedding similarity too low for detailed analysis.",
+            "method": "embedding_only"
+        }
+
+    # ── Step 2: LLM structured analysis ──────────────────────────
+    # Only runs for candidates who pass the embedding threshold
+    prompt = f"""
+    Analyze this candidate's fit for the role.
+
+    JD Requirements:
+    {position.jd_markdown[:2000]}
+
+    Candidate Resume:
+    {candidate.resume_text[:2000]}
+
+    Return ONLY valid JSON:
+    {{
+      "matched_skills": ["Python", "FastAPI", ...],
+      "missing_skills": ["Kubernetes", ...],
+      "extra_skills": ["GraphQL", ...],
+      "experience_match": 0.0-1.0,
+      "skills_match": 0.0-1.0,
+      "summary": "One paragraph AI analysis"
+    }}
+    """
+
+    llm_result = await llm.invoke(prompt)
+    parsed = json.loads(llm_result.content)
+
+    # Final weighted score
+    final_score = (
+        embedding_score * 0.40 +
+        parsed["skills_match"] * 0.40 +
+        parsed["experience_match"] * 0.20
+    ) * 100
+
+    return {
+        "score": round(final_score, 1),
+        "matched_skills": parsed["matched_skills"],
+        "missing_skills": parsed["missing_skills"],
+        "extra_skills": parsed["extra_skills"],
+        "summary": parsed["summary"],
+        "method": "semantic_full"
+    }
+```
+
+### Embedding Storage
+
+**Where embeddings live:**
+
+| Embedding | When generated | Where stored | How long |
+|---|---|---|---|
+| JD embedding | When position created / JD saved | `positions.jd_embedding` TEXT (JSON float array) | Lifetime of position |
+| Resume embedding | When resume text parsed | `candidates.resume_embedding` TEXT (JSON float array) | Lifetime of candidate |
+
+**Schema additions:**
+```sql
+-- Add to positions table:
+jd_embedding         TEXT,  -- JSON float array, NULL until JD saved
+
+-- Add to candidates table:
+resume_embedding     TEXT,  -- JSON float array, NULL until resume parsed
+```
+
+**Why not ChromaDB for ATS embeddings?**
+ChromaDB in this project is used for one specific job: finding *similar past JDs* during the internal check stage of JD generation. That's a vector similarity search across a collection of documents. ATS scoring is a different operation: pairwise cosine similarity between exactly two vectors (JD vs resume). For pairwise comparison, storing as a JSON float array in PostgreSQL and computing in Python is simpler, faster, and requires no separate service. ChromaDB stays focused on its own job.
+
+**Why not pgvector?**
+pgvector is ideal for large-scale nearest-neighbor search across millions of vectors. For ATS scoring, you always know exactly which JD you're comparing against. It's a direct lookup, not a search. pgvector adds operational complexity with no benefit here. Add it later if you need semantic candidate search across the full pool.
+
+### Embedding Model
+
+Use the same LLM provider's embedding model for consistency:
+```python
+# adapters/llm/factory.py
+
+def get_embedding_model():
+    provider = settings.LLM_PROVIDER
+    if provider == "groq":
+        # Groq does not offer embeddings — use OpenAI text-embedding-3-small
+        return OpenAIEmbeddings(model="text-embedding-3-small")
+    elif provider == "openai":
+        return OpenAIEmbeddings(model="text-embedding-3-small")
+    elif provider == "gemini":
+        return GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+```
+
+`text-embedding-3-small` produces 1536-dimension vectors. At ~2KB per vector stored as JSON, 100,000 candidates = ~200MB. Perfectly fine in PostgreSQL.
+
+### JD Embedding Generation
+
+Called once when recruiter saves position from chat:
+
+```python
+# services/position_service.py
+
+async def save_position_with_jd(session_id, setup_data, db, embedding_model):
+    # ... create position record ...
+
+    # Generate and store JD embedding immediately
+    jd_text = f"{position.role_name} {position.jd_markdown}"
+    embedding = await embedding_model.aembed_query(jd_text)
+    
+    await PositionRepository.update(
+        position_id,
+        {"jd_embedding": json.dumps(embedding)},
+        db
+    )
+    # This embedding is now reused for every candidate scored against this position
+    # Never regenerated unless JD is edited (editing triggers re-embedding)
+```
+
+### Resume Embedding Generation
+
+Called once when resume text is extracted (bulk upload, apply chat, manual upload):
+
+```python
+# agents/resume_parser.py (extended)
+
+async def parse_and_embed_resume(resume_text: str, embedding_model) -> dict:
+    # ... existing parse logic ...
+
+    # Generate embedding from resume text
+    embedding = await embedding_model.aembed_query(resume_text[:8000])  # cap at 8k chars
+
+    return {
+        "structured": { ... },     # existing parse output
+        "trajectory": { ... },
+        "red_flags": [ ... ],
+        "embedding": embedding     # stored in candidates.resume_embedding
+    }
+```
+
+---
+
+## 16. Database Setup — Dev and Prod Strategy
+
+### One Database Engine: PostgreSQL Everywhere
+
+No SQLite in any environment. Use PostgreSQL via Docker locally. This eliminates the class of bugs that only appear in production because SQLite and PostgreSQL behave differently (type handling, JSON operators, date functions, concurrent writes, RLS).
+
+### docker-compose.yml (Local Dev)
+
+Place in project root:
+
+```yaml
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: talentlab_dev
+      POSTGRES_USER: talentlab
+      POSTGRES_PASSWORD: talentlab
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U talentlab"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+```
+
+**Developer workflow:**
+```bash
+docker compose up -d        # start Postgres + Redis in background
+cd backend
+python main.py              # FastAPI starts, connects to local Postgres
+# When done:
+docker compose down         # stop (data persists in volumes)
+docker compose down -v      # stop + wipe all data (full reset)
+```
+
+### .env File Strategy — Zero Rework When Switching Dev → Prod
+
+```bash
+# .env.development (used locally)
+DATABASE_URL=postgresql://talentlab:talentlab@localhost:5432/talentlab_dev
+REDIS_URL=redis://localhost:6379/0
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_groq_key
+TAVILY_API_KEY=your_tavily_key
+EMAIL_PROVIDER=simulation
+CANDIDATE_SOURCE_ADAPTER=simulation
+JWT_SECRET=dev_secret_change_in_prod_32chars_min
+FRONTEND_URL=http://localhost:5173
+MAGIC_LINK_BASE_URL=http://localhost:5173
+ENCRYPTION_KEY=                          # empty = encryption disabled in dev
+
+# .env.production (server)
+DATABASE_URL=postgresql://user:pass@your-postgres-host:5432/talentlab_prod
+REDIS_URL=redis://your-redis-host:6379/0
+LLM_PROVIDER=groq
+GROQ_API_KEY=prod_groq_key
+TAVILY_API_KEY=prod_tavily_key
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=prod_resend_key
+CANDIDATE_SOURCE_ADAPTER=simulation      # still simulation until real APIs integrated
+JWT_SECRET=cryptographically_random_64_char_string
+FRONTEND_URL=https://app.aitalentlab.com
+MAGIC_LINK_BASE_URL=https://app.aitalentlab.com
+ENCRYPTION_KEY=base64_encoded_32_byte_aes_key
+```
+
+The application code reads `DATABASE_URL` — it doesn't know or care whether it points to a Docker container or a managed cloud PostgreSQL instance. Switching from dev to prod is a single `.env` file swap.
+
+### Celery Configuration
+
+```python
+# config.py (addition to Settings)
+REDIS_URL: str = "redis://localhost:6379/0"
+CELERY_BROKER_URL: str = ""    # defaults to REDIS_URL if empty
+
+# celery_app.py (new file in backend root)
+from celery import Celery
+from config import settings
+
+celery_app = Celery(
+    "talentlab",
+    broker=settings.CELERY_BROKER_URL or settings.REDIS_URL,
+    backend=settings.REDIS_URL,
+    include=[
+        "tasks.candidate_pipeline",
+        "tasks.email_outreach",
+        "tasks.scheduled_search",
+    ]
+)
+
+celery_app.conf.update(
+    task_serializer="json",
+    result_serializer="json",
+    timezone="Asia/Kolkata",
+    task_acks_late=True,              # re-queue if worker dies mid-task
+    task_reject_on_worker_lost=True,  # re-queue if worker crashes
+    task_max_retries=3,               # retry failed tasks 3 times
+    task_default_retry_delay=60,      # wait 60s before retry
+)
+
+# Beat schedule (replaces cron) — runs scheduled_search every hour
+celery_app.conf.beat_schedule = {
+    "run-scheduled-searches": {
+        "task": "tasks.scheduled_search.run_scheduled_searches",
+        "schedule": 3600.0,  # every hour
+    },
+    "send-followup-reminders": {
+        "task": "tasks.email_outreach.send_followup_reminders",
+        "schedule": 3600.0,  # every hour
+    },
+}
+```
+
+**Running in dev:**
+```bash
+# Terminal 1: FastAPI
+uvicorn main:app --reload
+
+# Terminal 2: Celery worker
+celery -A celery_app worker --loglevel=info
+
+# Terminal 3: Celery beat (scheduler)
+celery -A celery_app beat --loglevel=info
+```
+
+**Why Celery and not alternatives:**
+- Tasks survive server restarts (persisted in Redis)
+- Built-in retry with exponential backoff
+- Task result storage for debugging
+- Beat scheduler replaces cron — no separate cron setup needed
+- Works identically in dev and prod
+
+---
+
+## 17. Resume Content Storage — Text Only, No File Storage
+
+### Decision: Store Text, Not Files
+
+When a candidate uploads a resume (PDF or DOCX):
+1. Extract full text immediately on upload
+2. Parse structured data (skills, companies, education) via `resume_parser` agent
+3. Generate embedding for ATS scoring
+4. Store all three in the database
+5. Discard the original file — it is not kept
+
+**This means:**
+- No file storage service needed (no S3, no R2, no local uploads directory)
+- No resume download feature (candidates/recruiters cannot download the original PDF)
+- All AI features work from the stored text — ATS scoring, trajectory analysis, red flag detection
+- If a candidate re-uploads, new text overwrites old text and all downstream data is regenerated
+
+### Schema (already in BACKEND_PLAN, confirmed correct)
+
+```sql
+-- candidates table:
+resume_text      TEXT,   -- Full extracted text (stored forever, used for all AI)
+resume_parsed    TEXT,   -- JSON: {skills[], education[], companies[], certifications[]}
+resume_embedding TEXT,   -- JSON float array for ATS cosine similarity
+```
+
+### When to Re-extract
+
+`resume_text`, `resume_parsed`, and `resume_embedding` are regenerated only when:
+- Candidate uploads a new resume file
+- Recruiter manually pastes updated resume text
+
+They are never regenerated automatically.
+
+### What About Resume Download?
+
+If in a future phase the team wants to let recruiters download candidate resumes:
+- Add `resume_storage_key TEXT` column to candidates table
+- Store files in S3/R2 with a signed URL pattern
+- Add download endpoint: `GET /api/v1/candidates/:id/resume-download` → redirects to signed URL (valid 5 min)
+
+This is a clean Phase 2 addition that doesn't require any schema redesign.
+
+### Text Extraction Libraries
+
+```python
+# requirements.txt additions:
+pdfplumber>=0.9.0       # PDF text extraction — handles multi-column, tables
+python-docx>=0.8.11     # DOCX text extraction
+
+# In resume_parser.py:
+async def extract_text_from_file(file_bytes: bytes, filename: str) -> str:
+    if filename.lower().endswith(".pdf"):
+        return extract_from_pdf(file_bytes)
+    elif filename.lower().endswith((".docx", ".doc")):
+        return extract_from_docx(file_bytes)
+    else:
+        raise ValueError(f"Unsupported file type: {filename}")
+
+def extract_from_pdf(file_bytes: bytes) -> str:
+    with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+        pages = [page.extract_text() or "" for page in pdf.pages]
+        return "\n".join(pages).strip()
+
+def extract_from_docx(file_bytes: bytes) -> str:
+    doc = docx.Document(io.BytesIO(file_bytes))
+    paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+    return "\n".join(paragraphs).strip()
+```
