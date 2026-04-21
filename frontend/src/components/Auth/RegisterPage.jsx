@@ -7,6 +7,26 @@ function slugify(text) {
   return text.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim().slice(0, 50)
 }
 
+function PasswordInput({ id, value, onChange, placeholder, autoComplete }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="password-field">
+      <input
+        id={id}
+        type={show ? 'text' : 'password'}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        required
+        autoComplete={autoComplete}
+      />
+      <button type="button" className="password-toggle" onClick={() => setShow(!show)} tabIndex={-1}>
+        {show ? '🙈' : '👁️'}
+      </button>
+    </div>
+  )
+}
+
 export default function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
@@ -20,6 +40,7 @@ export default function RegisterPage() {
     email: '',
     password: '',
   })
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -30,6 +51,12 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    if (form.password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -135,13 +162,11 @@ export default function RegisterPage() {
 
           <div className="form-group">
             <label htmlFor="reg-password">Password</label>
-            <input
+            <PasswordInput
               id="reg-password"
-              type="password"
               placeholder="Create a strong password"
               value={form.password}
               onChange={update('password')}
-              required
               autoComplete="new-password"
             />
             <span className="password-hint">
@@ -149,10 +174,21 @@ export default function RegisterPage() {
             </span>
           </div>
 
+          <div className="form-group">
+            <label htmlFor="reg-confirm-pw">Confirm Password</label>
+            <PasswordInput
+              id="reg-confirm-pw"
+              placeholder="Re-enter your password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+            />
+          </div>
+
           <button
             type="submit"
             className="btn-primary"
-            disabled={loading || !form.org_name || !form.name || !form.email || !form.password || !form.segment}
+            disabled={loading || !form.org_name || !form.name || !form.email || !form.password || !form.segment || !confirmPassword}
           >
             {loading ? 'Creating workspace...' : 'Create Workspace'}
           </button>

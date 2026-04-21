@@ -9,3 +9,7 @@ Product Concept & Workflow Document.md
 run.txt
 old_backend/
 old_frontend/
+# Python Cache
+**/__pycache__/
+*.py[cod]
+*$py.class

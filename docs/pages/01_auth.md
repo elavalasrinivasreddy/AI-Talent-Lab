@@ -1,5 +1,5 @@
 # Page Design: Authentication
-> **Version 2.1 — Updated**
+> **Version 2.2 — Updated**
 > Login, Register, and Password Reset. Entry point for all platform users. Org slug auto-generated on registration.
 
 ---
@@ -108,6 +108,9 @@
 │         │  ████████░░ Strength: Strong      │        │
 │         │  ✅ 8+ chars  ✅ Uppercase         │        │
 │         │  ✅ Number    ✅ Special char      │        │
+│         │                                   │        │
+│         │  Confirm Password *               │        │
+│         │  [                    ] [👁]      │        │
 │         │                                   │        │
 │         │  [Create Organization]            │        │
 │         │                                   │        │

@@ -163,6 +163,7 @@ frontend/src/
 │   ├── common/                        # Shared UI primitives (replaces scattered inline styles)
 │   │   ├── Button.jsx
 │   │   ├── Input.jsx
+│   │   ├── PasswordInput.jsx
 │   │   ├── Badge.jsx                  # Status badges, priority chips, score badges
 │   │   ├── Card.jsx
 │   │   ├── Modal.jsx

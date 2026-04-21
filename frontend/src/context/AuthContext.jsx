@@ -55,6 +55,16 @@ export function AuthProvider({ children }) {
     setOrg(null)
   }, [])
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const { data } = await api.get('/auth/me')
+      setUser(data.user)
+      setOrg(data.org)
+    } catch (e) {
+      console.error('Failed to refresh user', e)
+    }
+  }, [])
+
   const value = {
     user,
     org,
@@ -64,6 +74,8 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    refreshUser,
+    setUser,
   }
 
   return (

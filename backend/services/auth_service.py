@@ -103,6 +103,11 @@ class AuthService:
             ip_address=ip_address,
         )
 
+        # Seed defaults for the new org (department, screening questions,
+        # message templates, scorecard template)
+        from backend.services.settings_service import SettingsService
+        await SettingsService.seed_defaults(conn, org["id"])
+
         # Create JWT
         token = create_access_token(
             user_id=user["id"],
@@ -166,7 +171,7 @@ class AuthService:
             )
 
             if attempts >= MAX_FAILED_ATTEMPTS:
-                locked_until = datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES)
+                locked_until = (datetime.now(timezone.utc) + timedelta(minutes=LOCKOUT_MINUTES)).replace(tzinfo=None)
                 await UserRepository.lock_account(conn, user["id"], locked_until)
                 raise AccountLockedError(
                     f"Account locked after {MAX_FAILED_ATTEMPTS} failed attempts. "

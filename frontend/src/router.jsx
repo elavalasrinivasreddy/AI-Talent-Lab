@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext'
 import LoginPage from './components/Auth/LoginPage'
 import RegisterPage from './components/Auth/RegisterPage'
 import Sidebar from './components/Sidebar/Sidebar'
+import SettingsPage from './components/Settings/SettingsPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -74,7 +75,8 @@ export const router = createBrowserRouter([
           { path: '/positions/:id', element: <PlaceholderPage title="Position Detail" icon="📋" /> },
           { path: '/talent-pool', element: <PlaceholderPage title="Talent Pool" icon="👥" /> },
           { path: '/interviews', element: <PlaceholderPage title="Interviews" icon="🎯" /> },
-          { path: '/settings', element: <PlaceholderPage title="Settings" icon="⚙️" /> },
+          { path: '/settings', element: <SettingsPage /> },
+          { path: '/settings/:tab', element: <SettingsPage /> },
         ],
       },
     ],
