@@ -64,6 +64,7 @@ class UpdateProfileRequest(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
+    timezone: Optional[str] = None
 
 
 class AddUserRequest(BaseModel):

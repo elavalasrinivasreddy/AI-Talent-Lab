@@ -9,6 +9,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -54,15 +55,20 @@ export default function LoginPage() {
 
           <div className="form-group">
             <label htmlFor="login-password">Password</label>
-            <input
-              id="login-password"
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
+            <div className="password-field">
+              <input
+                id="login-password"
+                type={showPw ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+              <button type="button" className="password-toggle" onClick={() => setShowPw(!showPw)} tabIndex={-1}>
+                {showPw ? '🙈' : '👁️'}
+              </button>
+            </div>
             <Link to="/forgot-password" className="forgot-link">
               Forgot password?
             </Link>

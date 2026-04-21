@@ -133,7 +133,7 @@ class UserRepository:
     @staticmethod
     async def reset_login_state(conn: asyncpg.Connection, user_id: int) -> None:
         """Reset failed attempts and locked_until on successful login."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         await conn.execute(
             """
             UPDATE users SET failed_login_attempts = 0, locked_until = NULL,

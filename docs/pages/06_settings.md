@@ -1,5 +1,5 @@
 # Page Design: Settings
-> **Version 2.1 — Updated**
+> **Version 2.2 — Updated**
 > Organization profile, team, departments, competitors, screening questions, message templates,
 > interview templates, integrations, appearance, security.
 > WhatsApp integration is Phase 2 — noted where relevant.
