@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import SidebarSessions from './SidebarSessions'
 import '../../styles/layout.css'
 
 const NAV_ITEMS = [
@@ -54,6 +55,8 @@ export default function Sidebar() {
             ))}
           </div>
         ))}
+
+        <SidebarSessions />
       </nav>
 
       <div className="sidebar-footer">

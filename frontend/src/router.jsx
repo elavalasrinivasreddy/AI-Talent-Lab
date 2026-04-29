@@ -4,6 +4,8 @@ import LoginPage from './components/Auth/LoginPage'
 import RegisterPage from './components/Auth/RegisterPage'
 import Sidebar from './components/Sidebar/Sidebar'
 import SettingsPage from './components/Settings/SettingsPage'
+import { ChatProvider } from './context/ChatContext'
+import ChatPage from './components/Chat/ChatPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -25,12 +27,14 @@ function PublicGuard() {
 
 function AppLayout() {
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="app-main">
-        <Outlet />
-      </main>
-    </div>
+    <ChatProvider>
+      <div className="app-layout">
+        <Sidebar />
+        <main className="app-main">
+          <Outlet />
+        </main>
+      </div>
+    </ChatProvider>
   )
 }
 
@@ -69,7 +73,8 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: '/chat', element: <PlaceholderPage title="Chat" icon="💬" /> },
+          { path: '/chat', element: <ChatPage /> },
+          { path: '/chat/:sessionId', element: <ChatPage /> },
           { path: '/dashboard', element: <PlaceholderPage title="Dashboard" icon="📊" /> },
           { path: '/positions', element: <PlaceholderPage title="Positions" icon="💼" /> },
           { path: '/positions/:id', element: <PlaceholderPage title="Position Detail" icon="📋" /> },

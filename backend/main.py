@@ -18,6 +18,7 @@ from backend.middleware.request_logger import setup_request_logger
 from backend.middleware.tenant_context import setup_tenant_context
 from backend.routers import auth as auth_router
 from backend.routers import settings as settings_router
+from backend.routers import chat as chat_router
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -61,6 +62,7 @@ setup_tenant_context(app)
 # Register routers
 app.include_router(auth_router.router)
 app.include_router(settings_router.router)
+app.include_router(chat_router.router)
 
 
 # ── Root & Health ──────────────────────────────────────────────────────────────
