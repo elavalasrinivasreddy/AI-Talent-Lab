@@ -23,6 +23,7 @@ from backend.routers import positions as positions_router
 from backend.routers import candidates as candidates_router
 from backend.routers import dashboard as dashboard_router
 from backend.routers import notifications as notifications_router
+from backend.routers import apply as apply_router
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -63,7 +64,8 @@ setup_rate_limiter(app)
 setup_request_logger(app)
 setup_tenant_context(app)
 
-# Register routers 
+# Register routers — each router defines its own full /api/v1/xxx prefix internally.
+# DO NOT add prefix here or routes will double-register as /api/v1/api/v1/xxx.
 app.include_router(auth_router.router)
 app.include_router(settings_router.router)
 app.include_router(chat_router.router)
@@ -71,6 +73,7 @@ app.include_router(positions_router.router)
 app.include_router(candidates_router.router)
 app.include_router(dashboard_router.router)
 app.include_router(notifications_router.router)
+app.include_router(apply_router.router)  # Public — no auth
 
 # ── Root & Health ──────────────────────────────────────────────────────────────
 

@@ -196,3 +196,47 @@ async def send_outreach(
             "error": {"code": "OUTREACH_FAILED",
                       "message": "Failed to queue outreach. Please try again.", "details": None}
         })
+
+
+@router.post("/{candidate_id}/generate-apply-link")
+async def generate_apply_link(
+    candidate_id: int,
+    body: dict,
+    current_user=Depends(get_current_user),
+):
+    """
+    Generate a magic apply link for a specific candidate application.
+    Body: { position_id: int }
+    Returns: { token, apply_url }
+    """
+    position_id = body.get("position_id")
+    if not position_id:
+        raise HTTPException(status_code=422, detail={
+            "error": {"code": "MISSING_POSITION", "message": "position_id required", "details": None}
+        })
+
+    from backend.db.connection import get_connection
+    from backend.db.repositories.candidates import CandidateRepository
+    from backend.services.apply_service import generate_apply_token
+    from backend.config import settings
+
+    async with get_connection() as conn:
+        app = await CandidateRepository.get_application_by_candidate_position(
+            conn, candidate_id, position_id
+        )
+        if not app or app.get("org_id") != current_user["org_id"]:
+            raise HTTPException(status_code=404, detail={
+                "error": {"code": "NOT_FOUND", "message": "Application not found", "details": None}
+            })
+
+        token = generate_apply_token(app["id"], candidate_id, current_user["org_id"])
+
+        # Store token on application
+        await conn.execute(
+            "UPDATE candidate_applications SET magic_link_token=$1, magic_link_sent_at=NOW() WHERE id=$2",
+            token, app["id"]
+        )
+
+    apply_url = f"{settings.FRONTEND_URL}/apply/{token}"
+    return {"token": token, "apply_url": apply_url, "expires_in_hours": 72}
+

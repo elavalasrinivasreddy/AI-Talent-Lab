@@ -45,12 +45,12 @@ class DashboardService:
             )
 
         return {
-            "open_positions": open_positions or 0,
-            "total_sourced": total_sourced or 0,
-            "total_applied": total_applied or 0,
-            "total_interview": total_interview or 0,
-            "total_selected": total_selected or 0,
-            "new_sourced_period": new_sourced or 0,
+            "active_positions": open_positions or 0,
+            "total_candidates": total_sourced or 0,
+            "applied_this_period": total_applied or 0,
+            "interviews_this_period": total_interview or 0,
+            "offers_this_period": total_selected or 0,
+            "avg_time_to_hire": None,  # Future: compute from applied_at to selected_at
             "period": period,
         }
 
@@ -98,10 +98,17 @@ class DashboardService:
                 """,
                 org_id
             )
-        stage_order = ["sourced", "emailed", "applied", "screening", "interview", "selected", "rejected"]
         counts = {r["status"]: r["count"] for r in rows}
-        funnel = [{"stage": s, "count": counts.get(s, 0)} for s in stage_order]
-        return {"funnel": funnel}
+        # Return flat dict — FunnelChart reads keys directly
+        return {
+            "sourced": counts.get("sourced", 0),
+            "emailed": counts.get("emailed", 0),
+            "applied": counts.get("applied", 0),
+            "screening": counts.get("screening", 0),
+            "interview": counts.get("interview", 0),
+            "selected": counts.get("selected", 0),
+            "rejected": counts.get("rejected", 0),
+        }
 
     @staticmethod
     async def get_activity(
