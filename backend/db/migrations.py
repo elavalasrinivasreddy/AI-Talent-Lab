@@ -140,23 +140,24 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     created_at       TIMESTAMP DEFAULT NOW()
 );
 
--- Candidate magic link sessions
+-- Candidate magic link apply sessions
 CREATE TABLE IF NOT EXISTS candidate_sessions (
-    id               TEXT PRIMARY KEY,
-    application_id   INTEGER,
-    position_id      INTEGER,
-    org_id           INTEGER REFERENCES organizations(id),
-    magic_link_token TEXT UNIQUE NOT NULL,
+    id               SERIAL PRIMARY KEY,
+    org_id           INTEGER NOT NULL REFERENCES organizations(id),
+    candidate_id     INTEGER REFERENCES candidates(id),
+    application_id   INTEGER UNIQUE REFERENCES candidate_applications(id),
+    session_state    TEXT DEFAULT '{}',
+    messages         TEXT DEFAULT '[]',
     status           TEXT DEFAULT 'active',
-    expires_at       TIMESTAMP NOT NULL,
     completed_at     TIMESTAMP,
-    created_at       TIMESTAMP DEFAULT NOW()
+    created_at       TIMESTAMP DEFAULT NOW(),
+    updated_at       TIMESTAMP DEFAULT NOW()
 );
 
--- Candidate session messages
+-- Candidate session messages (detailed log)
 CREATE TABLE IF NOT EXISTS candidate_session_messages (
     id               SERIAL PRIMARY KEY,
-    session_id       TEXT NOT NULL REFERENCES candidate_sessions(id) ON DELETE CASCADE,
+    session_id       INTEGER NOT NULL REFERENCES candidate_sessions(id) ON DELETE CASCADE,
     role             TEXT NOT NULL,
     content          TEXT NOT NULL,
     created_at       TIMESTAMP DEFAULT NOW()
@@ -507,5 +508,44 @@ async def run_migrations(conn) -> None:
     CREATE INDEX IF NOT EXISTS idx_talent_pool ON candidates(org_id, in_talent_pool) WHERE in_talent_pool = TRUE;
     """
     await conn.execute(index_sql)
+
+    # ── Incremental schema migrations (safe to run multiple times) ────────────
+    incremental_sql = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidate_sessions' AND column_name='session_state') THEN
+            ALTER TABLE candidate_sessions
+                ADD COLUMN session_state TEXT DEFAULT '{}',
+                ADD COLUMN messages TEXT DEFAULT '[]',
+                ADD COLUMN candidate_id INTEGER,
+                ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name='candidate_sessions' AND column_name='magic_link_token') THEN
+            ALTER TABLE candidate_sessions
+                DROP COLUMN IF EXISTS magic_link_token,
+                DROP COLUMN IF EXISTS position_id,
+                DROP COLUMN IF EXISTS expires_at;
+        END IF;
+    END $$;
+
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='followup_delay_hours') THEN
+            ALTER TABLE positions ADD COLUMN followup_delay_hours INTEGER DEFAULT 72;
+        END IF;
+    END $$;
+
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='organizations' AND column_name='hiring_contact_email') THEN
+            ALTER TABLE organizations ADD COLUMN hiring_contact_email TEXT;
+        END IF;
+    END $$;
+    """
+    await conn.execute(incremental_sql)
 
     logger.info("Database migrations complete.")

@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import SidebarSessions from './SidebarSessions'
+import NotificationBell from '../common/NotificationBell'
 import '../../styles/layout.css'
 
 const NAV_ITEMS = [
@@ -68,6 +69,7 @@ export default function Sidebar() {
               <div className="sidebar-user-role" style={{ maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{org?.name || 'Organization'}</div>
             </div>
           </div>
+          <NotificationBell />
           <button 
             onClick={handleLogout} 
             className="btn btn-ghost" 

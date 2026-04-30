@@ -19,6 +19,15 @@ from backend.middleware.tenant_context import setup_tenant_context
 from backend.routers import auth as auth_router
 from backend.routers import settings as settings_router
 from backend.routers import chat as chat_router
+from backend.routers import positions as positions_router
+from backend.routers import candidates as candidates_router
+from backend.routers import dashboard as dashboard_router
+from backend.routers import notifications as notifications_router
+from backend.routers import apply as apply_router
+from backend.routers import interviews as interviews_router
+from backend.routers import panel as panel_router
+from backend.routers import talent_pool as talent_pool_router
+from backend.routers import careers as careers_router
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -53,17 +62,26 @@ app = FastAPI(
 # Register exception handlers
 register_exception_handlers(app)
 
-# Register middleware (order matters — outermost first)
+# Register middleware
 setup_cors(app)
 setup_rate_limiter(app)
 setup_request_logger(app)
 setup_tenant_context(app)
 
-# Register routers
+# Register routers — each router defines its own full /api/v1/xxx prefix internally.
+# DO NOT add prefix here or routes will double-register as /api/v1/api/v1/xxx.
 app.include_router(auth_router.router)
 app.include_router(settings_router.router)
 app.include_router(chat_router.router)
-
+app.include_router(positions_router.router)
+app.include_router(candidates_router.router)
+app.include_router(dashboard_router.router)
+app.include_router(notifications_router.router)
+app.include_router(apply_router.router)   # Public — no auth (magic link)
+app.include_router(interviews_router.router)
+app.include_router(panel_router.router)   # Public — no auth (magic link)
+app.include_router(talent_pool_router.router)
+app.include_router(careers_router.router)  # Public — no auth (career page)
 
 # ── Root & Health ──────────────────────────────────────────────────────────────
 

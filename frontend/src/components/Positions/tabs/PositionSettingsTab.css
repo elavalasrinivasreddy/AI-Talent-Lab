@@ -1,0 +1,40 @@
+/* PositionSettingsTab.css */
+.psettings-tab { display: flex; flex-direction: column; gap: var(--space-6); }
+.psettings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
+@media (max-width: 768px) { .psettings-grid { grid-template-columns: 1fr; } }
+.psettings-section { display: flex; flex-direction: column; gap: var(--space-4); }
+.psettings-heading { font-size: var(--font-size-base); font-weight: 600; color: var(--color-text-primary); margin: 0 0 var(--space-2) 0; padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); }
+.psettings-field { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.psettings-field.psettings-toggle { flex-direction: row; align-items: center; justify-content: space-between; }
+.psettings-input, .psettings-select {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  transition: border-color var(--transition-fast);
+}
+.psettings-input:focus, .psettings-select:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+}
+.psettings-range-row { display: flex; align-items: center; gap: var(--space-3); }
+.psettings-range-row input[type=range] { flex: 1; accent-color: var(--color-primary); }
+.psettings-range-val { font-weight: 700; color: var(--color-primary); min-width: 36px; text-align: right; }
+.psettings-hint { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+.psettings-footer { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-3); padding-top: var(--space-4); border-top: 1px solid var(--color-border); }
+.psettings-saved { font-size: var(--font-size-sm); color: var(--color-success); }
+.psettings-save-btn {
+  padding: var(--space-2) var(--space-6);
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.psettings-save-btn:hover:not(:disabled) { background: var(--color-primary-hover); }
+.psettings-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }

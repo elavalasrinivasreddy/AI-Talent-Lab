@@ -13,8 +13,12 @@ from backend.agents.streaming import StreamHandler
 from backend.db.repositories.sessions import ChatSessionRepository
 from backend.db.repositories.organizations import OrgRepository
 from backend.db.repositories.positions import PositionRepository
+from backend.db.repositories.pipeline_events import PipelineEventRepository
+from backend.db.repositories.audit import AuditLogRepository
 from backend.db.vector_store import embed_jd
 from backend.db.connection import get_connection
+from backend.adapters.llm.factory import get_embedding_model
+
 
 logger = logging.getLogger(__name__)
 
@@ -134,10 +138,6 @@ class ChatService:
 
             # ── Emit interactive cards based on state ─────────────────
             if new_state.get("awaiting_user_input"):
-                await _emit_cards(new_state, current_stage)
-
-            # Emit cards directly based on awaiting state
-            if new_state.get("awaiting_user_input"):
                 internal_skills = new_state.get("internal_skills_found", [])
                 market_skills = new_state.get("market_skills_found", [])
                 jd_variants = new_state.get("jd_variants", [])
@@ -199,8 +199,8 @@ class ChatService:
         setup_data: dict
     ) -> dict[str, Any]:
         """
-        Takes the final JD and variants from the session,
-        creates a new Position row, and embeddings.
+        Takes the final JD and variants from the session, creates a Position,
+        generates the JD embedding, and triggers the Celery candidate pipeline.
         """
         session_row = await ChatSessionRepository.get(session_id, org_id)
         if not session_row:
@@ -215,39 +215,74 @@ class ChatService:
 
         final_jd = state.get("final_jd")
 
-        position = await PositionRepository.create(
-            org_id=org_id,
-            department_id=department_id,
-            session_id=session_id,
-            role_name=role_name,
-            jd_markdown=final_jd,
-            jd_variant_selected=state.get("selected_variant"),
-            headcount=setup_data.get("headcount", 1),
-            priority=setup_data.get("priority", "normal"),
-            ats_threshold=setup_data.get("ats_threshold", 80.0),
-            search_interval_hours=setup_data.get("search_interval_hours", 24),
-            created_by=user_id,
-            location=state.get("location"),
-            work_type=state.get("work_type", "onsite"),
-            employment_type=state.get("employment_type", "full_time"),
-            experience_min=state.get("experience_min"),
-            experience_max=state.get("experience_max")
-        )
+        async with get_connection() as conn:
+            position = await PositionRepository.create(
+                conn=conn,
+                org_id=org_id,
+                department_id=department_id,
+                session_id=session_id,
+                role_name=role_name,
+                jd_markdown=final_jd,
+                jd_variant_selected=state.get("selected_variant"),
+                status="open",   # Activate immediately on save
+                headcount=setup_data.get("headcount", 1),
+                priority=setup_data.get("priority", "normal"),
+                ats_threshold=setup_data.get("ats_threshold", 80.0),
+                search_interval_hours=setup_data.get("search_interval_hours", 24),
+                created_by=user_id,
+                location=state.get("location"),
+                work_type=state.get("work_type", "onsite"),
+                employment_type=state.get("employment_type", "full_time"),
+                experience_min=state.get("experience_min"),
+                experience_max=state.get("experience_max")
+            )
 
-        position_id = position["id"]
+            position_id = position["id"]
 
-        # Link session -> position
-        await ChatSessionRepository.link_position(session_id, org_id, position_id)
+            # Link session -> position
+            await ChatSessionRepository.link_position(session_id, org_id, position_id)
 
-        # Insert variants
-        variants = state.get("jd_variants", [])
-        if variants:
-            for v in variants:
-                if v.get("type") == state.get("selected_variant"):
-                    v["is_selected"] = True
-            await PositionRepository.insert_variants(position_id, variants)
+            # Insert variants
+            variants = state.get("jd_variants", [])
+            if variants:
+                for v in variants:
+                    if v.get("type") == state.get("selected_variant"):
+                        v["is_selected"] = True
+                await PositionRepository.insert_variants(conn, position_id, variants)
 
-        # Embed JD in ChromaDB
+            # Pipeline event: JD created
+            await PipelineEventRepository.create(conn, {
+                "org_id": org_id,
+                "position_id": position_id,
+                "user_id": user_id,
+                "event_type": "jd_generated",
+                "event_data": {"role_name": role_name, "variant": state.get("selected_variant")}
+            })
+
+            # Audit log
+            await AuditLogRepository.create(conn, {
+                "org_id": org_id,
+                "user_id": user_id,
+                "action": "position_created",
+                "entity_type": "position",
+                "entity_id": str(position_id),
+                "details": json.dumps({"role_name": role_name, "department_id": department_id})
+            })
+
+        # ── Generate JD embedding for ATS scoring (§15) ──────────────────────
+        try:
+            embedding_model = get_embedding_model()
+            jd_text_for_embedding = f"{role_name} {final_jd or ''}"
+            embedding = await embedding_model.aembed_query(jd_text_for_embedding[:8000])
+            async with get_connection() as conn:
+                await PositionRepository.update_embedding(
+                    conn, position_id, org_id, json.dumps(embedding)
+                )
+            logger.info(f"JD embedding stored for position {position_id}")
+        except Exception as e:
+            logger.warning(f"JD embedding (ATS) failed (non-blocking): {e}")
+
+        # ── Embed JD in ChromaDB for internal check future sessions ──────────
         try:
             await embed_jd(
                 position_id=position_id,
@@ -257,11 +292,16 @@ class ChatService:
                 jd_text=final_jd
             )
         except Exception as e:
-            logger.warning(f"JD embedding failed (non-blocking): {e}")
+            logger.warning(f"ChromaDB JD embedding failed (non-blocking): {e}")
+
+        # ── Trigger Celery candidate pipeline ─────────────────────────────────
+        try:
+            from backend.tasks.candidate_pipeline import run_candidate_search
+            run_candidate_search.delay(position_id, org_id, department_id, user_id)
+            logger.info(f"Candidate pipeline task queued for position {position_id}")
+        except Exception as e:
+            logger.warning(f"Could not enqueue candidate pipeline (non-blocking): {e}")
+
 
         return position
 
-
-async def _emit_cards(state: dict, stage: str) -> None:
-    """Helper to determine which cards to emit. Unused directly — logic inlined above."""
-    pass

@@ -6,6 +6,14 @@ import Sidebar from './components/Sidebar/Sidebar'
 import SettingsPage from './components/Settings/SettingsPage'
 import { ChatProvider } from './context/ChatContext'
 import ChatPage from './components/Chat/ChatPage'
+import PositionsListPage from './components/Positions/PositionsListPage'
+import PositionDetailPage from './components/Positions/PositionDetailPage'
+import CandidateDetailPage from './components/Candidates/CandidateDetailPage'
+import ApplyPage from './components/Apply/ApplyPage'
+import DashboardPage from './components/Dashboard/DashboardPage'
+import PanelPage from './components/Panel/PanelPage'
+import TalentPoolPage from './components/TalentPool/TalentPoolPage'
+import CareerPage from './components/Careers/CareerPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -38,7 +46,7 @@ function AppLayout() {
   )
 }
 
-// ── Placeholder pages (to be built in later steps) ──
+// ── Placeholder pages (phases not yet built) ────
 
 function PlaceholderPage({ title, icon }) {
   return (
@@ -73,13 +81,22 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
+          // Chat
           { path: '/chat', element: <ChatPage /> },
           { path: '/chat/:sessionId', element: <ChatPage /> },
-          { path: '/dashboard', element: <PlaceholderPage title="Dashboard" icon="📊" /> },
-          { path: '/positions', element: <PlaceholderPage title="Positions" icon="💼" /> },
-          { path: '/positions/:id', element: <PlaceholderPage title="Position Detail" icon="📋" /> },
-          { path: '/talent-pool', element: <PlaceholderPage title="Talent Pool" icon="👥" /> },
-          { path: '/interviews', element: <PlaceholderPage title="Interviews" icon="🎯" /> },
+
+          // Positions
+          { path: '/positions', element: <PositionsListPage /> },
+          { path: '/positions/:id', element: <PositionDetailPage /> },
+          { path: '/positions/:id/:tab', element: <PositionDetailPage /> },
+
+          // Candidates
+          { path: '/candidates/:id', element: <CandidateDetailPage /> },
+
+          // Other tabs (future steps)
+          { path: '/dashboard', element: <DashboardPage /> },
+          { path: '/talent-pool', element: <TalentPoolPage /> },
+          { path: '/interviews', element: <PlaceholderPage title="Interviews" icon="🎙" /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/:tab', element: <SettingsPage /> },
         ],
@@ -87,10 +104,11 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // Public pages (no auth)
-  { path: '/apply/:token', element: <PlaceholderPage title="Apply" icon="📝" /> },
-  { path: '/panel/:token', element: <PlaceholderPage title="Panel Feedback" icon="📝" /> },
-  { path: '/careers/:slug', element: <PlaceholderPage title="Career Page" icon="🏢" /> },
+  // Public pages (no auth) — magic links, career page
+  { path: '/apply/:token', element: <ApplyPage /> },
+  { path: '/panel/:token', element: <PanelPage /> },
+  { path: '/careers/:orgSlug', element: <CareerPage /> },
+  { path: '/careers/:orgSlug/:positionId', element: <CareerPage /> },
 
   // Catch-all
   { path: '*', element: <Navigate to="/login" replace /> },
