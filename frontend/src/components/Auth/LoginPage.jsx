@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import '../../styles/auth.css'
@@ -7,14 +7,27 @@ export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const emailRef = useRef(null)
+  const passwordRef = useRef(null)
+
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Use uncontrolled inputs to avoid browser autocomplete issues.
+  // We read values from refs on submit rather than tracking every keystroke,
+  // which means the submit button is always enabled (not false-disabled).
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const email = emailRef.current?.value?.trim() || ''
+    const password = passwordRef.current?.value || ''
+
+    if (!email || !password) {
+      setError('Please enter your email and password.')
+      return
+    }
+
     setError('')
     setLoading(true)
 
@@ -28,6 +41,12 @@ export default function LoginPage() {
     }
   }
 
+  // Clear fields on mount so browser-saved values don't linger on refresh
+  useEffect(() => {
+    if (emailRef.current) emailRef.current.value = ''
+    if (passwordRef.current) passwordRef.current.value = ''
+  }, [])
+
   return (
     <div className="auth-layout">
       <div className="auth-card">
@@ -38,18 +57,16 @@ export default function LoginPage() {
 
         {error && <div className="auth-error">{error}</div>}
 
-        <form className="auth-form" onSubmit={handleSubmit}>
+        <form className="auth-form" onSubmit={handleSubmit} autoComplete="off">
           <div className="form-group">
             <label htmlFor="login-email">Email</label>
             <input
               id="login-email"
+              ref={emailRef}
               type="email"
               placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
               autoFocus
-              autoComplete="email"
+              autoComplete="new-password"
             />
           </div>
 
@@ -58,14 +75,17 @@ export default function LoginPage() {
             <div className="password-field">
               <input
                 id="login-password"
+                ref={passwordRef}
                 type={showPw ? 'text' : 'password'}
                 placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
+                autoComplete="new-password"
               />
-              <button type="button" className="password-toggle" onClick={() => setShowPw(!showPw)} tabIndex={-1}>
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPw(!showPw)}
+                tabIndex={-1}
+              >
                 {showPw ? '🙈' : '👁️'}
               </button>
             </div>
@@ -77,7 +97,7 @@ export default function LoginPage() {
           <button
             type="submit"
             className="btn-primary"
-            disabled={loading || !email || !password}
+            disabled={loading}
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>

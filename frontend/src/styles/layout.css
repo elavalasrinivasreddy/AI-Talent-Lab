@@ -5,13 +5,65 @@
   min-height: 100vh;
 }
 
+/* ── Global Top Bar (notification bell, etc.) ─── */
+
+.app-topbar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: var(--sidebar-width);
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 var(--space-6);
+  background: rgba(var(--color-bg-primary-rgb, 15, 15, 19), 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-border-light);
+  z-index: calc(var(--z-sidebar) - 1);
+}
+
 .app-main {
   flex: 1;
   margin-left: var(--sidebar-width);
-  padding: var(--space-8);
+  padding: calc(52px + var(--space-6)) var(--space-8) var(--space-8);
   transition: margin-left var(--transition-normal);
   animation: fadeIn 300ms ease;
 }
+
+/* ── Session list items with hover-delete ────── */
+
+.session-item-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.session-delete-btn {
+  position: absolute;
+  right: var(--space-2);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-danger);
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.session-item-row:hover .session-delete-btn {
+  opacity: 1;
+}
+
+.session-delete-btn:hover {
+  background: var(--color-danger-bg);
+}
+
+
 
 /* ── Sidebar ────────────────────────────────── */
 

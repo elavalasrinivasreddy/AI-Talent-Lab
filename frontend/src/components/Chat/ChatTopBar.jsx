@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useChat } from '../../context/ChatContext';
 import PositionSetupModal from './PositionSetupModal';
 
@@ -14,41 +15,35 @@ const STAGE_CONFIG = {
 };
 
 const ChatTopBar = () => {
+    const navigate = useNavigate();
     const {
         sessionTitle,
-        setSessionTitle,
         isTitleAnimating,
         workflowStage,
         currentSessionId,
         deleteSession
     } = useChat();
 
-    const [showModal, setShowModal] = useState(false);
     const [showConfirmDiscard, setShowConfirmDiscard] = useState(false);
 
     const stageInfo = STAGE_CONFIG[workflowStage] || STAGE_CONFIG.intake;
-
-    const handleTitleChange = (e) => {
-        setSessionTitle(e.target.textContent);
-    };
 
     const handleDiscard = async () => {
         if (currentSessionId) {
             await deleteSession(currentSessionId);
         }
         setShowConfirmDiscard(false);
-        window.location.href = '/chat';
+        navigate('/chat', { replace: true });
     };
 
     return (
         <>
             <div className="chat-topbar">
                 <div className="chat-topbar-left">
+                    {/* Title — read-only, updated via role extraction with animation */}
                     <span
                         className={`session-title ${isTitleAnimating ? 'title-pop' : ''}`}
-                        contentEditable
-                        suppressContentEditableWarning
-                        onBlur={handleTitleChange}
+                        title={sessionTitle}
                     >
                         {sessionTitle}
                     </span>
@@ -85,21 +80,6 @@ const ChatTopBar = () => {
                             Discard
                         </button>
                     )}
-                    <button
-                        className="btn btn-sm"
-                        style={{
-                            background: workflowStage === 'complete' ? 'var(--color-primary)' : 'var(--color-bg-tertiary)',
-                            color: workflowStage === 'complete' ? '#fff' : 'var(--color-text-muted)',
-                            border: '1px solid var(--color-border)',
-                            borderRadius: 'var(--radius-md)',
-                            cursor: workflowStage === 'complete' ? 'pointer' : 'not-allowed',
-                            opacity: workflowStage === 'complete' ? 1 : 0.5
-                        }}
-                        onClick={() => workflowStage === 'complete' && setShowModal(true)}
-                        disabled={workflowStage !== 'complete'}
-                    >
-                        Save & Find Candidates
-                    </button>
                 </div>
             </div>
 
@@ -120,7 +100,6 @@ const ChatTopBar = () => {
                 </div>
             )}
 
-            <PositionSetupModal show={showModal} onClose={() => setShowModal(false)} />
         </>
     );
 };

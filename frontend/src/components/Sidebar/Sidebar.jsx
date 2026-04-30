@@ -1,18 +1,17 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import SidebarSessions from './SidebarSessions'
-import NotificationBell from '../common/NotificationBell'
 import '../../styles/layout.css'
 
 const NAV_ITEMS = [
   { section: 'Main', items: [
-    { to: '/chat', icon: '💬', label: 'Chat' },
+    { to: '/chat', icon: '✨', label: 'New Hire' },
     { to: '/dashboard', icon: '📊', label: 'Dashboard' },
   ]},
   { section: 'Hiring', items: [
     { to: '/positions', icon: '💼', label: 'Positions' },
-    { to: '/talent-pool', icon: '👥', label: 'Talent Pool' },
-    { to: '/interviews', icon: '🎯', label: 'Interviews' },
+    { to: '/talent-pool', icon: '🗃', label: 'Talent Pool' },
+    { to: '/interviews', icon: '🎙', label: 'Interviews' },
   ]},
   { section: 'System', items: [
     { to: '/settings', icon: '⚙️', label: 'Settings' },
@@ -61,22 +60,21 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-footer">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div className="sidebar-user" title="Your Account" style={{ padding: '8px', flex: 1, marginRight: '4px' }}>
-            <div className="sidebar-avatar">{initials}</div>
-            <div className="sidebar-user-info">
-              <div className="sidebar-user-name" style={{ maxWidth: '120px' }}>{user?.name || 'User'}</div>
-              <div className="sidebar-user-role" style={{ maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{org?.name || 'Organization'}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="sidebar-avatar">{initials}</div>
+          <div className="sidebar-user-info" style={{ flex: 1, minWidth: 0 }}>
+            <div className="sidebar-user-name">{user?.name || 'User'}</div>
+            <div className="sidebar-user-role" style={{ maxWidth: '140px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {org?.name || 'Organization'}
             </div>
           </div>
-          <NotificationBell />
-          <button 
-            onClick={handleLogout} 
-            className="btn btn-ghost" 
+          <button
+            onClick={handleLogout}
+            className="btn btn-ghost"
             title="Logout"
-            style={{ padding: '8px', color: 'var(--color-danger)', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ padding: '8px', color: 'var(--color-danger)', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>

@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext'
 import LoginPage from './components/Auth/LoginPage'
 import RegisterPage from './components/Auth/RegisterPage'
 import Sidebar from './components/Sidebar/Sidebar'
+import NotificationBell from './components/common/NotificationBell'
 import SettingsPage from './components/Settings/SettingsPage'
 import { ChatProvider } from './context/ChatContext'
 import ChatPage from './components/Chat/ChatPage'
@@ -38,6 +39,10 @@ function AppLayout() {
     <ChatProvider>
       <div className="app-layout">
         <Sidebar />
+        {/* Global top bar with notification bell */}
+        <div className="app-topbar">
+          <NotificationBell />
+        </div>
         <main className="app-main">
           <Outlet />
         </main>

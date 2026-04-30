@@ -113,31 +113,35 @@ class ChatSessionRepository:
 
     @staticmethod
     async def list_by_user(user_id: int, org_id: int) -> list[dict[str, Any]]:
-        """List user's active/recent sessions."""
+        """List user's active/recent sessions — excludes soft-deleted."""
         async with get_connection() as conn:
             rows = await conn.fetch(
                 """
                 SELECT id, title, workflow_stage, updated_at, position_id
                 FROM chat_sessions
                 WHERE user_id = $1 AND org_id = $2
+                  AND (status IS NULL OR status != 'deleted')
                 ORDER BY updated_at DESC
-                """
-                # Could limit or paginate here
-                , user_id, org_id
+                LIMIT 20
+                """,
+                user_id, org_id
             )
             return [dict(r) for r in rows]
 
     @staticmethod
     async def delete(session_id: str, org_id: int) -> bool:
+        """Soft-delete: sets status='deleted'. Record is preserved in DB for audit."""
         async with get_connection() as conn:
             res = await conn.execute(
                 """
-                DELETE FROM chat_sessions
-                WHERE id = $1 AND org_id = $2
+                UPDATE chat_sessions
+                SET status = 'deleted', updated_at = NOW()
+                WHERE id = $1 AND org_id = $2 AND status != 'deleted'
                 """,
                 session_id, org_id
             )
-            return res == "DELETE 1"
+            return res == "UPDATE 1"
+
 
     @staticmethod
     async def add_message(

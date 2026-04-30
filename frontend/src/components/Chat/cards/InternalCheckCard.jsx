@@ -19,55 +19,46 @@ const InternalCheckCard = ({ skills }) => {
 
     const handleAcceptSelected = () => {
         if (selectedSkills.length === 0) return;
-        setDismissSummary(`Added: ${selectedSkills.join(', ')} ✅`);
+        setDismissSummary(`Added ${selectedSkills.length} skill${selectedSkills.length > 1 ? 's' : ''} ✅`);
         setIsDismissed(true);
-        sendMessage({
-            action: 'accept_internal',
-            action_data: { skills: selectedSkills }
-        });
+        sendMessage({ action: 'accept_internal', action_data: { skills: selectedSkills } });
         dismissInternalCard();
     };
 
     const handleAcceptAll = () => {
         const allSkills = skills.map(s => s.skill);
-        setDismissSummary(`Added: ${allSkills.join(', ')} ✅`);
+        setDismissSummary(`Added all ${allSkills.length} skills ✅`);
         setIsDismissed(true);
-        sendMessage({
-            action: 'accept_internal',
-            action_data: { skills: allSkills }
-        });
+        sendMessage({ action: 'accept_internal', action_data: { skills: allSkills } });
         dismissInternalCard();
     };
 
     const handleSkip = () => {
-        setDismissSummary('Skipped internal check →');
+        setDismissSummary('Skipped →');
         setIsDismissed(true);
         sendMessage({ action: 'skip_internal' });
         dismissInternalCard();
     };
 
-    // Collapsed read-only state after action
+    // Compact read-only after action (persists in chat view — #7)
     if (isDismissed) {
         return (
-            <div className="chat-card mb-3" style={{ opacity: 0.7, padding: 'var(--space-3)' }}>
-                <div className="d-flex align-items-center gap-2">
-                    <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-                        📊 Internal Check — {dismissSummary}
-                    </span>
-                </div>
+            <div className="chat-card mb-3" style={{ padding: 'var(--space-3)', opacity: 0.65 }}>
+                <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
+                    📊 Internal Skills Check — {dismissSummary}
+                </span>
             </div>
         );
     }
 
+    // Empty state placeholder (#8)
     if (!skills || skills.length === 0) {
         return (
             <div className="chat-card mb-3">
-                <div className="chat-card-header">
-                    📊 Internal Skills Check
+                <div className="chat-card-header">📊 Internal Skills Check</div>
+                <div className="skill-chips-empty">
+                    No similar past roles found in your org yet. This section is skipped — continuing with market research.
                 </div>
-                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)' }}>
-                    No similar past roles found in your organization yet. Moving to market research...
-                </p>
                 <div className="card-actions">
                     <button className="btn btn-sm" style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)' }} onClick={handleSkip}>
                         Continue →
@@ -79,11 +70,9 @@ const InternalCheckCard = ({ skills }) => {
 
     return (
         <div className="chat-card mb-3">
-            <div className="chat-card-header">
-                📊 Internal Skills Check
-            </div>
+            <div className="chat-card-header">📊 Internal Skills Check</div>
             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)' }}>
-                Found these skills in similar past roles that aren't in your current requirements:
+                Found in similar past roles — not in your current requirements. Click to select:
             </p>
 
             <div className="skill-chips">
@@ -92,14 +81,9 @@ const InternalCheckCard = ({ skills }) => {
                         key={i}
                         className={`skill-chip ${selectedSkills.includes(s.skill) ? 'selected' : ''}`}
                         onClick={() => toggleSkill(s.skill)}
+                        title={s.source ? `From: ${s.source}${s.year ? ` (${s.year})` : ''}` : ''}
                     >
-                        {selectedSkills.includes(s.skill) ? '✅ ' : '☐ '}
                         {s.skill}
-                        {s.source && (
-                            <small style={{ opacity: 0.6, marginLeft: 4 }}>
-                                ← {s.source}{s.year ? ` (${s.year})` : ''}
-                            </small>
-                        )}
                     </span>
                 ))}
             </div>
@@ -110,14 +94,14 @@ const InternalCheckCard = ({ skills }) => {
                     style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-secondary)' }}
                     onClick={handleSkip}
                 >
-                    Skip →
+                    Skip
                 </button>
                 <button
                     className="btn btn-sm"
                     style={{ border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-md)', color: 'var(--color-primary)' }}
                     onClick={handleAcceptAll}
                 >
-                    Accept All ({skills.length})
+                    Add All ({skills.length})
                 </button>
                 <button
                     className="btn btn-sm"
@@ -125,7 +109,7 @@ const InternalCheckCard = ({ skills }) => {
                     onClick={handleAcceptSelected}
                     disabled={selectedSkills.length === 0}
                 >
-                    Accept Selected ({selectedSkills.length})
+                    Add Selected ({selectedSkills.length})
                 </button>
             </div>
         </div>
