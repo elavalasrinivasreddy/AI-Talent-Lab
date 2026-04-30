@@ -24,6 +24,8 @@ from backend.routers import candidates as candidates_router
 from backend.routers import dashboard as dashboard_router
 from backend.routers import notifications as notifications_router
 from backend.routers import apply as apply_router
+from backend.routers import interviews as interviews_router
+from backend.routers import panel as panel_router
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -73,7 +75,9 @@ app.include_router(positions_router.router)
 app.include_router(candidates_router.router)
 app.include_router(dashboard_router.router)
 app.include_router(notifications_router.router)
-app.include_router(apply_router.router)  # Public — no auth
+app.include_router(apply_router.router)   # Public — no auth (magic link)
+app.include_router(interviews_router.router)
+app.include_router(panel_router.router)   # Public — no auth (magic link)
 
 # ── Root & Health ──────────────────────────────────────────────────────────────
 

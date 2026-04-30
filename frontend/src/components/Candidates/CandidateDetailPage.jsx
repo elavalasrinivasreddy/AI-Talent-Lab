@@ -8,6 +8,7 @@ import { candidatesApi } from '../../utils/api'
 import { PIPELINE_STAGES, KANBAN_STAGE_ORDER, PIPELINE_EVENT_ICONS, getScoreStyle } from '../../utils/constants'
 import StatusBadge from '../common/StatusBadge'
 import ScoreCircle from '../common/ScoreCircle'
+import InterviewsTab from './tabs/InterviewsTab'
 import './CandidateDetailPage.css'
 
 const TABS = [
@@ -15,6 +16,7 @@ const TABS = [
   { id: 'skills', label: '📊 Skills Match' },
   { id: 'timeline', label: '📜 Timeline' },
   { id: 'resume', label: '📄 Resume' },
+  { id: 'interviews', label: '🎙️ Interviews' },
 ]
 
 export default function CandidateDetailPage() {
@@ -186,6 +188,14 @@ export default function CandidateDetailPage() {
         {activeTab === 'skills' && <SkillsTab scoreData={scoreData} score={score} />}
         {activeTab === 'timeline' && <TimelineTab events={timeline} />}
         {activeTab === 'resume' && <ResumeTab candidate={candidate} />}
+        {activeTab === 'interviews' && (
+          <InterviewsTab
+            candidateId={parseInt(id)}
+            positionId={positionId ? parseInt(positionId) : null}
+            candidateName={candidate.name}
+            applicationId={candidate.application_id}
+          />
+        )}
       </div>
     </div>
   )

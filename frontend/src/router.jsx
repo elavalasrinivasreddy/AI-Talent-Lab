@@ -11,6 +11,7 @@ import PositionDetailPage from './components/Positions/PositionDetailPage'
 import CandidateDetailPage from './components/Candidates/CandidateDetailPage'
 import ApplyPage from './components/Apply/ApplyPage'
 import DashboardPage from './components/Dashboard/DashboardPage'
+import PanelPage from './components/Panel/PanelPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -103,7 +104,7 @@ export const router = createBrowserRouter([
 
   // Public pages (no auth) — magic links, career page
   { path: '/apply/:token', element: <ApplyPage /> },
-  { path: '/panel/:token', element: <PlaceholderPage title="Panel Feedback" icon="📋" /> },
+  { path: '/panel/:token', element: <PanelPage /> },
   { path: '/careers/:slug', element: <PlaceholderPage title="Career Page" icon="🏢" /> },
 
   // Catch-all

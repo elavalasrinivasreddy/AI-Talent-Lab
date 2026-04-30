@@ -143,3 +143,16 @@ export const notificationsApi = {
   markRead: (id) => _patch(`/notifications/${id}/read`),
   markAllRead: () => _patch('/notifications/read-all'),
 }
+
+// ── Interviews ────────────────────────────────────────────────────────────────
+
+export const interviewsApi = {
+  create: (data) => _post('/interviews/', data),
+  listForCandidate: (candidateId) => _get(`/interviews/candidate/${candidateId}`),
+  listForPosition: (positionId) => _get(`/interviews/position/${positionId}`),
+  get: (id) => _get(`/interviews/${id}`),
+  update: (id, data) => _patch(`/interviews/${id}`, data),
+  sendInvites: (id) => _post(`/interviews/${id}/send-invites`),
+  generateDebrief: (id) => _post(`/interviews/${id}/generate-debrief`),
+}
+
