@@ -26,6 +26,8 @@ from backend.routers import notifications as notifications_router
 from backend.routers import apply as apply_router
 from backend.routers import interviews as interviews_router
 from backend.routers import panel as panel_router
+from backend.routers import talent_pool as talent_pool_router
+from backend.routers import careers as careers_router
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -78,6 +80,8 @@ app.include_router(notifications_router.router)
 app.include_router(apply_router.router)   # Public — no auth (magic link)
 app.include_router(interviews_router.router)
 app.include_router(panel_router.router)   # Public — no auth (magic link)
+app.include_router(talent_pool_router.router)
+app.include_router(careers_router.router)  # Public — no auth (career page)
 
 # ── Root & Health ──────────────────────────────────────────────────────────────
 

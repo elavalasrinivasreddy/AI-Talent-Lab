@@ -501,3 +501,22 @@ class ApplyService:
                 "UPDATE candidate_sessions SET session_state=$1 WHERE id=$2",
                 json.dumps(state), session_id
             )
+
+    @staticmethod
+    def generate_career_page_token(position_id: int, org_id: int) -> str:
+        """
+        Generate a special apply token for career page (no existing candidate/application).
+        The application + candidate records are created on the first chat message.
+        """
+        payload = {
+            "type": "career_apply",
+            "position_id": position_id,
+            "org_id": org_id,
+            "application_id": None,
+            "candidate_id": None,
+            "exp": datetime.now(timezone.utc) + timedelta(hours=APPLY_TOKEN_EXPIRY_HOURS),
+            "iat": datetime.now(timezone.utc),
+            "jti": str(uuid.uuid4()),
+        }
+        return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+

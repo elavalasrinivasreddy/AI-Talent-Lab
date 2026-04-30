@@ -12,6 +12,8 @@ import CandidateDetailPage from './components/Candidates/CandidateDetailPage'
 import ApplyPage from './components/Apply/ApplyPage'
 import DashboardPage from './components/Dashboard/DashboardPage'
 import PanelPage from './components/Panel/PanelPage'
+import TalentPoolPage from './components/TalentPool/TalentPoolPage'
+import CareerPage from './components/Careers/CareerPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -93,8 +95,8 @@ export const router = createBrowserRouter([
 
           // Other tabs (future steps)
           { path: '/dashboard', element: <DashboardPage /> },
-          { path: '/talent-pool', element: <PlaceholderPage title="Talent Pool" icon="👥" /> },
-          { path: '/interviews', element: <PlaceholderPage title="Interviews" icon="🎯" /> },
+          { path: '/talent-pool', element: <TalentPoolPage /> },
+          { path: '/interviews', element: <PlaceholderPage title="Interviews" icon="🎙" /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/:tab', element: <SettingsPage /> },
         ],
@@ -105,7 +107,8 @@ export const router = createBrowserRouter([
   // Public pages (no auth) — magic links, career page
   { path: '/apply/:token', element: <ApplyPage /> },
   { path: '/panel/:token', element: <PanelPage /> },
-  { path: '/careers/:slug', element: <PlaceholderPage title="Career Page" icon="🏢" /> },
+  { path: '/careers/:orgSlug', element: <CareerPage /> },
+  { path: '/careers/:orgSlug/:positionId', element: <CareerPage /> },
 
   // Catch-all
   { path: '*', element: <Navigate to="/login" replace /> },

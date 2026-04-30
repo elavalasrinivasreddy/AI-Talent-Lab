@@ -156,3 +156,14 @@ export const interviewsApi = {
   generateDebrief: (id) => _post(`/interviews/${id}/generate-debrief`),
 }
 
+// ── Talent Pool ───────────────────────────────────────────────────────────────
+
+export const talentPoolApi = {
+  list: (params = {}) => _get(`/talent-pool/?${new URLSearchParams(params)}`),
+  suggest: (positionId) => _post(`/talent-pool/suggest/${positionId}`),
+  addToPipeline: (candidateId, positionId) => _post(`/talent-pool/${candidateId}/add-to-position`, { position_id: positionId }),
+  add: (candidateId) => _post(`/talent-pool/${candidateId}/add`),
+  remove: (candidateId) => _delete(`/talent-pool/${candidateId}/remove`),
+}
+
+
