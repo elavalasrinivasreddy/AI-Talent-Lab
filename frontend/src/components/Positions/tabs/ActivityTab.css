@@ -1,0 +1,44 @@
+/* ActivityTab.css */
+.act-timeline { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.act-event {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+.act-event:hover { background: var(--color-bg-hover); }
+
+.act-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.act-body { flex: 1; min-width: 0; }
+.act-main { font-size: var(--font-size-sm); color: var(--color-text-primary); margin-bottom: 2px; }
+.act-type { font-weight: 600; }
+.act-candidate { color: var(--color-primary); }
+.act-user { color: var(--color-text-muted); }
+.act-detail { font-size: 12px; color: var(--color-text-secondary); }
+.act-detail strong { color: var(--color-text-primary); }
+.act-time { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; white-space: nowrap; margin-top: 2px; }
+
+.act-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 280px;
+  gap: var(--space-3); text-align: center;
+}
+.act-empty span { font-size: 2.5rem; }
+.act-empty h3 { font-size: var(--font-size-lg); color: var(--color-text-primary); margin: 0; }
+.act-empty p { margin: 0; color: var(--color-text-muted); }
+
+.act-skeleton {}
+.skeleton-block {
+  background: linear-gradient(90deg, var(--color-bg-card) 25%, var(--color-bg-hover) 50%, var(--color-bg-card) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

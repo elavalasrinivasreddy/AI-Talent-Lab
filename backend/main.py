@@ -19,6 +19,10 @@ from backend.middleware.tenant_context import setup_tenant_context
 from backend.routers import auth as auth_router
 from backend.routers import settings as settings_router
 from backend.routers import chat as chat_router
+from backend.routers import positions as positions_router
+from backend.routers import candidates as candidates_router
+from backend.routers import dashboard as dashboard_router
+from backend.routers import notifications as notifications_router
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -53,17 +57,20 @@ app = FastAPI(
 # Register exception handlers
 register_exception_handlers(app)
 
-# Register middleware (order matters — outermost first)
+# Register middleware
 setup_cors(app)
 setup_rate_limiter(app)
 setup_request_logger(app)
 setup_tenant_context(app)
 
-# Register routers
+# Register routers 
 app.include_router(auth_router.router)
 app.include_router(settings_router.router)
 app.include_router(chat_router.router)
-
+app.include_router(positions_router.router)
+app.include_router(candidates_router.router)
+app.include_router(dashboard_router.router)
+app.include_router(notifications_router.router)
 
 # ── Root & Health ──────────────────────────────────────────────────────────────
 

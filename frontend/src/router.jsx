@@ -6,6 +6,8 @@ import Sidebar from './components/Sidebar/Sidebar'
 import SettingsPage from './components/Settings/SettingsPage'
 import { ChatProvider } from './context/ChatContext'
 import ChatPage from './components/Chat/ChatPage'
+import PositionDetailPage from './components/Positions/PositionDetailPage'
+import CandidateDetailPage from './components/Candidates/CandidateDetailPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -38,7 +40,7 @@ function AppLayout() {
   )
 }
 
-// ── Placeholder pages (to be built in later steps) ──
+// ── Placeholder pages (phases not yet built) ────
 
 function PlaceholderPage({ title, icon }) {
   return (
@@ -73,11 +75,20 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
+          // Chat
           { path: '/chat', element: <ChatPage /> },
           { path: '/chat/:sessionId', element: <ChatPage /> },
-          { path: '/dashboard', element: <PlaceholderPage title="Dashboard" icon="📊" /> },
+
+          // Positions
           { path: '/positions', element: <PlaceholderPage title="Positions" icon="💼" /> },
-          { path: '/positions/:id', element: <PlaceholderPage title="Position Detail" icon="📋" /> },
+          { path: '/positions/:id', element: <PositionDetailPage /> },
+          { path: '/positions/:id/:tab', element: <PositionDetailPage /> },
+
+          // Candidates
+          { path: '/candidates/:id', element: <CandidateDetailPage /> },
+
+          // Other tabs (future steps)
+          { path: '/dashboard', element: <PlaceholderPage title="Dashboard" icon="📊" /> },
           { path: '/talent-pool', element: <PlaceholderPage title="Talent Pool" icon="👥" /> },
           { path: '/interviews', element: <PlaceholderPage title="Interviews" icon="🎯" /> },
           { path: '/settings', element: <SettingsPage /> },
