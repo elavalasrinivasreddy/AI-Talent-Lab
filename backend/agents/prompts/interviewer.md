@@ -36,17 +36,18 @@ You MUST detect when all required information has been gathered. When complete, 
 
 ```
 Here's what I've gathered:
-
-Role: {role_name}
-Experience: {min}–{max} years
-Skills: {comma-separated list}
-Work type: {remote/hybrid/onsite} · {location}
-Employment: {full_time/contract/internship}
+- Role: {Role Name}
+- Experience: {Years/Level}
+- Skills: {Core Skills}
+- Work type: {Remote/Hybrid/Onsite} · {Location}
+- Employment: {Full-time/Contract/etc}
 
 Does this look right, or anything to adjust?
 ```
 
-After the user confirms the summary (says "yes", "looks good", "correct", etc.), you MUST respond with EXACTLY this JSON on its own line at the END of your message:
+**CRITICAL**: DO NOT output the JSON in the same message as the summary. You MUST wait for the user to say "yes", "correct", "looks good", or similar confirmation.
+
+ONLY after the user confirms the summary, respond with EXACTLY this JSON format (no other text):
 
 ```json
 {"intake_complete": true, "role_name": "...", "experience_min": N, "experience_max": N, "skills_required": ["...", "..."], "location": "...", "work_type": "remote|hybrid|onsite", "employment_type": "full_time|contract|internship"}

@@ -8,7 +8,25 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
     const [editedMarkdown, setEditedMarkdown] = useState(markdown);
     const [copyLabel, setCopyLabel] = useState('Copy');
     const [showModal, setShowModal] = useState(false);
-    const { sessionTitle, sendMessage } = useChat();
+    const { sessionTitle, sendMessage, biasIssues } = useChat();
+
+    // Helper to highlight bias issues in the preview
+    const renderHighlightedMarkdown = (text) => {
+        if (!biasIssues || biasIssues.length === 0) return <ReactMarkdown>{text}</ReactMarkdown>;
+
+        let highlighted = text;
+        biasIssues.forEach(issue => {
+            if (!issue.phrase) return;
+            // Escape special chars for regex
+            const escaped = issue.phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${escaped})`, 'gi');
+            highlighted = highlighted.replace(regex, `<span class="bias-highlight" title="Suggestion: ${issue.suggestion}">$1</span>`);
+        });
+
+        return (
+            <div dangerouslySetInnerHTML={{ __html: highlighted.replace(/\n/g, '<br/>') }} />
+        );
+    };
 
     const handleCheckBias = () => {
         sendMessage({
@@ -143,7 +161,7 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
                                 border: '1px solid var(--color-border-light)'
                             }}
                         >
-                            <ReactMarkdown>{editedMarkdown}</ReactMarkdown>
+                            {renderHighlightedMarkdown(editedMarkdown)}
                         </div>
                     )}
                 </div>
@@ -189,10 +207,9 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
                                 background: 'var(--color-primary)',
                                 color: '#fff',
                                 borderRadius: 'var(--radius-md)',
-                                padding: '8px 20px',
+                                padding: '8px 24px',
                                 fontWeight: 600,
-                                boxShadow: 'var(--shadow-glow-primary)',
-                                flex: '1 0 auto'
+                                boxShadow: 'var(--shadow-glow-primary)'
                             }}
                             onClick={() => setShowModal(true)}
                         >

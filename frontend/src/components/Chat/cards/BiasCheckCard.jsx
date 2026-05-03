@@ -30,6 +30,7 @@ const BiasCheckCard = ({ data }) => {
             action_data: { content: finalJdMarkdown }
         });
         setIsDismissed(true);
+        // We don't clear the context state so it stays in history
     };
 
     const handleDismiss = () => {

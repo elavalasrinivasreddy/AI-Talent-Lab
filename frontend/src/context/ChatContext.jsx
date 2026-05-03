@@ -26,8 +26,26 @@ export const ChatProvider = ({ children }) => {
     const [streamingJdText, setStreamingJdText] = useState('');
     const [isJdStreaming, setIsJdStreaming] = useState(false);
     const [biasCard, setBiasCard] = useState(null);
-
+    const [biasIssues, setBiasIssues] = useState([]); // Store issues for highlighting
     const [error, setError] = useState(null);
+
+    // ── Reset all chat state ──────────────────────────────────
+    const resetChat = useCallback(() => {
+        setCurrentSessionId(null);
+        setSessionTitle('New Hire');
+        setMessages([]);
+        setIsStreaming(false);
+        setWorkflowStage('intake');
+        setInternalCard(null);
+        setMarketCard(null);
+        setVariantsCard(null);
+        setFinalJdMarkdown(null);
+        setStreamingJdText('');
+        setIsJdStreaming(false);
+        setBiasCard(null);
+        setBiasIssues([]);
+        setError(null);
+    }, []);
 
     // ── Fetch sessions list ───────────────────────────────────
     const fetchSessions = useCallback(async () => {
@@ -96,6 +114,7 @@ export const ChatProvider = ({ children }) => {
                 }
                 if (gs.bias_issues !== undefined) {
                     setBiasCard({ issues: gs.bias_issues, clean: (gs.bias_issues || []).length === 0 });
+                    setBiasIssues(gs.bias_issues || []);
                 }
             } else if (res.status === 404) {
                 // Session doesn't exist yet — fresh chat
@@ -143,6 +162,8 @@ export const ChatProvider = ({ children }) => {
             activeSessionId = crypto.randomUUID();
             setCurrentSessionId(activeSessionId);
             window.history.replaceState({}, '', `/chat/${activeSessionId}`);
+            // Fetch sessions immediately so it appears in sidebar
+            fetchSessions();
         }
 
         if (payload.message) {
@@ -258,6 +279,7 @@ export const ChatProvider = ({ children }) => {
 
             case 'card_bias':
                 setBiasCard({ issues: data.issues, clean: data.clean });
+                setBiasIssues(data.issues || []);
                 break;
 
             case 'stage_skipped':
@@ -308,13 +330,13 @@ export const ChatProvider = ({ children }) => {
         currentSessionId, loadSession, setCurrentSessionId,
         sessionTitle, setSessionTitle, isTitleAnimating,
         messages, workflowStage, isStreaming, error,
-        sendMessage, deleteSession,
+        sendMessage, deleteSession, resetChat,
         internalCard, setInternalCard, dismissInternalCard,
         marketCard, setMarketCard, dismissMarketCard,
         variantsCard, setVariantsCard, dismissVariantsCard,
         finalJdMarkdown, streamingJdText, isJdStreaming,
         setFinalJdMarkdown,
-        biasCard, setBiasCard
+        biasCard, setBiasCard, biasIssues, setBiasIssues
     };
 
     return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

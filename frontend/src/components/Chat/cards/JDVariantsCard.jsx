@@ -17,16 +17,18 @@ const JDVariantsCard = ({ variants }) => {
     const [selectedType, setSelectedType] = useState('');
 
     const handleSelect = (variantType) => {
+        if (isDismissed) return; // Prevent changing selection
         setSelectedType(variantType);
         setIsDismissed(true);
         sendMessage({
             action: 'select_variant',
             action_data: { variant_type: variantType }
         });
-        dismissVariantsCard();
+        // We don't call dismissVariantsCard() here because user wants it to stay visible
     };
 
     const handleStartEdit = (variant) => {
+        if (isDismissed) return;
         setEditingVariant(variant.type);
         setEditContent(variant.content);
     };
@@ -36,168 +38,141 @@ const JDVariantsCard = ({ variants }) => {
         setEditingVariant(null);
     };
 
-    // Collapsed state after selection
-    if (isDismissed) {
-        const label = VARIANT_COLORS[selectedType]?.label || selectedType;
-        return (
-            <div className="chat-card mb-3" style={{ opacity: 0.7, padding: 'var(--space-3)' }}>
-                <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-                    📋 Selected: {label} variant ✅
-                </span>
-            </div>
-        );
-    }
-
     if (!variants || variants.length === 0) return null;
 
     return (
-        <div className="chat-card mb-3" style={{ maxWidth: '100%', width: '900px' }}>
+        <div className="chat-card mb-3" style={{ maxWidth: '100%', width: '100%' }}>
             <div className="chat-card-header">📋 Choose Your JD Style</div>
             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-4)' }}>
-                Based on everything we've gathered, here are 3 JD styles. Read through them and pick the one that fits — you can edit any before selecting.
+                {isDismissed 
+                    ? `You selected the ${VARIANT_COLORS[selectedType]?.label || selectedType} variant.`
+                    : "Pick the style that fits best. You can double-click content to edit before selecting."}
             </p>
 
-            <div style={{ display: 'flex', gap: 'var(--space-3)', overflowX: 'auto', paddingBottom: 'var(--space-2)' }}>
+            <div style={{ 
+                display: 'flex', 
+                gap: 'var(--space-3)', 
+                overflowX: 'auto', 
+                paddingBottom: 'var(--space-2)',
+                alignItems: 'stretch'
+            }}>
                 {variants.map((v, i) => {
                     const colors = VARIANT_COLORS[v.type] || VARIANT_COLORS.hybrid;
+                    const isSelected = selectedType === v.type;
+                    const isDisabled = isDismissed && !isSelected;
+
                     return (
                         <div key={i} style={{
-                            flex: '1 0 280px',
-                            background: 'var(--color-bg-card)',
-                            border: '1px solid var(--color-border)',
-                            borderTop: `4px solid ${colors.accent}`,
+                            flex: '1 0 300px',
+                            background: isSelected ? 'var(--color-bg-secondary)' : 'var(--color-bg-card)',
+                            border: isSelected ? `2px solid ${colors.accent}` : '1px solid var(--color-border)',
+                            borderTop: `6px solid ${colors.accent}`,
                             borderRadius: 'var(--radius-lg)',
                             padding: 'var(--space-4)',
                             display: 'flex',
                             flexDirection: 'column',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                            transition: 'transform 0.2s ease',
-                            cursor: 'default'
+                            boxShadow: isSelected ? '0 8px 24px rgba(0,0,0,0.1)' : '0 4px 12px rgba(0,0,0,0.05)',
+                            transition: 'all 0.2s ease',
+                            opacity: isDisabled ? 0.5 : 1,
+                            pointerEvents: isDismissed ? 'none' : 'auto',
+                            minHeight: '500px'
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
                                 <h6 style={{ fontWeight: 700, fontSize: 'var(--font-size-lg)', margin: 0 }}>
                                     {colors.label}
                                 </h6>
-                                <span style={{
-                                    fontSize: 'var(--font-size-xs)',
-                                    padding: '2px 10px',
-                                    borderRadius: 'var(--radius-full)',
-                                    background: colors.bg,
-                                    color: colors.accent,
-                                    fontWeight: 600
-                                }}>
-                                    {v.tone}
-                                </span>
+                                {isSelected && <span style={{ color: colors.accent, fontWeight: 700 }}>SELECTED</span>}
                             </div>
 
-                            <div style={{ flex: 1 }}>
-                                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)', lineHeight: 1.5 }}>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)', fontWeight: 500 }}>
                                     {v.summary}
                                 </p>
 
-                                {/* Skills Section */}
-                                <div style={{ marginBottom: 'var(--space-4)' }}>
-                                    <div style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        Key Skills ({v.skills_count})
+                                {/* Scrollable Content Area */}
+                                <div 
+                                    onDoubleClick={() => !isDismissed && handleStartEdit(v)}
+                                    style={{ 
+                                        flex: 1,
+                                        maxHeight: '300px',
+                                        overflowY: 'auto',
+                                        padding: 'var(--space-3)',
+                                        background: 'var(--color-bg-secondary)',
+                                        borderRadius: 'var(--radius-md)',
+                                        fontSize: 'var(--font-size-sm)',
+                                        lineHeight: 1.6,
+                                        marginBottom: 'var(--space-3)',
+                                        border: '1px solid var(--color-border-light)',
+                                        cursor: isDismissed ? 'default' : 'text'
+                                    }}
+                                >
+                                    {editingVariant === v.type ? (
+                                        <div onClick={e => e.stopPropagation()}>
+                                            <textarea
+                                                autoFocus
+                                                style={{
+                                                    width: '100%',
+                                                    minHeight: '200px',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    outline: 'none',
+                                                    color: 'inherit',
+                                                    fontFamily: 'inherit',
+                                                    resize: 'none'
+                                                }}
+                                                value={editContent}
+                                                onChange={e => setEditContent(e.target.value)}
+                                            />
+                                            <button 
+                                                className="btn btn-sm btn-primary" 
+                                                style={{ width: '100%', marginTop: 'var(--space-2)' }}
+                                                onClick={() => handleSaveEdit(v)}
+                                            >
+                                                Save Changes
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <ReactMarkdown>{v.content}</ReactMarkdown>
+                                    )}
+                                </div>
+
+                                {/* Skills at bottom */}
+                                <div style={{ marginTop: 'auto' }}>
+                                    <div style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)', textTransform: 'uppercase' }}>
+                                        Required Skills ({v.skills_count})
                                     </div>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
-                                        {/* Fallback if skills array isn't present yet */}
-                                        {(v.skills || []).slice(0, 8).map((skill, si) => (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                        {(v.skills || []).map((skill, si) => (
                                             <span key={si} style={{
-                                                fontSize: '11px',
-                                                padding: '2px 8px',
-                                                background: 'var(--color-bg-secondary)',
-                                                border: '1px solid var(--color-border)',
+                                                fontSize: '10px',
+                                                padding: '2px 6px',
+                                                background: colors.bg,
+                                                color: colors.accent,
                                                 borderRadius: 'var(--radius-sm)',
-                                                color: 'var(--color-text-primary)'
+                                                fontWeight: 600
                                             }}>
                                                 {skill}
                                             </span>
                                         ))}
-                                        {v.skills_count > 8 && <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', alignSelf: 'center' }}>+{v.skills_count - 8} more</span>}
                                     </div>
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-2)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-3)' }}>
-                                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                                    <button
-                                        className="btn btn-sm btn-outline"
-                                        style={{ flex: 1, fontSize: 'var(--font-size-sm)' }}
-                                        onClick={() => setPreviewVariant(previewVariant === v.type ? null : v.type)}
-                                    >
-                                        {previewVariant === v.type ? 'Hide Details' : 'Preview Full'}
-                                    </button>
-                                    <button
-                                        className="btn btn-sm btn-outline"
-                                        style={{ flex: 1, fontSize: 'var(--font-size-sm)' }}
-                                        onClick={() => handleStartEdit(v)}
-                                    >
-                                        ✏️ Edit
-                                    </button>
-                                </div>
+                            {!isDismissed && (
                                 <button
                                     className="btn"
-                                    style={{ background: colors.accent, color: '#fff', width: '100%', fontWeight: 600 }}
+                                    style={{ 
+                                        background: colors.accent, 
+                                        color: '#fff', 
+                                        width: '100%', 
+                                        fontWeight: 700,
+                                        marginTop: 'var(--space-4)',
+                                        padding: '12px'
+                                    }}
                                     onClick={() => handleSelect(v.type)}
                                 >
-                                    Select & Continue
+                                    Choose This Style
                                 </button>
-                            </div>
-
-                            {/* Full Preview Modal/Overlay logic or large expanded view */}
-                            {previewVariant === v.type && (
-                                <div style={{
-                                    marginTop: 'var(--space-3)',
-                                    padding: 'var(--space-4)',
-                                    background: 'var(--color-bg-secondary)',
-                                    border: '1px solid var(--color-border)',
-                                    borderRadius: 'var(--radius-md)',
-                                    maxHeight: 400,
-                                    overflowY: 'auto',
-                                    fontSize: 'var(--font-size-sm)',
-                                    lineHeight: 1.6,
-                                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
-                                }}>
-                                    <div style={{ marginBottom: 'var(--space-3)', borderBottom: '1px solid var(--color-border)', pb: 'var(--space-2)', display: 'flex', justifyContent: 'space-between' }}>
-                                        <strong>Full Preview</strong>
-                                        <button className="btn-close" onClick={() => setPreviewVariant(null)} />
-                                    </div>
-                                    <ReactMarkdown>{v.content}</ReactMarkdown>
-                                </div>
-                            )}
-
-                            {/* Large Edit Area */}
-                            {editingVariant === v.type && (
-                                <div style={{
-                                    marginTop: 'var(--space-3)',
-                                    padding: 'var(--space-3)',
-                                    background: 'var(--color-bg-card)',
-                                    border: '1px solid var(--color-primary)',
-                                    borderRadius: 'var(--radius-md)',
-                                    boxShadow: '0 4px 20px rgba(59, 130, 246, 0.1)'
-                                }}>
-                                    <textarea
-                                        style={{
-                                            width: '100%',
-                                            minHeight: 300,
-                                            fontFamily: 'var(--font-mono)',
-                                            fontSize: 'var(--font-size-sm)',
-                                            background: 'var(--color-bg-input)',
-                                            border: '1px solid var(--color-border)',
-                                            borderRadius: 'var(--radius-sm)',
-                                            padding: 'var(--space-3)',
-                                            color: 'var(--color-text-primary)',
-                                            resize: 'vertical'
-                                        }}
-                                        value={editContent}
-                                        onChange={(e) => setEditContent(e.target.value)}
-                                    />
-                                    <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
-                                        <button className="btn" style={{ background: 'var(--color-primary)', color: '#fff', flex: 1 }} onClick={() => handleSaveEdit(v)}>Save Changes</button>
-                                        <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setEditingVariant(null)}>Discard</button>
-                                    </div>
-                                </div>
                             )}
                         </div>
                     );

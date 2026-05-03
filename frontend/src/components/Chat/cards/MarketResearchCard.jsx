@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import { useChat } from '../../../context/ChatContext';
 
 const MarketResearchCard = ({ data }) => {
-    const { sendMessage, dismissMarketCard } = useChat();
+    const { sendMessage } = useChat();
     const { skills, competitors, summary } = data;
 
-    const [selectedSkills, setSelectedSkills] = useState(
-        (skills || []).filter(s => s.selected !== false).map(s => s.skill)
-    );
+    const [selectedSkills, setSelectedSkills] = useState([]); // Default to empty as per user request
     const [isDismissed, setIsDismissed] = useState(false);
     const [dismissSummary, setDismissSummary] = useState('');
 
@@ -24,7 +22,6 @@ const MarketResearchCard = ({ data }) => {
         setDismissSummary(`Added ${selectedSkills.length} market skill${selectedSkills.length > 1 ? 's' : ''} ✅`);
         setIsDismissed(true);
         sendMessage({ action: 'accept_market', action_data: { skills: selectedSkills } });
-        dismissMarketCard();
     };
 
     const handleAcceptAll = () => {
@@ -32,14 +29,12 @@ const MarketResearchCard = ({ data }) => {
         setDismissSummary(`Added all ${allSkills.length} market skills ✅`);
         setIsDismissed(true);
         sendMessage({ action: 'accept_market', action_data: { skills: allSkills } });
-        dismissMarketCard();
     };
 
     const handleSkip = () => {
         setDismissSummary('Skipped →');
         setIsDismissed(true);
         sendMessage({ action: 'skip_market' });
-        dismissMarketCard();
     };
 
     // Compact read-only after action — persists in view (#7)

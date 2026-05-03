@@ -41,11 +41,12 @@ const MessageBubble = ({ message }) => {
     );
 };
 
-const TypingIndicator = () => (
-    <div className="message-bubble message-ai typing-indicator">
-        <div className="dot"></div>
-        <div className="dot"></div>
-        <div className="dot"></div>
+const ThinkingIndicator = () => (
+    <div className="message-bubble message-ai" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-3) var(--space-4)' }}>
+        <div className="thinking-dots">
+            <span></span><span></span><span></span>
+        </div>
+        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 500 }}>AI is thinking...</span>
     </div>
 );
 
@@ -145,14 +146,9 @@ const MessageList = () => {
                 </div>
             )}
 
-            {/* Typing Indicator: Show when streaming text and last message is from user */}
-            {isStreaming &&
-             !internalCard &&
-             !marketCard &&
-             !variantsCard &&
-             !streamingJdText &&
-             (!messages.length || messages[messages.length - 1].role === 'user') && (
-                <TypingIndicator />
+            {/* Thinking Indicator: Show when isStreaming is true and no content is currently being received */}
+            {isStreaming && !streamingJdText && (!messages.length || messages[messages.length - 1].isComplete) && (
+                <ThinkingIndicator />
             )}
 
             <div ref={endRef} />

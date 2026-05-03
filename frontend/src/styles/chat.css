@@ -3,7 +3,7 @@
 .chat-page {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - (var(--space-8) * 2));
+    height: calc(100vh - 120px); /* Adjust to fit perfectly within app-main padding */
     background: var(--color-bg-card);
     border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);
@@ -103,6 +103,41 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     padding: var(--space-2);
+}
+
+/* ── Thinking Indicator ────────────────────── */
+.thinking-dots {
+    display: flex;
+    gap: 4px;
+}
+
+.thinking-dots span {
+    width: 6px;
+    height: 6px;
+    background: var(--color-primary);
+    border-radius: 50%;
+    display: inline-block;
+    animation: thinking 1.4s infinite ease-in-out both;
+}
+
+.thinking-dots span:nth-child(1) { animation-delay: -0.32s; }
+.thinking-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes thinking {
+    0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+    40% { transform: scale(1.0); opacity: 1; }
+}
+
+/* ── Bias Highlights ────────────────────────── */
+.bias-highlight {
+    background: rgba(239, 68, 68, 0.15);
+    border-bottom: 2px dashed #ef4444;
+    cursor: help;
+    transition: background 0.2s;
+}
+
+.bias-highlight:hover {
+    background: rgba(239, 68, 68, 0.25);
 }
 
 .chat-input-wrapper:focus-within {

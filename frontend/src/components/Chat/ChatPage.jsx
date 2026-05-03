@@ -13,7 +13,8 @@ const ChatPage = () => {
         loadSession,
         currentSessionId,
         setCurrentSessionId,
-        fetchSessions
+        fetchSessions,
+        resetChat
     } = useChat();
     const loadedRef = useRef(null);
 
@@ -23,9 +24,9 @@ const ChatPage = () => {
 
     useEffect(() => {
         if (!sessionId) {
-            // At /chat without ID — fresh chat, don't create session yet
-            // Session will be created on first message
-            setCurrentSessionId(null);
+            // At /chat without ID — fresh chat
+            loadedRef.current = null;
+            resetChat();
             return;
         }
 

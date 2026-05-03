@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import { useChat } from '../../../context/ChatContext';
 
 const InternalCheckCard = ({ skills }) => {
-    const { sendMessage, dismissInternalCard } = useChat();
-    const [selectedSkills, setSelectedSkills] = useState(
-        (skills || []).filter(s => s.selected !== false).map(s => s.skill)
-    );
+    const { sendMessage } = useChat();
+    const [selectedSkills, setSelectedSkills] = useState([]); // Default to empty as per user request
     const [isDismissed, setIsDismissed] = useState(false);
     const [dismissSummary, setDismissSummary] = useState('');
 
@@ -22,7 +20,6 @@ const InternalCheckCard = ({ skills }) => {
         setDismissSummary(`Added ${selectedSkills.length} skill${selectedSkills.length > 1 ? 's' : ''} ✅`);
         setIsDismissed(true);
         sendMessage({ action: 'accept_internal', action_data: { skills: selectedSkills } });
-        dismissInternalCard();
     };
 
     const handleAcceptAll = () => {
@@ -30,14 +27,12 @@ const InternalCheckCard = ({ skills }) => {
         setDismissSummary(`Added all ${allSkills.length} skills ✅`);
         setIsDismissed(true);
         sendMessage({ action: 'accept_internal', action_data: { skills: allSkills } });
-        dismissInternalCard();
     };
 
     const handleSkip = () => {
         setDismissSummary('Skipped →');
         setIsDismissed(true);
         sendMessage({ action: 'skip_internal' });
-        dismissInternalCard();
     };
 
     // Compact read-only after action (persists in chat view — #7)
