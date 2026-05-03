@@ -35,17 +35,6 @@ const InternalCheckCard = ({ skills }) => {
         sendMessage({ action: 'skip_internal' });
     };
 
-    // Compact read-only after action (persists in chat view — #7)
-    if (isDismissed) {
-        return (
-            <div className="chat-card mb-3" style={{ padding: 'var(--space-3)', opacity: 0.65 }}>
-                <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-                    📊 Internal Skills Check — {dismissSummary}
-                </span>
-            </div>
-        );
-    }
-
     // Empty state placeholder (#8)
     if (!skills || skills.length === 0) {
         return (
@@ -64,10 +53,13 @@ const InternalCheckCard = ({ skills }) => {
     }
 
     return (
-        <div className="chat-card mb-3">
-            <div className="chat-card-header">📊 Internal Skills Check</div>
+        <div className="chat-card mb-3" style={{ opacity: isDismissed ? 0.7 : 1 }}>
+            <div className="chat-card-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>📊 Internal Skills Check</span>
+                {isDismissed && <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-success)', fontWeight: 600 }}>{dismissSummary}</span>}
+            </div>
             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)' }}>
-                Found in similar past roles — not in your current requirements. Click to select:
+                Found in similar past roles — not in your current requirements. {isDismissed ? 'Selected skills:' : 'Click to select:'}
             </p>
 
             <div className="skill-chips">
@@ -75,7 +67,8 @@ const InternalCheckCard = ({ skills }) => {
                     <span
                         key={i}
                         className={`skill-chip ${selectedSkills.includes(s.skill) ? 'selected' : ''}`}
-                        onClick={() => toggleSkill(s.skill)}
+                        style={{ pointerEvents: isDismissed ? 'none' : 'auto' }}
+                        onClick={() => !isDismissed && toggleSkill(s.skill)}
                         title={s.source ? `From: ${s.source}${s.year ? ` (${s.year})` : ''}` : ''}
                     >
                         {s.skill}
@@ -83,30 +76,32 @@ const InternalCheckCard = ({ skills }) => {
                 ))}
             </div>
 
-            <div className="card-actions">
-                <button
-                    className="btn btn-sm"
-                    style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-secondary)' }}
-                    onClick={handleSkip}
-                >
-                    Skip
-                </button>
-                <button
-                    className="btn btn-sm"
-                    style={{ border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-md)', color: 'var(--color-primary)' }}
-                    onClick={handleAcceptAll}
-                >
-                    Add All ({skills.length})
-                </button>
-                <button
-                    className="btn btn-sm"
-                    style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)' }}
-                    onClick={handleAcceptSelected}
-                    disabled={selectedSkills.length === 0}
-                >
-                    Add Selected ({selectedSkills.length})
-                </button>
-            </div>
+            {!isDismissed && (
+                <div className="card-actions">
+                    <button
+                        className="btn btn-sm"
+                        style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-secondary)' }}
+                        onClick={handleSkip}
+                    >
+                        Skip
+                    </button>
+                    <button
+                        className="btn btn-sm"
+                        style={{ border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-md)', color: 'var(--color-primary)' }}
+                        onClick={handleAcceptAll}
+                    >
+                        Add All ({skills.length})
+                    </button>
+                    <button
+                        className="btn btn-sm"
+                        style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)' }}
+                        disabled={selectedSkills.length === 0}
+                        onClick={handleAcceptSelected}
+                    >
+                        Add Selected ({selectedSkills.length})
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

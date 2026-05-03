@@ -25,13 +25,20 @@ const MessageBubble = ({ message }) => {
         );
     }
 
+    // Hide JSON blocks from UI
+    const cleanContent = message.role === 'assistant' 
+        ? message.content.replace(/```json[\s\S]*?```/g, '').trim()
+        : message.content;
+
+    if (!cleanContent && !isUser) return null; // Don't show empty assistant bubbles (JSON only)
+
     return (
         <div className={`message-bubble ${isUser ? 'message-user' : 'message-ai'}`}>
             {isUser ? (
-                <div style={{ whiteSpace: 'pre-wrap' }}>{message.content}</div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{cleanContent}</div>
             ) : (
                 <>
-                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                    <ReactMarkdown>{cleanContent}</ReactMarkdown>
                     {!message.isComplete && (
                         <span className="blinking-cursor">▌</span>
                     )}

@@ -312,6 +312,8 @@ export const ChatProvider = ({ children }) => {
                 });
                 setIsJdStreaming(false);
                 setIsStreaming(false);
+                // Refresh sessions list to update titles/history
+                fetchSessions();
                 break;
 
             default:

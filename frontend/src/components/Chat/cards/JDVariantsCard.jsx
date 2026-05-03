@@ -107,7 +107,7 @@ const JDVariantsCard = ({ variants }) => {
                                     }}
                                 >
                                     {editingVariant === v.type ? (
-                                        <div onClick={e => e.stopPropagation()}>
+                                        <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                                             <textarea
                                                 autoFocus
                                                 style={{
@@ -118,18 +118,28 @@ const JDVariantsCard = ({ variants }) => {
                                                     outline: 'none',
                                                     color: 'inherit',
                                                     fontFamily: 'inherit',
-                                                    resize: 'none'
+                                                    resize: 'none',
+                                                    lineHeight: 1.6
                                                 }}
                                                 value={editContent}
                                                 onChange={e => setEditContent(e.target.value)}
                                             />
-                                            <button 
-                                                className="btn btn-sm btn-primary" 
-                                                style={{ width: '100%', marginTop: 'var(--space-2)' }}
-                                                onClick={() => handleSaveEdit(v)}
-                                            >
-                                                Save Changes
-                                            </button>
+                                            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                                                <button 
+                                                    className="btn btn-sm" 
+                                                    style={{ flex: 1, background: 'var(--color-primary)', color: '#fff' }}
+                                                    onClick={() => handleSaveEdit(v)}
+                                                >
+                                                    Save
+                                                </button>
+                                                <button 
+                                                    className="btn btn-sm btn-outline" 
+                                                    style={{ flex: 1 }}
+                                                    onClick={() => setEditingVariant(null)}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
                                         </div>
                                     ) : (
                                         <ReactMarkdown>{v.content}</ReactMarkdown>

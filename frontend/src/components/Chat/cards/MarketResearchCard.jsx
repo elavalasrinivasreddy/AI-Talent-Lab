@@ -37,17 +37,6 @@ const MarketResearchCard = ({ data }) => {
         sendMessage({ action: 'skip_market' });
     };
 
-    // Compact read-only after action — persists in view (#7)
-    if (isDismissed) {
-        return (
-            <div className="chat-card mb-3" style={{ padding: 'var(--space-3)', opacity: 0.65 }}>
-                <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-                    🌐 Market Research — {dismissSummary}
-                </span>
-            </div>
-        );
-    }
-
     // Empty state placeholder — do NOT show competitor names (#8)
     if (!skills || skills.length === 0) {
         return (
@@ -72,8 +61,11 @@ const MarketResearchCard = ({ data }) => {
     }
 
     return (
-        <div className="chat-card mb-3">
-            <div className="chat-card-header">🌐 Market Research</div>
+        <div className="chat-card mb-3" style={{ opacity: isDismissed ? 0.7 : 1 }}>
+            <div className="chat-card-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>🌐 Market Research</span>
+                {isDismissed && <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-success)', fontWeight: 600 }}>{dismissSummary}</span>}
+            </div>
 
             {/* Summary (if any) — competitors intentionally hidden */}
             {summary && (
@@ -83,7 +75,7 @@ const MarketResearchCard = ({ data }) => {
             )}
 
             <p style={{ fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-2)' }}>
-                Skills the market emphasises that aren't in your current JD — click to add:
+                Skills the market emphasises that aren't in your current JD — {isDismissed ? 'Selected market skills:' : 'click to add:'}
             </p>
 
             <div className="skill-chips">
@@ -91,7 +83,8 @@ const MarketResearchCard = ({ data }) => {
                     <span
                         key={i}
                         className={`skill-chip ${selectedSkills.includes(s.skill) ? 'selected' : ''}`}
-                        onClick={() => toggleSkill(s.skill)}
+                        style={{ pointerEvents: isDismissed ? 'none' : 'auto' }}
+                        onClick={() => !isDismissed && toggleSkill(s.skill)}
                         title={s.context || ''}
                     >
                         {s.skill}
@@ -99,30 +92,32 @@ const MarketResearchCard = ({ data }) => {
                 ))}
             </div>
 
-            <div className="card-actions">
-                <button
-                    className="btn btn-sm"
-                    style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-secondary)' }}
-                    onClick={handleSkip}
-                >
-                    Skip
-                </button>
-                <button
-                    className="btn btn-sm"
-                    style={{ border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-md)', color: 'var(--color-primary)' }}
-                    onClick={handleAcceptAll}
-                >
-                    Add All ({skills.length})
-                </button>
-                <button
-                    className="btn btn-sm"
-                    style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)' }}
-                    onClick={handleAcceptSelected}
-                    disabled={selectedSkills.length === 0}
-                >
-                    Add Selected ({selectedSkills.length})
-                </button>
-            </div>
+            {!isDismissed && (
+                <div className="card-actions">
+                    <button
+                        className="btn btn-sm"
+                        style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-secondary)' }}
+                        onClick={handleSkip}
+                    >
+                        Skip
+                    </button>
+                    <button
+                        className="btn btn-sm"
+                        style={{ border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-md)', color: 'var(--color-primary)' }}
+                        onClick={handleAcceptAll}
+                    >
+                        Add All ({(skills || []).length})
+                    </button>
+                    <button
+                        className="btn btn-sm"
+                        style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)' }}
+                        disabled={selectedSkills.length === 0}
+                        onClick={handleAcceptSelected}
+                    >
+                        Add Selected ({selectedSkills.length})
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

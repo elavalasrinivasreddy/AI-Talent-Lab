@@ -6,6 +6,7 @@ import PositionSetupModal from '../PositionSetupModal';
 const FinalJDCard = ({ markdown, isStreaming }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedMarkdown, setEditedMarkdown] = useState(markdown);
+    const [tempMarkdown, setTempMarkdown] = useState(markdown);
     const [copyLabel, setCopyLabel] = useState('Copy');
     const [showModal, setShowModal] = useState(false);
     const { sessionTitle, sendMessage, biasIssues } = useChat();
@@ -40,6 +41,20 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
             action: 'finalize_jd',
             action_data: { content: editedMarkdown, status: 'draft' }
         });
+    };
+
+    const handleStartEdit = () => {
+        setTempMarkdown(editedMarkdown);
+        setIsEditing(true);
+    };
+
+    const handleSaveEdit = () => {
+        setEditedMarkdown(tempMarkdown);
+        setIsEditing(false);
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditing(false);
     };
 
     // Sync with incoming markdown (streaming updates)
@@ -124,10 +139,18 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
                                 border: `1px solid ${isEditing ? 'var(--color-success)' : 'var(--color-primary)'}`,
                                 borderRadius: 'var(--radius-md)'
                             }}
-                            onClick={() => setIsEditing(!isEditing)}
+                            onClick={() => isEditing ? handleSaveEdit() : handleStartEdit()}
                         >
-                            {isEditing ? '✅ Done' : '✏️ Edit'}
+                            {isEditing ? '✅ Save' : '✏️ Edit'}
                         </button>
+                        {isEditing && (
+                            <button
+                                className="btn btn-sm btn-outline"
+                                onClick={handleCancelEdit}
+                            >
+                                ✕
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -146,19 +169,21 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
                                 padding: 'var(--space-3)',
                                 resize: 'vertical'
                             }}
-                            value={editedMarkdown}
-                            onChange={(e) => setEditedMarkdown(e.target.value)}
+                            value={tempMarkdown}
+                            onChange={(e) => setTempMarkdown(e.target.value)}
                         />
                     ) : (
                         <div
                             className="jd-preview"
+                            onDoubleClick={handleStartEdit}
                             style={{
                                 padding: 'var(--space-4)',
                                 background: 'var(--color-bg-secondary)',
                                 borderRadius: 'var(--radius-sm)',
                                 maxHeight: 600,
                                 overflowY: 'auto',
-                                border: '1px solid var(--color-border-light)'
+                                border: '1px solid var(--color-border-light)',
+                                cursor: 'text'
                             }}
                         >
                             {renderHighlightedMarkdown(editedMarkdown)}
