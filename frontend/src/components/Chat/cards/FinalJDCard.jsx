@@ -8,7 +8,21 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
     const [editedMarkdown, setEditedMarkdown] = useState(markdown);
     const [copyLabel, setCopyLabel] = useState('Copy');
     const [showModal, setShowModal] = useState(false);
-    const { sessionTitle } = useChat();
+    const { sessionTitle, sendMessage } = useChat();
+
+    const handleCheckBias = () => {
+        sendMessage({
+            action: 'trigger_bias_check',
+            action_data: { content: editedMarkdown }
+        });
+    };
+
+    const handleSaveDraft = () => {
+        sendMessage({
+            action: 'finalize_jd',
+            action_data: { content: editedMarkdown, status: 'draft' }
+        });
+    };
 
     // Sync with incoming markdown (streaming updates)
     useEffect(() => {
@@ -147,12 +161,25 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
                         <button
                             className="btn btn-sm"
                             style={{
+                                border: '1px solid var(--color-warning)',
+                                borderRadius: 'var(--radius-md)',
+                                color: 'var(--color-warning)',
+                                padding: '8px 16px',
+                                fontWeight: 500
+                            }}
+                            onClick={handleCheckBias}
+                        >
+                            🛡️ Check for Bias
+                        </button>
+                        <button
+                            className="btn btn-sm"
+                            style={{
                                 border: '1px solid var(--color-border)',
                                 borderRadius: 'var(--radius-md)',
                                 color: 'var(--color-text-secondary)',
                                 padding: '8px 16px'
                             }}
-                            onClick={handleDownloadMD}
+                            onClick={handleSaveDraft}
                         >
                             💾 Save as Draft
                         </button>
@@ -164,7 +191,8 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
                                 borderRadius: 'var(--radius-md)',
                                 padding: '8px 20px',
                                 fontWeight: 600,
-                                boxShadow: 'var(--shadow-glow-primary)'
+                                boxShadow: 'var(--shadow-glow-primary)',
+                                flex: '1 0 auto'
                             }}
                             onClick={() => setShowModal(true)}
                         >

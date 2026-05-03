@@ -75,6 +75,27 @@
 .stat-value { font-size: 28px; font-weight: 800; color: #f1f5f9; line-height: 1; }
 .stat-label { font-size: 12px; color: rgba(255,255,255,0.4); font-weight: 500; }
 
+.stat-trend {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-xs);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-trend.up {
+  color: var(--color-success);
+}
+
+.stat-trend.down {
+  color: var(--color-danger);
+}
+
+.trend-period {
+  color: var(--color-text-muted);
+  margin-left: 2px;
+}
+
 /* Grid */
 .dashboard-grid {
   display: grid;

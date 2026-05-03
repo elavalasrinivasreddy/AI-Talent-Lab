@@ -83,17 +83,20 @@ async def upload_resume(token: str, file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail={"code": "INVALID_FILE", "message": error})
 
     # Extract text
-    resume_text = await extract_resume_text(content, filename)
-    if not resume_text or not resume_text.strip():
+    extraction = await extract_resume_text(content, filename)
+    if not extraction or not extraction["text"].strip():
         raise HTTPException(
             status_code=422,
             detail={"code": "EXTRACTION_FAILED",
                     "message": "Could not extract text from your resume. Please try a different file."}
         )
 
+    resume_text = extraction["text"]
+    resume_links = extraction["links"]
+
     # Validate token and store
     try:
-        result = await ApplyService.handle_resume_upload(token, resume_text, filename)
+        result = await ApplyService.handle_resume_upload(token, resume_text, filename, resume_links)
     except ValueError as e:
         raise HTTPException(status_code=400, detail={"code": "INVALID_TOKEN", "message": str(e)})
 

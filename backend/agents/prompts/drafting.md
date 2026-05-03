@@ -31,6 +31,7 @@ Return ONLY valid JSON:
       "summary": "Technical stack-first approach emphasizing expertise requirements",
       "tone": "Technical",
       "skills_count": 12,
+      "skills": ["Python", "AWS", "PostgreSQL", "..."],
       "content": "# {Role Name}\n\n## About {Org Name}\n{about_us}\n\n## Technical Requirements\n..."
     },
     {
@@ -38,6 +39,7 @@ Return ONLY valid JSON:
       "summary": "Impact-driven approach emphasizing what the candidate will achieve",
       "tone": "Inspiring",
       "skills_count": 8,
+      "skills": ["Leadership", "Stakeholder Management", "..."],
       "content": "# {Role Name}\n\n## About {Org Name}\n{about_us}\n\n## What You'll Do\n..."
     },
     {
@@ -45,6 +47,7 @@ Return ONLY valid JSON:
       "summary": "Balanced approach combining skills and outcomes",
       "tone": "Modern",
       "skills_count": 10,
+      "skills": ["React", "TypeScript", "Problem Solving", "..."],
       "content": "# {Role Name}\n\n## About {Org Name}\n{about_us}\n\n## The Opportunity\n..."
     }
   ]

@@ -78,6 +78,13 @@ async def run_agent(
             state["selected_variant"] = action_data.get("variant_type")
             state["stage"] = "final_jd"
 
+        elif action == "trigger_bias_check":
+            state["stage"] = "bias_check"
+
+        elif action == "finalize_jd":
+            state["stage"] = "complete"
+            state["final_jd"] = action_data.get("content", state.get("final_jd", ""))
+
     # ── 2. Sequential node execution based on current stage ────────────
     current_stage = state.get("stage", "intake")
     max_iterations = 6  # safety net against infinite loops
@@ -124,20 +131,23 @@ async def run_agent(
         elif current_stage == "final_jd":
             state = await run_drafting_final(state)
             if not state.get("error_stage"):
-                # Run bias check automatically after final JD
-                try:
-                    issues = await check_bias(state.get("final_jd", ""))
-                    state["bias_issues"] = issues
-                    state["bias_skipped"] = False
-                except Exception as e:
-                    logger.warning(f"Bias check soft skip: {e}")
-                    state["bias_issues"] = []
-                    state["bias_skipped"] = True
-                state["stage"] = "complete"
+                # No longer run bias check automatically. Wait for user to trigger or finalize.
+                state["awaiting_user_input"] = True
+                state["stage"] = "final_jd"
             break
 
         elif current_stage == "bias_check":
-            state["stage"] = "complete"
+            # Manual trigger for bias check
+            try:
+                issues = await check_bias(state.get("final_jd", ""))
+                state["bias_issues"] = issues
+                state["bias_skipped"] = False
+            except Exception as e:
+                logger.warning(f"Bias check failed: {e}")
+                state["bias_issues"] = []
+                state["bias_skipped"] = True
+            
+            state["awaiting_user_input"] = True
             break
 
         elif current_stage == "complete":

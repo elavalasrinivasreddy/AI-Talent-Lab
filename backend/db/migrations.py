@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS organizations (
     headquarters     TEXT,
     linkedin_url     TEXT,
     glassdoor_url    TEXT,
+    hiring_contact_email TEXT,
     created_at       TIMESTAMP DEFAULT NOW()
 );
 
@@ -285,6 +286,7 @@ CREATE TABLE IF NOT EXISTS interviews (
     overall_result   TEXT,
     invite_sent_at   TIMESTAMP,
     notes            TEXT,
+    ai_summary       TEXT,
     created_at       TIMESTAMP DEFAULT NOW(),
     updated_at       TIMESTAMP DEFAULT NOW()
 );

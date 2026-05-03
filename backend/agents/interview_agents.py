@@ -186,3 +186,49 @@ Rules:
                 f"Best regards,\n{recruiter_name or 'Hiring Team'} at {org_name}"
             )
         }
+
+
+# ── Interview Summarizer ─────────────────────────────────────────────────────
+
+async def summarize_interview(
+    candidate_name: str,
+    role_name: str,
+    round_name: str,
+    transcript_or_notes: str,
+) -> str:
+    """
+    Summarize a raw interview transcript or notes into a structured summary.
+    Returns markdown summary.
+    """
+    llm = get_llm(temperature=0.2, max_tokens=1000)
+
+    prompt = f"""You are an AI interview assistant. 
+Summarize the following interview transcript or notes for {candidate_name} who interviewed for the {role_name} role in a {round_name} round.
+
+Interview Content:
+"{transcript_or_notes}"
+
+Structure the summary in markdown with these sections:
+### 📝 Overview
+(1-2 sentences on the overall tone and flow)
+
+### ✨ Key Strengths
+(Bullet points of technical skills, experience, and cultural fit demonstrated)
+
+### ❓ Areas of Concern / Gaps
+(Bullet points of missing skills or weak responses)
+
+### 💡 Notable Observations
+(Any specific interesting points or non-obvious signals)
+
+### 🤖 AI Quick Verdict
+(Brief summary of whether the candidate seems like a good fit based strictly on this interview)
+
+Keep it objective and professional."""
+
+    try:
+        resp = await llm.ainvoke([{"role": "user", "content": prompt}])
+        return resp.content.strip()
+    except Exception as e:
+        logger.error(f"Interview summary failed: {e}", exc_info=True)
+        return "Failed to generate AI summary for this interview."

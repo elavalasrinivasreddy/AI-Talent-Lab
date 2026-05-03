@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useChat } from '../../../context/ChatContext';
 
 const BiasCheckCard = ({ data }) => {
-    const { finalJdMarkdown, setFinalJdMarkdown } = useChat();
+    const { finalJdMarkdown, setFinalJdMarkdown, sendMessage } = useChat();
     const [isDismissed, setIsDismissed] = useState(false);
     const [fixedIssues, setFixedIssues] = useState(new Set());
     const { issues, clean } = data;
@@ -22,6 +22,14 @@ const BiasCheckCard = ({ data }) => {
         }
         setFinalJdMarkdown(updated);
         setFixedIssues(new Set(issues.map(i => i.phrase)));
+    };
+
+    const handleApplyAndFinish = () => {
+        sendMessage({
+            action: 'finalize_jd',
+            action_data: { content: finalJdMarkdown }
+        });
+        setIsDismissed(true);
     };
 
     const handleDismiss = () => {
@@ -108,23 +116,28 @@ const BiasCheckCard = ({ data }) => {
                 ))}
             </div>
 
-            <div className="card-actions">
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                 <button
                     className="btn btn-sm"
-                    style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-secondary)' }}
+                    style={{ background: 'var(--color-primary)', color: '#fff', flex: 1 }}
+                    onClick={handleApplyAndFinish}
+                >
+                    Apply Changes & Return
+                </button>
+                <button
+                    className="btn btn-sm"
+                    style={{ border: '1px solid var(--color-border)', flex: 1 }}
+                    onClick={handleFixAll}
+                >
+                    Fix All Suggestions
+                </button>
+                <button
+                    className="btn btn-sm"
+                    style={{ color: 'var(--color-text-secondary)' }}
                     onClick={handleDismiss}
                 >
-                    Dismiss
+                    Skip
                 </button>
-                {fixedIssues.size < issues.length && (
-                    <button
-                        className="btn btn-sm"
-                        style={{ background: 'var(--color-warning)', color: '#000', borderRadius: 'var(--radius-md)' }}
-                        onClick={handleFixAll}
-                    >
-                        Apply All Fixes
-                    </button>
-                )}
             </div>
         </div>
     );

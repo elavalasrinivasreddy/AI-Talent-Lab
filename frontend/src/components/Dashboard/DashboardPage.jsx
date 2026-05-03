@@ -137,14 +137,24 @@ export default function DashboardPage() {
 
 function StatsRow({ stats }) {
   if (!stats) return null
+  
+  const trends = stats.trends || {}
+  
   const cards = [
     { label: 'Active Positions', value: stats.active_positions ?? '—', icon: '💼', color: '#6366f1' },
-    { label: 'Total Candidates', value: stats.total_candidates ?? '—', icon: '👥', color: '#38bdf8' },
+    { 
+      label: 'Total Candidates', 
+      value: stats.total_candidates ?? '—', 
+      icon: '👥', 
+      color: '#38bdf8',
+      trend: trends.candidates 
+    },
     { label: 'Applications', value: stats.applied_this_period ?? '—', icon: '📝', color: '#a78bfa' },
     { label: 'Interviews', value: stats.interviews_this_period ?? '—', icon: '🎯', color: '#f59e0b' },
     { label: 'Offers Extended', value: stats.offers_this_period ?? '—', icon: '✅', color: '#22c55e' },
     { label: 'Time to Hire', value: stats.avg_time_to_hire ? `${stats.avg_time_to_hire}d` : '—', icon: '⏱', color: '#fb923c' },
   ]
+  
   return (
     <div className="stats-row">
       {cards.map(c => (
@@ -152,6 +162,13 @@ function StatsRow({ stats }) {
           <div className="stat-icon" style={{ color: c.color }}>{c.icon}</div>
           <div className="stat-value">{c.value}</div>
           <div className="stat-label">{c.label}</div>
+          {c.trend && (
+            <div className={`stat-trend ${c.trend.trend}`}>
+              <span className="trend-arrow">{c.trend.trend === 'up' ? '↑' : '↓'}</span>
+              <span className="trend-value">{Math.abs(c.trend.diff)}</span>
+              <span className="trend-period">since last {stats.period}</span>
+            </div>
+          )}
         </div>
       ))}
     </div>

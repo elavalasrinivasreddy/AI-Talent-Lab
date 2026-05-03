@@ -51,7 +51,7 @@ const JDVariantsCard = ({ variants }) => {
     if (!variants || variants.length === 0) return null;
 
     return (
-        <div className="chat-card mb-3">
+        <div className="chat-card mb-3" style={{ maxWidth: '100%', width: '900px' }}>
             <div className="chat-card-header">📋 Choose Your JD Style</div>
             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-4)' }}>
                 Based on everything we've gathered, here are 3 JD styles. Read through them and pick the one that fits — you can edit any before selecting.
@@ -62,104 +62,140 @@ const JDVariantsCard = ({ variants }) => {
                     const colors = VARIANT_COLORS[v.type] || VARIANT_COLORS.hybrid;
                     return (
                         <div key={i} style={{
-                            flex: '1 1 0',
-                            minWidth: 220,
+                            flex: '1 0 280px',
                             background: 'var(--color-bg-card)',
                             border: '1px solid var(--color-border)',
-                            borderTop: `3px solid ${colors.accent}`,
-                            borderRadius: 'var(--radius-md)',
+                            borderTop: `4px solid ${colors.accent}`,
+                            borderRadius: 'var(--radius-lg)',
                             padding: 'var(--space-4)',
                             display: 'flex',
-                            flexDirection: 'column'
+                            flexDirection: 'column',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                            transition: 'transform 0.2s ease',
+                            cursor: 'default'
                         }}>
-                            <h6 style={{ fontWeight: 600, fontSize: 'var(--font-size-md)', marginBottom: 'var(--space-2)' }}>
-                                {colors.label}
-                            </h6>
-                            <div style={{ display: 'flex', gap: 'var(--space-1)', marginBottom: 'var(--space-2)', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+                                <h6 style={{ fontWeight: 700, fontSize: 'var(--font-size-lg)', margin: 0 }}>
+                                    {colors.label}
+                                </h6>
                                 <span style={{
                                     fontSize: 'var(--font-size-xs)',
-                                    padding: '2px 8px',
+                                    padding: '2px 10px',
                                     borderRadius: 'var(--radius-full)',
                                     background: colors.bg,
-                                    color: colors.accent
+                                    color: colors.accent,
+                                    fontWeight: 600
                                 }}>
-                                    {v.tone} Tone
-                                </span>
-                                <span style={{
-                                    fontSize: 'var(--font-size-xs)',
-                                    padding: '2px 8px',
-                                    borderRadius: 'var(--radius-full)',
-                                    background: 'var(--color-bg-tertiary)',
-                                    color: 'var(--color-text-secondary)'
-                                }}>
-                                    {v.skills_count} Skills
+                                    {v.tone}
                                 </span>
                             </div>
-                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', flex: 1, marginBottom: 'var(--space-3)' }}>
-                                {v.summary}
-                            </p>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-2)' }}>
+
+                            <div style={{ flex: 1 }}>
+                                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)', lineHeight: 1.5 }}>
+                                    {v.summary}
+                                </p>
+
+                                {/* Skills Section */}
+                                <div style={{ marginBottom: 'var(--space-4)' }}>
+                                    <div style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        Key Skills ({v.skills_count})
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
+                                        {/* Fallback if skills array isn't present yet */}
+                                        {(v.skills || []).slice(0, 8).map((skill, si) => (
+                                            <span key={si} style={{
+                                                fontSize: '11px',
+                                                padding: '2px 8px',
+                                                background: 'var(--color-bg-secondary)',
+                                                border: '1px solid var(--color-border)',
+                                                borderRadius: 'var(--radius-sm)',
+                                                color: 'var(--color-text-primary)'
+                                            }}>
+                                                {skill}
+                                            </span>
+                                        ))}
+                                        {v.skills_count > 8 && <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', alignSelf: 'center' }}>+{v.skills_count - 8} more</span>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginTop: 'var(--space-2)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-3)' }}>
                                 <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                                     <button
-                                        className="btn btn-sm"
-                                        style={{ color: 'var(--color-primary)', fontSize: 'var(--font-size-sm)', padding: 0 }}
+                                        className="btn btn-sm btn-outline"
+                                        style={{ flex: 1, fontSize: 'var(--font-size-sm)' }}
                                         onClick={() => setPreviewVariant(previewVariant === v.type ? null : v.type)}
                                     >
-                                        {previewVariant === v.type ? 'Hide ▴' : 'Preview ▾'}
+                                        {previewVariant === v.type ? 'Hide Details' : 'Preview Full'}
                                     </button>
                                     <button
-                                        className="btn btn-sm"
-                                        style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', padding: 0 }}
+                                        className="btn btn-sm btn-outline"
+                                        style={{ flex: 1, fontSize: 'var(--font-size-sm)' }}
                                         onClick={() => handleStartEdit(v)}
                                     >
                                         ✏️ Edit
                                     </button>
                                 </div>
                                 <button
-                                    className="btn btn-sm"
-                                    style={{ background: colors.accent, color: '#fff', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)', padding: '4px 12px' }}
+                                    className="btn"
+                                    style={{ background: colors.accent, color: '#fff', width: '100%', fontWeight: 600 }}
                                     onClick={() => handleSelect(v.type)}
                                 >
-                                    Select This →
+                                    Select & Continue
                                 </button>
                             </div>
 
-                            {/* Inline Preview */}
+                            {/* Full Preview Modal/Overlay logic or large expanded view */}
                             {previewVariant === v.type && (
                                 <div style={{
                                     marginTop: 'var(--space-3)',
-                                    padding: 'var(--space-3)',
+                                    padding: 'var(--space-4)',
                                     background: 'var(--color-bg-secondary)',
-                                    borderRadius: 'var(--radius-sm)',
-                                    maxHeight: 300,
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: 'var(--radius-md)',
+                                    maxHeight: 400,
                                     overflowY: 'auto',
-                                    fontSize: 'var(--font-size-sm)'
+                                    fontSize: 'var(--font-size-sm)',
+                                    lineHeight: 1.6,
+                                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
                                 }}>
+                                    <div style={{ marginBottom: 'var(--space-3)', borderBottom: '1px solid var(--color-border)', pb: 'var(--space-2)', display: 'flex', justifyContent: 'space-between' }}>
+                                        <strong>Full Preview</strong>
+                                        <button className="btn-close" onClick={() => setPreviewVariant(null)} />
+                                    </div>
                                     <ReactMarkdown>{v.content}</ReactMarkdown>
                                 </div>
                             )}
 
-                            {/* Inline Edit */}
+                            {/* Large Edit Area */}
                             {editingVariant === v.type && (
-                                <div style={{ marginTop: 'var(--space-3)' }}>
+                                <div style={{
+                                    marginTop: 'var(--space-3)',
+                                    padding: 'var(--space-3)',
+                                    background: 'var(--color-bg-card)',
+                                    border: '1px solid var(--color-primary)',
+                                    borderRadius: 'var(--radius-md)',
+                                    boxShadow: '0 4px 20px rgba(59, 130, 246, 0.1)'
+                                }}>
                                     <textarea
                                         style={{
                                             width: '100%',
-                                            minHeight: 200,
+                                            minHeight: 300,
                                             fontFamily: 'var(--font-mono)',
                                             fontSize: 'var(--font-size-sm)',
                                             background: 'var(--color-bg-input)',
-                                            border: '1px solid var(--color-border-focus)',
+                                            border: '1px solid var(--color-border)',
                                             borderRadius: 'var(--radius-sm)',
-                                            padding: 'var(--space-2)',
-                                            color: 'var(--color-text-primary)'
+                                            padding: 'var(--space-3)',
+                                            color: 'var(--color-text-primary)',
+                                            resize: 'vertical'
                                         }}
                                         value={editContent}
                                         onChange={(e) => setEditContent(e.target.value)}
                                     />
-                                    <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
-                                        <button className="btn btn-sm" style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)' }} onClick={() => handleSaveEdit(v)}>Done</button>
-                                        <button className="btn btn-sm" style={{ color: 'var(--color-text-secondary)' }} onClick={() => setEditingVariant(null)}>Cancel</button>
+                                    <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
+                                        <button className="btn" style={{ background: 'var(--color-primary)', color: '#fff', flex: 1 }} onClick={() => handleSaveEdit(v)}>Save Changes</button>
+                                        <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setEditingVariant(null)}>Discard</button>
                                     </div>
                                 </div>
                             )}

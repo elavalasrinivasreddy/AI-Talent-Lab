@@ -20,7 +20,13 @@ async def get_stats(
     current_user=Depends(get_current_user),
 ):
     """Stats cards + trends for the dashboard header."""
-    return await DashboardService.get_stats(current_user["org_id"], period)
+    return await DashboardService.get_stats(
+        org_id=current_user["org_id"],
+        user_id=current_user["id"],
+        role=current_user["role"],
+        department_id=current_user.get("department_id"),
+        period=period
+    )
 
 
 @router.get("/positions")
@@ -28,7 +34,12 @@ async def get_dashboard_positions(
     current_user=Depends(get_current_user),
 ):
     """Positions with candidate counts for the dashboard table."""
-    return await DashboardService.get_positions_summary(current_user["org_id"])
+    return await DashboardService.get_positions_summary(
+        org_id=current_user["org_id"],
+        user_id=current_user["id"],
+        role=current_user["role"],
+        department_id=current_user.get("department_id")
+    )
 
 
 @router.get("/pipeline/{position_id}")
