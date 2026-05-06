@@ -35,7 +35,12 @@ class SavePositionRequest(BaseModel):
 @router.get("/sessions")
 async def list_sessions(user=Depends(get_current_user)):
     """List recent recruiter JD chat sessions."""
-    sessions = await ChatSessionRepository.list_by_user(user["user_id"], user["org_id"])
+    sessions = await ChatSessionRepository.list_visible(
+        user_id=user["user_id"],
+        org_id=user["org_id"],
+        role=user["role"],
+        dept_id=user.get("dept_id"),
+    )
     return {"sessions": sessions}
 
 
@@ -85,7 +90,8 @@ async def run_chat_stream(
         session_id=req.session_id,
         org_id=user["org_id"],
         user_id=user["user_id"],
-        department_id=req.department_id
+        # Default to user's department so history can be grouped by department.
+        department_id=req.department_id or user.get("dept_id"),
     )
 
     # Return SSE Response

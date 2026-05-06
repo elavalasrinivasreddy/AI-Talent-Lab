@@ -112,20 +112,59 @@ class ChatSessionRepository:
             )
 
     @staticmethod
-    async def list_by_user(user_id: int, org_id: int) -> list[dict[str, Any]]:
-        """List user's active/recent sessions — excludes soft-deleted."""
+    async def list_visible(
+        user_id: int,
+        org_id: int,
+        role: str,
+        dept_id: Optional[int] = None,
+    ) -> list[dict[str, Any]]:
+        """
+        List visible sessions for sidebar history.
+        - Admin: all org sessions
+        - Department users: sessions within same department + their own legacy sessions without department
+        - Users without department: only their own sessions
+        """
         async with get_connection() as conn:
-            rows = await conn.fetch(
-                """
-                SELECT id, title, workflow_stage, updated_at, position_id
-                FROM chat_sessions
-                WHERE user_id = $1 AND org_id = $2
-                  AND (status IS NULL OR status != 'deleted')
-                ORDER BY updated_at DESC
-                LIMIT 20
-                """,
-                user_id, org_id
-            )
+            if role == "admin":
+                rows = await conn.fetch(
+                    """
+                    SELECT id, title, workflow_stage, updated_at, position_id, department_id, user_id
+                    FROM chat_sessions
+                    WHERE org_id = $1
+                      AND (status IS NULL OR status != 'deleted')
+                    ORDER BY updated_at DESC
+                    LIMIT 200
+                    """,
+                    org_id,
+                )
+            elif dept_id is not None:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, title, workflow_stage, updated_at, position_id, department_id, user_id
+                    FROM chat_sessions
+                    WHERE org_id = $1
+                      AND (
+                        department_id = $2
+                        OR (department_id IS NULL AND user_id = $3)
+                      )
+                      AND (status IS NULL OR status != 'deleted')
+                    ORDER BY updated_at DESC
+                    LIMIT 200
+                    """,
+                    org_id, dept_id, user_id
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, title, workflow_stage, updated_at, position_id, department_id, user_id
+                    FROM chat_sessions
+                    WHERE user_id = $1 AND org_id = $2
+                      AND (status IS NULL OR status != 'deleted')
+                    ORDER BY updated_at DESC
+                    LIMIT 200
+                    """,
+                    user_id, org_id
+                )
             return [dict(r) for r in rows]
 
     @staticmethod

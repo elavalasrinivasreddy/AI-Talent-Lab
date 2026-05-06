@@ -82,10 +82,9 @@ export default function Sidebar() {
                 </NavLink>
               )
             ))}
+            {section.section === 'System' && <SidebarSessions />}
           </div>
         ))}
-
-        <SidebarSessions />
       </nav>
 
       <div className="sidebar-footer">
