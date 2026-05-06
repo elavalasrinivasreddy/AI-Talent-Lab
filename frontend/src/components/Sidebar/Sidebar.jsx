@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   ]},
   { section: 'System', items: [
     { to: '/settings', icon: '⚙️', label: 'Settings' },
+    { to: '/dev-admin', icon: '🛠', label: 'Dev Tools' },
   ]},
 ]
 

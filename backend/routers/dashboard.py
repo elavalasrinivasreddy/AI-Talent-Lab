@@ -22,9 +22,9 @@ async def get_stats(
     """Stats cards + trends for the dashboard header."""
     return await DashboardService.get_stats(
         org_id=current_user["org_id"],
-        user_id=current_user["id"],
+        user_id=current_user["user_id"],      # fixed: was ["id"]
         role=current_user["role"],
-        department_id=current_user.get("department_id"),
+        department_id=current_user.get("dept_id"),   # fixed: was ["department_id"]
         period=period
     )
 
@@ -36,9 +36,9 @@ async def get_dashboard_positions(
     """Positions with candidate counts for the dashboard table."""
     return await DashboardService.get_positions_summary(
         org_id=current_user["org_id"],
-        user_id=current_user["id"],
+        user_id=current_user["user_id"],      # fixed: was ["id"]
         role=current_user["role"],
-        department_id=current_user.get("department_id")
+        department_id=current_user.get("dept_id"),   # fixed: was ["department_id"]
     )
 
 

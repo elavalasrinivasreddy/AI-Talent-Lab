@@ -27,7 +27,7 @@ const MessageInput = () => {
     };
 
     const handleSend = () => {
-        if (!input.trim() || isDisabled) return;
+        if (!input.trim() || isDisabled || isComplete) return;
         sendMessage({ message: input.trim() });
         setInput('');
         if (textareaRef.current) {

@@ -19,12 +19,14 @@ async def list_notifications(
     current_user=Depends(get_current_user),
 ):
     """Get recent notifications for the current user (unread first, limit 20)."""
+    user_id = current_user["user_id"]   # fixed: was current_user["id"]
+    org_id = current_user["org_id"]
     async with get_connection() as conn:
         notifications = await NotificationRepository.list_for_user(
-            conn, current_user["id"], current_user["org_id"]
+            conn, user_id, org_id
         )
         unread_count = await NotificationRepository.get_unread_count(
-            conn, current_user["id"], current_user["org_id"]
+            conn, user_id, org_id
         )
     return {"notifications": notifications, "unread_count": unread_count}
 
@@ -35,9 +37,11 @@ async def mark_read(
     current_user=Depends(get_current_user),
 ):
     """Mark a single notification as read."""
+    user_id = current_user["user_id"]   # fixed: was current_user["id"]
+    org_id = current_user["org_id"]
     async with get_connection() as conn:
         await NotificationRepository.mark_read(
-            conn, notification_id, current_user["id"], current_user["org_id"]
+            conn, notification_id, user_id, org_id
         )
     return {"ok": True}
 
@@ -47,8 +51,10 @@ async def mark_all_read(
     current_user=Depends(get_current_user),
 ):
     """Mark all notifications as read for the current user."""
+    user_id = current_user["user_id"]   # fixed: was current_user["id"]
+    org_id = current_user["org_id"]
     async with get_connection() as conn:
         await NotificationRepository.mark_all_read(
-            conn, current_user["id"], current_user["org_id"]
+            conn, user_id, org_id
         )
     return {"ok": True}

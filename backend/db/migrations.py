@@ -547,6 +547,22 @@ async def run_migrations(conn) -> None:
             ALTER TABLE organizations ADD COLUMN hiring_contact_email TEXT;
         END IF;
     END $$;
+
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='chat_sessions' AND column_name='status') THEN
+            ALTER TABLE chat_sessions ADD COLUMN status TEXT DEFAULT 'active';
+        END IF;
+    END $$;
+
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='assigned_to') THEN
+            ALTER TABLE positions ADD COLUMN assigned_to INTEGER REFERENCES users(id);
+        END IF;
+    END $$;
     """
     await conn.execute(incremental_sql)
 

@@ -5,7 +5,6 @@ import InternalCheckCard from './cards/InternalCheckCard';
 import MarketResearchCard from './cards/MarketResearchCard';
 import JDVariantsCard from './cards/JDVariantsCard';
 import FinalJDCard from './cards/FinalJDCard';
-import BiasCheckCard from './cards/BiasCheckCard';
 
 const MessageBubble = ({ message }) => {
     const isUser = message.role === 'user';
@@ -30,7 +29,7 @@ const MessageBubble = ({ message }) => {
         ? message.content.replace(/```json[\s\S]*?```/g, '').trim()
         : message.content;
 
-    if (!cleanContent && !isUser) return null; // Don't show empty assistant bubbles (JSON only)
+    if (!cleanContent && !isUser) return null;
 
     return (
         <div className={`message-bubble ${isUser ? 'message-user' : 'message-ai'}`}>
@@ -67,7 +66,6 @@ const MessageList = () => {
         finalJdMarkdown,
         streamingJdText,
         isJdStreaming,
-        biasCard,
         error
     } = useChat();
 
@@ -75,9 +73,8 @@ const MessageList = () => {
 
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, internalCard, marketCard, variantsCard, finalJdMarkdown, streamingJdText, biasCard, isStreaming]);
+    }, [messages, internalCard, marketCard, variantsCard, finalJdMarkdown, streamingJdText, isStreaming]);
 
-    // Show greeting for empty fresh chat
     const showWelcome = !messages.length && !isStreaming;
 
     return (
@@ -130,11 +127,8 @@ const MessageList = () => {
                 </div>
             )}
 
-            {/* Final JD Card */}
+            {/* Final JD Card — bias check is now INLINE here, no separate BiasCheckCard */}
             {finalJdMarkdown && <FinalJDCard markdown={finalJdMarkdown} isStreaming={false} />}
-
-            {/* Bias Check Card */}
-            {biasCard && <BiasCheckCard data={biasCard} />}
 
             {/* Error Display */}
             {error && (
@@ -153,7 +147,7 @@ const MessageList = () => {
                 </div>
             )}
 
-            {/* Thinking Indicator: Show when isStreaming is true and no content is currently being received */}
+            {/* Thinking Indicator */}
             {isStreaming && !streamingJdText && (!messages.length || messages[messages.length - 1].isComplete) && (
                 <ThinkingIndicator />
             )}
