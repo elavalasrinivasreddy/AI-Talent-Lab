@@ -82,8 +82,17 @@ async def run_agent(
             state["stage"] = "bias_check"
 
         elif action == "finalize_jd":
-            state["stage"] = "complete"
+            draft_status = action_data.get("status", "active")
             state["final_jd"] = action_data.get("content", state.get("final_jd", ""))
+            # Clear bias issues since the content was updated with fixes
+            state.pop("bias_issues", None)
+            if draft_status == "draft":
+                # Draft: stay at final_jd, don't mark complete
+                state["jd_saved_as_draft"] = True
+                state["awaiting_user_input"] = True
+                state["stage"] = "final_jd"  # Reset from bias_check if applicable
+            else:
+                state["stage"] = "complete"
 
     # ── 2. Sequential node execution based on current stage ────────────
     current_stage = state.get("stage", "intake")

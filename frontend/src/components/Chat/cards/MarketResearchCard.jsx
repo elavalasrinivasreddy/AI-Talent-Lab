@@ -1,15 +1,23 @@
 import React, { useState } from 'react';
 import { useChat } from '../../../context/ChatContext';
 
+/**
+ * MarketResearchCard — shows market-trending skills not in the current JD.
+ * 
+ * "Add All" visually highlights all chips before sending.
+ * Competitors are intentionally hidden from the UI.
+ */
 const MarketResearchCard = ({ data }) => {
-    const { sendMessage } = useChat();
+    const { sendMessage, workflowStage } = useChat();
     const { skills, competitors, summary } = data;
 
-    const [selectedSkills, setSelectedSkills] = useState([]); // Default to empty as per user request
-    const [isDismissed, setIsDismissed] = useState(false);
-    const [dismissSummary, setDismissSummary] = useState('');
+    const isHistory = workflowStage && workflowStage !== 'market_research' && workflowStage !== 'internal_check' && workflowStage !== 'intake';
+    const [selectedSkills, setSelectedSkills] = useState([]);
+    const [isDismissed, setIsDismissed] = useState(isHistory);
+    const [dismissSummary, setDismissSummary] = useState(isHistory ? 'Selection applied ✅' : '');
 
     const toggleSkill = (skillName) => {
+        if (isHistory) return;
         setSelectedSkills(prev =>
             prev.includes(skillName)
                 ? prev.filter(s => s !== skillName)
@@ -25,10 +33,14 @@ const MarketResearchCard = ({ data }) => {
     };
 
     const handleAcceptAll = () => {
-        const allSkills = (skills || []).map(s => s.skill);
-        setDismissSummary(`Added all ${allSkills.length} market skills ✅`);
-        setIsDismissed(true);
-        sendMessage({ action: 'accept_market', action_data: { skills: allSkills } });
+        const allSkillNames = (skills || []).map(s => s.skill);
+        // Visually highlight all chips first
+        setSelectedSkills(allSkillNames);
+        setDismissSummary(`Added all ${allSkillNames.length} market skills ✅`);
+        setTimeout(() => {
+            setIsDismissed(true);
+            sendMessage({ action: 'accept_market', action_data: { skills: allSkillNames } });
+        }, 300);
     };
 
     const handleSkip = () => {
@@ -37,22 +49,21 @@ const MarketResearchCard = ({ data }) => {
         sendMessage({ action: 'skip_market' });
     };
 
-    // Empty state placeholder — do NOT show competitor names (#8)
+    // Empty state
     if (!skills || skills.length === 0) {
         return (
-            <div className="chat-card mb-3">
-                <div className="chat-card-header">🌐 Market Research</div>
-                <div className="skill-chips-empty">
+            <div className="stage-card">
+                <div className="stage-card-header">
+                    <span className="stage-card-icon">🌐</span>
+                    <span>Market Research</span>
+                </div>
+                <div className="stage-card-empty">
                     {competitors?.length > 0
                         ? 'Market analysis found no additional skills to suggest beyond your current requirements.'
-                        : 'Market data unavailable right now. This section is skipped — your JD will be based on your requirements.'}
+                        : 'Market data unavailable right now. Proceeding with your requirements.'}
                 </div>
-                <div className="card-actions">
-                    <button
-                        className="btn btn-sm"
-                        style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)' }}
-                        onClick={handleSkip}
-                    >
+                <div className="stage-card-actions">
+                    <button className="stage-btn stage-btn--primary" onClick={handleSkip}>
                         Continue →
                     </button>
                 </div>
@@ -61,21 +72,19 @@ const MarketResearchCard = ({ data }) => {
     }
 
     return (
-        <div className="chat-card mb-3" style={{ opacity: isDismissed ? 0.7 : 1 }}>
-            <div className="chat-card-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>🌐 Market Research</span>
-                {isDismissed && <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-success)', fontWeight: 600 }}>{dismissSummary}</span>}
+        <div className="stage-card" style={{ opacity: isDismissed ? 0.7 : 1 }}>
+            <div className="stage-card-header">
+                <span className="stage-card-icon">🌐</span>
+                <span>Market Research</span>
+                {isDismissed && <span className="stage-card-status">{dismissSummary}</span>}
             </div>
 
-            {/* Summary (if any) — competitors intentionally hidden */}
             {summary && (
-                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)' }}>
-                    {summary}
-                </p>
+                <p className="stage-card-desc">{summary}</p>
             )}
 
-            <p style={{ fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-2)' }}>
-                Skills the market emphasises that aren't in your current JD — {isDismissed ? 'Selected market skills:' : 'click to add:'}
+            <p className="stage-card-desc" style={{ marginBottom: 'var(--space-2)' }}>
+                Skills the market emphasises — {isDismissed ? 'Selected:' : 'click to add:'}
             </p>
 
             <div className="skill-chips">
@@ -93,24 +102,15 @@ const MarketResearchCard = ({ data }) => {
             </div>
 
             {!isDismissed && (
-                <div className="card-actions">
-                    <button
-                        className="btn btn-sm"
-                        style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-secondary)' }}
-                        onClick={handleSkip}
-                    >
+                <div className="stage-card-actions">
+                    <button className="stage-btn stage-btn--ghost" onClick={handleSkip}>
                         Skip
                     </button>
-                    <button
-                        className="btn btn-sm"
-                        style={{ border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-md)', color: 'var(--color-primary)' }}
-                        onClick={handleAcceptAll}
-                    >
+                    <button className="stage-btn stage-btn--outline" onClick={handleAcceptAll}>
                         Add All ({(skills || []).length})
                     </button>
                     <button
-                        className="btn btn-sm"
-                        style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)' }}
+                        className="stage-btn stage-btn--primary"
                         disabled={selectedSkills.length === 0}
                         onClick={handleAcceptSelected}
                     >

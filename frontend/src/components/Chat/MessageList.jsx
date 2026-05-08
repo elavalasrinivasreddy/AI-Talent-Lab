@@ -105,7 +105,7 @@ const MessageList = () => {
             {/* Interactive Stage Cards */}
             {internalCard && <InternalCheckCard skills={internalCard} />}
             {marketCard && <MarketResearchCard data={marketCard} />}
-            {variantsCard && <JDVariantsCard variants={variantsCard} />}
+            {variantsCard && <JDVariantsCard data={variantsCard} />}
 
             {/* Streaming JD text (before finalization) */}
             {streamingJdText && !finalJdMarkdown && (

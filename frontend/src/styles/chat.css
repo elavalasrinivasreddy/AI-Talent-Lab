@@ -230,6 +230,257 @@
     gap: var(--space-3);
 }
 
+/* ── Stage Cards (Internal/Market) ───────────── */
+
+.stage-card {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    margin: var(--space-2) 0;
+    max-width: 700px;
+    box-shadow: var(--shadow-sm);
+    transition: opacity var(--transition-fast);
+}
+
+.stage-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 600;
+    font-size: var(--font-size-md);
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-3);
+}
+
+.stage-card-icon { font-size: 1.1rem; }
+
+.stage-card-status {
+    margin-left: auto;
+    font-size: var(--font-size-xs);
+    color: var(--color-success);
+    font-weight: 600;
+}
+
+.stage-card-desc {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-3);
+    margin-top: 0;
+    line-height: 1.5;
+}
+
+.stage-card-empty {
+    padding: var(--space-3) var(--space-4);
+    background: rgba(255,255,255,0.02);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    margin-bottom: var(--space-3);
+}
+
+.stage-card-actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+}
+
+.stage-btn {
+    padding: 6px 14px;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    border: none;
+    white-space: nowrap;
+    width: fit-content;
+}
+
+.stage-btn--primary {
+    background: var(--color-primary);
+    color: #fff;
+}
+.stage-btn--primary:hover:not(:disabled) { box-shadow: 0 0 12px rgba(99,102,241,0.3); }
+.stage-btn--primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.stage-btn--outline {
+    background: transparent;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+}
+.stage-btn--outline:hover { background: var(--color-primary-bg); }
+
+.stage-btn--ghost {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+}
+.stage-btn--ghost:hover { background: var(--color-bg-hover); }
+
+.stage-btn--sm {
+    padding: 4px 10px;
+    font-size: var(--font-size-xs);
+}
+
+/* ── JD Variant Cards ────────────────────────── */
+
+.variants-grid {
+    display: flex;
+    gap: var(--space-3);
+    overflow-x: auto;
+    padding-bottom: var(--space-2);
+    align-items: stretch;
+}
+
+.variant-card {
+    flex: 1 0 280px;
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-top: 5px solid var(--color-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s ease;
+    min-height: 400px;
+}
+
+.variant-card:hover:not(.variant-card--disabled) {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.variant-card--selected {
+    border-width: 2px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    background: var(--color-bg-secondary);
+}
+
+.variant-card--disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.variant-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2);
+}
+
+.variant-card-label {
+    font-weight: 700;
+    font-size: var(--font-size-md);
+    margin: 0;
+}
+
+.variant-selected-badge {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.variant-card-summary {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--space-3);
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.variant-card-content {
+    flex: 1;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: var(--space-3);
+    background: var(--color-bg-secondary);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+    margin-bottom: var(--space-3);
+    border: 1px solid var(--color-border-light);
+    cursor: text;
+}
+
+.variant-edit-textarea {
+    width: 100%;
+    min-height: 200px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: inherit;
+    font-family: inherit;
+    resize: none;
+    line-height: 1.6;
+    font-size: var(--font-size-sm);
+}
+
+.variant-edit-actions {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.variant-card-skills {
+    margin-top: auto;
+}
+
+.variant-skills-label {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-1);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.variant-skills-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.variant-skill-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+}
+
+.variant-select-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: var(--radius-md);
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: var(--space-3);
+    transition: all var(--transition-fast);
+    font-size: var(--font-size-sm);
+}
+
+.variant-select-btn:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    transform: translateY(-1px);
+}
+
+/* ── Draft Toast ─────────────────────────────── */
+
+.jd-draft-toast {
+    padding: var(--space-2) var(--space-4);
+    background: rgba(34, 197, 94, 0.1);
+    border-top: 1px solid rgba(34, 197, 94, 0.3);
+    color: var(--color-success);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    text-align: center;
+    animation: fadeIn 300ms ease;
+}
+
 
 .chat-card pre {
     background: var(--color-bg-secondary);

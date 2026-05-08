@@ -94,24 +94,36 @@ export const ChatProvider = ({ children }) => {
                 setMessages(dbMessages);
 
                 // Restore interactive cards from graph_state_parsed
+                // Show cards even if already acted upon (they render in dismissed state)
                 const gs = data.graph_state_parsed || {};
 
-                if (gs.awaiting_user_input) {
-                    if (gs.stage === 'internal_check' && gs.internal_skills_found?.length) {
-                        setInternalCard(gs.internal_skills_found);
-                    } else if (gs.stage === 'market_research' && gs.market_skills_found?.length) {
-                        setMarketCard({
-                            skills: gs.market_skills_found,
-                            competitors: gs.competitors_used || []
-                        });
-                    } else if (gs.stage === 'jd_variants' && gs.jd_variants?.length) {
-                        setVariantsCard(gs.jd_variants);
-                    }
+                // Internal check card — show if data exists
+                if (gs.internal_skills_found?.length) {
+                    setInternalCard(gs.internal_skills_found);
                 }
 
+                // Market research card — show if data exists
+                if (gs.market_skills_found?.length) {
+                    setMarketCard({
+                        skills: gs.market_skills_found,
+                        competitors: gs.competitors_used || []
+                    });
+                }
+
+                // JD variants card — show if data exists
+                if (gs.jd_variants?.length) {
+                    setVariantsCard({
+                        variants: gs.jd_variants,
+                        selected: gs.selected_variant || null
+                    });
+                }
+
+                // Final JD
                 if (gs.final_jd) {
                     setFinalJdMarkdown(gs.final_jd);
                 }
+
+                // Bias check state
                 if (gs.bias_issues !== undefined) {
                     setBiasCard({ issues: gs.bias_issues, clean: (gs.bias_issues || []).length === 0 });
                     setBiasIssues(gs.bias_issues || []);
@@ -269,7 +281,7 @@ export const ChatProvider = ({ children }) => {
                 break;
 
             case 'card_variants':
-                setVariantsCard(data.variants);
+                setVariantsCard({ variants: data.variants, selected: null });
                 break;
 
             case 'jd_token':
@@ -289,6 +301,12 @@ export const ChatProvider = ({ children }) => {
                     content: data.reason || `${data.stage} was skipped.`,
                     isComplete: true
                 }]);
+                break;
+
+            case 'draft_saved':
+                // Draft was saved — don't change stage to complete
+                // Just refresh sessions to show updated draft indicator
+                fetchSessions();
                 break;
 
             case 'error':
@@ -320,7 +338,7 @@ export const ChatProvider = ({ children }) => {
                 console.log('Unknown SSE event:', event, data);
                 break;
         }
-    }, [handleTitleAnimation]);
+    }, [handleTitleAnimation, fetchSessions]);
 
     // ── Clear cards after user acts on them ────────────────────
     const dismissInternalCard = useCallback(() => setInternalCard(null), []);

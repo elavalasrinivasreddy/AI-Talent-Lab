@@ -129,3 +129,8 @@ class StreamHandler:
     def emit_stage_skipped(stage: str, reason: str) -> str:
         """Stage skipped marker"""
         return create_sse_event("stage_skipped", {"stage": stage, "reason": reason})
+
+    @staticmethod
+    def emit_event(event_type: str, data: dict) -> str:
+        """Generic event emitter for custom event types"""
+        return create_sse_event(event_type, data)

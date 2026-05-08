@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
 import { useChat } from '../../../context/ChatContext';
 
+/**
+ * InternalCheckCard — shows skills found in similar past roles.
+ * 
+ * Empty state: graceful message when no similar roles exist in the org DB.
+ * "Add All" visually selects all chips before submitting.
+ */
 const InternalCheckCard = ({ skills }) => {
-    const { sendMessage } = useChat();
-    const [selectedSkills, setSelectedSkills] = useState([]); // Default to empty as per user request
-    const [isDismissed, setIsDismissed] = useState(false);
-    const [dismissSummary, setDismissSummary] = useState('');
+    const { sendMessage, workflowStage } = useChat();
+    const [selectedSkills, setSelectedSkills] = useState([]);
+    
+    // If we've moved past internal_check, the card is in read-only history mode
+    const isHistory = workflowStage && workflowStage !== 'internal_check' && workflowStage !== 'intake';
+    const [isDismissed, setIsDismissed] = useState(isHistory);
+    const [dismissSummary, setDismissSummary] = useState(isHistory ? 'Selection applied ✅' : '');
 
     const toggleSkill = (skillName) => {
+        if (isHistory) return;
         setSelectedSkills(prev =>
             prev.includes(skillName)
                 ? prev.filter(s => s !== skillName)
@@ -23,10 +33,15 @@ const InternalCheckCard = ({ skills }) => {
     };
 
     const handleAcceptAll = () => {
-        const allSkills = skills.map(s => s.skill);
-        setDismissSummary(`Added all ${allSkills.length} skills ✅`);
-        setIsDismissed(true);
-        sendMessage({ action: 'accept_internal', action_data: { skills: allSkills } });
+        const allSkillNames = skills.map(s => s.skill);
+        // Visually highlight all chips first
+        setSelectedSkills(allSkillNames);
+        setDismissSummary(`Added all ${allSkillNames.length} skills ✅`);
+        // Small delay so user sees the selection animation
+        setTimeout(() => {
+            setIsDismissed(true);
+            sendMessage({ action: 'accept_internal', action_data: { skills: allSkillNames } });
+        }, 300);
     };
 
     const handleSkip = () => {
@@ -35,16 +50,19 @@ const InternalCheckCard = ({ skills }) => {
         sendMessage({ action: 'skip_internal' });
     };
 
-    // Empty state placeholder (#8)
+    // Empty state — no similar roles in DB
     if (!skills || skills.length === 0) {
         return (
-            <div className="chat-card mb-3">
-                <div className="chat-card-header">📊 Internal Skills Check</div>
-                <div className="skill-chips-empty">
-                    No similar past roles found in your org yet. This section is skipped — continuing with market research.
+            <div className="stage-card">
+                <div className="stage-card-header">
+                    <span className="stage-card-icon">📊</span>
+                    <span>Internal Skills Check</span>
                 </div>
-                <div className="card-actions">
-                    <button className="btn btn-sm" style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)' }} onClick={handleSkip}>
+                <div className="stage-card-empty">
+                    No similar past roles found in your organization yet. This is normal for new positions — we'll use market research data instead.
+                </div>
+                <div className="stage-card-actions">
+                    <button className="stage-btn stage-btn--primary" onClick={handleSkip}>
                         Continue →
                     </button>
                 </div>
@@ -53,13 +71,14 @@ const InternalCheckCard = ({ skills }) => {
     }
 
     return (
-        <div className="chat-card mb-3" style={{ opacity: isDismissed ? 0.7 : 1 }}>
-            <div className="chat-card-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>📊 Internal Skills Check</span>
-                {isDismissed && <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-success)', fontWeight: 600 }}>{dismissSummary}</span>}
+        <div className="stage-card" style={{ opacity: isDismissed ? 0.7 : 1 }}>
+            <div className="stage-card-header">
+                <span className="stage-card-icon">📊</span>
+                <span>Internal Skills Check</span>
+                {isDismissed && <span className="stage-card-status">{dismissSummary}</span>}
             </div>
-            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)' }}>
-                Found in similar past roles — not in your current requirements. {isDismissed ? 'Selected skills:' : 'Click to select:'}
+            <p className="stage-card-desc">
+                Found in similar past roles — not in your current requirements. {isDismissed ? 'Selected:' : 'Click to select:'}
             </p>
 
             <div className="skill-chips">
@@ -77,24 +96,15 @@ const InternalCheckCard = ({ skills }) => {
             </div>
 
             {!isDismissed && (
-                <div className="card-actions">
-                    <button
-                        className="btn btn-sm"
-                        style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-secondary)' }}
-                        onClick={handleSkip}
-                    >
+                <div className="stage-card-actions">
+                    <button className="stage-btn stage-btn--ghost" onClick={handleSkip}>
                         Skip
                     </button>
-                    <button
-                        className="btn btn-sm"
-                        style={{ border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-md)', color: 'var(--color-primary)' }}
-                        onClick={handleAcceptAll}
-                    >
+                    <button className="stage-btn stage-btn--outline" onClick={handleAcceptAll}>
                         Add All ({skills.length})
                     </button>
                     <button
-                        className="btn btn-sm"
-                        style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)' }}
+                        className="stage-btn stage-btn--primary"
                         disabled={selectedSkills.length === 0}
                         onClick={handleAcceptSelected}
                     >

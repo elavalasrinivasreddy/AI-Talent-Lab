@@ -164,3 +164,44 @@ async def save_position(
         return {"status": "ok", "position_id": position["id"]}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class SaveDraftRequest(BaseModel):
+    content: str
+    bias_passed: Optional[bool] = False
+
+
+@router.put("/sessions/{session_id}/save-draft")
+async def save_draft(
+    session_id: str,
+    req: SaveDraftRequest,
+    user=Depends(get_current_user)
+):
+    """
+    Lightweight draft save — updates final_jd in graph_state without
+    triggering the full SSE agent pipeline. Used for draft saves and
+    post-bias-check auto-saves.
+    """
+    org_id = user["org_id"]
+    session = await ChatSessionRepository.get(session_id, org_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    state = session.get("graph_state_parsed", {})
+    state["final_jd"] = req.content
+    state["jd_saved_as_draft"] = True
+    
+    if req.bias_passed:
+        state["bias_issues"] = []
+    else:
+        # Clear bias issues since content was updated manually
+        state.pop("bias_issues", None)
+        
+    # Keep stage at final_jd (not complete)
+    stage = state.get("stage", "final_jd")
+    if stage == "bias_check":
+        stage = "final_jd"
+        state["stage"] = stage
+
+    await ChatSessionRepository.update_state(session_id, org_id, stage, state)
+    return {"status": "ok", "message": "Draft saved"}

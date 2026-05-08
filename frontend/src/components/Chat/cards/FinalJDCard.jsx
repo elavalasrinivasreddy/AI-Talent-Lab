@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useChat } from '../../../context/ChatContext';
+import { useAuth } from '../../../context/AuthContext';
 import PositionSetupModal from '../PositionSetupModal';
 
 /**
- * FinalJDCard — displays the generated JD with inline bias-check diff.
+ * FinalJDCard — the main JD display with inline bias-check diff.
  *
- * Bias check flow:
- *  1. User clicks "🛡 Check for Bias" → triggers LLM bias analysis
- *  2. Issues appear INLINE in the JD as red strikethrough / green replacement
- *  3. User can Accept ✓ or Reject ✕ each change individually
- *  4. Or "Accept All" at once
- *  5. After resolving all → button changes to "✅ Bias Check Passed"
+ * Key behaviors:
+ *  - Bias check: inline diff panel inside this card (no separate card)
+ *  - Draft: saves JD, shows toast, keeps card editable (NOT "complete")
+ *  - Publish: opens modal → position created → marks complete
+ *  - All action buttons disabled during bias check analysis
+ *  - Bias state restored from graph_state on reload
  */
 const FinalJDCard = ({ markdown, isStreaming }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -20,14 +21,18 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
     const [copyLabel, setCopyLabel] = useState('Copy');
     const [showModal, setShowModal] = useState(false);
     const [biasCheckRunning, setBiasCheckRunning] = useState(false);
+    const [draftSaved, setDraftSaved] = useState(false);
 
     // Bias diff state
-    const [pendingFixes, setPendingFixes] = useState([]); // { phrase, suggestion, category, status: 'pending'|'accepted'|'rejected' }
+    const [pendingFixes, setPendingFixes] = useState([]);
     const [biasCheckDone, setBiasCheckDone] = useState(false);
 
-    const { sessionTitle, sendMessage, biasIssues, biasCard, workflowStage } = useChat();
+    const { sessionTitle, sendMessage, biasIssues, biasCard, workflowStage, currentSessionId } = useChat();
+    const { token } = useAuth();
 
     const isComplete = workflowStage === 'complete';
+    const isDraft = workflowStage === 'final_jd'; // draft stays at final_jd
+    const isBusy = biasCheckRunning; // disable all actions during bias check
 
     // When biasCard arrives from SSE, populate pendingFixes
     useEffect(() => {
@@ -47,6 +52,13 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
         }
     }, [biasCard]);
 
+    // Restore bias state from graph_state on session load
+    useEffect(() => {
+        if (biasIssues && biasIssues.length === 0 && biasCard?.clean) {
+            setBiasCheckDone(true);
+        }
+    }, []);
+
     // Sync with incoming markdown (streaming updates)
     useEffect(() => {
         if (!isEditing) {
@@ -58,7 +70,6 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
     const handleAcceptFix = (idx) => {
         const fix = pendingFixes[idx];
         if (!fix || fix.status !== 'pending') return;
-        // Apply the fix to the markdown
         setEditedMarkdown(prev => prev.replace(fix.phrase, fix.suggestion));
         setPendingFixes(prev => prev.map((f, i) => i === idx ? { ...f, status: 'accepted' } : f));
     };
@@ -83,10 +94,18 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
     const unresolvedCount = pendingFixes.filter(f => f.status === 'pending').length;
     const allResolved = pendingFixes.length > 0 && unresolvedCount === 0;
 
-    // Mark bias check as done when all resolved
+    // Mark bias check as done when all resolved, and persist updated JD
     useEffect(() => {
         if (allResolved && pendingFixes.length > 0) {
             setBiasCheckDone(true);
+            // Auto-save the bias-corrected JD via direct API (no SSE)
+            if (currentSessionId && token) {
+                fetch(`/api/v1/chat/sessions/${currentSessionId}/save-draft`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ content: editedMarkdown, bias_passed: true })
+                }).catch(err => console.error('Auto-save failed:', err));
+            }
         }
     }, [allResolved, pendingFixes.length]);
 
@@ -99,11 +118,21 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
         });
     };
 
-    const handleSaveDraft = () => {
-        sendMessage({
-            action: 'finalize_jd',
-            action_data: { content: editedMarkdown, status: 'draft' }
-        });
+    const handleSaveDraft = async () => {
+        if (!currentSessionId || !token) return;
+        try {
+            const res = await fetch(`/api/v1/chat/sessions/${currentSessionId}/save-draft`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ content: editedMarkdown })
+            });
+            if (res.ok) {
+                setDraftSaved(true);
+                setTimeout(() => setDraftSaved(false), 3000);
+            }
+        } catch (err) {
+            console.error('Draft save failed:', err);
+        }
     };
 
     const handleStartEdit = () => {
@@ -114,10 +143,18 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
     const handleSaveEdit = () => {
         setEditedMarkdown(tempMarkdown);
         setIsEditing(false);
-        // Reset bias check since content changed
+        // Any manual edit resets the bias check state
+        setBiasCheckDone(false);
         if (pendingFixes.length > 0) {
             setPendingFixes([]);
-            setBiasCheckDone(false);
+        }
+        // Save the manual edit as a draft (which clears bias_issues in backend)
+        if (currentSessionId && token) {
+            fetch(`/api/v1/chat/sessions/${currentSessionId}/save-draft`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ content: tempMarkdown })
+            }).catch(err => console.error('Edit save failed:', err));
         }
     };
 
@@ -178,21 +215,24 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
                         {isStreaming && <span className="blinking-cursor" style={{ marginLeft: 4 }}>▌</span>}
                     </div>
                     <div className="jd-card-actions">
-                        <button className="jd-action-btn" onClick={handleCopy} title="Copy to Clipboard">
+                        <button className="jd-action-btn" onClick={handleCopy} title="Copy to Clipboard" disabled={isBusy}>
                             📋 {copyLabel}
                         </button>
-                        <button className="jd-action-btn" onClick={handleDownloadMD} title="Download Markdown">
+                        <button className="jd-action-btn" onClick={handleDownloadMD} title="Download Markdown" disabled={isBusy}>
                             📥 .md
                         </button>
-                        <button className="jd-action-btn" onClick={handleDownloadPDF} title="Download PDF">
+                        <button className="jd-action-btn" onClick={handleDownloadPDF} title="Download PDF" disabled={isBusy}>
                             📥 PDF
                         </button>
-                        <button
-                            className={`jd-action-btn ${isEditing ? 'jd-action-btn--active' : 'jd-action-btn--primary'}`}
-                            onClick={() => isEditing ? handleSaveEdit() : handleStartEdit()}
-                        >
-                            {isEditing ? '✅ Save' : '✏️ Edit'}
-                        </button>
+                        {!isComplete && (
+                            <button
+                                className={`jd-action-btn ${isEditing ? 'jd-action-btn--active' : 'jd-action-btn--primary'}`}
+                                onClick={() => isEditing ? handleSaveEdit() : handleStartEdit()}
+                                disabled={isBusy}
+                            >
+                                {isEditing ? '✅ Save' : '✏️ Edit'}
+                            </button>
+                        )}
                         {isEditing && (
                             <button className="jd-action-btn" onClick={handleCancelEdit}>✕</button>
                         )}
@@ -208,7 +248,7 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
                             onChange={(e) => setTempMarkdown(e.target.value)}
                         />
                     ) : (
-                        <div className="jd-preview" onDoubleClick={handleStartEdit}>
+                        <div className="jd-preview" onDoubleClick={!isComplete ? handleStartEdit : undefined}>
                             <ReactMarkdown>{editedMarkdown}</ReactMarkdown>
                         </div>
                     )}
@@ -258,23 +298,38 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
                         <button
                             className={`jd-footer-btn jd-footer-btn--bias ${biasBtn.cls}`}
                             onClick={handleCheckBias}
-                            disabled={biasBtn.disabled}
+                            disabled={biasBtn.disabled || isBusy}
                         >
                             {biasBtn.label}
                         </button>
-                        <button className="jd-footer-btn jd-footer-btn--draft" onClick={handleSaveDraft}>
-                            💾 Save as Draft
+                        <button
+                            className="jd-footer-btn jd-footer-btn--draft"
+                            onClick={handleSaveDraft}
+                            disabled={isBusy}
+                        >
+                            {draftSaved ? '✅ Draft Saved' : '💾 Save as Draft'}
                         </button>
-                        <button className="jd-footer-btn jd-footer-btn--publish" onClick={() => setShowModal(true)}>
+                        <button
+                            className="jd-footer-btn jd-footer-btn--publish"
+                            onClick={() => setShowModal(true)}
+                            disabled={isBusy}
+                        >
                             🚀 Save & Find Candidates
                         </button>
                     </div>
                 )}
 
-                {/* Completed state */}
+                {/* Completed state — only for published positions */}
                 {isComplete && (
                     <div className="jd-card-footer jd-card-footer--complete">
                         <span className="jd-complete-badge">✅ Position saved & candidate search active</span>
+                    </div>
+                )}
+
+                {/* Draft toast */}
+                {draftSaved && (
+                    <div className="jd-draft-toast">
+                        ✅ JD saved as draft. You can continue editing or publish when ready.
                     </div>
                 )}
             </div>
