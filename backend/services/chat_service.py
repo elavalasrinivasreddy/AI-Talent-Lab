@@ -161,7 +161,8 @@ class ChatService:
                     yield StreamHandler.emit_card_variants(jd_variants)
 
             # ── Stream final JD token by token ────────────────────────
-            if current_stage in ("complete", "final_jd") and new_state.get("final_jd"):
+            # Only stream if this is the FIRST time final_jd appears (transitioning to final_jd stage)
+            if current_stage in ("final_jd",) and initial_stage != "final_jd" and new_state.get("final_jd"):
                 final_text = new_state["final_jd"]
                 # Stream word-by-word for natural typing effect
                 words = final_text.split(" ")
@@ -170,9 +171,13 @@ class ChatService:
                     await asyncio.sleep(0.012)
 
             # ── Bias check card ───────────────────────────────────────
-            if current_stage == "complete" and new_state.get("bias_issues") is not None:
+            if current_stage == "bias_check" and new_state.get("bias_issues") is not None:
                 issues = new_state.get("bias_issues", [])
                 yield StreamHandler.emit_card_bias(issues, len(issues) == 0)
+
+            # ── Draft saved notification ──────────────────────────────
+            if new_state.get("jd_saved_as_draft"):
+                yield StreamHandler.emit_event("draft_saved", {"message": "JD saved as draft"})
 
             # ── Persist state back to DB ──────────────────────────────
             await ChatSessionRepository.update_state(

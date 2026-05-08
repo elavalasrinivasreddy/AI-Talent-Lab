@@ -8,25 +8,45 @@ const VARIANT_COLORS = {
     hybrid: { accent: '#a855f7', bg: '#a855f715', label: '⚡ Hybrid' }
 };
 
-const JDVariantsCard = ({ variants }) => {
-    const { sendMessage, dismissVariantsCard } = useChat();
-    const [previewVariant, setPreviewVariant] = useState(null);
+/**
+ * stripBoilerplate – removes "About Our Organization/Team" and the role title
+ * header from variant content since those are common and redundant across all 3.
+ */
+function stripBoilerplate(content) {
+    if (!content) return '';
+    // Remove "# <Role Title>" header (first h1)
+    let cleaned = content.replace(/^#\s+.+\n*/m, '');
+    // Remove "## About Our Organization/Team/Company" section entirely
+    cleaned = cleaned.replace(
+        /##\s*About\s+(Our\s+)?(Organization|Team|Company)[\s\S]*?(?=\n##\s|\n#\s|$)/gi,
+        ''
+    );
+    return cleaned.trim();
+}
+
+const JDVariantsCard = ({ data }) => {
+    const { sendMessage, workflowStage } = useChat();
+    const { variants, selected } = data;
+    
+    const isHistory = workflowStage && workflowStage !== 'jd_variants' && workflowStage !== 'market_research' && workflowStage !== 'internal_check' && workflowStage !== 'intake';
+    
     const [editingVariant, setEditingVariant] = useState(null);
     const [editContent, setEditContent] = useState('');
-    const [isDismissed, setIsDismissed] = useState(false);
-    const [selectedType, setSelectedType] = useState('');
+    const [isDismissed, setIsDismissed] = useState(isHistory);
+    const [selectedType, setSelectedType] = useState(isHistory ? selected : '');
 
     const handleSelect = (variantType) => {
+        if (isDismissed || isHistory) return;
         setSelectedType(variantType);
         setIsDismissed(true);
         sendMessage({
             action: 'select_variant',
             action_data: { variant_type: variantType }
         });
-        dismissVariantsCard();
     };
 
     const handleStartEdit = (variant) => {
+        if (isDismissed) return;
         setEditingVariant(variant.type);
         setEditContent(variant.content);
     };
@@ -36,132 +56,91 @@ const JDVariantsCard = ({ variants }) => {
         setEditingVariant(null);
     };
 
-    // Collapsed state after selection
-    if (isDismissed) {
-        const label = VARIANT_COLORS[selectedType]?.label || selectedType;
-        return (
-            <div className="chat-card mb-3" style={{ opacity: 0.7, padding: 'var(--space-3)' }}>
-                <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-                    📋 Selected: {label} variant ✅
-                </span>
-            </div>
-        );
-    }
-
     if (!variants || variants.length === 0) return null;
 
     return (
-        <div className="chat-card mb-3">
-            <div className="chat-card-header">📋 Choose Your JD Style</div>
-            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-4)' }}>
-                Based on everything we've gathered, here are 3 JD styles. Read through them and pick the one that fits — you can edit any before selecting.
+        <div className="stage-card" style={{ maxWidth: '100%', width: '100%' }}>
+            <div className="stage-card-header">
+                <span className="stage-card-icon">📋</span>
+                <span>Choose Your JD Style</span>
+            </div>
+            <p className="stage-card-desc">
+                {isDismissed
+                    ? `You selected the ${VARIANT_COLORS[selectedType]?.label || selectedType} variant.`
+                    : "Pick the style that fits best. Double-click content to edit before selecting."}
             </p>
 
-            <div style={{ display: 'flex', gap: 'var(--space-3)', overflowX: 'auto', paddingBottom: 'var(--space-2)' }}>
+            <div className="variants-grid">
                 {variants.map((v, i) => {
                     const colors = VARIANT_COLORS[v.type] || VARIANT_COLORS.hybrid;
+                    const isSelected = selectedType === v.type;
+                    const isDisabled = isDismissed && !isSelected;
+                    const cleanContent = stripBoilerplate(v.content);
+
                     return (
-                        <div key={i} style={{
-                            flex: '1 1 0',
-                            minWidth: 220,
-                            background: 'var(--color-bg-card)',
-                            border: '1px solid var(--color-border)',
-                            borderTop: `3px solid ${colors.accent}`,
-                            borderRadius: 'var(--radius-md)',
-                            padding: 'var(--space-4)',
-                            display: 'flex',
-                            flexDirection: 'column'
-                        }}>
-                            <h6 style={{ fontWeight: 600, fontSize: 'var(--font-size-md)', marginBottom: 'var(--space-2)' }}>
-                                {colors.label}
-                            </h6>
-                            <div style={{ display: 'flex', gap: 'var(--space-1)', marginBottom: 'var(--space-2)', flexWrap: 'wrap' }}>
-                                <span style={{
-                                    fontSize: 'var(--font-size-xs)',
-                                    padding: '2px 8px',
-                                    borderRadius: 'var(--radius-full)',
-                                    background: colors.bg,
-                                    color: colors.accent
-                                }}>
-                                    {v.tone} Tone
-                                </span>
-                                <span style={{
-                                    fontSize: 'var(--font-size-xs)',
-                                    padding: '2px 8px',
-                                    borderRadius: 'var(--radius-full)',
-                                    background: 'var(--color-bg-tertiary)',
-                                    color: 'var(--color-text-secondary)'
-                                }}>
-                                    {v.skills_count} Skills
-                                </span>
-                            </div>
-                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', flex: 1, marginBottom: 'var(--space-3)' }}>
-                                {v.summary}
-                            </p>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-2)' }}>
-                                <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                                    <button
-                                        className="btn btn-sm"
-                                        style={{ color: 'var(--color-primary)', fontSize: 'var(--font-size-sm)', padding: 0 }}
-                                        onClick={() => setPreviewVariant(previewVariant === v.type ? null : v.type)}
-                                    >
-                                        {previewVariant === v.type ? 'Hide ▴' : 'Preview ▾'}
-                                    </button>
-                                    <button
-                                        className="btn btn-sm"
-                                        style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', padding: 0 }}
-                                        onClick={() => handleStartEdit(v)}
-                                    >
-                                        ✏️ Edit
-                                    </button>
-                                </div>
-                                <button
-                                    className="btn btn-sm"
-                                    style={{ background: colors.accent, color: '#fff', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)', padding: '4px 12px' }}
-                                    onClick={() => handleSelect(v.type)}
-                                >
-                                    Select This →
-                                </button>
+                        <div key={i} className={`variant-card ${isSelected ? 'variant-card--selected' : ''} ${isDisabled ? 'variant-card--disabled' : ''}`}
+                            style={{ borderTopColor: colors.accent }}
+                        >
+                            <div className="variant-card-head">
+                                <h6 className="variant-card-label" style={{ color: colors.accent }}>
+                                    {colors.label}
+                                </h6>
+                                {isSelected && <span className="variant-selected-badge" style={{ color: colors.accent }}>SELECTED</span>}
                             </div>
 
-                            {/* Inline Preview */}
-                            {previewVariant === v.type && (
-                                <div style={{
-                                    marginTop: 'var(--space-3)',
-                                    padding: 'var(--space-3)',
-                                    background: 'var(--color-bg-secondary)',
-                                    borderRadius: 'var(--radius-sm)',
-                                    maxHeight: 300,
-                                    overflowY: 'auto',
-                                    fontSize: 'var(--font-size-sm)'
-                                }}>
-                                    <ReactMarkdown>{v.content}</ReactMarkdown>
+                            {v.summary && (
+                                <p className="variant-card-summary">{v.summary}</p>
+                            )}
+
+                            {/* Scrollable Content Area */}
+                            <div
+                                className="variant-card-content"
+                                onDoubleClick={() => !isDismissed && handleStartEdit(v)}
+                            >
+                                {editingVariant === v.type ? (
+                                    <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                                        <textarea
+                                            autoFocus
+                                            className="variant-edit-textarea"
+                                            value={editContent}
+                                            onChange={e => setEditContent(e.target.value)}
+                                        />
+                                        <div className="variant-edit-actions">
+                                            <button className="stage-btn stage-btn--primary stage-btn--sm" onClick={() => handleSaveEdit(v)}>
+                                                Save
+                                            </button>
+                                            <button className="stage-btn stage-btn--ghost stage-btn--sm" onClick={() => setEditingVariant(null)}>
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <ReactMarkdown>{cleanContent}</ReactMarkdown>
+                                )}
+                            </div>
+
+                            {/* Skills at bottom */}
+                            {v.skills && v.skills.length > 0 && (
+                                <div className="variant-card-skills">
+                                    <div className="variant-skills-label">Required ({v.skills_count || v.skills.length})</div>
+                                    <div className="variant-skills-list">
+                                        {v.skills.map((skill, si) => (
+                                            <span key={si} className="variant-skill-tag" style={{ background: colors.bg, color: colors.accent }}>
+                                                {skill}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 
-                            {/* Inline Edit */}
-                            {editingVariant === v.type && (
-                                <div style={{ marginTop: 'var(--space-3)' }}>
-                                    <textarea
-                                        style={{
-                                            width: '100%',
-                                            minHeight: 200,
-                                            fontFamily: 'var(--font-mono)',
-                                            fontSize: 'var(--font-size-sm)',
-                                            background: 'var(--color-bg-input)',
-                                            border: '1px solid var(--color-border-focus)',
-                                            borderRadius: 'var(--radius-sm)',
-                                            padding: 'var(--space-2)',
-                                            color: 'var(--color-text-primary)'
-                                        }}
-                                        value={editContent}
-                                        onChange={(e) => setEditContent(e.target.value)}
-                                    />
-                                    <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
-                                        <button className="btn btn-sm" style={{ background: 'var(--color-primary)', color: '#fff', borderRadius: 'var(--radius-md)' }} onClick={() => handleSaveEdit(v)}>Done</button>
-                                        <button className="btn btn-sm" style={{ color: 'var(--color-text-secondary)' }} onClick={() => setEditingVariant(null)}>Cancel</button>
-                                    </div>
-                                </div>
+                            {!isDismissed && (
+                                <button
+                                    className="variant-select-btn"
+                                    style={{ background: colors.accent }}
+                                    onClick={() => handleSelect(v.type)}
+                                >
+                                    Choose This Style
+                                </button>
                             )}
                         </div>
                     );

@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     MAGIC_LINK_BASE_URL: str = "http://localhost:5173"
     DEBUG: bool = False
+    DEV_MODE: bool = True  # Set to False in production — disables /dev/* endpoints
 
     # ── Database ───────────────────────────────────────────────────────────
     DATABASE_URL: str = "postgresql://talentlab:talentlab@localhost:5432/talentlab_dev"

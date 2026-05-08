@@ -132,10 +132,16 @@ class TalentPoolService:
             for filename, file_bytes in files:
                 try:
                     # Extract text
-                    resume_text = await _extract_async(file_bytes, filename)
+                    extraction = await _extract_async(file_bytes, filename)
+                    if not extraction:
+                        errors.append({"file": filename, "reason": "Could not extract text"})
+                        continue
+                        
+                    resume_text = extraction["text"]
+                    resume_links = extraction["links"]
 
                     if not resume_text or len(resume_text.strip()) < 100:
-                        errors.append({"file": filename, "reason": "Could not extract text"})
+                        errors.append({"file": filename, "reason": "Extracted text too short"})
                         continue
 
                     # Use LLM to parse basic fields
@@ -172,9 +178,9 @@ class TalentPoolService:
                         """
                         INSERT INTO candidates (
                             org_id, name, email, phone, current_title, current_company,
-                            experience_years, location, source, resume_text, resume_embedding,
+                            experience_years, location, source, resume_text, resume_parsed, resume_embedding,
                             in_talent_pool, talent_pool_reason, talent_pool_added_at, created_by
-                        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'upload',$9,$10,TRUE,'manual',NOW(),$11)
+                        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'upload',$9,$10,$11,TRUE,'manual',NOW(),$12)
                         RETURNING id, name, email
                         """,
                         org_id,
@@ -186,6 +192,7 @@ class TalentPoolService:
                         parsed.get("experience_years"),
                         parsed.get("location"),
                         resume_text,
+                        json.dumps(resume_links),
                         json.dumps(embedding),
                         user_id,
                     )
@@ -205,7 +212,10 @@ class TalentPoolService:
     @staticmethod
     async def update_duplicate(org_id: int, candidate_id: int, file_bytes: bytes, filename: str) -> dict:
         """Update an existing candidate's resume data (dedup resolution)."""
-        resume_text = await _extract_async(file_bytes, filename)
+        extraction = await _extract_async(file_bytes, filename)
+        resume_text = extraction["text"]
+        resume_links = extraction["links"]
+        
         parsed = await _parse_resume_fields(resume_text)
         embedding = await _get_embedding(resume_text[:2000])
 
@@ -213,11 +223,12 @@ class TalentPoolService:
             await conn.execute(
                 """
                 UPDATE candidates
-                SET resume_text=$3, resume_embedding=$4, current_title=$5,
-                    current_company=$6, updated_at=NOW()
+                SET resume_text=$3, resume_parsed=$4, resume_embedding=$5, current_title=$6,
+                    current_company=$7, updated_at=NOW()
                 WHERE id=$1 AND org_id=$2
                 """,
                 candidate_id, org_id, resume_text,
+                json.dumps(resume_links),
                 json.dumps(embedding),
                 parsed.get("current_title"),
                 parsed.get("current_company"),

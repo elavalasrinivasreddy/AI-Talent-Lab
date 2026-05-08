@@ -24,15 +24,12 @@ const ChatTopBar = () => {
         deleteSession
     } = useChat();
 
-    const [showConfirmDiscard, setShowConfirmDiscard] = useState(false);
-
     const stageInfo = STAGE_CONFIG[workflowStage] || STAGE_CONFIG.intake;
 
     const handleDiscard = async () => {
         if (currentSessionId) {
             await deleteSession(currentSessionId);
         }
-        setShowConfirmDiscard(false);
         navigate('/chat', { replace: true });
     };
 
@@ -67,39 +64,9 @@ const ChatTopBar = () => {
                     </span>
                 </div>
                 <div className="d-flex gap-2">
-                    {workflowStage !== 'complete' && (
-                        <button
-                            className="btn btn-sm"
-                            style={{
-                                color: 'var(--color-text-muted)',
-                                border: '1px solid var(--color-border)',
-                                borderRadius: 'var(--radius-md)'
-                            }}
-                            onClick={() => setShowConfirmDiscard(true)}
-                        >
-                            Discard
-                        </button>
-                    )}
+                    {/* Discard button removed as per user request */}
                 </div>
             </div>
-
-            {/* Discard Confirmation */}
-            {showConfirmDiscard && (
-                <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 'var(--z-modal)' }}>
-                    <div className="modal-dialog modal-sm modal-dialog-centered">
-                        <div className="modal-content" style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)' }}>
-                            <div className="modal-body text-center p-4">
-                                <p className="mb-3">Discard this session? This action cannot be undone.</p>
-                                <div className="d-flex gap-2 justify-content-center">
-                                    <button className="btn btn-sm" style={{ border: '1px solid var(--color-border)' }} onClick={() => setShowConfirmDiscard(false)}>Cancel</button>
-                                    <button className="btn btn-sm" style={{ background: 'var(--color-danger)', color: '#fff' }} onClick={handleDiscard}>Discard</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
         </>
     );
 };

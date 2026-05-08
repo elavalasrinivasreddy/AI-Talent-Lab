@@ -119,6 +119,16 @@
   margin-bottom: var(--space-2);
 }
 
+.sidebar-history-block {
+  margin-top: var(--space-2);
+}
+
+.sidebar-history-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
 .sidebar-link {
   display: flex;
   align-items: center;

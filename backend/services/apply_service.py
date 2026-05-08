@@ -231,7 +231,7 @@ class ApplyService:
 
     @staticmethod
     async def handle_resume_upload(
-        token: str, resume_text: str, filename: str
+        token: str, resume_text: str, filename: str, resume_links: Optional[dict] = None
     ) -> dict:
         """
         Process a resume upload: store text, generate embedding, advance step.
@@ -252,14 +252,15 @@ class ApplyService:
             logger.warning(f"Resume embedding failed: {e}")
 
         async with get_connection() as conn:
-            # Store resume text in candidate record
+            # Store resume text and links in candidate record
             await conn.execute(
                 """
                 UPDATE candidates
-                SET resume_text=$1, resume_embedding=$2, updated_at=NOW()
-                WHERE id=$3 AND org_id=$4
+                SET resume_text=$1, resume_parsed=$2, resume_embedding=$3, updated_at=NOW()
+                WHERE id=$4 AND org_id=$5
                 """,
                 resume_text,
+                _json.dumps(resume_links) if resume_links else None,
                 _json.dumps(embedding) if embedding else None,
                 candidate_id, org_id
             )

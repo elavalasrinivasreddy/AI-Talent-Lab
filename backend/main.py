@@ -2,6 +2,7 @@
 main.py – FastAPI app factory.
 Registers all middleware, auth router, startup/shutdown events.
 Health check at /api/v1/health, root at /.
+Build: 2026-05-07T00:00:00 (migrations: status column, dashboard fix)
 """
 import logging
 from contextlib import asynccontextmanager
@@ -28,6 +29,7 @@ from backend.routers import interviews as interviews_router
 from backend.routers import panel as panel_router
 from backend.routers import talent_pool as talent_pool_router
 from backend.routers import careers as careers_router
+from backend.routers import dev_admin as dev_admin_router
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -82,6 +84,7 @@ app.include_router(interviews_router.router)
 app.include_router(panel_router.router)   # Public — no auth (magic link)
 app.include_router(talent_pool_router.router)
 app.include_router(careers_router.router)  # Public — no auth (career page)
+app.include_router(dev_admin_router.router)  # Dev tools — guarded by DEV_MODE
 
 # ── Root & Health ──────────────────────────────────────────────────────────────
 

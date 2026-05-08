@@ -18,6 +18,7 @@ class OrgProfileUpdate(BaseModel):
     benefits_text: Optional[str] = None
     linkedin_url: Optional[str] = None
     glassdoor_url: Optional[str] = None
+    hiring_contact_email: Optional[str] = None
     logo_url: Optional[str] = None
 
     @field_validator("size")
@@ -41,6 +42,7 @@ class OrgProfileResponse(BaseModel):
     benefits_text: Optional[str] = None
     linkedin_url: Optional[str] = None
     glassdoor_url: Optional[str] = None
+    hiring_contact_email: Optional[str] = None
     logo_url: Optional[str] = None
     created_at: Optional[datetime] = None
 

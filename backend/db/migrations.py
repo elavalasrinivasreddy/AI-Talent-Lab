@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS organizations (
     headquarters     TEXT,
     linkedin_url     TEXT,
     glassdoor_url    TEXT,
+    hiring_contact_email TEXT,
     created_at       TIMESTAMP DEFAULT NOW()
 );
 
@@ -285,6 +286,7 @@ CREATE TABLE IF NOT EXISTS interviews (
     overall_result   TEXT,
     invite_sent_at   TIMESTAMP,
     notes            TEXT,
+    ai_summary       TEXT,
     created_at       TIMESTAMP DEFAULT NOW(),
     updated_at       TIMESTAMP DEFAULT NOW()
 );
@@ -543,6 +545,22 @@ async def run_migrations(conn) -> None:
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                        WHERE table_name='organizations' AND column_name='hiring_contact_email') THEN
             ALTER TABLE organizations ADD COLUMN hiring_contact_email TEXT;
+        END IF;
+    END $$;
+
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='chat_sessions' AND column_name='status') THEN
+            ALTER TABLE chat_sessions ADD COLUMN status TEXT DEFAULT 'active';
+        END IF;
+    END $$;
+
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='assigned_to') THEN
+            ALTER TABLE positions ADD COLUMN assigned_to INTEGER REFERENCES users(id);
         END IF;
     END $$;
     """

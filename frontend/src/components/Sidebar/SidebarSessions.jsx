@@ -15,7 +15,7 @@ const SidebarSessions = () => {
 
     useEffect(() => {
         fetchSessions();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [fetchSessions]);
 
     const handleDeleteClick = (e, sessionId) => {
         e.preventDefault();
@@ -38,10 +38,10 @@ const SidebarSessions = () => {
     if (!sessions || sessions.length === 0) return null;
 
     return (
-        <div className="sidebar-section" style={{ marginTop: 'var(--space-4)' }}>
-            <div className="sidebar-section-label">Recent Drafts</div>
+        <div className="sidebar-history-block" style={{ marginTop: 'var(--space-3)' }}>
+            <div className="sidebar-section-label">Chat History</div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div className="sidebar-history-list" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {sessions.map(session => (
                     <div key={session.id} className="session-item-row">
                         <NavLink

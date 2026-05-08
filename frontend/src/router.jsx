@@ -15,6 +15,7 @@ import DashboardPage from './components/Dashboard/DashboardPage'
 import PanelPage from './components/Panel/PanelPage'
 import TalentPoolPage from './components/TalentPool/TalentPoolPage'
 import CareerPage from './components/Careers/CareerPage'
+import DevAdminPage from './components/DevAdmin/DevAdminPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -104,6 +105,7 @@ export const router = createBrowserRouter([
           { path: '/interviews', element: <PlaceholderPage title="Interviews" icon="🎙" /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/:tab', element: <SettingsPage /> },
+          { path: '/dev-admin', element: <DevAdminPage /> },
         ],
       },
     ],

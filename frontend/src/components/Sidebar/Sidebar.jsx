@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useChat } from '../../context/ChatContext'
 import SidebarSessions from './SidebarSessions'
 import '../../styles/layout.css'
 
@@ -15,16 +16,33 @@ const NAV_ITEMS = [
   ]},
   { section: 'System', items: [
     { to: '/settings', icon: '⚙️', label: 'Settings' },
+    { to: '/dev-admin', icon: '🛠', label: 'Dev Tools' },
   ]},
 ]
 
 export default function Sidebar() {
   const { user, org, logout } = useAuth()
   const navigate = useNavigate()
+  const { messages, workflowStage, resetChat } = useChat()
 
   const handleLogout = () => {
     logout()
     navigate('/login', { replace: true })
+  }
+
+  const handleNewHire = () => {
+    // Only reset if current session is drafted/complete or empty
+    // Or if user explicitly wants to start fresh
+    if (workflowStage === 'complete' || messages.length === 0) {
+      resetChat()
+      navigate('/chat')
+    } else {
+      // Optional: Show a toast or confirm if they want to abandon current progress
+      if (window.confirm("Abandon current JD generation and start a new one?")) {
+        resetChat()
+        navigate('/chat')
+      }
+    }
   }
 
   const initials = user?.name
@@ -42,21 +60,32 @@ export default function Sidebar() {
           <div key={section.section} className="sidebar-section">
             <div className="sidebar-section-label">{section.section}</div>
             {section.items.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `sidebar-link ${isActive ? 'active' : ''}`
-                }
-              >
-                <span className="sidebar-link-icon">{item.icon}</span>
-                {item.label}
-              </NavLink>
+              item.label === 'New Hire' ? (
+                <button
+                  key={item.to}
+                  onClick={handleNewHire}
+                  className="sidebar-link"
+                  style={{ background: 'transparent', border: 'none', width: '100%', textAlign: 'left', padding: '12px 16px' }}
+                >
+                  <span className="sidebar-link-icon">{item.icon}</span>
+                  {item.label}
+                </button>
+              ) : (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? 'active' : ''}`
+                  }
+                >
+                  <span className="sidebar-link-icon">{item.icon}</span>
+                  {item.label}
+                </NavLink>
+              )
             ))}
+            {section.section === 'System' && <SidebarSessions />}
           </div>
         ))}
-
-        <SidebarSessions />
       </nav>
 
       <div className="sidebar-footer">

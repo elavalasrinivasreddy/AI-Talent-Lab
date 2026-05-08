@@ -4,32 +4,87 @@ Per project rules: extract text, store in DB, discard file. Never persist to dis
 """
 import io
 import logging
-from typing import Optional
+import re
+from typing import Optional, Dict
 
 logger = logging.getLogger(__name__)
 
 
-async def extract_resume_text(file_bytes: bytes, filename: str) -> Optional[str]:
+async def extract_resume_text(file_bytes: bytes, filename: str) -> Optional[dict]:
     """
-    Extract plain text from PDF or DOCX bytes.
-    Returns extracted text, or None on failure.
+    Extract plain text and links from PDF or DOCX bytes.
+    Returns: {"text": str, "links": {"linkedin": str, "github": str, "portfolio": str, "others": list[str]}}
     """
     fname = (filename or "").lower()
+    text = None
     try:
         if fname.endswith(".pdf"):
-            return _extract_pdf(file_bytes)
+            text = _extract_pdf(file_bytes)
         elif fname.endswith(".docx"):
-            return _extract_docx(file_bytes)
+            text = _extract_docx(file_bytes)
         elif fname.endswith(".doc"):
-            return _extract_doc_fallback(file_bytes)
+            text = _extract_doc_fallback(file_bytes)
         elif fname.endswith(".txt"):
-            return file_bytes.decode("utf-8", errors="ignore")
-        else:
-            logger.warning(f"Unsupported resume format: {filename}")
+            text = file_bytes.decode("utf-8", errors="ignore")
+        
+        # Try MarkItDown if installed for better markdown-style extraction
+        try:
+            from markitdown import MarkItDown
+            mid = MarkItDown()
+            # MarkItDown usually takes a file path, we can use a temporary buffer
+            import tempfile
+            import os
+            with tempfile.NamedTemporaryFile(suffix=os.path.splitext(fname)[1], delete=False) as tmp:
+                tmp.write(file_bytes)
+                tmp_path = tmp.name
+            
+            mid_result = mid.convert(tmp_path)
+            if mid_result and mid_result.text_content:
+                text = mid_result.text_content
+            
+            os.unlink(tmp_path)
+        except (ImportError, Exception) as e:
+            logger.debug(f"MarkItDown extraction skipped or failed: {e}")
+
+        if not text:
             return None
+
+        links = _extract_links(text)
+        return {
+            "text": text,
+            "links": links
+        }
     except Exception as e:
         logger.error(f"Resume extraction failed for {filename}: {e}", exc_info=True)
         return None
+
+
+def _extract_links(text: str) -> Dict:
+    """Extract LinkedIn, GitHub, and other links from text."""
+    links = {
+        "linkedin": None,
+        "github": None,
+        "portfolio": None,
+        "others": []
+    }
+    
+    # Generic URL regex
+    url_pattern = r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+[/\w\.-]*'
+    all_urls = re.findall(url_pattern, text)
+    
+    for url in all_urls:
+        url_lower = url.lower()
+        if "linkedin.com/in/" in url_lower:
+            links["linkedin"] = url
+        elif "github.com/" in url_lower:
+            links["github"] = url
+        elif any(domain in url_lower for domain in ["behance.net", "dribbble.com", "portfolio", "personal-site"]):
+            links["portfolio"] = url
+        else:
+            if url not in links["others"]:
+                links["others"].append(url)
+                
+    return links
 
 
 def _extract_pdf(file_bytes: bytes) -> str:

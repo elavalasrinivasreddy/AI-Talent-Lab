@@ -5,7 +5,6 @@ import InternalCheckCard from './cards/InternalCheckCard';
 import MarketResearchCard from './cards/MarketResearchCard';
 import JDVariantsCard from './cards/JDVariantsCard';
 import FinalJDCard from './cards/FinalJDCard';
-import BiasCheckCard from './cards/BiasCheckCard';
 
 const MessageBubble = ({ message }) => {
     const isUser = message.role === 'user';
@@ -25,13 +24,20 @@ const MessageBubble = ({ message }) => {
         );
     }
 
+    // Hide JSON blocks from UI
+    const cleanContent = message.role === 'assistant' 
+        ? message.content.replace(/```json[\s\S]*?```/g, '').trim()
+        : message.content;
+
+    if (!cleanContent && !isUser) return null;
+
     return (
         <div className={`message-bubble ${isUser ? 'message-user' : 'message-ai'}`}>
             {isUser ? (
-                <div style={{ whiteSpace: 'pre-wrap' }}>{message.content}</div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{cleanContent}</div>
             ) : (
                 <>
-                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                    <ReactMarkdown>{cleanContent}</ReactMarkdown>
                     {!message.isComplete && (
                         <span className="blinking-cursor">▌</span>
                     )}
@@ -41,11 +47,12 @@ const MessageBubble = ({ message }) => {
     );
 };
 
-const TypingIndicator = () => (
-    <div className="message-bubble message-ai typing-indicator">
-        <div className="dot"></div>
-        <div className="dot"></div>
-        <div className="dot"></div>
+const ThinkingIndicator = () => (
+    <div className="message-bubble message-ai" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-3) var(--space-4)' }}>
+        <div className="thinking-dots">
+            <span></span><span></span><span></span>
+        </div>
+        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 500 }}>AI is thinking...</span>
     </div>
 );
 
@@ -59,7 +66,6 @@ const MessageList = () => {
         finalJdMarkdown,
         streamingJdText,
         isJdStreaming,
-        biasCard,
         error
     } = useChat();
 
@@ -67,9 +73,8 @@ const MessageList = () => {
 
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, internalCard, marketCard, variantsCard, finalJdMarkdown, streamingJdText, biasCard, isStreaming]);
+    }, [messages, internalCard, marketCard, variantsCard, finalJdMarkdown, streamingJdText, isStreaming]);
 
-    // Show greeting for empty fresh chat
     const showWelcome = !messages.length && !isStreaming;
 
     return (
@@ -100,7 +105,7 @@ const MessageList = () => {
             {/* Interactive Stage Cards */}
             {internalCard && <InternalCheckCard skills={internalCard} />}
             {marketCard && <MarketResearchCard data={marketCard} />}
-            {variantsCard && <JDVariantsCard variants={variantsCard} />}
+            {variantsCard && <JDVariantsCard data={variantsCard} />}
 
             {/* Streaming JD text (before finalization) */}
             {streamingJdText && !finalJdMarkdown && (
@@ -122,11 +127,8 @@ const MessageList = () => {
                 </div>
             )}
 
-            {/* Final JD Card */}
+            {/* Final JD Card — bias check is now INLINE here, no separate BiasCheckCard */}
             {finalJdMarkdown && <FinalJDCard markdown={finalJdMarkdown} isStreaming={false} />}
-
-            {/* Bias Check Card */}
-            {biasCard && <BiasCheckCard data={biasCard} />}
 
             {/* Error Display */}
             {error && (
@@ -145,14 +147,9 @@ const MessageList = () => {
                 </div>
             )}
 
-            {/* Typing Indicator: Show when streaming text and last message is from user */}
-            {isStreaming &&
-             !internalCard &&
-             !marketCard &&
-             !variantsCard &&
-             !streamingJdText &&
-             (!messages.length || messages[messages.length - 1].role === 'user') && (
-                <TypingIndicator />
+            {/* Thinking Indicator */}
+            {isStreaming && !streamingJdText && (!messages.length || messages[messages.length - 1].isComplete) && (
+                <ThinkingIndicator />
             )}
 
             <div ref={endRef} />
