@@ -153,11 +153,17 @@ class PositionService:
     async def get_interview_kit(position_id: int, org_id: int) -> Optional[dict]:
         async with get_connection() as conn:
             kit = await PositionRepository.get_interview_kit(conn, position_id, org_id)
-        if kit and kit.get("questions") and isinstance(kit["questions"], str):
-            try:
-                kit["questions"] = json.loads(kit["questions"])
-            except Exception:
-                pass
+        if kit:
+            if kit.get("questions") and isinstance(kit["questions"], str):
+                try:
+                    kit["questions"] = json.loads(kit["questions"])
+                except Exception:
+                    pass
+            if kit.get("scorecard_template") and isinstance(kit["scorecard_template"], str):
+                try:
+                    kit["scorecard_template"] = json.loads(kit["scorecard_template"])
+                except Exception:
+                    pass
         return kit
 
     @staticmethod

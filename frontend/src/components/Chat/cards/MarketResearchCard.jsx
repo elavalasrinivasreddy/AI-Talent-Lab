@@ -44,6 +44,7 @@ const MarketResearchCard = ({ data }) => {
     };
 
     const handleSkip = () => {
+        setSelectedSkills([]);
         setDismissSummary('Skipped →');
         setIsDismissed(true);
         sendMessage({ action: 'skip_market' });

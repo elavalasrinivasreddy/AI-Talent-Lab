@@ -40,14 +40,19 @@ async def check_bias(jd_text: str) -> list[dict]:
         response = await llm.ainvoke(messages)
         content = response.content.strip()
 
+        # Robust JSON extraction
+        json_str = content
         if "```json" in content:
             json_str = content.split("```json")[-1].split("```")[0].strip()
         elif "```" in content:
-            json_str = content.split("```")[-2].split("```")[-1].strip()
-        else:
-            json_str = content
+            json_str = content.split("```")[1].strip()
+            
+        try:
+            result = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse bias check JSON. Raw content: {content}")
+            return []
 
-        result = json.loads(json_str)
         issues = result.get("issues", [])
 
         # Validate issue format

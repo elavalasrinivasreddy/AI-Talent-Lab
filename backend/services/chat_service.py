@@ -175,9 +175,7 @@ class ChatService:
                 issues = new_state.get("bias_issues", [])
                 yield StreamHandler.emit_card_bias(issues, len(issues) == 0)
 
-            # ── Draft saved notification ──────────────────────────────
-            if new_state.get("jd_saved_as_draft"):
-                yield StreamHandler.emit_event("draft_saved", {"message": "JD saved as draft"})
+
 
             # ── Persist state back to DB ──────────────────────────────
             await ChatSessionRepository.update_state(

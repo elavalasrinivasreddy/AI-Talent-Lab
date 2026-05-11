@@ -80,6 +80,8 @@ async def run_agent(
 
         elif action == "trigger_bias_check":
             state["stage"] = "bias_check"
+            if action_data.get("content"):
+                state["final_jd"] = action_data["content"]
 
         elif action == "finalize_jd":
             draft_status = action_data.get("status", "active")

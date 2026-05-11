@@ -45,6 +45,7 @@ const InternalCheckCard = ({ skills }) => {
     };
 
     const handleSkip = () => {
+        setSelectedSkills([]); // Visually unselect anything the user clicked
         setDismissSummary('Skipped →');
         setIsDismissed(true);
         sendMessage({ action: 'skip_internal' });
