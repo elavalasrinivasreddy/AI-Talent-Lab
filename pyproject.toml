@@ -1,0 +1,6 @@
+[tool.pyright]
+include = ["backend"]
+exclude = ["**/node_modules", "**/__pycache__", "frontend"]
+
+[tool.ruff]
+line-length = 100
