@@ -551,6 +551,18 @@ async def run_migrations(conn) -> None:
     DO $$
     BEGIN
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='interview_kits' AND column_name='org_id') THEN
+            ALTER TABLE interview_kits ADD COLUMN org_id INTEGER REFERENCES organizations(id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='interview_kits' AND column_name='regenerated_count') THEN
+            ALTER TABLE interview_kits ADD COLUMN regenerated_count INTEGER DEFAULT 0;
+        END IF;
+    END $$;
+
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                        WHERE table_name='chat_sessions' AND column_name='status') THEN
             ALTER TABLE chat_sessions ADD COLUMN status TEXT DEFAULT 'active';
         END IF;

@@ -69,7 +69,7 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
         if (!isEditing) {
             setEditedMarkdown(markdown);
         }
-    }, [markdown, isEditing]);
+    }, [markdown]);
 
     // ── Bias fix actions ──────────────────────────────────────
     const handleAcceptFix = (idx) => {
@@ -106,6 +106,7 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
     useEffect(() => {
         if (allResolved && pendingFixes.length > 0) {
             setBiasCheckDone(true);
+            setBiasCheckRunning(false);
             // Auto-save the bias-corrected JD via direct API (no SSE)
             if (currentSessionId && token) {
                 fetch(`/api/v1/chat/sessions/${currentSessionId}/save-draft`, {
