@@ -43,13 +43,13 @@ def generate_panel_token(panel_member_id: int, interview_id: int, org_id: int) -
         "iat": datetime.now(timezone.utc),
         "jti": str(uuid.uuid4()),
     }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
 
 def verify_panel_token(token: str) -> dict:
     """Decode and validate panel feedback JWT. Returns payload or raises ValueError."""
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
         if payload.get("type") != PANEL_TOKEN_TYPE:
             raise ValueError("Invalid token type")
         return payload

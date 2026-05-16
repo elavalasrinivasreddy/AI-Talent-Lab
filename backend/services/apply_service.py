@@ -36,7 +36,7 @@ def generate_apply_token(application_id: int, candidate_id: int, org_id: int) ->
         "iat": datetime.now(timezone.utc),
         "jti": str(uuid.uuid4()),  # unique per link — prevents reuse logs
     }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
 
 def verify_apply_token(token: str) -> dict:
@@ -45,7 +45,7 @@ def verify_apply_token(token: str) -> dict:
     Returns payload dict or raises ValueError.
     """
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
         if payload.get("type") != APPLY_TOKEN_TYPE:
             raise ValueError("Invalid token type")
         return payload
@@ -532,5 +532,5 @@ class ApplyService:
             "iat": datetime.now(timezone.utc),
             "jti": str(uuid.uuid4()),
         }
-        return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+        return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
