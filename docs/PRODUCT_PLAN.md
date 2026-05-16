@@ -278,39 +278,42 @@ Sourced → Emailed → Applied → Screening → Interview (R1, R2...) → Sele
 
 ## 12. Build Order
 
-### Step 1 — Foundation (do first, never skip)
+> All 9 original build steps are **COMPLETE**. The product is fully functional end-to-end.
+> See `docs/PRODUCT_IMPROVEMENTS.md` for extended features and Phase 2/3 roadmap.
+
+### ✅ Step 1 — Foundation
 - Multi-tenant architecture with `org_id` + `department_id` on every table
 - JWT auth, role middleware, tenant context injection
 - Org settings, departments, team management
 - API versioning: all routes under `/api/v1/`
 
-### Step 2 — Settings & Configuration
+### ✅ Step 2 — Settings & Configuration
 - Organization profile (About Us, culture, benefits — feeds JD gen)
 - Competitor management (feeds market research)
 - Screening questions (feeds candidate apply chat)
 - Message/email templates
 
-### Step 3 — Recruiter Chat + JD Generation
+### ✅ Step 3 — Recruiter Chat + JD Generation
 - Full 5-stage agent pipeline (intake → internal check → market → variants → final JD)
 - JD bias checker
 - Position Setup Modal
 - Save position → trigger background search
 
-### Step 4 — Candidate Sourcing + Pipeline
+### ✅ Step 4 — Candidate Sourcing + Pipeline
 - Background search (simulation adapter)
 - Semantic ATS scoring
 - Duplicate detection
 - Email outreach with magic links
-- Candidate pipeline management
+- Candidate pipeline management (tab-based grid + Kanban toggle)
 
-### Step 5 — Candidate Apply Chat
+### ✅ Step 5 — Candidate Apply Chat
 - Magic link verification
 - Chat-based application flow
 - Resume upload
 - Auto-send interview process overview email
 
-### Step 6 — Interview + Feedback
-- Interview scheduling
+### ✅ Step 6 — Interview + Feedback
+- Interview scheduling (with mock calendar availability)
 - Panel magic link generation + email
 - Panel feedback form + AI enrichment
 - Scorecard storage
@@ -318,25 +321,45 @@ Sourced → Emailed → Applied → Screening → Interview (R1, R2...) → Sele
 - Rejection email drafting + sending
 - Mark as Selected flow
 
-### Step 7 — Talent Pool
+### ✅ Step 7 — Talent Pool
 - Auto-add to pool on rejection/close
 - Bulk offline resume upload
 - AI pool match suggestions
 - Add pool candidate to position pipeline
+- Contact status (active / unsubscribed / employed) + unsubscribe flow
 
-### Step 8 — Dashboard + Analytics
+### ✅ Step 8 — Dashboard + Analytics
 - Stats cards (period selector)
 - Hiring funnel
 - Positions list
 - Activity feed
 - Candidate timeline (PipelineEvent based)
+- AI Copilot action bar (uncontacted candidates, overdue feedback, stale positions)
+- Dedicated Analytics page (time-to-fill, source effectiveness, conversion funnel)
 
-### Step 9 — Interview Kit + Career Page + Notifications
-- AI interview question generation
-- Scorecard template
+### ✅ Step 9 — Interview Kit + Career Page + Notifications + Extended Features
+- AI interview question generation + scorecard template
 - Interview debrief generation
-- Public career page (auto-publish)
+- Public career page (auto-publish open positions)
 - In-app notification system
+- Candidate status portal (per-application permanent URL)
+- GDPR/DPDP compliance (consent capture, right-to-deletion, data retention)
+- Collaborative hiring notes with @mention
+- Position approval workflow (optional toggle per position)
+
+---
+
+## 13. Phase 2 — Next Build Priorities
+
+| # | Feature | Notes |
+|---|---|---|
+| 1 | Google Calendar OAuth (real) | Mock adapter done. Needs OAuth client + `GoogleCalendarAdapter`. See `CALENDAR_INTEGRATION_GUIDE.md` |
+| 2 | Career page custom branding | Primary color, hero banner, custom tagline — per org |
+| 3 | Video intro frontend | Backend endpoint exists. Need frontend step in apply chat + player in candidate detail |
+| 4 | WhatsApp integration | Business API for candidate outreach — critical for India market |
+| 5 | Self-scheduling links | Candidates pick slots — requires calendar integration first |
+| 6 | GDPR data export endpoint | Article 20 right — `GET /api/v1/gdpr/export-my-data` |
+| 7 | Audit log UI | Settings → Security: table of all org actions with filters |
 
 ---
 
@@ -344,15 +367,18 @@ Sourced → Emailed → Applied → Screening → Interview (R1, R2...) → Sele
 
 | Layer | Tech | Notes |
 |---|---|---|
-| Frontend | React 18 + Vite | Split CSS, React Router v6, Context API |
+| Frontend | React 18 + Vite | Vanilla CSS with custom properties, React Router v6, Context API |
 | Backend | FastAPI Python 3.11+ | 3-layer: routers → services → repositories |
-| Database (dev) | SQLite + WAL | In `data/` directory (gitignored) |
-| Database (prod) | PostgreSQL 16+ | Swap via DATABASE_URL |
-| Vector Store | ChromaDB | In `data/chroma/` (gitignored) |
-| LLM | Groq / OpenAI / Gemini | Switchable via LLM_PROVIDER env var |
-| Web Search | Tavily API | Market research in JD generation |
-| Email | Resend / SMTP / Simulation | Adapter pattern |
-| Streaming | SSE | Chat token streaming |
+| Database | PostgreSQL 16 | Dev and prod via Docker Compose. Never SQLite. asyncpg for async queries. |
+| Cache / Broker | Redis 7 | Celery broker + rate limiting |
+| Background Jobs | Celery | Candidate search, email blasts, GDPR cleanup, copilot analysis |
+| Vector Search | PostgreSQL JSON column | Resume + JD embeddings stored as JSON arrays. Cosine similarity in Python. No external vector DB. |
+| LLM | Groq (default) / OpenAI / Gemini | Switchable via LLM_PROVIDER env var |
+| LLM Framework | LangChain + LangGraph | Multi-agent state machine for JD generation |
+| Web Search | Tavily API | Market research step in JD generation |
+| Email | Resend / SMTP / Simulation | Adapter pattern — never hardcode a provider |
+| Streaming | SSE (Server-Sent Events) | Chat token streaming |
+| Auth | PyJWT (HS256) + bcrypt | Stateless JWT with org_id + role claims |
 
 ---
 

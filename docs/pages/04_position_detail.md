@@ -46,7 +46,41 @@
 
 ## 3. Tab Content
 
-### 3.1 Pipeline Tab (Kanban Board)
+### 3.1 Pipeline Tab (Grid + Kanban Toggle)
+
+**Default view: Tab-based Grid.** Toggle to Kanban with the view switcher in the tab header.
+
+```
+[▦ Grid]  [▥ Kanban]   ← view toggle, top-right of Pipeline tab
+
+── TAB-BASED GRID VIEW ──────────────────────────────────────────────
+[Sourced (8)] [Emailed (6)] [Applied (4)] [Screening (2)] [Interview (3)] [Selected (1)] [Rejected (4)]
+     ↑ active tab highlighted with stage color
+
+┌── Sourced ───────────── [🔍 Search...] [Sort: Score ▼] ──────────────┐
+│                                                                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                   │
+│  │ [RK] 92%    │  │ [SM] 88%    │  │ [AT] 85%    │                   │
+│  │ Rahul K.    │  │ Sanya M.    │  │ Arjun T.    │                   │
+│  │ TechCorp    │  │ Google      │  │ Flipkart    │                   │
+│  │ 6 yrs · Blr │  │ 5 yrs · Del │  │ 7 yrs · Hyd │                   │
+│  │ Python,Fast │  │ ML,Python   │  │ Java,Spring │                   │
+│  │ [📧][📅][⋯]│  │ [📧][📅][⋯]│  │ [📧][📅][⋯]│                   │
+│  └─────────────┘  └─────────────┘  └─────────────┘                   │
+│                                                                        │
+│  ← Prev  Page 1 of 2  Next →                                          │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+**Grid card:** ATS score circle (top-right), initials avatar (top-left), name/company/exp/location, top 2–3 skills, quick actions row (📧 Email, 📅 Schedule, ⋯ More).
+
+**Sort options per tab:** Score (high→low), Name, Date added, Experience.
+
+**Search:** per-tab search bar — filters candidates within that stage.
+
+---
+
+**Kanban view (toggle):**
 
 ```
 Sourced (8)   │ Emailed (6)  │ Applied (4)  │ Screening (2) │ Interview (3) │ ✅(1) │ ❌(4)
@@ -55,24 +89,19 @@ Sourced (8)   │ Emailed (6)  │ Applied (4)  │ Screening (2) │ Interview 
 │ Rahul K  │  │ │ Priya S  │ │ │ Amit R   │ │ │ Neha P   │  │ │ Sanya M  │  │      │
 │ 85% ●    │  │ │ 78% ●    │ │ │ 92% ●    │ │ │ 74% ●    │  │ │ 88% ●    │  │      │
 │ TechCorp │  │ │ InfoSys  │ │ │ Flipkart │ │ │ Wipro    │  │ │ Google   │  │      │
-│ 6 yrs    │  │ │ 4 yrs    │ │ │ 7 yrs    │ │ │ 3 yrs    │  │ │ 5 yrs    │  │      │
 │ [...]    │  │ │ [...]    │ │ │ [...]    │ │ │ [...]    │  │ │ [...]    │  │      │
 └──────────┘  │ └──────────┘ │ └──────────┘ │ └──────────┘  │ └──────────┘  │      │
 ```
 
-**Card interactions:**
-- Click card → navigate to `/candidates/:id` (with position context in location.state)
-- Click `[...]` menu → "Move to..." status submenu, "Schedule Interview", "Draft Rejection"
-- Horizontal scroll when columns overflow
-- Column header shows count
-
-**"..." menu options:**
+**"..." menu options (both views):**
 ```
 Move to: Emailed | Applied | Screening | Interview | On Hold
 Schedule Interview
 Draft Rejection Email
 Add to Talent Pool
 ```
+
+**Card click:** navigate to `/candidates/:id` (position context in `location.state`).
 
 ---
 

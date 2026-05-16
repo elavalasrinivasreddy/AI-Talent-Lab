@@ -1,7 +1,7 @@
 # Page Design: Dashboard
-> **Version 2.1 — Updated**
-> Home screen after login. Stats cards controlled by one global period selector.
-> Positions table + activity feed side by side. Hiring funnel below stats.
+> **Version 2.2 — Updated**
+> Role-adaptive dashboard. Stats and sections differ by role (admin / hiring_manager / recruiter).
+> Includes AI Copilot action bar, period selector, hiring funnel, positions table, and activity feed.
 
 ---
 
@@ -9,9 +9,10 @@
 
 | Aspect | Detail |
 |---|---|
-| Route | `/` (default after login) |
+| Route | `/dashboard` |
 | Auth | Required (JWT) |
 | Layout | Sidebar + full-width dashboard |
+| Role-adaptive | Admin: org-wide stats + dept breakdown. Hiring Manager: dept health + team workload. Recruiter: my positions + pending actions. |
 | Dept scope | Admin: sees [All Departments ▼] selector. Recruiters/Hiring Managers: their dept only. |
 
 ---
@@ -21,16 +22,24 @@
 ```
 ┌──────┬─────────────────────────────────────────────────────────────┐
 │      │  ┌── HEADER ──────────────────────────────────────────────┐ │
-│      │  │  📊 Dashboard  ·  Welcome back, Srinivas               │ │
+│      │  │  Good morning, Srinivas 👋  · [Director / Manager / Recruiter badge]  │
 │      │  │                      [Today]  [This Week]  [This Month] │ │
 │      │  └────────────────────────────────────────────────────────┘ │
 │ S    │                                                             │
-│ I    │  ┌── STATS CARDS (4 in a row) ─────────────────────────────┐│
-│ D    │  │  [Open Positions]  [Total Candidates]  [Interviews]  [Applications] ││
-│ E    │  └────────────────────────────────────────────────────────┘ │
-│ B    │                                                             │
-│ A    │  ┌── HIRING FUNNEL ───────────────────────────────────────┐ │
-│ R    │  │  (horizontal bar chart)                                │ │
+│ I    │  ┌── AI COPILOT BAR (dismissible) ─────────────────────── ─┐│
+│ D    │  │  🤖 AI Suggestions  [Dismiss All]                       ││
+│ E    │  │  🔥 5 candidates 85%+ for "ML Engineer" — not contacted ││
+│ B    │  │     [Send Outreach →]                          2h ago   ││
+│ A    │  │  ⏰ Panel feedback overdue: Raj K. (3 days)             ││
+│ R    │  │     [Send Reminder →]                          5h ago   ││
+│      │  └────────────────────────────────────────────────────────┘ │
+│      │                                                             │
+│      │  ┌── STATS CARDS (4–6 depending on role) ─────────────────┐│
+│      │  │  [Open Positions]  [Candidates]  [Interviews]  [Applications] ││
+│      │  └────────────────────────────────────────────────────────┘ │
+│      │                                                             │
+│      │  ┌── HIRING FUNNEL ───────────────────────────────────────┐ │
+│      │  │  (horizontal bar chart, stage counts)                  │ │
 │      │  └────────────────────────────────────────────────────────┘ │
 │      │                                                             │
 │      │  ┌── POSITIONS TABLE (60%) ─┐  ┌── ACTIVITY FEED (40%) ──┐ │
@@ -38,6 +47,40 @@
 │      │  └──────────────────────────┘  └──────────────────────────┘ │
 └──────┴─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## 2a. AI Copilot Action Bar
+
+Sits between the header and stats cards. Loaded separately (non-blocking — fails silently if unavailable).
+
+```
+┌── 🤖 AI Suggestions ───────────────────────────────────── [Dismiss All] ─┐
+│                                                                            │
+│  🔥 5 candidates scored 85%+ for "ML Engineer" — none contacted yet      │
+│     [Send Outreach →]                                           2h ago    │
+│                                                                            │
+│  ⏰ Panel feedback overdue: Raj K. hasn't submitted for Priya S. (3 days) │
+│     [Send Reminder →]                                           5h ago    │
+│                                                                            │
+│  📉 "DevOps Engineer" has 0 activity in 7 days — consider adjusting JD   │
+│     [Review Position →]                                         1d ago    │
+│                                                                            │
+└─────────────────────────────── [×] dismiss per suggestion ────────────────┘
+```
+
+**Suggestion types generated by background Celery task (hourly):**
+
+| Type | Trigger | Action |
+|---|---|---|
+| `uncontacted_high_score` | Candidates >80% ATS, status=sourced, >48h | Send Outreach |
+| `overdue_feedback` | Panel link sent >72h, no scorecard | Send Reminder |
+| `stale_position` | Open position, 0 events in 7 days | Review Position |
+| `interview_today` | Interview scheduled today | View Details |
+| `pending_rejection` | Rejection drafted but not sent >24h | Review & Send |
+| `pool_match` | New position matches talent pool candidates | View Matches |
+
+Hidden when no suggestions. Each dismissible individually or all at once.
 
 ---
 

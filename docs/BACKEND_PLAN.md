@@ -10,9 +10,8 @@
 | Layer | Technology | Notes |
 |---|---|---|
 | **Framework** | FastAPI (Python 3.11+) | Async-first, SSE support, Pydantic v2 validation |
-| **Database (Dev)** | SQLite + WAL mode | File stored in `data/talent_lab.db` (gitignored) |
-| **Database (Prod)** | PostgreSQL 16+ | Swap via `DATABASE_URL` env var — no code changes |
-| **Vector Store** | ChromaDB (persistent) | Stored in `data/chroma/` — JD similarity for internal check |
+| **Database** | PostgreSQL 16 | Dev and prod via Docker Compose. asyncpg for async queries. |
+| **Vector Search** | PostgreSQL JSON column | Embeddings stored as JSON arrays. Cosine similarity in Python. No ChromaDB dependency. |
 | **LLM Framework** | LangChain + LangGraph | Multi-agent state machine |
 | **LLM Providers** | Groq (default) / OpenAI / Gemini | Switchable via `LLM_PROVIDER` env var |
 | **Auth** | JWT (PyJWT) + bcrypt | Stateless, org_id + dept_id + role in token claims |

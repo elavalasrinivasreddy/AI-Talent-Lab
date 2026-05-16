@@ -298,12 +298,16 @@ AI Talent Lab/
 │   │   ├── email/                 # Email adapters (Simulation/Resend/SMTP)
 │   │   └── sourcing/              # Candidate sourcing adapters
 │   ├── agents/
-│   │   ├── jd_agent.py            # JD generation (5-stage LangGraph)
-│   │   ├── ats_scorer.py          # ATS resume scoring agent
+│   │   ├── orchestrator.py        # JD generation (5-stage LangGraph state machine)
+│   │   ├── resume_parser.py       # Resume parsing, embedding, ATS scoring
+│   │   ├── bias_checker.py        # JD bias detection agent
 │   │   ├── candidate_chat.py      # Candidate apply chat controller
 │   │   ├── interview_agents.py    # Feedback enricher, debrief, rejection drafter
 │   │   ├── interview_kit.py       # Interview questions + scorecard generator
-│   │   └── tools/                 # Tool functions (role_extractor, web_search, etc.)
+│   │   ├── streaming.py           # SSE streaming helpers
+│   │   ├── state.py               # LangGraph shared state types
+│   │   ├── nodes/                 # Individual LangGraph node functions
+│   │   └── tools/                 # role_extractor.py, search.py (Tavily)
 │   ├── db/
 │   │   ├── connection.py          # asyncpg connection pool
 │   │   ├── migrations.py          # CREATE TABLE IF NOT EXISTS migrations
@@ -316,20 +320,24 @@ AI Talent Lab/
 │   └── src/
 │       ├── components/
 │       │   ├── Auth/              # Login, Register, ForgotPassword
-│       │   ├── Chat/              # Chat window, JD generation flow
-│       │   ├── Dashboard/         # Stats, funnel, positions, activity
+│       │   ├── Chat/              # Chat window, JD generation flow, cards
+│       │   ├── Dashboard/         # Stats, funnel, positions, activity, AI copilot bar
+│       │   ├── Analytics/         # Dedicated analytics page (time-to-fill, funnel, sources)
 │       │   ├── Positions/         # Position list + detail (6 tabs)
-│       │   │   └── tabs/          # Pipeline, Candidates, JD, InterviewKit, Activity, Settings
+│       │   │   └── tabs/          # Pipeline (grid+kanban), Candidates, JD, InterviewKit, Activity, Settings
 │       │   ├── Candidates/        # Candidate detail (5 tabs)
 │       │   │   └── tabs/          # Overview, Skills, Timeline, Resume, Interviews
-│       │   ├── TalentPool/        # Bulk upload, AI suggest, candidate grid
+│       │   ├── TalentPool/        # Bulk upload, AI suggest, candidate grid with contact status
 │       │   ├── Careers/           # Public career page + position detail
-│       │   ├── Apply/             # Candidate magic-link chat
+│       │   ├── Apply/             # Candidate magic-link chat (consent → chat → resume → video → screening)
 │       │   ├── Panel/             # Panelist feedback form (public)
-│       │   ├── Interviews/        # Schedule interview modal
-│       │   ├── Settings/          # 11-tab settings page
+│       │   ├── Interviews/        # Schedule interview modal with calendar availability
+│       │   ├── Settings/          # Settings page (12 tabs including Privacy, Security, Integrations)
+│       │   ├── Status/            # Candidate application status portal (public, permanent URL)
+│       │   ├── GDPR/              # Delete my data + privacy page (public)
+│       │   ├── DevAdmin/          # Dev-only admin tools (seed data, reset)
 │       │   ├── Sidebar/           # App sidebar navigation
-│       │   └── common/            # StatusBadge, ScoreCircle, shared UI
+│       │   └── common/            # StatusBadge, ScoreCircle, NotificationBell, shared UI
 │       ├── utils/
 │       │   ├── api.js             # Centralised API client (typed helpers)
 │       │   └── constants.js       # PIPELINE_STAGES, STATUS colors, icons
@@ -383,14 +391,14 @@ These rules are enforced across the entire codebase:
 
 | Agent | Purpose |
 |---|---|
-| `jd_agent.py` | 5-stage JD generation with LangGraph state machine |
-| `ats_scorer.py` | Cosine similarity resume scoring + skill gap analysis |
+| `orchestrator.py` | 5-stage JD generation with LangGraph state machine (intake → internal → market → variants → final) |
+| `resume_parser.py` | Resume text extraction, embedding generation, ATS cosine similarity scoring |
+| `bias_checker.py` | Post-generation JD bias scan — non-blocking, highlights gendered or exclusionary language |
 | `candidate_chat.py` | Multi-turn candidate apply conversation controller |
 | `interview_kit.py` | 8–10 questions + 5-dimension scorecard from JD |
 | `interview_agents.py` | Feedback enrichment, debrief synthesis, rejection email draft |
 | `tools/role_extractor.py` | Extract role name + requirements from recruiter's first message |
-| `tools/web_search.py` | Tavily web search for market benchmark |
-| `tools/jd_checker.py` | ChromaDB similarity check against historical JDs |
+| `tools/search.py` | Tavily web search for market benchmark step |
 
 ---
 
@@ -429,9 +437,11 @@ All planning and architectural decisions are in `docs/`:
 
 | File | Contents |
 |---|---|
-| `docs/PRODUCT_PLAN.md` | Product vision, features, build order |
+| `docs/PRODUCT_PLAN.md` | Product vision, features, build order, Phase 2 roadmap |
 | `docs/BACKEND_PLAN.md` | Full DB schema, API spec, agent architecture |
 | `docs/FRONTEND_PLAN.md` | Component tree, design system, routing |
+| `docs/PRODUCT_IMPROVEMENTS.md` | Competitive analysis, role-based UI recs, Phase 2/3 roadmap, compliance status |
+| `docs/CALENDAR_INTEGRATION_GUIDE.md` | Google Calendar + Outlook OAuth setup guide for developers |
 | `docs/pages/01_auth.md` | Auth pages spec |
 | `docs/pages/02_chat.md` | JD generation chat flow |
 | `docs/pages/03_dashboard.md` | Dashboard spec |

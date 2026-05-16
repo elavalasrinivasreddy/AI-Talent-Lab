@@ -22,6 +22,28 @@
 
 **State A — Loading:** Verifying token. Show spinner + org logo.
 
+**State B0 — Consent Screen** (shown before first chat if consent not yet given):
+```
+┌──────────────────────────────────────────┐
+│  [Org Logo]  TechCorp                    │
+│                                          │
+│  Before we start, please review:         │
+│                                          │
+│  • Your info is used for hiring at       │
+│    TechCorp only                         │
+│  • AI is used to match your skills       │
+│    with the role                         │
+│  • Your data is stored securely and      │
+│    not shared with third parties         │
+│                                          │
+│  By continuing, you agree to our         │
+│  [Privacy Policy ↗]                      │
+│                                          │
+│  [I Agree & Continue]   [No Thanks]      │
+└──────────────────────────────────────────┘
+```
+Consent stored in session. Not shown again on re-entry if already consented.
+
 **State B — Valid Token → Chat interface**
 
 **State C — Expired:**
@@ -80,6 +102,11 @@
 │  │  [Yes, I'm interested!]     [No, thanks]                 │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                  │
+├─────────────────────────────────────────────────────────────────┤
+│  PROGRESS BAR (above input)                                      │
+│  ● ● ● ○ ○ ○ ○ ○   Step 3 of 8                                 │
+│  Interest → Role → Experience → Compensation → Notice → Resume  │
+│  → Video → Screening → Done                                      │
 ├─────────────────────────────────────────────────────────────────┤
 │  INPUT (sticky bottom)                                           │
 │  [Type your reply...                                    Send]   │
@@ -162,6 +189,19 @@ AI: "Almost done! Please share your latest resume."
 [📎 Upload your resume — PDF or DOCX · Max 5MB]
 ```
 After upload: `"✅ Resume received!"`
+
+---
+
+### Step 6.5 — Video Introduction (Optional)
+```
+AI: "Would you like to record a short video introduction?
+     This is optional but helps the team get to know you better."
+
+     [📹 Upload Video (60s max — MP4 or WebM)]    [Skip — I'll pass]
+```
+Shown only after resume upload. Fully optional — candidate can skip with no consequence.
+On upload: video stored, `video_intro_url` saved in `candidate_applications`.
+Recruiter sees video player in Candidate Detail → Application tab.
 
 ---
 
