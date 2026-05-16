@@ -159,3 +159,98 @@ async def generate_interview_kit(
                 "details": None
             }
         })
+
+
+# ── Approval workflow ─────────────────────────────────────────────────────────
+
+@router.post("/{position_id}/submit-for-approval")
+async def submit_for_approval(position_id: int, current_user=Depends(get_current_user)):
+    """
+    Recruiter submits a position for hiring manager approval.
+    Sets approval_status = 'pending'.
+    """
+    from backend.db.connection import get_connection
+    async with get_connection() as conn:
+        row = await conn.fetchrow(
+            "SELECT id, requires_approval, approval_status FROM positions WHERE id=$1 AND org_id=$2",
+            position_id, current_user["org_id"],
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": "Position not found", "details": None}})
+        if not row["requires_approval"]:
+            raise HTTPException(status_code=400, detail={"error": {"code": "APPROVAL_NOT_REQUIRED", "message": "This position does not require approval", "details": None}})
+        await conn.execute(
+            "UPDATE positions SET approval_status='pending', updated_at=NOW() WHERE id=$1",
+            position_id,
+        )
+        # Notify hiring managers in the org
+        await conn.execute(
+            """
+            INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
+            SELECT $1, u.id, 'approval_requested',
+                   'Position approval requested',
+                   (SELECT role_name FROM positions WHERE id=$2) || ' is pending your approval',
+                   '/positions/' || $2
+            FROM users u
+            WHERE u.org_id=$1 AND u.role IN ('admin', 'hiring_manager')
+            """,
+            current_user["org_id"], position_id,
+        )
+    return {"ok": True, "approval_status": "pending"}
+
+
+@router.post("/{position_id}/approval-decision")
+async def approval_decision(
+    position_id: int,
+    body: dict,
+    current_user=Depends(get_current_user),
+):
+    """
+    Hiring manager approves or requests changes.
+    Body: { decision: 'approved' | 'changes_requested', notes: str }
+    Requires role = admin or hiring_manager.
+    """
+    if current_user.get("role") not in ("admin", "hiring_manager"):
+        raise HTTPException(status_code=403, detail={"error": {"code": "FORBIDDEN", "message": "Only admins and hiring managers can approve positions", "details": None}})
+
+    decision = body.get("decision")
+    if decision not in ("approved", "changes_requested"):
+        raise HTTPException(status_code=422, detail={"error": {"code": "INVALID_DECISION", "message": "decision must be 'approved' or 'changes_requested'", "details": None}})
+
+    from backend.db.connection import get_connection
+    async with get_connection() as conn:
+        row = await conn.fetchrow(
+            "SELECT id, created_by, role_name FROM positions WHERE id=$1 AND org_id=$2",
+            position_id, current_user["org_id"],
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": "Position not found", "details": None}})
+
+        approved_by = current_user["id"] if decision == "approved" else None
+        await conn.execute(
+            f"""
+            UPDATE positions
+            SET approval_status=$1,
+                approved_by=$2,
+                approved_at={'NOW()' if decision == 'approved' else 'NULL'},
+                updated_at=NOW()
+            WHERE id=$3
+            """,
+            decision, approved_by, position_id,
+        )
+
+        # Notify the recruiter who created it
+        if row["created_by"]:
+            msg = (f"\"{row['role_name']}\" was approved" if decision == "approved"
+                   else f"\"{row['role_name']}\" needs changes before approval")
+            await conn.execute(
+                """
+                INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
+                VALUES ($1,$2,$3,$4,$5,$6)
+                """,
+                current_user["org_id"], row["created_by"],
+                "approval_decision", "Position approval update", msg,
+                f"/positions/{position_id}",
+            )
+
+    return {"ok": True, "approval_status": decision}

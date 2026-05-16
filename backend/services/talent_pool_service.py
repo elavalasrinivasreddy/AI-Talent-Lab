@@ -84,7 +84,8 @@ class TalentPoolService:
                 f"""
                 SELECT c.id, c.name, c.email, c.current_title, c.current_company,
                        c.location, c.experience_years, c.source, c.skill_tags,
-                       c.talent_pool_reason, c.talent_pool_added_at, c.resume_embedding
+                       c.talent_pool_reason, c.talent_pool_added_at, c.resume_embedding,
+                       COALESCE(c.contact_status, 'active') AS contact_status
                 FROM candidates c
                 WHERE {where}
                 ORDER BY c.talent_pool_added_at DESC NULLS LAST, c.created_at DESC

@@ -3,8 +3,8 @@
  * Route: /talent-pool
  * Per docs/pages/08_talent_pool.md
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { positionsApi } from '../../utils/api'
 import './TalentPoolPage.css'
 
@@ -317,10 +317,17 @@ export default function TalentPoolPage() {
   )
 }
 
+const CONTACT_STATUS_CFG = {
+  active:       { label: 'Contactable',    color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+  unsubscribed: { label: 'Unsubscribed',   color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  employed:     { label: 'Employed',       color: '#6366f1', bg: 'rgba(99,102,241,0.1)' },
+}
+
 function CandidateCard({ candidate: c, onNavigate }) {
   const reason = REASON_COLORS[c.talent_pool_reason] || REASON_COLORS.manual
   const initials = (c.name || '??').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   const skills = Array.isArray(c.skill_tags) ? c.skill_tags : []
+  const contactCfg = CONTACT_STATUS_CFG[c.contact_status] || CONTACT_STATUS_CFG.active
 
   return (
     <div className="tp-card" onClick={() => onNavigate(`/candidates/${c.id}`, { state: { from: '/talent-pool', fromLabel: 'Talent Pool' } })}>
@@ -330,9 +337,16 @@ function CandidateCard({ candidate: c, onNavigate }) {
           <div className="tp-card-name">{c.name}</div>
           <div className="tp-card-title">{c.current_title || '—'} {c.current_company ? `@ ${c.current_company}` : ''}</div>
         </div>
-        <span className="tp-card-reason" style={{ background: reason.bg, color: reason.color }}>
-          {reason.label}
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+          <span className="tp-card-reason" style={{ background: reason.bg, color: reason.color }}>
+            {reason.label}
+          </span>
+          {c.contact_status && c.contact_status !== 'active' && (
+            <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 20, background: contactCfg.bg, color: contactCfg.color, fontWeight: 500 }}>
+              {contactCfg.label}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="tp-card-meta">

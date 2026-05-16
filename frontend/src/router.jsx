@@ -16,6 +16,9 @@ import PanelPage from './components/Panel/PanelPage'
 import TalentPoolPage from './components/TalentPool/TalentPoolPage'
 import CareerPage from './components/Careers/CareerPage'
 import DevAdminPage from './components/DevAdmin/DevAdminPage'
+import DeleteMyDataPage from './components/GDPR/DeleteMyDataPage'
+import CandidateStatusPage from './components/Status/CandidateStatusPage'
+import AnalyticsPage from './components/Analytics/AnalyticsPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -105,6 +108,7 @@ export const router = createBrowserRouter([
           { path: '/interviews', element: <PlaceholderPage title="Interviews" icon="🎙" /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/:tab', element: <SettingsPage /> },
+          { path: '/analytics', element: <AnalyticsPage /> },
           { path: '/dev-admin', element: <DevAdminPage /> },
         ],
       },
@@ -116,6 +120,9 @@ export const router = createBrowserRouter([
   { path: '/panel/:token', element: <PanelPage /> },
   { path: '/careers/:orgSlug', element: <CareerPage /> },
   { path: '/careers/:orgSlug/:positionId', element: <CareerPage /> },
+  { path: '/delete-my-data', element: <DeleteMyDataPage /> },
+  { path: '/privacy', element: <DeleteMyDataPage /> },
+  { path: '/status/:token', element: <CandidateStatusPage /> },
 
   // Catch-all
   { path: '*', element: <Navigate to="/login" replace /> },

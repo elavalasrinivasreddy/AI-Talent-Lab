@@ -314,6 +314,7 @@ function PositionDetailView({ orgSlug, positionId }) {
 
       <footer className="cp-footer">
         <span>Powered by AI Talent Lab</span>
+        <a href="/delete-my-data" target="_blank" rel="noopener" style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', textDecoration: 'none' }}>Privacy & Data Deletion</a>
       </footer>
     </div>
   )

@@ -383,6 +383,19 @@ class ApplyService:
                     "action_url": f"/positions/{payload.get('position_id')}?tab=candidates",
                 })
 
+        # ── GDPR: Record consent + set data retention ────────────────────────
+        try:
+            from backend.services.gdpr_service import GDPRService
+            await GDPRService.record_bulk_consent(
+                org_id=org_id,
+                candidate_id=candidate_id,
+                application_id=application_id,
+                consent_types=["data_processing", "ai_analysis"],
+            )
+            await GDPRService.set_retention_period(org_id, candidate_id)
+        except Exception as e:
+            logger.warning(f"GDPR consent recording failed: {e}")
+
         return {"completed": True}
 
     # ── Helpers ────────────────────────────────────────────────────────────────

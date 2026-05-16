@@ -1,7 +1,7 @@
 /**
  * PositionSettingsTab.jsx – Position-level settings (ATS threshold, search interval, headcount, etc.)
  */
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { positionsApi } from '../../../utils/api'
 import './PositionSettingsTab.css'
 
@@ -16,7 +16,9 @@ export default function PositionSettingsTab({ position, onUpdate }) {
     work_type: position?.work_type || 'onsite',
     employment_type: position?.employment_type || 'full_time',
     location: position?.location || '',
+    requires_approval: position?.requires_approval ?? false,
   })
+  const [approvalAction, setApprovalAction] = useState(null)  // null | 'submitting' | 'submitted'
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -36,6 +38,18 @@ export default function PositionSettingsTab({ position, onUpdate }) {
   }
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
+
+  const handleSubmitForApproval = async () => {
+    setApprovalAction('submitting')
+    try {
+      await positionsApi.submitForApproval(position.id)
+      onUpdate(prev => ({ ...prev, approval_status: 'pending' }))
+      setApprovalAction('submitted')
+    } catch (e) {
+      alert(`Submit failed: ${e.message}`)
+      setApprovalAction(null)
+    }
+  }
 
   return (
     <div className="psettings-tab">
@@ -123,6 +137,44 @@ export default function PositionSettingsTab({ position, onUpdate }) {
               <option value={168}>Weekly</option>
             </select>
           </label>
+
+          <div className="psettings-divider" />
+          <h4 className="psettings-heading">Approval Workflow</h4>
+
+          <label className="psettings-field psettings-toggle">
+            <span>Require manager approval before publishing</span>
+            <input type="checkbox" checked={form.requires_approval}
+              onChange={e => set('requires_approval', e.target.checked)} />
+          </label>
+          {form.requires_approval && (
+            <small className="psettings-hint">
+              When enabled, this position must be approved before it goes to the career page and sourcing.
+            </small>
+          )}
+
+          {form.requires_approval && position?.approval_status !== 'approved' && (
+            <div className="psettings-approval-status">
+              <span className={`psettings-approval-badge psettings-approval-${position?.approval_status || 'none'}`}>
+                {position?.approval_status === 'pending' ? '⏳ Pending approval'
+                  : position?.approval_status === 'changes_requested' ? '✏️ Changes requested'
+                  : '⬜ Not submitted'}
+              </span>
+              {position?.approval_status !== 'pending' && (
+                <button
+                  className="psettings-submit-approval-btn"
+                  onClick={handleSubmitForApproval}
+                  disabled={approvalAction === 'submitting'}
+                >
+                  {approvalAction === 'submitting' ? 'Submitting…'
+                    : approvalAction === 'submitted' ? '✅ Submitted'
+                    : 'Submit for Approval'}
+                </button>
+              )}
+            </div>
+          )}
+          {position?.approval_status === 'approved' && (
+            <span className="psettings-approval-badge psettings-approval-approved">✅ Approved</span>
+          )}
         </div>
       </div>
 

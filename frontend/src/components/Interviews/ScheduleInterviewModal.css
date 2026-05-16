@@ -291,3 +291,148 @@
   cursor: not-allowed;
   transform: none;
 }
+
+/* Find Slots button */
+.sim-find-slots-btn {
+  padding: 10px 16px;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1.5px solid rgba(14, 165, 233, 0.35);
+  border-radius: 10px;
+  color: #38bdf8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 150ms;
+  width: 100%;
+}
+.sim-find-slots-btn:hover:not(:disabled) {
+  background: rgba(14, 165, 233, 0.2);
+  border-color: #0ea5e9;
+}
+.sim-find-slots-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sim-slots-error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #f87171;
+}
+
+/* Slot picker */
+.sim-slot-picker {
+  background: rgba(14, 165, 233, 0.05);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: fadeIn 150ms ease;
+}
+
+.sim-slot-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: #38bdf8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sim-slot-picker-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  transition: color 150ms;
+}
+.sim-slot-picker-close:hover { color: #ef4444; }
+
+.sim-slot-empty {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  margin: 4px 0;
+}
+
+.sim-slot-day { display: flex; flex-direction: column; gap: 6px; }
+
+.sim-slot-day-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sim-slot-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sim-slot-chip {
+  padding: 6px 12px;
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  border-radius: 8px;
+  color: #7dd3fc;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 120ms;
+}
+.sim-slot-chip:hover {
+  background: rgba(14, 165, 233, 0.22);
+  border-color: #0ea5e9;
+  color: #e0f2fe;
+}
+
+/* Selected slot badge */
+.sim-slot-selected-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 6px;
+  color: #4ade80;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  margin-left: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Calendar checkbox row */
+.sim-check-calendar {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 8px;
+  margin-top: 2px;
+  color: #7dd3fc !important;
+}
+
+.sim-badge-mock {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 4px;
+  color: #a78bfa;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

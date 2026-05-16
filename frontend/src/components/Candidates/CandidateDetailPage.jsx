@@ -2,10 +2,10 @@
  * CandidateDetailPage.jsx – Full candidate profile per docs/pages/05_candidate_detail.md
  * Tabs: Overview, Skills Match, Timeline, Resume, Interviews
  */
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
-import { candidatesApi } from '../../utils/api'
-import { PIPELINE_STAGES, KANBAN_STAGE_ORDER, PIPELINE_EVENT_ICONS, getScoreStyle } from '../../utils/constants'
+import { candidatesApi, notesApi } from '../../utils/api'
+import { PIPELINE_STAGES, KANBAN_STAGE_ORDER, PIPELINE_EVENT_ICONS } from '../../utils/constants'
 import StatusBadge from '../common/StatusBadge'
 import ScoreCircle from '../common/ScoreCircle'
 import InterviewsTab from './tabs/InterviewsTab'
@@ -17,6 +17,7 @@ const TABS = [
   { id: 'timeline', label: '📜 Timeline' },
   { id: 'resume', label: '📄 Resume' },
   { id: 'interviews', label: '🎙️ Interviews' },
+  { id: 'notes', label: '📝 Notes' },
 ]
 
 export default function CandidateDetailPage() {
@@ -185,7 +186,7 @@ export default function CandidateDetailPage() {
       {/* ── Tab Content ── */}
       <div className="cd-tab-content">
         {activeTab === 'overview' && <OverviewTab candidate={candidate} />}
-        {activeTab === 'skills' && <SkillsTab scoreData={scoreData} score={score} />}
+        {activeTab === 'skills' && <SkillsTab scoreData={scoreData} />}
         {activeTab === 'timeline' && <TimelineTab events={timeline} />}
         {activeTab === 'resume' && <ResumeTab candidate={candidate} />}
         {activeTab === 'interviews' && (
@@ -196,6 +197,7 @@ export default function CandidateDetailPage() {
             applicationId={candidate.application_id}
           />
         )}
+        {activeTab === 'notes' && <NotesTab candidateId={parseInt(id)} />}
       </div>
     </div>
   )
@@ -233,7 +235,7 @@ function InfoRow({ label, value }) {
   )
 }
 
-function SkillsTab({ scoreData, score }) {
+function SkillsTab({ scoreData }) {
   return (
     <div className="cd-skills-tab">
       {scoreData.summary && (
@@ -331,6 +333,110 @@ function CandidateSkeleton() {
       <div className="skeleton-block" style={{ height: 180, borderRadius: 12, marginBottom: 16 }} />
       <div className="skeleton-block" style={{ height: 44, borderRadius: 8, marginBottom: 16 }} />
       <div className="skeleton-block" style={{ height: 400, borderRadius: 12 }} />
+    </div>
+  )
+}
+
+// ── Notes Tab ─────────────────────────────────────────────────────────────────
+
+function NotesTab({ candidateId }) {
+  const [notes, setNotes] = useState([])
+  const [draft, setDraft] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [editContent, setEditContent] = useState('')
+
+  useEffect(() => {
+    notesApi.list(candidateId)
+      .then(d => setNotes(d.notes || []))
+      .catch(() => {})
+  }, [candidateId])
+
+  const handleSubmit = async () => {
+    if (!draft.trim()) return
+    setSubmitting(true)
+    try {
+      const res = await notesApi.create(candidateId, { content: draft.trim() })
+      setNotes(prev => [{ ...res.note, author_name: res.author_name, author_role: res.author_role }, ...prev])
+      setDraft('')
+    } catch (e) {
+      alert(`Failed to save note: ${e.message}`)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleUpdate = async (id) => {
+    try {
+      const res = await notesApi.update(id, editContent)
+      setNotes(prev => prev.map(n => n.id === id ? { ...n, content: res.note.content, updated_at: res.note.updated_at } : n))
+      setEditingId(null)
+    } catch (e) {
+      alert(`Update failed: ${e.message}`)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this note?')) return
+    try {
+      await notesApi.delete(id)
+      setNotes(prev => prev.filter(n => n.id !== id))
+    } catch (e) {
+      alert(`Delete failed: ${e.message}`)
+    }
+  }
+
+  return (
+    <div className="cd-notes-tab">
+      <div className="cd-notes-compose">
+        <textarea
+          className="cd-notes-input"
+          placeholder="Add a note… (use @name to mention a teammate)"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          rows={3}
+        />
+        <button className="cd-notes-submit" onClick={handleSubmit} disabled={submitting || !draft.trim()}>
+          {submitting ? 'Saving…' : 'Add Note'}
+        </button>
+      </div>
+
+      {notes.length === 0 ? (
+        <div className="cd-notes-empty">
+          <span>📝</span>
+          <p>No notes yet. Add the first one above.</p>
+        </div>
+      ) : (
+        <div className="cd-notes-list">
+          {notes.map(note => (
+            <div key={note.id} className="cd-note-card">
+              <div className="cd-note-header">
+                <div className="cd-note-author">
+                  <span className="cd-note-avatar">{(note.author_name || 'U')[0]}</span>
+                  <span className="cd-note-name">{note.author_name}</span>
+                  <span className="cd-note-role">{note.author_role}</span>
+                </div>
+                <div className="cd-note-meta">
+                  <span className="cd-note-time">{new Date(note.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  <button className="cd-note-action" onClick={() => { setEditingId(note.id); setEditContent(note.content) }}>Edit</button>
+                  <button className="cd-note-action cd-note-delete" onClick={() => handleDelete(note.id)}>Delete</button>
+                </div>
+              </div>
+              {editingId === note.id ? (
+                <div className="cd-note-edit">
+                  <textarea className="cd-notes-input" value={editContent} onChange={e => setEditContent(e.target.value)} rows={3} />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button className="cd-notes-submit" onClick={() => handleUpdate(note.id)}>Save</button>
+                    <button className="cd-note-action" onClick={() => setEditingId(null)}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <p className="cd-note-content">{note.content}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

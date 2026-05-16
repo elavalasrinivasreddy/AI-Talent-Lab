@@ -88,8 +88,8 @@ class CandidateRepository:
             """
             INSERT INTO candidate_applications
                 (candidate_id, position_id, org_id, department_id,
-                 skill_match_score, skill_match_data, status)
-            VALUES ($1,$2,$3,$4,$5,$6,$7)
+                 skill_match_score, skill_match_data, status, status_token)
+            VALUES ($1,$2,$3,$4,$5,$6,$7, gen_random_uuid()::text)
             ON CONFLICT (candidate_id, position_id) DO NOTHING
             RETURNING *
             """,

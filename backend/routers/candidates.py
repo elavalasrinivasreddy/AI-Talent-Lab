@@ -6,12 +6,17 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from backend.dependencies import get_current_user
 from backend.services.candidate_service import CandidateService
 
 router = APIRouter(prefix="/api/v1/candidates", tags=["Candidates"])
 logger = logging.getLogger(__name__)
+
+
+class ContactStatusUpdate(BaseModel):
+    contact_status: str  # active | unsubscribed | employed
 
 
 @router.get("/position/{position_id}")
@@ -239,4 +244,72 @@ async def generate_apply_link(
 
     apply_url = f"{settings.FRONTEND_URL}/apply/{token}"
     return {"token": token, "apply_url": apply_url, "expires_in_hours": 72}
+
+
+# ── Contact status (talent pool unsubscribe) ──────────────────────────────────
+
+@router.patch("/{candidate_id}/contact-status")
+async def update_contact_status(
+    candidate_id: int,
+    body: ContactStatusUpdate,
+    current_user=Depends(get_current_user),
+):
+    """
+    Update a candidate's contact_status.
+    Values: active | unsubscribed | employed
+    """
+    allowed = {"active", "unsubscribed", "employed"}
+    if body.contact_status not in allowed:
+        raise HTTPException(status_code=422, detail={
+            "error": {"code": "INVALID_STATUS",
+                      "message": f"contact_status must be one of: {', '.join(allowed)}", "details": None}
+        })
+
+    from backend.db.connection import get_connection
+    async with get_connection() as conn:
+        result = await conn.execute(
+            """
+            UPDATE candidates
+            SET contact_status=$1, contact_status_updated_at=NOW()
+            WHERE id=$2 AND org_id=$3
+            """,
+            body.contact_status, candidate_id, current_user["org_id"],
+        )
+    if result == "UPDATE 0":
+        raise HTTPException(status_code=404, detail={
+            "error": {"code": "NOT_FOUND", "message": "Candidate not found", "details": None}
+        })
+    return {"ok": True, "contact_status": body.contact_status}
+
+
+@router.post("/unsubscribe/{status_token}")
+async def unsubscribe_via_email_link(status_token: str):
+    """
+    Public endpoint — candidate clicks [Unsubscribe] in an email.
+    Uses the application's status_token so no auth is needed.
+    Sets contact_status = 'unsubscribed' on the candidate.
+    """
+    from backend.db.connection import get_connection
+    async with get_connection() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT ca.candidate_id, ca.org_id
+            FROM candidate_applications ca
+            WHERE ca.status_token = $1
+            """,
+            status_token,
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail={
+                "error": {"code": "NOT_FOUND", "message": "Link not found", "details": None}
+            })
+        await conn.execute(
+            """
+            UPDATE candidates
+            SET contact_status='unsubscribed', contact_status_updated_at=NOW()
+            WHERE id=$1 AND org_id=$2
+            """,
+            row["candidate_id"], row["org_id"],
+        )
+    return {"ok": True, "message": "You have been unsubscribed from hiring emails. Your profile is kept on file."}
 

@@ -1,0 +1,197 @@
+/* DeleteMyDataPage.css — Public GDPR deletion page */
+
+.dmd-page {
+  min-height: 100dvh;
+  background: #0f0f13;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.dmd-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 40px;
+  max-width: 520px;
+  width: 100%;
+  animation: fadeInUp 400ms ease both;
+}
+
+.dmd-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.dmd-logo span {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f1f5f9;
+}
+
+.dmd-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #f1f5f9;
+  margin: 0 0 8px;
+}
+
+.dmd-subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1.6;
+  margin: 0 0 28px;
+}
+
+/* Form */
+.dmd-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dmd-form label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dmd-form input {
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #f1f5f9;
+  font-size: 15px;
+  font-family: inherit;
+}
+.dmd-form input:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+.dmd-submit-btn {
+  padding: 13px 24px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 150ms;
+  margin-top: 4px;
+}
+.dmd-submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+}
+
+.dmd-hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+  line-height: 1.5;
+  margin: 4px 0 0;
+}
+
+/* Status */
+.dmd-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 32px 0;
+}
+.dmd-status-icon { font-size: 2.5rem; }
+.dmd-status h3 { font-size: 18px; font-weight: 700; color: #f1f5f9; margin: 0; }
+.dmd-status p { font-size: 14px; color: rgba(255, 255, 255, 0.5); margin: 0; line-height: 1.6; }
+
+.dmd-status-success { color: #4ade80; }
+.dmd-status-error .dmd-status-icon { color: #ef4444; }
+
+.dmd-verify-btn {
+  padding: 10px 20px;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1.5px solid rgba(34, 197, 94, 0.4);
+  border-radius: 8px;
+  color: #4ade80;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.dmd-verify-btn:hover { background: rgba(34, 197, 94, 0.25); }
+
+.dmd-retry-btn {
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dmd-dev-verify {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px dashed rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+}
+.dmd-dev-label {
+  font-size: 11px;
+  color: #f59e0b;
+  margin: 0 0 8px !important;
+}
+
+.dmd-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(99, 102, 241, 0.2);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Info section */
+.dmd-info {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.dmd-info h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 8px;
+}
+.dmd-info ul {
+  margin: 0 0 16px;
+  padding-left: 20px;
+}
+.dmd-info li {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.6;
+}
+
+.dmd-footer {
+  margin-top: 24px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.2);
+  text-align: center;
+}
+.dmd-footer a { color: rgba(255, 255, 255, 0.3); text-decoration: none; }
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}

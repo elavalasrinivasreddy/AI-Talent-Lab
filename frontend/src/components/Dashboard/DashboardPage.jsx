@@ -10,7 +10,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { dashboardApi } from '../../utils/api'
+import { dashboardApi, copilotApi } from '../../utils/api'
 import StatusBadge from '../common/StatusBadge'
 import './DashboardPage.css'
 
@@ -23,10 +23,32 @@ export default function DashboardPage() {
   const [positions, setPositions] = useState([])
   const [funnel, setFunnel] = useState(null)
   const [activity, setActivity] = useState([])
+  const [suggestions, setSuggestions] = useState([])
   const [period, setPeriod] = useState('week')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { loadAll() }, [period])
+  useEffect(() => { loadSuggestions() }, [])
+
+  const loadSuggestions = async () => {
+    try {
+      const data = await copilotApi.getSuggestions()
+      setSuggestions(Array.isArray(data) ? data : data?.suggestions || [])
+    } catch (e) {
+      // Copilot is optional — fail silently
+      console.debug('Copilot suggestions unavailable:', e.message)
+    }
+  }
+
+  const dismissSuggestion = async (id) => {
+    setSuggestions(prev => prev.filter(s => s.id !== id))
+    try { await copilotApi.dismiss(id) } catch {}
+  }
+
+  const dismissAllSuggestions = async () => {
+    setSuggestions([])
+    try { await copilotApi.dismissAll() } catch {}
+  }
 
   const loadAll = async () => {
     setLoading(true)
@@ -76,6 +98,16 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* ── AI Copilot Bar ── */}
+      {suggestions.length > 0 && (
+        <CopilotBar
+          suggestions={suggestions}
+          onDismiss={dismissSuggestion}
+          onDismissAll={dismissAllSuggestions}
+          navigate={navigate}
+        />
+      )}
 
       {/* ── Stats Strip ── */}
       {loading ? <StatsSkeleton count={role === 'admin' ? 6 : 4} /> : <StatsStrip stats={stats} role={role} period={period} />}
@@ -375,4 +407,72 @@ function timeAgo(dateStr) {
   if (hrs < 24) return `${hrs}h ago`
   const days = Math.floor(hrs / 24)
   return `${days}d ago`
+}
+
+// ── AI Copilot Bar ──────────────────────────────────────────────────────────
+
+const SUGGESTION_ICONS = {
+  uncontacted_high_score: { icon: '🔥', color: '#f97316' },
+  overdue_feedback: { icon: '⏰', color: '#eab308' },
+  stale_position: { icon: '📉', color: '#ef4444' },
+  interview_today: { icon: '🎙', color: '#8b5cf6' },
+  pending_rejection: { icon: '📤', color: '#f59e0b' },
+  pool_match: { icon: '🎯', color: '#22c55e' },
+  default: { icon: '💡', color: '#6366f1' },
+}
+
+function CopilotBar({ suggestions, onDismiss, onDismissAll, navigate }) {
+  if (!suggestions || suggestions.length === 0) return null
+
+  return (
+    <div className="copilot-bar">
+      <div className="copilot-header">
+        <div className="copilot-badge">
+          <span className="copilot-pulse" />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 23h-4a7 7 0 0 1-6.73-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73A2 2 0 0 1 12 2z"/>
+            <circle cx="9" cy="15" r="1" fill="currentColor"/>
+            <circle cx="15" cy="15" r="1" fill="currentColor"/>
+          </svg>
+          AI Copilot
+        </div>
+        <span className="copilot-count">{suggestions.length} suggestion{suggestions.length !== 1 ? 's' : ''}</span>
+        <button className="copilot-dismiss-all" onClick={onDismissAll}>Dismiss All</button>
+      </div>
+
+      <div className="copilot-suggestions">
+        {suggestions.slice(0, 5).map(s => {
+          const cfg = SUGGESTION_ICONS[s.type] || SUGGESTION_ICONS.default
+          return (
+            <div key={s.id} className="copilot-suggestion">
+              <span className="copilot-suggestion-icon" style={{ color: cfg.color }}>
+                {cfg.icon}
+              </span>
+              <div className="copilot-suggestion-body">
+                <p className="copilot-suggestion-text">{s.title}</p>
+                {s.created_at && (
+                  <span className="copilot-suggestion-time">{timeAgo(s.created_at)}</span>
+                )}
+              </div>
+              {s.action_url && (
+                <button
+                  className="copilot-action-btn"
+                  onClick={() => navigate(s.action_url)}
+                >
+                  {s.action_label || 'View →'}
+                </button>
+              )}
+              <button
+                className="copilot-dismiss-btn"
+                onClick={() => onDismiss(s.id)}
+                title="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
