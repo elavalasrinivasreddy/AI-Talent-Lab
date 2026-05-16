@@ -7,11 +7,12 @@ import logging
 from typing import Optional
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.dependencies import get_current_user
 from backend.services.interview_service import InterviewService
+from backend.services.calendar_service import CalendarService
 
 router = APIRouter(prefix="/api/v1/interviews", tags=["Interviews"])
 logger = logging.getLogger(__name__)
@@ -178,3 +179,107 @@ async def generate_debrief(
     except Exception as e:
         logger.error(f"Debrief generation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail={"error": {"code": "SERVER_ERROR", "message": "Debrief generation failed", "details": None}})
+
+
+# ── Calendar integration ──────────────────────────────────────────────────────
+
+class CalendarAvailabilityRequest(BaseModel):
+    panelist_emails: list[str]
+    duration_minutes: int = 60
+    days_ahead: int = 5
+
+
+class ScheduleWithCalendarRequest(BaseModel):
+    interview_id: int
+    scheduled_at: datetime
+    duration_minutes: int = 60
+    panelist_emails: list[str]
+    create_calendar_event: bool = True
+
+
+@router.post("/calendar/availability")
+async def get_calendar_availability(
+    body: CalendarAvailabilityRequest,
+    _=Depends(get_current_user),
+):
+    """
+    Fetch free/busy slots for a list of panelist emails.
+    Uses MockCalendarAdapter by default; switches to Google when CALENDAR_PROVIDER=google.
+    """
+    slots = await CalendarService.get_availability(
+        panelist_emails=body.panelist_emails,
+        duration_minutes=body.duration_minutes,
+        days_ahead=body.days_ahead,
+    )
+    return {"slots": slots}
+
+
+@router.post("/calendar/schedule")
+async def schedule_with_calendar(
+    body: ScheduleWithCalendarRequest,
+    current_user=Depends(get_current_user),
+):
+    """
+    Schedule an interview and optionally create a calendar event + Meet link.
+    Updates the interview row with calendar_event_id and meeting_link.
+    """
+    from backend.db.connection import get_connection
+
+    async with get_connection() as conn:
+        iv = await conn.fetchrow(
+            """
+            SELECT i.id, i.round_name, i.round_type,
+                   p.role_name, c.name AS candidate_name
+            FROM interviews i
+            JOIN positions p ON p.id = i.position_id
+            JOIN candidates c ON c.id = i.candidate_id
+            WHERE i.id=$1 AND i.org_id=$2
+            """,
+            body.interview_id, current_user["org_id"],
+        )
+    if not iv:
+        raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": "Interview not found", "details": None}})
+
+    meeting_link = None
+    calendar_event_id = None
+    calendar_provider = None
+
+    if body.create_calendar_event and body.panelist_emails:
+        try:
+            event = await CalendarService.create_interview_event(
+                position_name=iv["role_name"],
+                candidate_name=iv["candidate_name"],
+                round_name=iv["round_name"] or iv["round_type"],
+                start=body.scheduled_at,
+                duration_minutes=body.duration_minutes,
+                panelist_emails=body.panelist_emails,
+            )
+            meeting_link = event.get("meeting_link")
+            calendar_event_id = event.get("event_id")
+            calendar_provider = event.get("calendar_provider")
+        except Exception as e:
+            logger.warning(f"Calendar event creation failed (non-fatal): {e}")
+
+    async with get_connection() as conn:
+        await conn.execute(
+            """
+            UPDATE interviews
+            SET scheduled_at=$1, duration_minutes=$2,
+                meeting_link=COALESCE($3, meeting_link),
+                calendar_event_id=COALESCE($4, calendar_event_id),
+                calendar_provider=COALESCE($5, calendar_provider),
+                status='scheduled', updated_at=NOW()
+            WHERE id=$6
+            """,
+            body.scheduled_at, body.duration_minutes,
+            meeting_link, calendar_event_id, calendar_provider,
+            body.interview_id,
+        )
+
+    return {
+        "ok": True,
+        "scheduled_at": body.scheduled_at.isoformat(),
+        "meeting_link": meeting_link,
+        "calendar_event_id": calendar_event_id,
+        "calendar_provider": calendar_provider or "none",
+    }

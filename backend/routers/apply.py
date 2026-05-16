@@ -5,12 +5,13 @@ All routes under /api/v1/apply/
 """
 import logging
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from pydantic import BaseModel
 from typing import Optional
 
 from backend.services.apply_service import ApplyService
 from backend.services.resume_service import extract_resume_text, validate_resume_file
+from backend.services.gdpr_service import GDPRService
 
 router = APIRouter(prefix="/api/v1/apply", tags=["Apply"])
 logger = logging.getLogger(__name__)
@@ -18,6 +19,56 @@ logger = logging.getLogger(__name__)
 
 class SendMessageRequest(BaseModel):
     message: str
+
+
+class ConsentRequest(BaseModel):
+    consented: bool
+
+
+# ── GDPR consent (before chat starts) ────────────────────────────────────────
+
+@router.post("/{token}/consent")
+async def record_apply_consent(token: str, body: ConsentRequest, request: Request):
+    """
+    Record candidate consent before the apply chat begins.
+    Called when candidate clicks "I Agree & Continue" on the consent screen.
+    No auth required — secured by the magic link token.
+    """
+    context = await ApplyService.verify_and_load(token)
+    if not context.get("valid"):
+        raise HTTPException(status_code=400, detail={"code": "TOKEN_INVALID", "message": "Invalid link"})
+
+    if not body.consented:
+        return {"ok": True, "consented": False}
+
+    candidate_id = context.get("candidate", {}).get("id")
+    application_id = context.get("application_id")
+    org_id = context.get("org", {}).get("id")
+
+    if not candidate_id or not org_id:
+        raise HTTPException(status_code=400, detail={"code": "CONTEXT_ERROR", "message": "Could not identify application"})
+
+    ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent")
+
+    await GDPRService.record_bulk_consent(
+        org_id=org_id,
+        candidate_id=candidate_id,
+        application_id=application_id,
+        consent_types=["data_processing", "ai_analysis", "communication"],
+        ip_address=ip,
+        user_agent=ua,
+    )
+
+    # Stamp consent timestamp on the application
+    from backend.db.connection import get_connection
+    async with get_connection() as conn:
+        await conn.execute(
+            "UPDATE candidate_applications SET consent_given_at = NOW() WHERE id = $1",
+            application_id,
+        )
+
+    return {"ok": True, "consented": True}
 
 
 # ── Verify token & load context ───────────────────────────────────────────────
@@ -103,6 +154,53 @@ async def upload_resume(token: str, file: UploadFile = File(...)):
     return result
 
 
+# ── Upload video introduction (optional) ─────────────────────────────────────
+
+@router.post("/{token}/upload-video")
+async def upload_video_intro(token: str, file: UploadFile = File(...)):
+    """
+    Accept an optional 60-second video intro from the candidate.
+    Stores metadata only (no disk persistence) — URL stored after upload to object storage.
+    For now: stores the filename + duration estimate; actual S3/R2 upload happens via
+    a separate background task once object storage is configured.
+    """
+    context = await ApplyService.verify_and_load(token)
+    if not context.get("valid"):
+        raise HTTPException(status_code=400, detail={"code": "TOKEN_INVALID", "message": "Invalid link"})
+
+    filename = file.filename or "video_intro"
+    content_type = file.content_type or ""
+    if not content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail={
+            "code": "INVALID_FILE_TYPE",
+            "message": "Please upload a video file (MP4, MOV, WebM).",
+        })
+
+    content = await file.read()
+    size_mb = len(content) / (1024 * 1024)
+    if size_mb > 100:
+        raise HTTPException(status_code=400, detail={
+            "code": "FILE_TOO_LARGE",
+            "message": "Video must be under 100 MB.",
+        })
+
+    app_id = context.get("application_id")
+    placeholder_url = f"pending_upload/{app_id}/{filename}"
+
+    from backend.db.connection import get_connection
+    async with get_connection() as conn:
+        await conn.execute(
+            "UPDATE candidate_applications SET video_intro_url=$1 WHERE id=$2",
+            placeholder_url, app_id,
+        )
+
+    return {
+        "ok": True,
+        "response": "Thanks for sharing your intro! The hiring team will review it alongside your application.",
+        "step": "completion",
+    }
+
+
 # ── Complete application (manual) ─────────────────────────────────────────────
 
 @router.post("/{token}/complete")
@@ -116,3 +214,90 @@ async def complete_application(token: str):
     except ValueError as e:
         raise HTTPException(status_code=400, detail={"code": "INVALID_TOKEN", "message": str(e)})
     return result
+
+
+# ── Application status (candidate portal) ────────────────────────────────────
+
+@router.get("/{token}/status")
+async def get_application_status(token: str):
+    """
+    Return candidate-safe application status.
+    Used by the candidate status portal page.
+    Does NOT expose internal scoring, notes, or recruiter data.
+    """
+    context = await ApplyService.verify_and_load(token)
+    if not context.get("valid"):
+        expired = context.get("expired", False)
+        raise HTTPException(
+            status_code=410 if expired else 400,
+            detail={"code": "TOKEN_EXPIRED" if expired else "TOKEN_INVALID",
+                    "message": context.get("error", "Invalid link")}
+        )
+
+    from backend.db.connection import get_connection
+    import json as _json
+
+    app_id = context.get("application_id")
+    org_id = context.get("candidate", {}).get("id")
+
+    async with get_connection() as conn:
+        app_row = await conn.fetchrow(
+            """
+            SELECT ca.status, ca.applied_at, ca.created_at,
+                   p.role_name, p.location, p.work_type,
+                   o.name AS org_name
+            FROM candidate_applications ca
+            JOIN positions p ON p.id = ca.position_id
+            JOIN organizations o ON o.id = p.org_id
+            WHERE ca.id=$1
+            """,
+            app_id,
+        )
+        if not app_row:
+            raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "Application not found"})
+
+        # Get interview schedule if any (without internal details)
+        interviews = await conn.fetch(
+            """
+            SELECT round_name, round_type, scheduled_at, status, duration_minutes
+            FROM interviews
+            WHERE application_id=$1
+            ORDER BY round_number
+            """,
+            app_id,
+        )
+
+    # Map internal statuses to candidate-friendly labels
+    status_map = {
+        'sourced': 'Under Review',
+        'magic_link_sent': 'Under Review',
+        'applied': 'Application Received',
+        'screening': 'Under Review',
+        'interview': 'Interview Stage',
+        'offer': 'Offer Stage',
+        'hired': 'Hired',
+        'rejected': 'Not Selected',
+    }
+
+    return {
+        "position": {
+            "role_name": app_row["role_name"],
+            "location": app_row["location"],
+            "work_type": app_row["work_type"],
+        },
+        "org_name": app_row["org_name"],
+        "status": status_map.get(app_row["status"], "Under Review"),
+        "internal_status": app_row["status"],
+        "applied_at": app_row["applied_at"].isoformat() if app_row["applied_at"] else None,
+        "interviews": [
+            {
+                "round": i["round_name"] or f"Round {idx+1}",
+                "type": i["round_type"],
+                "scheduled_at": i["scheduled_at"].isoformat() if i["scheduled_at"] else None,
+                "status": i["status"],
+                "duration_minutes": i["duration_minutes"],
+            }
+            for idx, i in enumerate(interviews)
+        ],
+    }
+

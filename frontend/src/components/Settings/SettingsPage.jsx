@@ -11,6 +11,7 @@ import InterviewTemplatesTab from './tabs/InterviewTemplatesTab'
 import IntegrationsTab from './tabs/IntegrationsTab'
 import AppearanceTab from './tabs/AppearanceTab'
 import SecurityTab from './tabs/SecurityTab'
+import PrivacyTab from './tabs/PrivacyTab'
 import '../../styles/settings.css'
 
 const TABS = [
@@ -30,6 +31,7 @@ const TABS = [
     { key: 'integrations', icon: '🔗', label: 'Integrations', adminOnly: true },
     { key: 'appearance', icon: '🎨', label: 'Appearance' },
     { key: 'security', icon: '🔐', label: 'Security', adminOnly: true },
+    { key: 'privacy', icon: '🛡', label: 'Privacy & GDPR', adminOnly: true },
   ]},
 ]
 
@@ -45,6 +47,7 @@ const TAB_COMPONENTS = {
   integrations: IntegrationsTab,
   appearance: AppearanceTab,
   security: SecurityTab,
+  privacy: PrivacyTab,
 }
 
 export default function SettingsPage() {

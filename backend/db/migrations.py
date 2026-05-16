@@ -551,6 +551,18 @@ async def run_migrations(conn) -> None:
     DO $$
     BEGIN
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='interview_kits' AND column_name='org_id') THEN
+            ALTER TABLE interview_kits ADD COLUMN org_id INTEGER REFERENCES organizations(id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='interview_kits' AND column_name='regenerated_count') THEN
+            ALTER TABLE interview_kits ADD COLUMN regenerated_count INTEGER DEFAULT 0;
+        END IF;
+    END $$;
+
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                        WHERE table_name='chat_sessions' AND column_name='status') THEN
             ALTER TABLE chat_sessions ADD COLUMN status TEXT DEFAULT 'active';
         END IF;
@@ -565,5 +577,172 @@ async def run_migrations(conn) -> None:
     END $$;
     """
     await conn.execute(incremental_sql)
+
+    # ── GDPR / DPDP compliance tables ────────────────────────────────────────
+    gdpr_sql = """
+    -- Consent Records — tracks when and what consent was given
+    CREATE TABLE IF NOT EXISTS consent_records (
+        id               SERIAL PRIMARY KEY,
+        org_id           INTEGER NOT NULL REFERENCES organizations(id),
+        candidate_id     INTEGER REFERENCES candidates(id),
+        application_id   INTEGER REFERENCES candidate_applications(id),
+        consent_type     TEXT NOT NULL,  -- 'data_processing', 'ai_analysis', 'communication'
+        consent_given    BOOLEAN NOT NULL DEFAULT FALSE,
+        consent_text     TEXT NOT NULL,  -- exact text shown to user
+        ip_address       TEXT,
+        user_agent       TEXT,
+        given_at         TIMESTAMP DEFAULT NOW(),
+        withdrawn_at     TIMESTAMP
+    );
+
+    -- Data Deletion Requests — right-to-erasure workflow
+    CREATE TABLE IF NOT EXISTS data_deletion_requests (
+        id               SERIAL PRIMARY KEY,
+        org_id           INTEGER NOT NULL REFERENCES organizations(id),
+        candidate_id     INTEGER NOT NULL REFERENCES candidates(id),
+        request_email    TEXT NOT NULL,
+        request_token    TEXT UNIQUE NOT NULL,
+        status           TEXT NOT NULL DEFAULT 'pending',  -- pending, verified, processing, completed, rejected
+        reason           TEXT,
+        verified_at      TIMESTAMP,
+        completed_at     TIMESTAMP,
+        deleted_data     TEXT,  -- JSON summary of what was deleted
+        created_at       TIMESTAMP DEFAULT NOW()
+    );
+
+    -- Add consent tracking to candidate_applications
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidate_applications' AND column_name='consent_given_at') THEN
+            ALTER TABLE candidate_applications ADD COLUMN consent_given_at TIMESTAMP;
+        END IF;
+    END $$;
+
+    -- Add retention tracking to candidates
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidates' AND column_name='data_retained_until') THEN
+            ALTER TABLE candidates ADD COLUMN data_retained_until TIMESTAMP;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidates' AND column_name='data_anonymized_at') THEN
+            ALTER TABLE candidates ADD COLUMN data_anonymized_at TIMESTAMP;
+        END IF;
+    END $$;
+
+    CREATE INDEX IF NOT EXISTS idx_consent_records_candidate ON consent_records(candidate_id);
+    CREATE INDEX IF NOT EXISTS idx_deletion_requests_email ON data_deletion_requests(request_email);
+    CREATE INDEX IF NOT EXISTS idx_deletion_requests_token ON data_deletion_requests(request_token);
+    CREATE INDEX IF NOT EXISTS idx_candidates_retention ON candidates(data_retained_until)
+        WHERE data_retained_until IS NOT NULL;
+    """
+    await conn.execute(gdpr_sql)
+    logger.info("  GDPR/DPDP compliance tables created.")
+
+    # ── Feature schema additions (v2 product plan) ────────────────────────────
+    feature_sql = """
+    -- candidate_applications: status_token (permanent, for candidate status portal)
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidate_applications' AND column_name='status_token') THEN
+            ALTER TABLE candidate_applications ADD COLUMN status_token TEXT UNIQUE;
+        END IF;
+    END $$;
+
+    -- candidate_applications: video intro
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidate_applications' AND column_name='video_intro_url') THEN
+            ALTER TABLE candidate_applications ADD COLUMN video_intro_url TEXT;
+            ALTER TABLE candidate_applications ADD COLUMN video_intro_duration INTEGER;
+        END IF;
+    END $$;
+
+    -- candidates: contact_status for talent pool unsubscribe
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidates' AND column_name='contact_status') THEN
+            ALTER TABLE candidates ADD COLUMN contact_status TEXT DEFAULT 'active';
+            ALTER TABLE candidates ADD COLUMN contact_status_updated_at TIMESTAMP;
+        END IF;
+    END $$;
+
+    -- positions: approval workflow
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='requires_approval') THEN
+            ALTER TABLE positions ADD COLUMN requires_approval BOOLEAN DEFAULT FALSE;
+            ALTER TABLE positions ADD COLUMN approval_status TEXT;
+            ALTER TABLE positions ADD COLUMN approved_by INTEGER REFERENCES users(id);
+            ALTER TABLE positions ADD COLUMN approved_at TIMESTAMP;
+        END IF;
+    END $$;
+
+    -- organizations: default approval setting + data retention
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='organizations' AND column_name='default_require_approval') THEN
+            ALTER TABLE organizations ADD COLUMN default_require_approval BOOLEAN DEFAULT FALSE;
+            ALTER TABLE organizations ADD COLUMN data_retention_months INTEGER DEFAULT 24;
+        END IF;
+    END $$;
+
+    -- interviews: calendar integration fields
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='interviews' AND column_name='calendar_event_id') THEN
+            ALTER TABLE interviews ADD COLUMN calendar_event_id TEXT;
+            ALTER TABLE interviews ADD COLUMN calendar_provider TEXT;
+        END IF;
+    END $$;
+
+    -- copilot_suggestions: AI copilot action bar data
+    CREATE TABLE IF NOT EXISTS copilot_suggestions (
+        id              SERIAL PRIMARY KEY,
+        org_id          INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        user_id         INTEGER REFERENCES users(id),
+        type            TEXT NOT NULL,
+        title           TEXT NOT NULL,
+        action_url      TEXT,
+        action_label    TEXT,
+        entity_id       INTEGER,
+        entity_type     TEXT,
+        is_dismissed    BOOLEAN DEFAULT FALSE,
+        created_at      TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_copilot_org ON copilot_suggestions(org_id, is_dismissed);
+
+    -- hiring_notes: collaborative notes on candidates
+    CREATE TABLE IF NOT EXISTS hiring_notes (
+        id              SERIAL PRIMARY KEY,
+        org_id          INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        candidate_id    INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+        application_id  INTEGER REFERENCES candidate_applications(id),
+        author_id       INTEGER NOT NULL REFERENCES users(id),
+        content         TEXT NOT NULL,
+        mentions        TEXT DEFAULT '[]',
+        created_at      TIMESTAMP DEFAULT NOW(),
+        updated_at      TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_hiring_notes_candidate ON hiring_notes(candidate_id);
+    CREATE INDEX IF NOT EXISTS idx_hiring_notes_org ON hiring_notes(org_id);
+
+    -- backfill status_token for existing applications that don't have one
+    UPDATE candidate_applications
+    SET status_token = gen_random_uuid()::text
+    WHERE status_token IS NULL;
+    """
+    await conn.execute(feature_sql)
+    logger.info("  Feature schema additions (v2) applied.")
 
     logger.info("Database migrations complete.")

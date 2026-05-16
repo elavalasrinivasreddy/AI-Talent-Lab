@@ -14,6 +14,8 @@ celery_app = Celery(
         "backend.tasks.candidate_pipeline",
         "backend.tasks.email_outreach",
         "backend.tasks.scheduled_search",
+        "backend.tasks.gdpr_cleanup",
+        "backend.tasks.copilot_analysis",
     ],
 )
 
@@ -35,6 +37,18 @@ celery_app.conf.beat_schedule = {
     },
     "send-followup-reminders": {
         "task": "backend.tasks.email_outreach.send_followup_reminders",
+        "schedule": 3600.0,  # every hour
+    },
+    "gdpr-retention-cleanup": {
+        "task": "tasks.gdpr_cleanup.cleanup_expired_data",
+        "schedule": 604800.0,  # every 7 days (weekly)
+    },
+    "gdpr-process-deletions": {
+        "task": "tasks.gdpr_cleanup.process_verified_deletions",
+        "schedule": 3600.0,  # every hour
+    },
+    "copilot-suggestions": {
+        "task": "backend.tasks.copilot_analysis.generate_copilot_suggestions",
         "schedule": 3600.0,  # every hour
     },
 }

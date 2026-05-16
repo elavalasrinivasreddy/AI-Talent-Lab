@@ -93,6 +93,8 @@ export const positionsApi = {
   searchNow: (id) => _post(`/positions/${id}/search-now`),
   getInterviewKit: (id) => _get(`/positions/${id}/interview-kit`),
   generateInterviewKit: (id) => _post(`/positions/${id}/interview-kit/generate`),
+  submitForApproval: (id) => _post(`/positions/${id}/submit-for-approval`),
+  approvalDecision: (id, decision, notes = '') => _post(`/positions/${id}/approval-decision`, { decision, notes }),
 }
 
 // ── Candidates ────────────────────────────────────────────────────────────────
@@ -134,6 +136,7 @@ export const dashboardApi = {
     q.set('limit', limit)
     return _get(`/dashboard/activity?${q}`)
   },
+  getAnalytics: (period = 'month') => _get(`/dashboard/analytics?period=${period}`),
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────────
@@ -154,6 +157,19 @@ export const interviewsApi = {
   update: (id, data) => _patch(`/interviews/${id}`, data),
   sendInvites: (id) => _post(`/interviews/${id}/send-invites`),
   generateDebrief: (id) => _post(`/interviews/${id}/generate-debrief`),
+  getCalendarAvailability: (data) => _post('/interviews/calendar/availability', data),
+  scheduleWithCalendar: (data) => _post('/interviews/calendar/schedule', data),
+}
+
+// ── Talent Pool ───────────────────────────────────────────────────────────────
+
+// ── AI Copilot ───────────────────────────────────────────────────────────────
+
+export const copilotApi = {
+  getSuggestions: () => _get('/copilot/suggestions'),
+  dismiss: (id) => _patch(`/copilot/suggestions/${id}/dismiss`),
+  dismissAll: () => _patch('/copilot/suggestions/dismiss-all'),
+  executeAction: (id) => _post(`/copilot/suggestions/${id}/execute`),
 }
 
 // ── Talent Pool ───────────────────────────────────────────────────────────────
@@ -166,4 +182,21 @@ export const talentPoolApi = {
   remove: (candidateId) => _delete(`/talent-pool/${candidateId}/remove`),
 }
 
+// ── Hiring Notes ─────────────────────────────────────────────────────────────
 
+export const notesApi = {
+  list: (candidateId) => _get(`/notes/candidate/${candidateId}`),
+  create: (candidateId, data) => _post(`/notes/candidate/${candidateId}`, data),
+  update: (noteId, content) => _patch(`/notes/${noteId}`, { content }),
+  delete: (noteId) => _delete(`/notes/${noteId}`),
+}
+
+// ── GDPR / Privacy ────────────────────────────────────────────────────────────
+
+export const gdprApi = {
+  getDeletionRequests: () => _get('/gdpr/deletion-requests'),
+  processDeletion: (id) => _post(`/gdpr/process-deletion/${id}`),
+  exportCandidateData: (candidateId) => _get(`/gdpr/export/${candidateId}`),
+  getConsentRecords: (candidateId) => _get(`/gdpr/consent/${candidateId}`),
+  recordConsent: (data) => _post('/gdpr/consent', data),
+}

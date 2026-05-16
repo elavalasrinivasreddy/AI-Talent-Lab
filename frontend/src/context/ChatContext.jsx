@@ -33,7 +33,11 @@ export const ChatProvider = ({ children }) => {
     const resetChat = useCallback(() => {
         setCurrentSessionId(null);
         setSessionTitle('New Hire');
-        setMessages([]);
+        setMessages([{
+            role: 'assistant',
+            content: "Hi! I'm your AI hiring assistant. 👋\n\nLet's create a job description together. What role are you looking to fill?\n\nYou can also upload an existing JD if you'd like me to start from that.",
+            isComplete: true
+        }]);
         setIsStreaming(false);
         setWorkflowStage('intake');
         setInternalCard(null);
@@ -131,7 +135,11 @@ export const ChatProvider = ({ children }) => {
             } else if (res.status === 404) {
                 // Session doesn't exist yet — fresh chat
                 setCurrentSessionId(sessionId);
-                setMessages([]);
+                setMessages([{
+                    role: 'assistant',
+                    content: "Hi! I'm your AI hiring assistant. 👋\n\nLet's create a job description together. What role are you looking to fill?\n\nYou can also upload an existing JD if you'd like me to start from that.",
+                    isComplete: true
+                }]);
                 setWorkflowStage('intake');
                 setSessionTitle('New Hire');
             }

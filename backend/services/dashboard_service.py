@@ -169,3 +169,132 @@ class DashboardService:
                     pass
 
         return {"events": events}
+
+    @staticmethod
+    async def get_analytics(org_id: int, period: str = "month") -> dict:
+        """
+        Full hiring analytics for the analytics dashboard.
+        Returns pipeline velocity, source breakdown, time-to-hire, and conversion rates.
+        """
+        period_interval = {
+            "week": "7 days",
+            "month": "30 days",
+            "quarter": "90 days",
+            "year": "365 days",
+        }.get(period, "30 days")
+
+        async with get_connection() as conn:
+            # Pipeline conversion rates
+            funnel = await conn.fetch(
+                """
+                SELECT status, COUNT(*) AS count
+                FROM candidate_applications
+                WHERE org_id=$1 AND created_at >= NOW() - $2::interval
+                GROUP BY status
+                """,
+                org_id, period_interval,
+            )
+            funnel_dict = {r["status"]: r["count"] for r in funnel}
+
+            # Time to hire (avg days from sourced to selected)
+            avg_time_to_hire = await conn.fetchval(
+                """
+                SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 86400)
+                FROM candidate_applications
+                WHERE org_id=$1 AND status IN ('selected', 'hired')
+                  AND created_at >= NOW() - $2::interval
+                """,
+                org_id, period_interval,
+            )
+
+            # Source breakdown
+            sources = await conn.fetch(
+                """
+                SELECT c.source, COUNT(*) AS count
+                FROM candidate_applications ca
+                JOIN candidates c ON c.id = ca.candidate_id
+                WHERE ca.org_id=$1 AND ca.created_at >= NOW() - $2::interval
+                GROUP BY c.source
+                ORDER BY count DESC
+                """,
+                org_id, period_interval,
+            )
+
+            # Weekly velocity (last 8 weeks)
+            velocity = await conn.fetch(
+                """
+                SELECT
+                    DATE_TRUNC('week', created_at) AS week,
+                    COUNT(*) FILTER (WHERE status='sourced') AS sourced,
+                    COUNT(*) FILTER (WHERE status='applied') AS applied,
+                    COUNT(*) FILTER (WHERE status='interview') AS interview,
+                    COUNT(*) FILTER (WHERE status IN ('selected','hired')) AS hired
+                FROM candidate_applications
+                WHERE org_id=$1 AND created_at >= NOW() - INTERVAL '56 days'
+                GROUP BY week
+                ORDER BY week
+                """,
+                org_id,
+            )
+
+            # Top performing positions (by conversion rate)
+            top_positions = await conn.fetch(
+                """
+                SELECT p.role_name, p.id,
+                       COUNT(ca.id) AS total,
+                       COUNT(ca.id) FILTER (WHERE ca.status='applied') AS applied,
+                       COUNT(ca.id) FILTER (WHERE ca.status='interview') AS interview,
+                       CASE WHEN COUNT(ca.id) > 0
+                            THEN ROUND(100.0 * COUNT(ca.id) FILTER (WHERE ca.status IN ('selected','hired')) / COUNT(ca.id), 1)
+                            ELSE 0 END AS conversion_rate
+                FROM positions p
+                LEFT JOIN candidate_applications ca ON ca.position_id = p.id
+                WHERE p.org_id=$1 AND p.status='open'
+                GROUP BY p.id, p.role_name
+                ORDER BY conversion_rate DESC
+                LIMIT 10
+                """,
+                org_id,
+            )
+
+            # Department breakdown
+            dept_stats = await conn.fetch(
+                """
+                SELECT d.name AS department, COUNT(DISTINCT p.id) AS positions,
+                       COUNT(ca.id) AS candidates
+                FROM departments d
+                LEFT JOIN positions p ON p.department_id = d.id AND p.status='open'
+                LEFT JOIN candidate_applications ca ON ca.position_id = p.id
+                WHERE d.org_id=$1
+                GROUP BY d.name
+                ORDER BY candidates DESC
+                """,
+                org_id,
+            )
+
+        total_candidates = sum(funnel_dict.values())
+        total_applied = funnel_dict.get("applied", 0) + funnel_dict.get("interview", 0) + funnel_dict.get("selected", 0)
+
+        return {
+            "period": period,
+            "funnel": funnel_dict,
+            "conversion_rates": {
+                "source_to_apply": round(100 * total_applied / max(total_candidates, 1), 1),
+                "apply_to_interview": round(100 * funnel_dict.get("interview", 0) / max(total_applied, 1), 1),
+                "interview_to_hire": round(100 * funnel_dict.get("selected", 0) / max(funnel_dict.get("interview", 0), 1), 1),
+            },
+            "avg_time_to_hire_days": round(float(avg_time_to_hire or 0), 1),
+            "source_breakdown": [{"source": r["source"] or "unknown", "count": r["count"]} for r in sources],
+            "weekly_velocity": [
+                {
+                    "week": r["week"].isoformat() if r["week"] else None,
+                    "sourced": r["sourced"],
+                    "applied": r["applied"],
+                    "interview": r["interview"],
+                    "hired": r["hired"],
+                }
+                for r in velocity
+            ],
+            "top_positions": [dict(r) for r in top_positions],
+            "department_breakdown": [dict(r) for r in dept_stats],
+        }

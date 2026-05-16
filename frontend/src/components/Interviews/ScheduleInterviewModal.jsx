@@ -3,7 +3,7 @@
  * Per docs/pages/10_interview_scheduling.md §2
  * Triggered from: KanbanCard menu, CandidateDetail Interviews tab
  */
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { interviewsApi } from '../../utils/api'
 import './ScheduleInterviewModal.css'
 
@@ -24,6 +24,32 @@ const DURATION_OPTIONS = [
   { value: 90, label: '90 min' },
   { value: 120, label: '2 hours' },
 ]
+
+function groupSlotsByDay(slots) {
+  const map = {}
+  for (const s of slots) {
+    const day = s.start.slice(0, 10)
+    if (!map[day]) map[day] = []
+    map[day].push(s)
+  }
+  return map
+}
+
+function formatDay(iso) {
+  const d = new Date(iso + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+function formatTime(iso) {
+  const d = new Date(iso)
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+}
+
+function toLocalDatetimeInput(iso) {
+  const d = new Date(iso)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 export default function ScheduleInterviewModal({
   open,
@@ -48,10 +74,18 @@ export default function ScheduleInterviewModal({
     send_candidate_invite: true,
     send_panel_links: true,
     send_reminders: true,
+    create_calendar_event: true,
   })
   const [panelInput, setPanelInput] = useState({ name: '', email: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Calendar slot picker state
+  const [slotsLoading, setSlotsLoading] = useState(false)
+  const [slots, setSlots] = useState(null)  // null = not fetched yet
+  const [selectedSlot, setSelectedSlot] = useState(null)
+  const [slotsError, setSlotsError] = useState('')
+  const [showSlots, setShowSlots] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -61,6 +95,9 @@ export default function ScheduleInterviewModal({
         round_name: `Round ${roundNumber} — Technical`,
       }))
       setError('')
+      setSlots(null)
+      setSelectedSlot(null)
+      setShowSlots(false)
     }
   }, [open, roundNumber])
 
@@ -87,12 +124,43 @@ export default function ScheduleInterviewModal({
       ...f,
       panel_members: f.panel_members.filter((_, i) => i !== idx),
     }))
+    setSlots(null)
+    setSelectedSlot(null)
+    setShowSlots(false)
   }
 
   const handleRoundTypeChange = (type) => {
     const typeLabel = ROUND_TYPES.find(t => t.value === type)?.label || type
     setField('round_type', type)
     setField('round_name', `Round ${form.round_number} — ${typeLabel}`)
+  }
+
+  const fetchAvailability = async () => {
+    if (form.panel_members.length === 0) {
+      setSlotsError('Add at least one panel member first')
+      return
+    }
+    setSlotsLoading(true)
+    setSlotsError('')
+    try {
+      const res = await interviewsApi.getCalendarAvailability({
+        panelist_emails: form.panel_members.map(p => p.email),
+        duration_minutes: form.duration_minutes,
+        days_ahead: 5,
+      })
+      setSlots(res.slots || [])
+      setShowSlots(true)
+    } catch (e) {
+      setSlotsError(e.message || 'Failed to fetch availability')
+    } finally {
+      setSlotsLoading(false)
+    }
+  }
+
+  const pickSlot = (slot) => {
+    setSelectedSlot(slot)
+    setField('scheduled_at', toLocalDatetimeInput(slot.start))
+    setShowSlots(false)
   }
 
   const handleSubmit = async (e) => {
@@ -110,27 +178,60 @@ export default function ScheduleInterviewModal({
 
     setLoading(true)
     try {
-      const result = await interviewsApi.create({
-        position_id: positionId,
-        candidate_id: candidateId,
-        application_id: applicationId,
-        round_number: form.round_number,
-        round_name: form.round_name,
-        round_type: form.round_type,
-        scheduled_at: new Date(form.scheduled_at).toISOString(),
-        duration_minutes: form.duration_minutes,
-        meeting_link: form.meeting_link || null,
-        notes: form.notes || null,
-        panel_members: form.panel_members,
-      })
-      onCreated?.(result)
+      const scheduledAt = new Date(form.scheduled_at).toISOString()
+
+      if (form.create_calendar_event) {
+        // Create interview first, then wire up calendar event
+        const created = await interviewsApi.create({
+          position_id: positionId,
+          candidate_id: candidateId,
+          application_id: applicationId,
+          round_number: form.round_number,
+          round_name: form.round_name,
+          round_type: form.round_type,
+          scheduled_at: scheduledAt,
+          duration_minutes: form.duration_minutes,
+          meeting_link: form.meeting_link || null,
+          notes: form.notes || null,
+          panel_members: form.panel_members,
+        })
+
+        const calResult = await interviewsApi.scheduleWithCalendar({
+          interview_id: created.id,
+          scheduled_at: scheduledAt,
+          duration_minutes: form.duration_minutes,
+          panelist_emails: form.panel_members.map(p => p.email),
+          create_calendar_event: true,
+        })
+
+        onCreated?.({ ...created, meeting_link: calResult.meeting_link })
+      } else {
+        const result = await interviewsApi.create({
+          position_id: positionId,
+          candidate_id: candidateId,
+          application_id: applicationId,
+          round_number: form.round_number,
+          round_name: form.round_name,
+          round_type: form.round_type,
+          scheduled_at: scheduledAt,
+          duration_minutes: form.duration_minutes,
+          meeting_link: form.meeting_link || null,
+          notes: form.notes || null,
+          panel_members: form.panel_members,
+        })
+        onCreated?.(result)
+      }
+
       onClose()
-    } catch (e) {
-      setError(e.message || 'Failed to schedule interview. Please try again.')
+    } catch (err) {
+      setError(err.message || 'Failed to schedule interview. Please try again.')
     } finally {
       setLoading(false)
     }
   }
+
+  const slotsByDay = slots ? groupSlotsByDay(slots.filter(s => s.all_available)) : {}
+  const availableDays = Object.keys(slotsByDay).sort()
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -187,44 +288,6 @@ export default function ScheduleInterviewModal({
             />
           </div>
 
-          {/* Date/Time/Duration */}
-          <div className="sim-form-row">
-            <div className="sim-form-group" style={{ flex: 2 }}>
-              <label>Date & Time *</label>
-              <input
-                type="datetime-local"
-                value={form.scheduled_at}
-                onChange={e => setField('scheduled_at', e.target.value)}
-                className="sim-input"
-                required
-              />
-            </div>
-            <div className="sim-form-group">
-              <label>Duration</label>
-              <select
-                value={form.duration_minutes}
-                onChange={e => setField('duration_minutes', parseInt(e.target.value))}
-                className="sim-input"
-              >
-                {DURATION_OPTIONS.map(d => (
-                  <option key={d.value} value={d.value}>{d.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Meeting Link */}
-          <div className="sim-form-group">
-            <label>Meeting Link (optional)</label>
-            <input
-              type="url"
-              value={form.meeting_link}
-              onChange={e => setField('meeting_link', e.target.value)}
-              className="sim-input"
-              placeholder="https://meet.google.com/..."
-            />
-          </div>
-
           {/* Panel Members */}
           <div className="sim-form-group">
             <label>Panel Members *</label>
@@ -268,6 +331,100 @@ export default function ScheduleInterviewModal({
             )}
           </div>
 
+          {/* Duration */}
+          <div className="sim-form-row">
+            <div className="sim-form-group">
+              <label>Duration</label>
+              <select
+                value={form.duration_minutes}
+                onChange={e => setField('duration_minutes', parseInt(e.target.value))}
+                className="sim-input"
+              >
+                {DURATION_OPTIONS.map(d => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="sim-form-group" style={{ flex: 2, justifyContent: 'flex-end' }}>
+              <label style={{ visibility: 'hidden' }}>Action</label>
+              <button
+                type="button"
+                className="sim-find-slots-btn"
+                onClick={fetchAvailability}
+                disabled={slotsLoading || form.panel_members.length === 0}
+              >
+                {slotsLoading ? '⏳ Checking…' : '🗓 Find Available Slots'}
+              </button>
+            </div>
+          </div>
+
+          {slotsError && <div className="sim-slots-error">{slotsError}</div>}
+
+          {/* Slot picker */}
+          {showSlots && slots !== null && (
+            <div className="sim-slot-picker">
+              <div className="sim-slot-picker-header">
+                <span>Available slots (all panelists free)</span>
+                <button type="button" className="sim-slot-picker-close" onClick={() => setShowSlots(false)}>✕</button>
+              </div>
+              {availableDays.length === 0 ? (
+                <p className="sim-slot-empty">No slots where all panelists are free in the next 5 days.</p>
+              ) : (
+                availableDays.map(day => (
+                  <div key={day} className="sim-slot-day">
+                    <div className="sim-slot-day-label">{formatDay(day)}</div>
+                    <div className="sim-slot-row">
+                      {slotsByDay[day].map((s, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          className="sim-slot-chip"
+                          onClick={() => pickSlot(s)}
+                        >
+                          {formatTime(s.start)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Date/Time — manual or pre-filled from slot */}
+          <div className="sim-form-group">
+            <label>
+              Date &amp; Time *
+              {selectedSlot && (
+                <span className="sim-slot-selected-badge">
+                  ✓ Slot selected
+                </span>
+              )}
+            </label>
+            <input
+              type="datetime-local"
+              value={form.scheduled_at}
+              onChange={e => {
+                setField('scheduled_at', e.target.value)
+                setSelectedSlot(null)
+              }}
+              className="sim-input"
+              required
+            />
+          </div>
+
+          {/* Meeting Link */}
+          <div className="sim-form-group">
+            <label>Meeting Link (optional)</label>
+            <input
+              type="url"
+              value={form.meeting_link}
+              onChange={e => setField('meeting_link', e.target.value)}
+              className="sim-input"
+              placeholder="https://meet.google.com/… (auto-generated if calendar event enabled)"
+            />
+          </div>
+
           {/* Notes */}
           <div className="sim-form-group">
             <label>Notes for Panel (optional)</label>
@@ -296,6 +453,15 @@ export default function ScheduleInterviewModal({
                 {label}
               </label>
             ))}
+            <label className="sim-check-label sim-check-calendar">
+              <input
+                type="checkbox"
+                checked={form.create_calendar_event}
+                onChange={e => setField('create_calendar_event', e.target.checked)}
+              />
+              🗓 Create calendar event &amp; auto-generate Meet link
+              <span className="sim-badge-mock">mock</span>
+            </label>
           </div>
 
           {error && <div className="sim-error">{error}</div>}

@@ -13,6 +13,7 @@ const NAV_ITEMS = [
     { to: '/positions', icon: '💼', label: 'Positions' },
     { to: '/talent-pool', icon: '🗃', label: 'Talent Pool' },
     { to: '/interviews', icon: '🎙', label: 'Interviews' },
+    { to: '/analytics', icon: '📈', label: 'Analytics' },
   ]},
   { section: 'System', items: [
     { to: '/settings', icon: '⚙️', label: 'Settings' },
@@ -52,6 +53,13 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
+        <div className="sidebar-logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+          </svg>
+        </div>
         <span className="sidebar-logo">AI <span>Talent</span> Lab</span>
       </div>
 

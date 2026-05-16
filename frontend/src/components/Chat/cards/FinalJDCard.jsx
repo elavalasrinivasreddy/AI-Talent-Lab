@@ -22,6 +22,7 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
     const [showModal, setShowModal] = useState(false);
     const [biasCheckRunning, setBiasCheckRunning] = useState(false);
     const [draftSaved, setDraftSaved] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(true);
 
     // Bias diff state
     const [pendingFixes, setPendingFixes] = useState([]);
@@ -57,6 +58,10 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
         if (biasIssues && biasIssues.length === 0 && biasCard?.clean) {
             setBiasCheckDone(true);
         }
+        // If loaded from history and it's already a draft, no unsaved changes initially
+        if (!isStreaming && isDraft) {
+            setHasUnsavedChanges(false);
+        }
     }, []);
 
     // Sync with incoming markdown (streaming updates)
@@ -64,7 +69,7 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
         if (!isEditing) {
             setEditedMarkdown(markdown);
         }
-    }, [markdown, isEditing]);
+    }, [markdown]);
 
     // ── Bias fix actions ──────────────────────────────────────
     const handleAcceptFix = (idx) => {
@@ -72,10 +77,12 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
         if (!fix || fix.status !== 'pending') return;
         setEditedMarkdown(prev => prev.replace(fix.phrase, fix.suggestion));
         setPendingFixes(prev => prev.map((f, i) => i === idx ? { ...f, status: 'accepted' } : f));
+        setHasUnsavedChanges(true);
     };
 
     const handleRejectFix = (idx) => {
         setPendingFixes(prev => prev.map((f, i) => i === idx ? { ...f, status: 'rejected' } : f));
+        setHasUnsavedChanges(true);
     };
 
     const handleAcceptAll = () => {
@@ -89,6 +96,7 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
         });
         setEditedMarkdown(updated);
         setPendingFixes(newFixes);
+        setHasUnsavedChanges(true);
     };
 
     const unresolvedCount = pendingFixes.filter(f => f.status === 'pending').length;
@@ -98,13 +106,15 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
     useEffect(() => {
         if (allResolved && pendingFixes.length > 0) {
             setBiasCheckDone(true);
+            setBiasCheckRunning(false);
             // Auto-save the bias-corrected JD via direct API (no SSE)
             if (currentSessionId && token) {
                 fetch(`/api/v1/chat/sessions/${currentSessionId}/save-draft`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({ content: editedMarkdown, bias_passed: true })
-                }).catch(err => console.error('Auto-save failed:', err));
+                }).then(() => setHasUnsavedChanges(false))
+                  .catch(err => console.error('Auto-save failed:', err));
             }
         }
     }, [allResolved, pendingFixes.length]);
@@ -128,6 +138,7 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
             });
             if (res.ok) {
                 setDraftSaved(true);
+                setHasUnsavedChanges(false);
                 setTimeout(() => setDraftSaved(false), 3000);
             }
         } catch (err) {
@@ -154,7 +165,8 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ content: tempMarkdown })
-            }).catch(err => console.error('Edit save failed:', err));
+            }).then(() => setHasUnsavedChanges(false))
+              .catch(err => console.error('Edit save failed:', err));
         }
     };
 
@@ -305,9 +317,9 @@ const FinalJDCard = ({ markdown, isStreaming }) => {
                         <button
                             className="jd-footer-btn jd-footer-btn--draft"
                             onClick={handleSaveDraft}
-                            disabled={isBusy}
+                            disabled={isBusy || !hasUnsavedChanges}
                         >
-                            {draftSaved ? '✅ Draft Saved' : '💾 Save as Draft'}
+                            {draftSaved ? '✅ Draft Saved' : !hasUnsavedChanges ? '✅ Draft Saved' : '💾 Save as Draft'}
                         </button>
                         <button
                             className="jd-footer-btn jd-footer-btn--publish"

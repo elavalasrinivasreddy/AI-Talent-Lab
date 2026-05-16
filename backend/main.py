@@ -30,6 +30,10 @@ from backend.routers import panel as panel_router
 from backend.routers import talent_pool as talent_pool_router
 from backend.routers import careers as careers_router
 from backend.routers import dev_admin as dev_admin_router
+from backend.routers import gdpr as gdpr_router
+from backend.routers import status as status_router
+from backend.routers import copilot as copilot_router
+from backend.routers import notes as notes_router
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -85,6 +89,10 @@ app.include_router(panel_router.router)   # Public — no auth (magic link)
 app.include_router(talent_pool_router.router)
 app.include_router(careers_router.router)  # Public — no auth (career page)
 app.include_router(dev_admin_router.router)  # Dev tools — guarded by DEV_MODE
+app.include_router(gdpr_router.router)        # GDPR/DPDP compliance (mixed public + admin)
+app.include_router(status_router.router)      # Public — candidate application status portal
+app.include_router(copilot_router.router)     # AI Copilot suggestions
+app.include_router(notes_router.router)       # Collaborative hiring notes
 
 # ── Root & Health ──────────────────────────────────────────────────────────────
 

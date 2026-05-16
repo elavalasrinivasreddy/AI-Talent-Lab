@@ -72,3 +72,15 @@ async def get_activity(
         position_id=position_id,
         limit=limit,
     )
+
+
+@router.get("/analytics")
+async def get_analytics(
+    period: str = Query("month", regex="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    """Full hiring analytics: velocity, source breakdown, conversion rates, time-to-hire."""
+    return await DashboardService.get_analytics(
+        org_id=current_user["org_id"],
+        period=period,
+    )
