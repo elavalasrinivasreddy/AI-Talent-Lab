@@ -33,7 +33,8 @@ async def get_career_page(
         org = await conn.fetchrow(
             """
             SELECT id, name, logo_url, about_us, culture_keywords,
-                   benefits_text, website, headquarters, size
+                   benefits_text, website, headquarters, size,
+                   career_primary_color, career_banner_url, career_tagline
             FROM organizations
             WHERE slug=$1
             """,

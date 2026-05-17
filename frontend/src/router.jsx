@@ -19,6 +19,7 @@ import DevAdminPage from './components/DevAdmin/DevAdminPage'
 import DeleteMyDataPage from './components/GDPR/DeleteMyDataPage'
 import CandidateStatusPage from './components/Status/CandidateStatusPage'
 import AnalyticsPage from './components/Analytics/AnalyticsPage'
+import PlatformPage from './components/Platform/PlatformPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -30,9 +31,11 @@ function AuthGuard() {
 }
 
 function PublicGuard() {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth()
   if (loading) return null
-  if (isAuthenticated) return <Navigate to="/chat" replace />
+  if (isAuthenticated) {
+    return <Navigate to={user?.role === 'platform_admin' ? '/platform' : '/chat'} replace />
+  }
   return <Outlet />
 }
 
@@ -52,22 +55,6 @@ function AppLayout() {
         </main>
       </div>
     </ChatProvider>
-  )
-}
-
-// ── Placeholder pages (phases not yet built) ────
-
-function PlaceholderPage({ title, icon }) {
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', height: '60vh', gap: 'var(--space-4)',
-      animation: 'fadeInUp 400ms ease both',
-    }}>
-      <span style={{ fontSize: '3rem' }}>{icon}</span>
-      <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 600 }}>{title}</h2>
-      <p style={{ color: 'var(--color-text-secondary)' }}>Coming in the next build step</p>
-    </div>
   )
 }
 
@@ -102,20 +89,28 @@ export const router = createBrowserRouter([
           // Candidates
           { path: '/candidates/:id', element: <CandidateDetailPage /> },
 
-          // Other tabs (future steps)
+          // Other pages
           { path: '/dashboard', element: <DashboardPage /> },
           { path: '/talent-pool', element: <TalentPoolPage /> },
-          { path: '/interviews', element: <PlaceholderPage title="Interviews" icon="🎙" /> },
+          { path: '/interviews', element: <Navigate to="/positions" replace /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/:tab', element: <SettingsPage /> },
           { path: '/analytics', element: <AnalyticsPage /> },
-          { path: '/dev-admin', element: <DevAdminPage /> },
         ],
       },
     ],
   },
 
-  // Public pages (no auth) — magic links, career page
+  // Platform admin — no sidebar layout, role-checked inside the component
+  {
+    element: <AuthGuard />,
+    children: [
+      { path: '/platform', element: <PlatformPage /> },
+    ],
+  },
+
+  // Public pages (no auth) — magic links, career page, dev console
+  { path: '/dev', element: <DevAdminPage /> },
   { path: '/apply/:token', element: <ApplyPage /> },
   { path: '/panel/:token', element: <PanelPage /> },
   { path: '/careers/:orgSlug', element: <CareerPage /> },

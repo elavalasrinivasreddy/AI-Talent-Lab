@@ -42,7 +42,8 @@
   color: white;
 }
 .cp-org-info { flex: 1; }
-.cp-org-name { font-size: 28px; font-weight: 800; margin: 0 0 8px; }
+.cp-org-name { font-size: 28px; font-weight: 800; margin: 0 0 4px; }
+.cp-org-tagline { font-size: 15px; color: rgba(255,255,255,0.7); margin: 0 0 10px; font-style: italic; }
 .cp-org-meta {
   display: flex;
   gap: 16px;

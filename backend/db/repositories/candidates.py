@@ -223,7 +223,8 @@ class CandidateRepository:
                 c.*, a.id AS application_id, a.status AS pipeline_status,
                 a.skill_match_score, a.skill_match_data, a.applied_at,
                 a.screening_responses, a.rejection_draft, a.rejection_sent_at,
-                a.magic_link_token, a.magic_link_sent_at, a.magic_link_clicked_at
+                a.magic_link_token, a.magic_link_sent_at, a.magic_link_clicked_at,
+                a.video_intro_url, a.video_intro_duration
             FROM candidates c
             LEFT JOIN candidate_applications a
                 ON a.candidate_id = c.id AND a.position_id = $2

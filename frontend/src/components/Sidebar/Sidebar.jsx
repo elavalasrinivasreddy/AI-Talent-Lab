@@ -4,22 +4,29 @@ import { useChat } from '../../context/ChatContext'
 import SidebarSessions from './SidebarSessions'
 import '../../styles/layout.css'
 
-const NAV_ITEMS = [
+// roles: which roles can see this item. Omit = all roles.
+const ALL_NAV = [
   { section: 'Main', items: [
-    { to: '/chat', icon: '✨', label: 'New Hire' },
+    { to: '/chat',      icon: '✨', label: 'New Hire',   roles: ['admin', 'recruiter'] },
     { to: '/dashboard', icon: '📊', label: 'Dashboard' },
   ]},
   { section: 'Hiring', items: [
-    { to: '/positions', icon: '💼', label: 'Positions' },
-    { to: '/talent-pool', icon: '🗃', label: 'Talent Pool' },
-    { to: '/interviews', icon: '🎙', label: 'Interviews' },
-    { to: '/analytics', icon: '📈', label: 'Analytics' },
+    { to: '/positions',   icon: '💼', label: 'Positions' },
+    { to: '/talent-pool', icon: '🗃', label: 'Talent Pool', roles: ['admin', 'recruiter'] },
+    { to: '/analytics',   icon: '📈', label: 'Analytics',   roles: ['admin', 'recruiter', 'dept_admin'] },
   ]},
   { section: 'System', items: [
     { to: '/settings', icon: '⚙️', label: 'Settings' },
-    { to: '/dev-admin', icon: '🛠', label: 'Dev Tools' },
+    { to: '/dev',      icon: '🛠', label: 'Dev Tools',   roles: ['admin', 'recruiter'] },
   ]},
 ]
+
+function getNavForRole(role) {
+  return ALL_NAV.map(section => ({
+    ...section,
+    items: section.items.filter(item => !item.roles || item.roles.includes(role)),
+  })).filter(section => section.items.length > 0)
+}
 
 export default function Sidebar() {
   const { user, org, logout } = useAuth()
@@ -46,6 +53,9 @@ export default function Sidebar() {
     }
   }
 
+  const role = user?.role || 'recruiter'
+  const navItems = getNavForRole(role)
+
   const initials = user?.name
     ? user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
     : '?'
@@ -64,7 +74,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        {NAV_ITEMS.map((section) => (
+        {navItems.map((section) => (
           <div key={section.section} className="sidebar-section">
             <div className="sidebar-section-label">{section.section}</div>
             {section.items.map((item) => (

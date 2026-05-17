@@ -741,6 +741,58 @@ async def run_migrations(conn) -> None:
     UPDATE candidate_applications
     SET status_token = gen_random_uuid()::text
     WHERE status_token IS NULL;
+
+    -- organizations: career page branding
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='organizations' AND column_name='career_primary_color') THEN
+            ALTER TABLE organizations ADD COLUMN career_primary_color TEXT;
+            ALTER TABLE organizations ADD COLUMN career_banner_url TEXT;
+            ALTER TABLE organizations ADD COLUMN career_tagline TEXT;
+        END IF;
+    END $$;
+
+    -- chat_sessions: link to originating hire_request
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='chat_sessions' AND column_name='hire_request_id') THEN
+            ALTER TABLE chat_sessions ADD COLUMN hire_request_id INTEGER;
+        END IF;
+    END $$;
+
+    -- hire_requests: hiring manager submits a request for a new position
+    CREATE TABLE IF NOT EXISTS hire_requests (
+        id               SERIAL PRIMARY KEY,
+        org_id           INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        department_id    INTEGER REFERENCES departments(id),
+        requested_by     INTEGER NOT NULL REFERENCES users(id),
+        accepted_by      INTEGER REFERENCES users(id),
+        role_name        TEXT NOT NULL,
+        headcount        INTEGER DEFAULT 1,
+        work_type        TEXT DEFAULT 'onsite',
+        experience_min   INTEGER,
+        experience_max   INTEGER,
+        target_start     TEXT,
+        requirements     TEXT,
+        status           TEXT DEFAULT 'pending',
+        chat_session_id  TEXT REFERENCES chat_sessions(id),
+        created_at       TIMESTAMP DEFAULT NOW(),
+        updated_at       TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_hire_requests_org    ON hire_requests(org_id, status);
+    CREATE INDEX IF NOT EXISTS idx_hire_requests_by     ON hire_requests(requested_by);
+
+    -- hire_requests: link to the position created from this request
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='position_id') THEN
+            ALTER TABLE hire_requests ADD COLUMN position_id INTEGER REFERENCES positions(id);
+        END IF;
+    END $$;
     """
     await conn.execute(feature_sql)
     logger.info("  Feature schema additions (v2) applied.")
