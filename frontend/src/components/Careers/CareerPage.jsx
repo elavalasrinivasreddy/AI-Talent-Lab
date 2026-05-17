@@ -71,15 +71,25 @@ function CareerPageView({ orgSlug }) {
     load(val, filterDept, filterWorkType)
   }
 
+  const brandColor = org.career_primary_color || null
+  const brandStyle = brandColor ? { '--cp-brand': brandColor } : {}
+
   return (
-    <div className="cp-page">
+    <div className="cp-page" style={brandStyle}>
       <SetMeta
         title={`Careers at ${org.name}`}
         description={org.about_us?.slice(0, 160) || `Open positions at ${org.name}`}
       />
 
       {/* Org Header */}
-      <header className="cp-org-header">
+      <header
+        className="cp-org-header"
+        style={org.career_banner_url ? {
+          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0.75)), url(${org.career_banner_url})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        } : {}}
+      >
         <div className="cp-org-logo-wrap">
           {org.logo_url
             ? <img src={org.logo_url} alt={org.name} className="cp-org-logo" />
@@ -88,6 +98,9 @@ function CareerPageView({ orgSlug }) {
         </div>
         <div className="cp-org-info">
           <h1 className="cp-org-name">{org.name}</h1>
+          {org.career_tagline && (
+            <p className="cp-org-tagline">{org.career_tagline}</p>
+          )}
           <div className="cp-org-meta">
             {org.website && <a href={org.website} target="_blank" rel="noopener noreferrer">🌐 {org.website.replace(/^https?:\/\//, '')}</a>}
             {org.headquarters && <span>📍 {org.headquarters}</span>}

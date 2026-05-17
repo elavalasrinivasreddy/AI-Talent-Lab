@@ -316,12 +316,35 @@ function TimelineTab({ events }) {
 
 function ResumeTab({ candidate }) {
   const resume = candidate.resume_text || ''
+  const videoUrl = candidate.video_intro_url
+  const videoDuration = candidate.video_intro_duration
+
   return (
     <div className="cd-resume">
+      {videoUrl && (
+        <div className="cd-video-intro">
+          <div className="cd-video-header">
+            <span className="cd-video-label">📹 Video Introduction</span>
+            {videoDuration && (
+              <span className="cd-video-duration">
+                {Math.floor(videoDuration / 60)}:{String(videoDuration % 60).padStart(2, '0')}
+              </span>
+            )}
+          </div>
+          <video
+            className="cd-video-player"
+            src={videoUrl}
+            controls
+            preload="metadata"
+          />
+        </div>
+      )}
       {resume ? (
         <pre className="cd-resume-text">{resume}</pre>
       ) : (
-        <div className="cd-no-skills">No resume text available for this candidate.</div>
+        <div className="cd-no-skills">
+          {videoUrl ? 'No resume text — candidate submitted video only.' : 'No resume available for this candidate.'}
+        </div>
       )}
     </div>
   )

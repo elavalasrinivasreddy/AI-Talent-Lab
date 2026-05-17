@@ -95,6 +95,11 @@ export const positionsApi = {
   generateInterviewKit: (id) => _post(`/positions/${id}/interview-kit/generate`),
   submitForApproval: (id) => _post(`/positions/${id}/submit-for-approval`),
   approvalDecision: (id, decision, notes = '') => _post(`/positions/${id}/approval-decision`, { decision, notes }),
+  listRequests: (status) => _get(`/positions/requests${status ? `?status=${status}` : ''}`),
+  submitRequest: (data) => _post('/positions/requests', data),
+  acceptRequest: (id) => _patch(`/positions/requests/${id}/accept`, {}),
+  cancelRequest: (id) => _patch(`/positions/requests/${id}/cancel`, {}),
+  linkViaSession: (requestId, sessionId) => _patch(`/positions/requests/${requestId}/link-session`, { session_id: sessionId }),
 }
 
 // ── Candidates ────────────────────────────────────────────────────────────────

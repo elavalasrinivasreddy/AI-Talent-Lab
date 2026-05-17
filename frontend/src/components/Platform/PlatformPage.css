@@ -1,0 +1,273 @@
+/* PlatformPage.css – Standalone SaaS owner dashboard */
+
+.plat-page {
+  min-height: 100dvh;
+  background: var(--color-bg-primary, #0f0f13);
+  color: var(--color-text-primary, #f1f5f9);
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+.plat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--color-border, rgba(255,255,255,0.08));
+  background: var(--color-bg-secondary, rgba(255,255,255,0.03));
+}
+
+.plat-header-brand { display: flex; align-items: center; gap: 12px; }
+
+.plat-logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 7px;
+  color: white;
+}
+.plat-logo-icon svg { width: 100%; height: 100%; }
+
+.plat-brand-name { font-size: 15px; font-weight: 700; }
+.plat-brand-sub  { font-size: 11px; color: var(--color-text-secondary, rgba(255,255,255,0.45)); }
+
+.plat-header-right { display: flex; align-items: center; gap: 12px; }
+
+.plat-admin-pill {
+  background: rgba(99,102,241,0.15);
+  color: #a78bfa;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(99,102,241,0.25);
+  letter-spacing: 0.3px;
+}
+
+.plat-logout-btn {
+  background: transparent;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.1));
+  color: var(--color-text-secondary, rgba(255,255,255,0.5));
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.plat-logout-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--color-text-primary, #f1f5f9); }
+
+/* ── Body ── */
+.plat-body {
+  flex: 1;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Tabs ── */
+.plat-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--color-border, rgba(255,255,255,0.08));
+  padding-bottom: 0;
+  margin-bottom: 24px;
+}
+
+.plat-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary, rgba(255,255,255,0.5));
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: all 150ms;
+}
+.plat-tab:hover { color: var(--color-text-primary, #f1f5f9); }
+.plat-tab.active {
+  color: #a78bfa;
+  border-bottom-color: #6366f1;
+}
+
+.plat-refresh-btn {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.1));
+  color: var(--color-text-secondary, rgba(255,255,255,0.5));
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.plat-refresh-btn:hover:not(:disabled) { border-color: rgba(255,255,255,0.2); color: var(--color-text-primary, #f1f5f9); }
+.plat-refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Section ── */
+.plat-section { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── Stat Cards ── */
+.plat-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.plat-stat-card {
+  background: var(--color-bg-secondary, rgba(255,255,255,0.03));
+  border: 1px solid var(--color-border, rgba(255,255,255,0.07));
+  border-radius: 14px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plat-stat-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+
+.plat-stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-text-primary, #f1f5f9);
+}
+
+.plat-stat-label {
+  font-size: 12px;
+  color: var(--color-text-secondary, rgba(255,255,255,0.45));
+  font-weight: 500;
+}
+
+/* ── Growth Row ── */
+.plat-growth-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.plat-growth-card {
+  background: rgba(99,102,241,0.06);
+  border: 1px solid rgba(99,102,241,0.12);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.plat-growth-icon { font-size: 22px; }
+.plat-growth-value { font-size: 22px; font-weight: 800; color: #a78bfa; }
+.plat-growth-label { font-size: 11px; color: var(--color-text-secondary, rgba(255,255,255,0.45)); font-weight: 500; }
+
+/* ── Card ── */
+.plat-card {
+  background: var(--color-bg-secondary, rgba(255,255,255,0.03));
+  border: 1px solid var(--color-border, rgba(255,255,255,0.07));
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.plat-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  padding: 16px 20px 12px;
+  margin: 0;
+  border-bottom: 1px solid var(--color-border, rgba(255,255,255,0.07));
+}
+
+/* ── Table ── */
+.plat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.plat-table th {
+  text-align: left;
+  padding: 10px 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary, rgba(255,255,255,0.45));
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--color-border, rgba(255,255,255,0.07));
+  white-space: nowrap;
+}
+
+.plat-table td {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--color-border, rgba(255,255,255,0.04));
+  vertical-align: middle;
+}
+
+.plat-table tbody tr:last-child td { border-bottom: none; }
+.plat-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+.plat-org-name { font-weight: 600; color: var(--color-text-primary, #f1f5f9); }
+.plat-org-slug { font-size: 11px; color: var(--color-text-secondary, rgba(255,255,255,0.35)); margin-top: 2px; }
+
+.plat-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.plat-badge.green { background: rgba(34,197,94,0.12); color: #4ade80; }
+.plat-badge.dim   { background: rgba(255,255,255,0.05); color: var(--color-text-secondary, rgba(255,255,255,0.35)); }
+
+/* ── Activity ── */
+.plat-activity-list { display: flex; flex-direction: column; padding: 8px 0; }
+
+.plat-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--color-border, rgba(255,255,255,0.04));
+}
+.plat-activity-row:last-child { border-bottom: none; }
+
+.plat-activity-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #6366f1;
+  flex-shrink: 0;
+}
+
+.plat-activity-body { flex: 1; font-size: 13px; }
+.plat-activity-org  { font-weight: 600; color: #a78bfa; }
+.plat-activity-text { color: var(--color-text-secondary, rgba(255,255,255,0.6)); }
+.plat-activity-time { font-size: 11px; color: var(--color-text-secondary, rgba(255,255,255,0.35)); flex-shrink: 0; }
+
+/* ── States ── */
+.plat-loading { padding: 40px; text-align: center; color: var(--color-text-secondary, rgba(255,255,255,0.4)); font-size: 14px; }
+.plat-empty   { padding: 32px 20px; text-align: center; color: var(--color-text-secondary, rgba(255,255,255,0.35)); font-size: 14px; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .plat-header  { padding: 14px 16px; }
+  .plat-body    { padding: 16px; }
+  .plat-growth-row { grid-template-columns: repeat(2, 1fr); }
+  .plat-table th:nth-child(n+5),
+  .plat-table td:nth-child(n+5) { display: none; }
+}

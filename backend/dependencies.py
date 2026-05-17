@@ -53,6 +53,28 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
     return user
 
 
+async def require_platform_admin(request: Request) -> dict:
+    """
+    Require platform_admin role. These users are SaaS owners — no org isolation.
+    Returns user dict without org_id restriction.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise InvalidCredentialsError("Missing or invalid Authorization header")
+
+    token = auth_header.removeprefix("Bearer ").strip()
+    payload = decode_access_token(token)
+
+    if payload.get("role") != "platform_admin":
+        raise InsufficientPermissionsError("Platform admin access required")
+
+    return {
+        "user_id": int(payload["sub"]),
+        "org_id": payload.get("org_id", 0),
+        "role": "platform_admin",
+    }
+
+
 async def verify_apply_token(token: str) -> dict:
     """Validate an apply magic link JWT. Returns decoded payload."""
     return verify_magic_link_token(token, "apply")

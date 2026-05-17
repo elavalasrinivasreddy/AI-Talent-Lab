@@ -437,3 +437,37 @@
 .cd-note-delete { color: #ef4444; }
 .cd-note-content { font-size: 14px; color: var(--color-text-primary); line-height: 1.6; margin: 0; white-space: pre-wrap; }
 .cd-note-edit { display: flex; flex-direction: column; }
+
+/* ── Video Intro ── */
+.cd-video-intro {
+  margin-bottom: 24px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.cd-video-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+.cd-video-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.cd-video-duration {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-tertiary, var(--color-bg));
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.cd-video-player {
+  width: 100%;
+  max-height: 360px;
+  display: block;
+  background: #000;
+}

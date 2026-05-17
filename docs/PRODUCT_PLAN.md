@@ -351,19 +351,20 @@ Sourced → Emailed → Applied → Screening → Interview (R1, R2...) → Sele
 
 ## 13. Phase 2 — Next Build Priorities
 
-| # | Feature | Notes |
-|---|---|---|
-| 1 | Google Calendar OAuth (real) | Mock adapter done. Needs OAuth client + `GoogleCalendarAdapter`. See `CALENDAR_INTEGRATION_GUIDE.md` |
-| 2 | Career page custom branding | Primary color, hero banner, custom tagline — per org |
-| 3 | Video intro frontend | Backend endpoint exists. Need frontend step in apply chat + player in candidate detail |
-| 4 | WhatsApp integration | Business API for candidate outreach — critical for India market |
-| 5 | Self-scheduling links | Candidates pick slots — requires calendar integration first |
-| 6 | GDPR data export endpoint | Article 20 right — `GET /api/v1/gdpr/export-my-data` |
-| 7 | Audit log UI | Settings → Security: table of all org actions with filters |
+| # | Feature | Status | Notes |
+|---|---|---|---|
+| 1 | Google Calendar OAuth (real) | ⚠️ Mock only | Mock adapter done. Needs OAuth client + `GoogleCalendarAdapter`. See `CALENDAR_INTEGRATION_GUIDE.md` |
+| 2 | Career page custom branding | ❌ Not started | Primary color, hero banner, custom tagline — per org |
+| 3 | Video intro frontend | ⚠️ Backend done | Endpoint + DB columns exist. Need frontend step in apply chat + player in candidate detail |
+| 4 | WhatsApp integration | ❌ Not started | Business API for candidate outreach — critical for India market |
+| 5 | Self-scheduling links | ❌ Not started | Candidates pick slots — requires calendar integration first |
+| 6 | GDPR data export (Article 20) | ❌ Not started | `GET /api/v1/gdpr/export/{candidate_id}` backend exists, no frontend |
+| 7 | Audit log UI | ❌ Not started | Settings → Security: table of all org actions with filters |
+| 8 | Hiring Manager dashboard | ❌ Not started | Role-focused view: assigned positions + weekly interview schedule |
 
 ---
 
-## 13. Technical Stack
+## 14. Technical Stack
 
 | Layer | Tech | Notes |
 |---|---|---|
@@ -382,7 +383,7 @@ Sourced → Emailed → Applied → Screening → Interview (R1, R2...) → Sele
 
 ---
 
-## 14. Key Developer Rules
+## 15. Key Developer Rules
 
 1. **Every DB query filters by `org_id`** — if it doesn't, it's a security bug
 2. **Never auto-send rejection emails** — system drafts, human sends

@@ -20,6 +20,9 @@ class OrgProfileUpdate(BaseModel):
     glassdoor_url: Optional[str] = None
     hiring_contact_email: Optional[str] = None
     logo_url: Optional[str] = None
+    career_primary_color: Optional[str] = None
+    career_banner_url: Optional[str] = None
+    career_tagline: Optional[str] = None
 
     @field_validator("size")
     @classmethod
