@@ -197,6 +197,26 @@ export const notesApi = {
   delete: (noteId) => _delete(`/notes/${noteId}`),
 }
 
+// ── Hire Requests ────────────────────────────────────────────────────────────
+
+export const hireRequestsApi = {
+  list: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.scope) q.set('scope', params.scope)
+    if (params.status) q.set('status', params.status)
+    if (params.departmentId) q.set('department_id', params.departmentId)
+    const qs = q.toString()
+    return _get(`/hire-requests/${qs ? `?${qs}` : ''}`)
+  },
+  get: (id) => _get(`/hire-requests/${id}`),
+  create: (data) => _post('/hire-requests/', data),
+  update: (id, data) => _patch(`/hire-requests/${id}`, data),
+  accept: (id, chatSessionId) => _post(`/hire-requests/${id}/accept`, chatSessionId ? { chat_session_id: chatSessionId } : {}),
+  cancel: (id) => _post(`/hire-requests/${id}/cancel`),
+  pendingCount: () => _get('/hire-requests/pending-count'),
+  linkSession: (id, sessionId) => _post(`/hire-requests/${id}/link-session`, { session_id: sessionId }),
+}
+
 // ── GDPR / Privacy ────────────────────────────────────────────────────────────
 
 export const gdprApi = {

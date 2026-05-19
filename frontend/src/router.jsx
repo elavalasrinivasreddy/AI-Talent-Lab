@@ -21,6 +21,9 @@ import DeleteMyDataPage from './components/GDPR/DeleteMyDataPage'
 import CandidateStatusPage from './components/Status/CandidateStatusPage'
 import AnalyticsPage from './components/Analytics/AnalyticsPage'
 import PlatformPage from './components/Platform/PlatformPage'
+import HireRequestListPage from './components/HireRequests/HireRequestListPage'
+import HireRequestForm from './components/HireRequests/HireRequestForm'
+import HireRequestDetailPage from './components/HireRequests/HireRequestDetailPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -100,6 +103,12 @@ export const router = createBrowserRouter([
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/:tab', element: <SettingsPage /> },
           { path: '/analytics', element: <AnalyticsPage /> },
+
+          // Hire requests
+          { path: '/hire-requests', element: <HireRequestListPage /> },
+          { path: '/hire-requests/new', element: <HireRequestForm mode="create" /> },
+          { path: '/hire-requests/:id', element: <HireRequestDetailPage /> },
+          { path: '/hire-requests/:id/edit', element: <HireRequestForm mode="edit" /> },
         ],
       },
     ],

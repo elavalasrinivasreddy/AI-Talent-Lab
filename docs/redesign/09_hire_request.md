@@ -269,4 +269,47 @@ The current product handles hire requests implicitly via Slack DMs and email cha
 - Creates an auditable record of who approved what when (compliance bonus)
 - Surfaces approval bottlenecks in analytics (offer-stage equivalent for the upstream)
 
-Phase 2 priority.
+---
+
+## 14. Phase 1 (shipped 2026-05-19) vs Phase 2 (deferred)
+
+The simple flow (`pending → accepted → fulfilled`, single recruiter pickup) is live. The multi-approver relay, AI-context surfaces, and collaborative bits are explicitly deferred.
+
+### ✅ Phase 1 — shipped
+
+| Area | Detail |
+|---|---|
+| Schema | `hire_requests` table + `comp_min` / `comp_max` / `location` columns added |
+| Backend | Dedicated `/api/v1/hire-requests/*` router · service · repository (replaces legacy `/positions/requests/*` shims) |
+| Status flow | `pending → accepted → fulfilled` plus `cancelled`; status guards enforced; transactions wrap mutations |
+| Audit log | Entries on create / accept / cancel / fulfilled |
+| Tenant isolation | All queries org-scoped; cross-org GET returns 404 (verified live) |
+| Validation | Pydantic + service-layer; clean 422 with serializable details |
+| Sidebar | Nav entry with pending-count badge for admin / recruiter |
+| Frontend pages | `/hire-requests` list (role-aware filters) · `/hire-requests/new` wizard · `/hire-requests/:id` detail · `/hire-requests/:id/edit` |
+| Relay viz | 5-step ring chain; dept-head and finance steps render as dimmed Phase 2 placeholders |
+| Dashboard | Existing widgets keep working via legacy router shims |
+
+### ❌ Phase 2 — deferred (frontend / UX)
+
+| # | Item | Notes |
+|---|---|---|
+| F1 | **Two-column wizard layout (60/40)** | Currently single-column; spec §3 calls for "The role" left + "Routing + context" right |
+| F2 | **Right-column approval routing toggles** | Dept-head / Finance / CEO checkboxes — pairs with the multi-approver backend below |
+| F3 | **"Context for the AI" explainer card** | Right-column card showing what auto-seeds the JD chat on pickup |
+| F4 | **"Similar past requests" reference card** | Needs an embedding-similarity backend over historical `hire_requests` |
+| F5 | **AI market-alignment estimate under comp band** | Tavily / LLM call: "₹30–55 LPA covers ~85% of Bangalore 4-8yr Go engineers" |
+| F6 | **Auto-save every 30s while typing** | Currently submits on explicit click only |
+| F7 | **Comment thread on detail page** | Back-and-forth between HM and approver — needs a `hire_request_comments` table |
+
+### ❌ Phase 2 — deferred (backend / multi-approver flow)
+
+| # | Item | Notes |
+|---|---|---|
+| B1 | **Multi-approver relay** | Add dept-head + finance approval steps; new statuses `pending_dept_approval`, `pending_finance`, `approved`. Schema needs `approval_chain JSONB` column |
+| B2 | **Magic-link approval emails** | Approval links to dept-head / finance, leveraging `consumed_magic_links` for single-use enforcement (auth pattern already shipped) |
+| B3 | **Status-transition state machine** | Per redesign §6 — proper FSM, today the service just guards `pending`/`accepted` |
+
+### ⚠️ Tech debt — production hardening (not blocking Phase 1 ship, track separately)
+
+See `docs/TECH_DEBT.md` for: rate limiting on `/hire-requests/*`, cursor pagination on list endpoint, unit/integration test coverage for `HireRequestService`.

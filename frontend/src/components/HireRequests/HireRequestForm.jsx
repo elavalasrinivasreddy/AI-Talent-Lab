@@ -1,0 +1,274 @@
+import { useState, useEffect } from 'react'
+import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { hireRequestsApi } from '../../utils/api'
+import RelayVisualization from './RelayVisualization'
+import {
+  ArrowLeftIcon, ArrowRightIcon, AlertIcon, SpinnerIcon,
+} from './icons'
+import './HireRequests.css'
+
+const BLANK = {
+  role_name: '',
+  department_id: '',
+  headcount: 1,
+  work_type: 'onsite',
+  location: '',
+  experience_min: '',
+  experience_max: '',
+  comp_min: '',
+  comp_max: '',
+  target_start: '',
+  requirements: '',
+}
+
+const toNum = (v) => (v === '' || v == null ? null : Number(v))
+
+/**
+ * Shared wizard for /hire-requests/new and /hire-requests/:id/edit.
+ * When `mode === 'edit'`, the form prefills from the loaded request and
+ * PATCHes on submit. Only the requester (or an admin) can edit, and only
+ * while the request is still `pending` — the backend enforces this too.
+ */
+export default function HireRequestForm({ mode }) {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const isEdit = mode === 'edit'
+
+  const [form, setForm] = useState(BLANK)
+  const [existing, setExisting] = useState(null)
+  const [loading, setLoading] = useState(isEdit)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!isEdit) return
+    let cancelled = false
+    setLoading(true)
+    hireRequestsApi.get(id)
+      .then(res => {
+        if (cancelled) return
+        const r = res?.request
+        if (!r) {
+          setError('Request not found.')
+          return
+        }
+        setExisting(r)
+        setForm({
+          role_name: r.role_name || '',
+          department_id: r.department_id ?? '',
+          headcount: r.headcount ?? 1,
+          work_type: r.work_type || 'onsite',
+          location: r.location || '',
+          experience_min: r.experience_min ?? '',
+          experience_max: r.experience_max ?? '',
+          comp_min: r.comp_min ?? '',
+          comp_max: r.comp_max ?? '',
+          target_start: r.target_start || '',
+          requirements: r.requirements || '',
+        })
+      })
+      .catch(err => {
+        if (!cancelled) setError(err?.message || 'Couldn\'t load request.')
+      })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [id, isEdit])
+
+  const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (!form.role_name.trim()) {
+      setError('Role name is required.')
+      return
+    }
+    setSaving(true)
+    try {
+      const payload = {
+        role_name: form.role_name.trim(),
+        department_id: form.department_id ? Number(form.department_id) : null,
+        headcount: Number(form.headcount) || 1,
+        work_type: form.work_type,
+        location: form.location.trim() || null,
+        experience_min: toNum(form.experience_min),
+        experience_max: toNum(form.experience_max),
+        comp_min: toNum(form.comp_min),
+        comp_max: toNum(form.comp_max),
+        target_start: form.target_start || null,
+        requirements: form.requirements.trim() || null,
+      }
+      const res = isEdit
+        ? await hireRequestsApi.update(id, payload)
+        : await hireRequestsApi.create(payload)
+      const r = res?.request
+      navigate(r?.id ? `/hire-requests/${r.id}` : '/hire-requests', { replace: true })
+    } catch (err) {
+      setError(err?.message || 'Couldn\'t save request. Try again.')
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="hr-page">
+        <div className="hr-card-skeleton-large" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="hr-page">
+      <header className="hr-page-head">
+        <div>
+          <Link to="/hire-requests" className="hr-back-link">
+            <ArrowLeftIcon /> Hire requests
+          </Link>
+          <h1 className="hr-page-title">
+            {isEdit ? `Edit ${existing?.role_name || 'request'}` : 'New hire request'}
+          </h1>
+          <p className="hr-page-sub">
+            {isEdit
+              ? 'Make changes while the request is still pending pickup.'
+              : 'Tell the AI what you\'re hiring for. Recruiters will pick it up and the JD chat opens pre-filled.'}
+          </p>
+        </div>
+      </header>
+
+      {/* Relay viz — for new, it's a preview of the path the request will take */}
+      <RelayVisualization request={existing || {
+        status: 'pending',
+        requested_by_name: user?.name || 'You',
+      }} />
+
+      {error && (
+        <div className="hr-banner tone-danger" role="alert">
+          <AlertIcon /> <span>{error}</span>
+        </div>
+      )}
+
+      <form className="hr-form" onSubmit={submit} noValidate>
+        <section className="hr-form-section">
+          <h2 className="hr-form-section-title">The role</h2>
+
+          <div className="hr-field">
+            <label htmlFor="hr-role">Role title *</label>
+            <input
+              id="hr-role"
+              type="text"
+              value={form.role_name}
+              onChange={e => set('role_name', e.target.value)}
+              placeholder="e.g. Senior Backend Engineer (Go)"
+              autoFocus
+              maxLength={200}
+              required
+            />
+          </div>
+
+          <div className="hr-field-row">
+            <div className="hr-field">
+              <label htmlFor="hr-headcount">Headcount</label>
+              <input
+                id="hr-headcount"
+                type="number" min={1} max={100}
+                value={form.headcount}
+                onChange={e => set('headcount', e.target.value)}
+              />
+            </div>
+            <div className="hr-field">
+              <label htmlFor="hr-worktype">Work type</label>
+              <select id="hr-worktype" value={form.work_type} onChange={e => set('work_type', e.target.value)}>
+                <option value="onsite">Onsite</option>
+                <option value="hybrid">Hybrid</option>
+                <option value="remote">Remote</option>
+              </select>
+            </div>
+            <div className="hr-field">
+              <label htmlFor="hr-start">Target start</label>
+              <input
+                id="hr-start" type="date"
+                value={form.target_start}
+                onChange={e => set('target_start', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="hr-field">
+            <label htmlFor="hr-loc">Location</label>
+            <input
+              id="hr-loc" type="text"
+              value={form.location}
+              onChange={e => set('location', e.target.value)}
+              placeholder="Bangalore, India"
+            />
+          </div>
+
+          <div className="hr-field-row">
+            <div className="hr-field">
+              <label htmlFor="hr-emin">Min experience (years)</label>
+              <input
+                id="hr-emin" type="number" min={0} max={50}
+                value={form.experience_min}
+                onChange={e => set('experience_min', e.target.value)}
+                placeholder="3"
+              />
+            </div>
+            <div className="hr-field">
+              <label htmlFor="hr-emax">Max experience (years)</label>
+              <input
+                id="hr-emax" type="number" min={0} max={50}
+                value={form.experience_max}
+                onChange={e => set('experience_max', e.target.value)}
+                placeholder="8"
+              />
+            </div>
+          </div>
+
+          <div className="hr-field-row">
+            <div className="hr-field">
+              <label htmlFor="hr-cmin">Comp min (LPA)</label>
+              <input
+                id="hr-cmin" type="number" min={0}
+                value={form.comp_min}
+                onChange={e => set('comp_min', e.target.value)}
+                placeholder="30"
+              />
+            </div>
+            <div className="hr-field">
+              <label htmlFor="hr-cmax">Comp max (LPA)</label>
+              <input
+                id="hr-cmax" type="number" min={0}
+                value={form.comp_max}
+                onChange={e => set('comp_max', e.target.value)}
+                placeholder="55"
+              />
+            </div>
+          </div>
+
+          <div className="hr-field">
+            <label htmlFor="hr-req">Key requirements</label>
+            <textarea
+              id="hr-req"
+              rows={5}
+              value={form.requirements}
+              onChange={e => set('requirements', e.target.value)}
+              placeholder="Skills, constraints, must-haves. The AI will turn this into a JD — be concrete."
+            />
+          </div>
+        </section>
+
+        <div className="hr-form-actions">
+          <Link to="/hire-requests" className="hr-btn hr-btn-ghost">Cancel</Link>
+          <button type="submit" className="hr-btn hr-btn-primary" disabled={saving}>
+            {saving
+              ? <><SpinnerIcon /> Saving…</>
+              : <>{isEdit ? 'Save changes' : 'Submit for pickup'} <ArrowRightIcon /></>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}

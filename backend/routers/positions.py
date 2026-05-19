@@ -5,7 +5,7 @@ All routes under /api/v1/positions/
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from backend.dependencies import get_current_user
 from backend.services.position_service import PositionService
@@ -257,249 +257,121 @@ async def approval_decision(
     return {"ok": True, "approval_status": decision}
 
 
-# ── Hire Requests ─────────────────────────────────────────────────────────────
+# ── Hire Requests (legacy shims — see routers/hire_requests.py for the real impl) ───
+# Kept so the existing Dashboard widgets that call /api/v1/positions/requests/*
+# keep working. New clients should hit /api/v1/hire-requests/* directly.
+
+from backend.services.hire_request_service import HireRequestService
+from backend.dependencies import get_db
+
+
+def _client_ip(request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For") if request else None
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if (request and request.client) else "unknown"
+
 
 @router.post("/requests")
 async def submit_hire_request(
+    request: Request,
     body: dict,
     current_user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
-    """
-    Hiring manager submits a request for a new position.
-    HR/recruiter will pick it up from the queue to generate the JD.
-    """
-    role_name = (body.get("role_name") or "").strip()
-    if not role_name:
-        raise HTTPException(status_code=422, detail={
-            "error": {"code": "MISSING_ROLE", "message": "role_name is required", "details": None}
-        })
-
-    async with get_connection() as conn:
-        row = await conn.fetchrow(
-            """
-            INSERT INTO hire_requests (
-                org_id, department_id, requested_by, role_name,
-                headcount, work_type, experience_min, experience_max,
-                target_start, requirements, status
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending')
-            RETURNING id, role_name, status, created_at
-            """,
-            current_user["org_id"],
-            body.get("department_id"),
-            current_user["id"],
-            role_name,
-            int(body.get("headcount") or 1),
-            body.get("work_type") or "onsite",
-            body.get("experience_min"),
-            body.get("experience_max"),
-            body.get("target_start"),
-            body.get("requirements"),
-        )
-        # Notify recruiters/admins
-        await conn.execute(
-            """
-            INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-            SELECT $1, u.id, 'hire_request',
-                   'New hire request',
-                   $2 || ' requested by ' || $3,
-                   '/dashboard'
-            FROM users u
-            WHERE u.org_id=$1 AND u.role IN ('admin', 'recruiter') AND u.is_active=TRUE
-            """,
-            current_user["org_id"],
-            role_name,
-            current_user.get("name", "Manager"),
-        )
-    return dict(row) if row else {}
+    """Legacy: prefer POST /api/v1/hire-requests/."""
+    created = await HireRequestService.create(
+        db,
+        org_id=current_user["org_id"],
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+        ip_address=_client_ip(request),
+        role_name=(body.get("role_name") or "").strip(),
+        department_id=body.get("department_id"),
+        headcount=int(body.get("headcount") or 1),
+        work_type=body.get("work_type") or "onsite",
+        experience_min=body.get("experience_min"),
+        experience_max=body.get("experience_max"),
+        target_start=body.get("target_start"),
+        requirements=body.get("requirements"),
+        comp_min=body.get("comp_min"),
+        comp_max=body.get("comp_max"),
+        location=body.get("location"),
+    )
+    return created
 
 
 @router.get("/requests")
 async def list_hire_requests(
     status: Optional[str] = Query(None),
     current_user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
-    """
-    List hire requests for this org.
-    Hiring managers see only their own requests.
-    Recruiters and admins see all pending requests.
-    """
-    async with get_connection() as conn:
-        if current_user.get("role") == "hiring_manager":
-            rows = await conn.fetch(
-                """
-                SELECT hr.*, d.name AS department_name,
-                       u.name AS requested_by_name,
-                       p.approval_status AS position_approval_status,
-                       p.role_name AS position_role_name,
-                       (SELECT COUNT(*) FROM candidate_applications ca
-                        WHERE ca.position_id = hr.position_id) AS candidate_count,
-                       (SELECT COUNT(*) FROM interviews i
-                        WHERE i.position_id = hr.position_id) AS interview_count
-                FROM hire_requests hr
-                LEFT JOIN departments d ON d.id = hr.department_id
-                LEFT JOIN users u ON u.id = hr.requested_by
-                LEFT JOIN positions p ON p.id = hr.position_id
-                WHERE hr.org_id=$1 AND hr.requested_by=$2
-                ORDER BY hr.created_at DESC
-                LIMIT 20
-                """,
-                current_user["org_id"], current_user["id"],
-            )
-        else:
-            filter_status = status or "pending"
-            rows = await conn.fetch(
-                """
-                SELECT hr.*, d.name AS department_name,
-                       u.name AS requested_by_name
-                FROM hire_requests hr
-                LEFT JOIN departments d ON d.id = hr.department_id
-                LEFT JOIN users u ON u.id = hr.requested_by
-                WHERE hr.org_id=$1 AND hr.status=$2
-                ORDER BY hr.created_at DESC
-                LIMIT 50
-                """,
-                current_user["org_id"], filter_status,
-            )
-    return {"requests": [dict(r) for r in rows]}
+    """Legacy: prefer GET /api/v1/hire-requests/."""
+    rows = await HireRequestService.list_for_user(
+        db,
+        org_id=current_user["org_id"],
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+        scope="default",
+        status=status,
+    )
+    return {"requests": rows}
 
 
 @router.patch("/requests/{request_id}/accept")
 async def accept_hire_request(
     request_id: int,
+    request: Request,
     body: dict = {},
     current_user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
-    """
-    Recruiter accepts the hire request and will handle JD generation.
-    Optionally links to a chat_session_id when they start the chat.
-    """
-    if current_user.get("role") not in ("admin", "recruiter"):
-        raise HTTPException(status_code=403, detail={
-            "error": {"code": "FORBIDDEN", "message": "Only recruiters can accept hire requests", "details": None}
-        })
-    async with get_connection() as conn:
-        row = await conn.fetchrow(
-            "SELECT id, status, requested_by, role_name FROM hire_requests WHERE id=$1 AND org_id=$2",
-            request_id, current_user["org_id"],
-        )
-        if not row:
-            raise HTTPException(status_code=404, detail={
-                "error": {"code": "NOT_FOUND", "message": "Hire request not found", "details": None}
-            })
-        if row["status"] != "pending":
-            raise HTTPException(status_code=400, detail={
-                "error": {"code": "ALREADY_ACTIONED", "message": f"Request is already {row['status']}", "details": None}
-            })
-        await conn.execute(
-            """
-            UPDATE hire_requests
-            SET status='accepted', accepted_by=$1, updated_at=NOW(),
-                chat_session_id=$2
-            WHERE id=$3
-            """,
-            current_user["id"],
-            body.get("chat_session_id"),
-            request_id,
-        )
-        if row["requested_by"]:
-            await conn.execute(
-                """
-                INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                VALUES ($1,$2,'hire_request_accepted','Your hire request was picked up',$3,'/dashboard')
-                """,
-                current_user["org_id"],
-                row["requested_by"],
-                f"{row['role_name']} is being processed by {current_user.get('name', 'HR')}",
-            )
-    return {"ok": True, "status": "accepted"}
+    """Legacy: prefer POST /api/v1/hire-requests/{id}/accept."""
+    updated = await HireRequestService.accept(
+        db, request_id, current_user["org_id"],
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+        chat_session_id=body.get("chat_session_id"),
+        ip_address=_client_ip(request),
+    )
+    return {"ok": True, "status": updated["status"]}
 
 
 @router.patch("/requests/{request_id}/link-session")
 async def link_hire_request_to_position(
     request_id: int,
+    request: Request,
     body: dict,
     current_user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
-    """
-    Called by ChatPage when JD generation completes.
-    Reads position_id from the chat session, links it to the hire request,
-    auto-submits the position for hiring manager JD approval, and notifies them.
-    """
+    """Legacy: prefer POST /api/v1/hire-requests/{id}/link-session."""
     session_id = body.get("session_id")
     if not session_id:
-        raise HTTPException(status_code=422, detail={
-            "error": {"code": "MISSING_SESSION", "message": "session_id is required", "details": None}
-        })
-
-    async with get_connection() as conn:
-        session = await conn.fetchrow(
-            "SELECT position_id FROM chat_sessions WHERE id=$1 AND org_id=$2",
-            session_id, current_user["org_id"],
-        )
-        if not session or not session["position_id"]:
-            raise HTTPException(status_code=404, detail={
-                "error": {"code": "NO_POSITION", "message": "Session has no linked position yet", "details": None}
-            })
-
-        position_id = session["position_id"]
-
-        req = await conn.fetchrow(
-            "SELECT id, requested_by, role_name FROM hire_requests WHERE id=$1 AND org_id=$2",
-            request_id, current_user["org_id"],
-        )
-        if not req:
-            raise HTTPException(status_code=404, detail={
-                "error": {"code": "NOT_FOUND", "message": "Hire request not found", "details": None}
-            })
-
-        await conn.execute(
-            """UPDATE hire_requests SET position_id=$1, status='fulfilled', updated_at=NOW()
-               WHERE id=$2""",
-            position_id, request_id,
-        )
-
-        await conn.execute(
-            """UPDATE positions
-               SET requires_approval=TRUE, approval_status='pending', updated_at=NOW()
-               WHERE id=$1""",
-            position_id,
-        )
-
-        if req["requested_by"]:
-            await conn.execute(
-                """INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                   VALUES ($1,$2,'jd_ready_for_approval',
-                           'JD ready for your review',
-                           $3 || ' job description is ready. Please review and approve.',
-                           '/dashboard')""",
-                current_user["org_id"], req["requested_by"], req["role_name"],
-            )
-
-    logger.info(f"[hire_request] {request_id} linked to position {position_id} by user {current_user['id']}")
-    return {"ok": True, "position_id": position_id}
+        from backend.exceptions import ValidationError
+        raise ValidationError("session_id is required.")
+    updated = await HireRequestService.link_session_to_position(
+        db, request_id, current_user["org_id"],
+        user_id=current_user["user_id"],
+        session_id=session_id,
+        ip_address=_client_ip(request),
+    )
+    return {"ok": True, "position_id": updated.get("position_id")}
 
 
 @router.patch("/requests/{request_id}/cancel")
 async def cancel_hire_request(
     request_id: int,
+    request: Request,
     current_user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
-    """Cancel a hire request. Hiring managers cancel their own; admins can cancel any."""
-    async with get_connection() as conn:
-        row = await conn.fetchrow(
-            "SELECT id, status, requested_by FROM hire_requests WHERE id=$1 AND org_id=$2",
-            request_id, current_user["org_id"],
-        )
-        if not row:
-            raise HTTPException(status_code=404, detail={
-                "error": {"code": "NOT_FOUND", "message": "Hire request not found", "details": None}
-            })
-        if current_user.get("role") == "hiring_manager" and row["requested_by"] != current_user["id"]:
-            raise HTTPException(status_code=403, detail={
-                "error": {"code": "FORBIDDEN", "message": "You can only cancel your own requests", "details": None}
-            })
-        await conn.execute(
-            "UPDATE hire_requests SET status='cancelled', updated_at=NOW() WHERE id=$1",
-            request_id,
-        )
-    return {"ok": True, "status": "cancelled"}
+    """Legacy: prefer POST /api/v1/hire-requests/{id}/cancel."""
+    updated = await HireRequestService.cancel(
+        db, request_id, current_user["org_id"],
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+        ip_address=_client_ip(request),
+    )
+    return {"ok": True, "status": updated["status"]}
