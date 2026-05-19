@@ -1,70 +1,65 @@
 import React, { useState } from 'react';
 import { useChat } from '../../../context/ChatContext';
+import { IconCheck, IconArrowRight } from '../icons';
 
 /**
- * InternalCheckCard — shows skills found in similar past roles.
- * 
- * Empty state: graceful message when no similar roles exist in the org DB.
- * "Add All" visually selects all chips before submitting.
+ * InternalCheckCard — skills found in similar past roles within the org.
+ * Lives inline in the left chat rail. Becomes read-only once the flow advances.
  */
 const InternalCheckCard = ({ skills }) => {
     const { sendMessage, workflowStage } = useChat();
     const [selectedSkills, setSelectedSkills] = useState([]);
-    
-    // If we've moved past internal_check, the card is in read-only history mode
+
     const isHistory = workflowStage && workflowStage !== 'internal_check' && workflowStage !== 'intake';
     const [isDismissed, setIsDismissed] = useState(isHistory);
-    const [dismissSummary, setDismissSummary] = useState(isHistory ? 'Selection applied ✅' : '');
+    const [dismissSummary, setDismissSummary] = useState(isHistory ? 'Selection applied' : '');
 
     const toggleSkill = (skillName) => {
-        if (isHistory) return;
-        setSelectedSkills(prev =>
-            prev.includes(skillName)
-                ? prev.filter(s => s !== skillName)
-                : [...prev, skillName]
+        if (isDismissed) return;
+        setSelectedSkills((prev) =>
+            prev.includes(skillName) ? prev.filter((s) => s !== skillName) : [...prev, skillName]
         );
     };
 
     const handleAcceptSelected = () => {
         if (selectedSkills.length === 0) return;
-        setDismissSummary(`Added ${selectedSkills.length} skill${selectedSkills.length > 1 ? 's' : ''} ✅`);
+        setDismissSummary(`Added ${selectedSkills.length} skill${selectedSkills.length > 1 ? 's' : ''}`);
         setIsDismissed(true);
         sendMessage({ action: 'accept_internal', action_data: { skills: selectedSkills } });
     };
 
     const handleAcceptAll = () => {
-        const allSkillNames = skills.map(s => s.skill);
-        // Visually highlight all chips first
-        setSelectedSkills(allSkillNames);
-        setDismissSummary(`Added all ${allSkillNames.length} skills ✅`);
-        // Small delay so user sees the selection animation
+        const allNames = skills.map((s) => s.skill);
+        setSelectedSkills(allNames);
+        setDismissSummary(`Added all ${allNames.length} skills`);
         setTimeout(() => {
             setIsDismissed(true);
-            sendMessage({ action: 'accept_internal', action_data: { skills: allSkillNames } });
+            sendMessage({ action: 'accept_internal', action_data: { skills: allNames } });
         }, 300);
     };
 
     const handleSkip = () => {
-        setSelectedSkills([]); // Visually unselect anything the user clicked
-        setDismissSummary('Skipped →');
+        setSelectedSkills([]);
+        setDismissSummary('Skipped');
         setIsDismissed(true);
         sendMessage({ action: 'skip_internal' });
     };
 
-    // Empty state — no similar roles in DB
+    // Empty state — no similar past roles in DB
     if (!skills || skills.length === 0) {
         return (
             <div className="stage-card">
-                <div className="stage-card-header">
-                    <span className="stage-card-icon">📊</span>
-                    <span>Internal Skills Check</span>
+                <div className="stage-card-head">
+                    <span className="stage-card-eyebrow">Step 2 · Internal check</span>
                 </div>
-                <div className="stage-card-empty">
-                    No similar past roles found in your organization yet. This is normal for new positions — we'll use market research data instead.
-                </div>
+                <h3 className="stage-card-title">No similar past roles in your org yet.</h3>
+                <p className="stage-card-desc">
+                    That's normal for a first hire of this kind. We'll lean on market research instead.
+                </p>
                 <div className="stage-card-actions">
-                    <button className="stage-btn stage-btn--primary" onClick={handleSkip}>
-                        Continue →
+                    <div className="stage-card-actions-spacer" />
+                    <button className="btn-primary" onClick={handleSkip}>
+                        Continue <IconArrowRight size={14} />
                     </button>
                 </div>
             </div>
@@ -72,44 +67,55 @@ const InternalCheckCard = ({ skills }) => {
     }
 
     return (
-        <div className="stage-card" style={{ opacity: isDismissed ? 0.7 : 1 }}>
-            <div className="stage-card-header">
-                <span className="stage-card-icon">📊</span>
-                <span>Internal Skills Check</span>
-                {isDismissed && <span className="stage-card-status">{dismissSummary}</span>}
+        <div className="stage-card" data-dismissed={isDismissed}>
+            <div className="stage-card-head">
+                <span className="stage-card-eyebrow">Step 2 · Internal check</span>
+                {isDismissed && (
+                    <span className="stage-card-status stage-card-status--ok">
+                        <IconCheck size={12} /> {dismissSummary}
+                    </span>
+                )}
             </div>
+            <h3 className="stage-card-title">
+                Skills your team valued in similar past roles.
+            </h3>
             <p className="stage-card-desc">
-                Found in similar past roles — not in your current requirements. {isDismissed ? 'Selected:' : 'Click to select:'}
+                Found across {skills.length} reference JD{skills.length === 1 ? '' : 's'}.
+                Pick any you want to include.
             </p>
 
             <div className="skill-chips">
-                {skills.map((s, i) => (
-                    <span
-                        key={i}
-                        className={`skill-chip ${selectedSkills.includes(s.skill) ? 'selected' : ''}`}
-                        style={{ pointerEvents: isDismissed ? 'none' : 'auto' }}
-                        onClick={() => !isDismissed && toggleSkill(s.skill)}
-                        title={s.source ? `From: ${s.source}${s.year ? ` (${s.year})` : ''}` : ''}
-                    >
-                        {s.skill}
-                    </span>
-                ))}
+                {skills.map((s, i) => {
+                    const pressed = selectedSkills.includes(s.skill);
+                    return (
+                        <button
+                            key={i}
+                            type="button"
+                            className="skill-chip"
+                            aria-pressed={pressed}
+                            disabled={isDismissed}
+                            onClick={() => toggleSkill(s.skill)}
+                            title={s.source ? `From: ${s.source}${s.year ? ` (${s.year})` : ''}` : ''}
+                        >
+                            {s.skill}
+                        </button>
+                    );
+                })}
             </div>
 
             {!isDismissed && (
                 <div className="stage-card-actions">
-                    <button className="stage-btn stage-btn--ghost" onClick={handleSkip}>
-                        Skip
-                    </button>
-                    <button className="stage-btn stage-btn--outline" onClick={handleAcceptAll}>
-                        Add All ({skills.length})
+                    <button className="btn-quiet" onClick={handleSkip}>Skip</button>
+                    <div className="stage-card-actions-spacer" />
+                    <button className="btn-ghost" onClick={handleAcceptAll}>
+                        Add all · {skills.length}
                     </button>
                     <button
-                        className="stage-btn stage-btn--primary"
+                        className="btn-primary"
                         disabled={selectedSkills.length === 0}
                         onClick={handleAcceptSelected}
                     >
-                        Add Selected ({selectedSkills.length})
+                        Add selected{selectedSkills.length > 0 ? ` · ${selectedSkills.length}` : ''}
                     </button>
                 </div>
             )}

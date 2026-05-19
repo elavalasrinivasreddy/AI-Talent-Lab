@@ -1,6 +1,8 @@
 # AI Talent Lab — Product Plan
-> **Version 2.1 — Finalized**
+> **Version 2.2 — May 18, 2026**
 > Single source of truth for all team members. Read this before building anything.
+>
+> **What changed in v2.2 (visual identity overhaul):** Primary color → Teal `#0D9488` (distinctive vs Greenhouse green / Lever blue-grey / Ashby dark / and the indigo-violet palette identifying every AI product). Font → Plus Jakarta Sans. Emoji nav icons → inline SVG. Pipeline stage palette refined for semantic clarity. **No product, scope, schema, API, or backend changes** — pure visual + frontend token layer. See `docs/FRONTEND_PLAN.md §2` for full token system.
 
 ---
 

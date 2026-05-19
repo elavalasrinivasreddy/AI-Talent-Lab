@@ -86,10 +86,28 @@
 }
 
 .settings-tab-icon {
-  font-size: 1rem;
   width: 20px;
-  text-align: center;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
 }
+.settings-tab-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.settings-header-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+}
+.settings-header-icon svg { width: 18px; height: 18px; }
 
 /* ── Tab Content (right column) ──────────────────────────── */
 
@@ -163,7 +181,7 @@
 .form-group textarea:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
 }
 
 .form-group input:disabled,
@@ -341,7 +359,7 @@
 
 .theme-card.active {
   border-color: var(--color-primary);
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(13, 148, 136, 0.08);
 }
 
 .theme-card .theme-icon {
@@ -375,7 +393,7 @@
 
 .tag-input-container:focus-within {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
 }
 
 .tag {
@@ -480,7 +498,7 @@
   font-size: var(--font-size-xs);
   padding: 2px var(--space-2);
   border-radius: var(--radius-full);
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(13, 148, 136, 0.1);
   color: var(--color-primary);
 }
 

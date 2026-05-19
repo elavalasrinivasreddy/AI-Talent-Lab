@@ -49,7 +49,7 @@ export default function PrivacyTab() {
   const statusColors = {
     pending: { bg: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
     verified: { bg: 'rgba(59,130,246,0.1)', color: '#3b82f6' },
-    processing: { bg: 'rgba(99,102,241,0.1)', color: '#6366f1' },
+    processing: { bg: 'rgba(13,148,136,0.1)', color: '#0D9488' },
     completed: { bg: 'rgba(34,197,94,0.1)', color: '#22c55e' },
     rejected: { bg: 'rgba(239,68,68,0.1)', color: '#ef4444' },
   }

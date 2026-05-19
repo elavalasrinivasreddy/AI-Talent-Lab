@@ -102,10 +102,10 @@ export default function PlatformPage() {
         {tab === 'overview' && (
           <div className="plat-section">
             <div className="plat-stats-grid">
-              <StatCard label="Total Organisations" value={stats?.total_orgs ?? '—'} icon="🏢" accent="#6366f1" />
+              <StatCard label="Total Organisations" value={stats?.total_orgs ?? '—'} icon="🏢" accent="#0D9488" />
               <StatCard label="Total Users" value={stats?.total_users ?? '—'} icon="👥" accent="#0ea5e9" />
               <StatCard label="Active Positions" value={stats?.active_positions ?? '—'} icon="💼" accent="#22c55e" />
-              <StatCard label="Total Candidates" value={stats?.total_candidates ?? '—'} icon="🔍" accent="#a78bfa" />
+              <StatCard label="Total Candidates" value={stats?.total_candidates ?? '—'} icon="🔍" accent="#14B8A6" />
               <StatCard label="Total Applications" value={stats?.total_applications ?? '—'} icon="📋" accent="#f59e0b" />
               <StatCard label="JD Sessions" value={stats?.total_jd_sessions ?? '—'} icon="✨" accent="#fb923c" />
             </div>

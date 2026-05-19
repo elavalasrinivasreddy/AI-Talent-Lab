@@ -178,7 +178,7 @@
 .pos-tab-btn.active {
   background: var(--color-primary);
   color: white;
-  box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+  box-shadow: 0 2px 8px rgba(13,148,136,0.3);
 }
 
 /* Tab Content */

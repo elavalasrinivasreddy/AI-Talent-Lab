@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useChat } from '../../context/ChatContext';
 import { positionsApi } from '../../utils/api';
 import ChatTopBar from './ChatTopBar';
 import MessageList from './MessageList';
+import JDCanvas from './JDCanvas';
 import MessageInput from './MessageInput';
 import '../../styles/chat.css';
 
@@ -19,6 +20,11 @@ const ChatPage = () => {
         sendMessage,
         workflowStage,
     } = useChat();
+
+    // Lifted state: which variant is currently being previewed in the canvas.
+    // Set by JDVariantsCard on hover/focus, read by JDCanvas.
+    const [previewVariantType, setPreviewVariantType] = useState(null);
+
     const loadedRef = useRef(null);
     const hireRequestSentRef = useRef(false);
     const linkSentRef = useRef(false);
@@ -31,6 +37,7 @@ const ChatPage = () => {
         if (!sessionId) {
             loadedRef.current = null;
             hireRequestSentRef.current = false;
+            setPreviewVariantType(null);
             resetChat();
             return;
         }
@@ -38,13 +45,13 @@ const ChatPage = () => {
         if (sessionId !== loadedRef.current) {
             loadedRef.current = sessionId;
             hireRequestSentRef.current = false;
+            setPreviewVariantType(null);
             setCurrentSessionId(sessionId);
             loadSession(sessionId);
         }
     }, [sessionId, setCurrentSessionId, loadSession, resetChat]);
 
-    // When a recruiter picks up a hire request, auto-send it as the opening message.
-    // This gives the AI full context so it can skip basic intake questions.
+    // Auto-send hire request context to chat when picked up from hire requests list.
     useEffect(() => {
         const req = location.state?.hireRequest;
         if (!req || hireRequestSentRef.current || workflowStage !== 'intake') return;
@@ -67,8 +74,7 @@ const ChatPage = () => {
         sendMessage({ message: lines.join('\n') });
     }, [location.state, workflowStage, sendMessage]);
 
-    // When JD generation completes and this session came from a hire request,
-    // link the created position back to the request for HM lifecycle tracking.
+    // Link the created position back to the hire request once JD generation completes.
     useEffect(() => {
         const req = location.state?.hireRequest;
         if (!req || !currentSessionId || workflowStage !== 'complete' || linkSentRef.current) return;
@@ -77,10 +83,20 @@ const ChatPage = () => {
     }, [location.state, workflowStage, currentSessionId]);
 
     return (
-        <div className="chat-page container-fluid p-0">
+        <div className="chat-page">
             <ChatTopBar />
-            <MessageList />
-            <MessageInput />
+            <div className="chat-split">
+                <section className="chat-rail" aria-label="Conversation">
+                    <MessageList
+                        previewVariantType={previewVariantType}
+                        setPreviewVariantType={setPreviewVariantType}
+                    />
+                    <MessageInput />
+                </section>
+                <section className="jd-canvas" aria-label="Job description draft">
+                    <JDCanvas previewVariantType={previewVariantType} />
+                </section>
+            </div>
         </div>
     );
 };

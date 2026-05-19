@@ -17,7 +17,7 @@
   align-items: center;
   justify-content: flex-end;
   padding: 0 var(--space-6);
-  background: rgba(12, 14, 20, 0.82);
+  background: rgba(9, 14, 26, 0.82);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--color-border-light);
@@ -103,10 +103,10 @@
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(99, 102, 241, 0.03) 0%,
+    rgba(13, 148, 136, 0.05) 0%,
     transparent 40%,
     transparent 70%,
-    rgba(139, 92, 246, 0.02) 100%
+    rgba(20, 184, 166, 0.03) 100%
   );
   pointer-events: none;
   z-index: 0;
@@ -136,7 +136,7 @@
 }
 
 .sidebar-logo span {
-  background: linear-gradient(135deg, var(--color-primary) 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #14B8A6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -147,12 +147,12 @@
   width: 32px;
   height: 32px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--color-primary) 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #14B8A6 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 2px 12px rgba(13, 148, 136, 0.32);
 }
 
 .sidebar-logo-icon svg {
@@ -230,10 +230,17 @@
 }
 
 .sidebar-link-icon {
-  font-size: 1.1rem;
   width: 22px;
-  text-align: center;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  color: currentColor;
+}
+.sidebar-link-icon svg {
+  width: 17px;
+  height: 17px;
 }
 
 .sidebar-footer {
@@ -260,7 +267,7 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-full);
-  background: linear-gradient(135deg, var(--color-primary) 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #14B8A6 100%);
   color: #fff;
   display: flex;
   align-items: center;
@@ -268,7 +275,7 @@
   font-weight: var(--font-weight-bold);
   font-size: var(--font-size-sm);
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.28);
 }
 
 .sidebar-user-info {
@@ -297,7 +304,7 @@ html.light .sidebar {
 html.light .sidebar::before {
   background: linear-gradient(
     180deg,
-    rgba(99, 102, 241, 0.02) 0%,
+    rgba(13, 148, 136, 0.03) 0%,
     transparent 100%
   );
 }
