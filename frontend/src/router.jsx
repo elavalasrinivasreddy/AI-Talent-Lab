@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import LoginPage from './components/Auth/LoginPage'
 import RegisterPage from './components/Auth/RegisterPage'
+import MagicLinkExchange from './components/Auth/MagicLinkExchange'
 import Sidebar from './components/Sidebar/Sidebar'
 import NotificationBell from './components/common/NotificationBell'
 import SettingsPage from './components/Settings/SettingsPage'
@@ -69,6 +70,9 @@ export const router = createBrowserRouter([
       { path: '/register', element: <RegisterPage /> },
     ],
   },
+
+  // Magic-link exchange — always accessible, even when logged in (re-login flow)
+  { path: '/auth/verify', element: <MagicLinkExchange /> },
 
   // Protected routes
   {

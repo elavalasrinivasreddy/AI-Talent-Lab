@@ -1,11 +1,12 @@
 """
 utils/security.py – Authentication utilities.
 bcrypt password hashing (12 rounds), JWT encode/decode,
-magic link token generation/verification.
+magic link token generation/verification (single-use enforced via DB jti).
 See docs/BACKEND_PLAN.md §9.
 """
 import bcrypt
 import jwt
+import secrets
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -67,30 +68,54 @@ def decode_access_token(token: str) -> dict:
 
 
 # ── Magic Link Tokens ──────────────────────────────────────────────────────────
+#
+# Supported token_types:
+#   "auth_magic"     — passwordless sign-in (entity_id = user_id, 15 min)
+#   "password_reset" — password reset link (entity_id = user_id, 24h)
+#   "apply"          — candidate apply chat (entity_id = application_id, 72h)
+#   "panel_feedback" — panelist feedback (entity_id = panel_member_id, 7d)
+#
+# Every token carries a random `jti` claim. Verification is split into two steps:
+#   1. `verify_magic_link_token` — cryptographic validation only (signature + expiry + type)
+#   2. caller checks `consumed_magic_links` row and INSERTs to consume it
+# This separation lets the apply/panel flows replay-tolerant (multi-tap) while
+# auth/password_reset enforce single-use via the consumed_magic_links table.
 
 def create_magic_link_token(
     token_type: str,
     entity_id: int,
-    expires_hours: int,
+    expires_hours: Optional[float] = None,
+    expires_minutes: Optional[int] = None,
 ) -> str:
     """
-    Create a signed JWT magic link token.
-    token_type: "apply" | "panel_feedback" | "password_reset"
-    entity_id: application_id | panel_member_id | user_id
+    Create a signed JWT magic-link token with a unique jti claim.
+
+    Pass either `expires_hours` (float ok for sub-hour) or `expires_minutes`.
     """
-    exp = datetime.now(timezone.utc) + timedelta(hours=expires_hours)
+    if expires_minutes is not None:
+        delta = timedelta(minutes=expires_minutes)
+    else:
+        delta = timedelta(hours=expires_hours or 1)
+
+    now = datetime.now(timezone.utc)
     payload = {
         "type": token_type,
         "entity_id": entity_id,
-        "exp": exp,
-        "iat": datetime.now(timezone.utc),
+        "jti": secrets.token_urlsafe(16),
+        "exp": now + delta,
+        "iat": now,
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
 
 def verify_magic_link_token(token: str, expected_type: str) -> dict:
     """
-    Verify a magic link token. Returns the decoded payload.
+    Cryptographically verify a magic-link token. Returns the decoded payload.
+
+    Does NOT check or consume the jti — callers that require single-use must
+    insert the jti into `consumed_magic_links` themselves (see auth_service).
+    Apply/panel flows that allow multi-tap can skip the jti check entirely.
+
     Raises MagicLinkExpiredError or InvalidCredentialsError.
     """
     from backend.exceptions import MagicLinkExpiredError

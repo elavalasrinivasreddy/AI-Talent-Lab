@@ -6,8 +6,9 @@
 
 const BASE = '/api/v1'
 
-// Token getter — set by AuthContext so the API always has the latest token
-let _tokenGetter = () => localStorage.getItem('token')
+// Token getter — wired by AuthContext on mount so the API always has the latest token.
+// Default returns null (no token) — AuthContext is the source of truth.
+let _tokenGetter = () => null
 
 export function setTokenGetter(getter) {
   _tokenGetter = getter

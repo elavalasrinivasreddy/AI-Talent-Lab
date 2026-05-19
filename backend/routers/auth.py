@@ -4,7 +4,6 @@ Thin HTTP layer — validates input via Pydantic, calls AuthService.
 See docs/BACKEND_PLAN.md §5 Auth section.
 """
 from fastapi import APIRouter, Depends, Request
-from typing import List
 
 import asyncpg
 
@@ -13,15 +12,14 @@ from backend.services.auth_service import AuthService
 from backend.models.auth import (
     LoginRequest,
     RegisterRequest,
+    MagicLinkRequest,
+    MagicLinkVerifyRequest,
     ChangePasswordRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
     UpdateProfileRequest,
     AddUserRequest,
     UpdateUserRequest,
-    TokenResponse,
-    UserResponse,
-    MeResponse,
 )
 from backend.middleware.rate_limiter import limiter
 
@@ -53,6 +51,20 @@ def _user_response(user: dict) -> dict:
     }
 
 
+def _org_response(org: dict | None) -> dict | None:
+    """Convert DB org dict to response-safe format (subset of columns)."""
+    if not org:
+        return None
+    return {
+        "id": org["id"],
+        "name": org["name"],
+        "slug": org["slug"],
+        "segment": org.get("segment"),
+        "size": org.get("size"),
+        "website": org.get("website"),
+    }
+
+
 # ── POST /register ────────────────────────────────────────────────────────────
 
 @router.post("/register")
@@ -77,6 +89,7 @@ async def register(
     return {
         "token": result["token"],
         "user": _user_response(result["user"]),
+        "org": _org_response(result["org"]),
     }
 
 
@@ -89,7 +102,7 @@ async def login(
     body: LoginRequest,
     db: asyncpg.Connection = Depends(get_db),
 ):
-    """Authenticate user and return JWT."""
+    """Authenticate user and return JWT + org."""
     result = await AuthService.login(
         conn=db,
         email=body.email,
@@ -99,6 +112,51 @@ async def login(
     return {
         "token": result["token"],
         "user": _user_response(result["user"]),
+        "org": _org_response(result["org"]),
+    }
+
+
+# ── POST /magic-link ─────────────────────────────────────────────────────────
+
+@router.post("/magic-link")
+@limiter.limit("5/minute")
+async def request_magic_link(
+    request: Request,
+    body: MagicLinkRequest,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """
+    Request a magic-link sign-in email.
+    Always returns a generic success message — never leaks account existence.
+    """
+    await AuthService.request_magic_link(
+        conn=db, email=body.email, ip_address=_get_ip(request)
+    )
+    return {
+        "message": (
+            "If that email matches an account, we've sent a sign-in link. "
+            "Check your inbox — the link expires in 15 minutes."
+        )
+    }
+
+
+# ── POST /magic-link/verify ──────────────────────────────────────────────────
+
+@router.post("/magic-link/verify")
+@limiter.limit("20/minute")
+async def verify_magic_link(
+    request: Request,
+    body: MagicLinkVerifyRequest,
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Exchange a magic-link token for a session JWT. Single-use."""
+    result = await AuthService.verify_magic_link(
+        conn=db, token=body.token, ip_address=_get_ip(request)
+    )
+    return {
+        "token": result["token"],
+        "user": _user_response(result["user"]),
+        "org": _org_response(result["org"]),
     }
 
 
@@ -113,7 +171,7 @@ async def me(
     result = await AuthService.get_me(db, user["user_id"], user["org_id"])
     return {
         "user": _user_response(result["user"]),
-        "org": result["org"],
+        "org": _org_response(result["org"]),
     }
 
 
@@ -236,6 +294,6 @@ async def reset_password(
     body: ResetPasswordRequest,
     db: asyncpg.Connection = Depends(get_db),
 ):
-    """Reset password using magic link token."""
+    """Reset password using single-use magic-link token."""
     await AuthService.reset_password(db, body.token, body.new_password)
-    return {"message": "Password reset successfully. Please login with your new password."}
+    return {"message": "Password reset successfully. You can now sign in with your new password."}
