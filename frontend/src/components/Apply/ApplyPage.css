@@ -29,7 +29,7 @@
 .apply-logo-img { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
 .apply-logo-fallback {
   width: 32px; height: 32px; border-radius: 8px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #0D9488, #14B8A6);
   color: white; font-weight: 700; font-size: 14px;
   display: flex; align-items: center; justify-content: center;
 }
@@ -42,8 +42,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 20px;
-  background: rgba(99,102,241,0.08);
-  border-bottom: 1px solid rgba(99,102,241,0.15);
+  background: rgba(13,148,136,0.08);
+  border-bottom: 1px solid rgba(13,148,136,0.15);
   flex-shrink: 0;
   flex-wrap: wrap;
   gap: 8px;
@@ -51,12 +51,12 @@
 .apply-position-info { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 .apply-position-info span { font-size: 13px; color: rgba(255,255,255,0.7); }
 .apply-work-type {
-  background: rgba(99,102,241,0.15); color: #a78bfa;
+  background: rgba(13,148,136,0.15); color: #14B8A6;
   padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;
-  border: 1px solid rgba(99,102,241,0.2);
+  border: 1px solid rgba(13,148,136,0.2);
 }
 .apply-jd-toggle {
-  font-size: 12px; color: #6366f1; background: none; border: none;
+  font-size: 12px; color: #0D9488; background: none; border: none;
   cursor: pointer; font-weight: 600; text-decoration: underline;
   flex-shrink: 0;
 }
@@ -99,22 +99,22 @@
 }
 
 .apply-progress-step.active .apply-progress-dot {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: #6366f1;
-  color: #a78bfa;
+  background: rgba(13, 148, 136, 0.15);
+  border-color: #0D9488;
+  color: #14B8A6;
 }
 
 .apply-progress-step.current .apply-progress-dot {
-  background: #6366f1;
-  border-color: #6366f1;
+  background: #0D9488;
+  border-color: #0D9488;
   color: white;
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 12px rgba(13, 148, 136, 0.4);
   animation: progressPulse 2s infinite;
 }
 
 @keyframes progressPulse {
-  0%, 100% { box-shadow: 0 0 12px rgba(99, 102, 241, 0.4); }
-  50% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.2); }
+  0%, 100% { box-shadow: 0 0 12px rgba(13, 148, 136, 0.4); }
+  50% { box-shadow: 0 0 20px rgba(13, 148, 136, 0.2); }
 }
 
 .apply-progress-label {
@@ -134,7 +134,7 @@
 }
 
 .apply-progress-step.current .apply-progress-label {
-  color: #a78bfa;
+  color: #14B8A6;
 }
 
 .apply-progress-line {
@@ -145,7 +145,7 @@
 }
 
 .apply-progress-step.active .apply-progress-line {
-  background: rgba(99, 102, 241, 0.4);
+  background: rgba(13, 148, 136, 0.4);
 }
 
 @media (max-width: 400px) {
@@ -167,7 +167,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 .apply-jd-section { margin-bottom: 16px; }
-.apply-jd-section h4 { font-size: 13px; font-weight: 700; color: #a78bfa; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+.apply-jd-section h4 { font-size: 13px; font-weight: 700; color: #14B8A6; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
 .apply-jd-section p { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; margin: 0; }
 .apply-jd-content {
   font-family: inherit; white-space: pre-wrap;
@@ -196,12 +196,12 @@
 
 .apply-msg-avatar {
   width: 30px; height: 30px; border-radius: 50%;
-  background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3);
+  background: rgba(13,148,136,0.15); border: 1px solid rgba(13,148,136,0.3);
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; flex-shrink: 0;
 }
 .apply-msg-avatar-user {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #0D9488, #14B8A6);
   font-size: 13px; font-weight: 700; color: white; border: none;
 }
 
@@ -219,7 +219,7 @@
   color: #e2e8f0;
 }
 .apply-msg-user .apply-msg-bubble {
-  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  background: linear-gradient(135deg, #0D9488, #7c3aed);
   color: white;
   border-bottom-right-radius: 4px;
   border: none;
@@ -237,19 +237,19 @@
 .apply-quick-btn {
   padding: 9px 16px;
   border-radius: 20px;
-  border: 1.5px solid rgba(99,102,241,0.4);
-  background: rgba(99,102,241,0.08);
-  color: #a78bfa;
+  border: 1.5px solid rgba(13,148,136,0.4);
+  background: rgba(13,148,136,0.08);
+  color: #14B8A6;
   font-size: 13px; font-weight: 500;
   cursor: pointer; min-height: 44px;
   transition: all 150ms ease;
 }
-.apply-quick-btn:hover { background: rgba(99,102,241,0.2); border-color: #6366f1; }
+.apply-quick-btn:hover { background: rgba(13,148,136,0.2); border-color: #0D9488; }
 .apply-quick-btn.primary {
-  background: rgba(99,102,241,0.2); border-color: #6366f1;
+  background: rgba(13,148,136,0.2); border-color: #0D9488;
   color: #c7d2fe; font-weight: 600;
 }
-.apply-quick-btn.primary:hover { background: #6366f1; color: white; }
+.apply-quick-btn.primary:hover { background: #0D9488; color: white; }
 
 /* ── Resume Upload ── */
 .apply-resume-upload {
@@ -259,14 +259,14 @@
 .apply-upload-btn {
   padding: 14px 20px;
   border-radius: 12px;
-  border: 2px dashed rgba(99,102,241,0.4);
-  background: rgba(99,102,241,0.06);
-  color: #a78bfa; font-size: 14px; font-weight: 600;
+  border: 2px dashed rgba(13,148,136,0.4);
+  background: rgba(13,148,136,0.06);
+  color: #14B8A6; font-size: 14px; font-weight: 600;
   cursor: pointer; min-height: 52px;
   transition: all 200ms ease;
 }
 .apply-upload-btn:hover:not(:disabled) {
-  background: rgba(99,102,241,0.12); border-color: #6366f1;
+  background: rgba(13,148,136,0.12); border-color: #0D9488;
 }
 .apply-upload-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .apply-upload-error { font-size: 12px; color: #ef4444; margin: 0; }
@@ -311,19 +311,19 @@
   max-height: 120px;
   transition: border-color 150ms;
 }
-.apply-input:focus { outline: none; border-color: #6366f1; }
+.apply-input:focus { outline: none; border-color: #0D9488; }
 .apply-input:disabled { opacity: 0.4; cursor: not-allowed; }
 .apply-input::placeholder { color: rgba(255,255,255,0.25); }
 
 .apply-send-btn {
   padding: 12px 20px;
-  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  background: linear-gradient(135deg, #0D9488, #7c3aed);
   border: none; border-radius: 12px;
   color: white; font-size: 14px; font-weight: 700;
   cursor: pointer; flex-shrink: 0; min-height: 48px;
   transition: all 150ms ease;
 }
-.apply-send-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(99,102,241,0.4); }
+.apply-send-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(13,148,136,0.4); }
 .apply-send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
 /* ── Footer ── */
@@ -347,13 +347,13 @@
 .apply-state-icon { font-size: 3.5rem; }
 .apply-state-page h2 { font-size: 22px; font-weight: 700; color: #f1f5f9; margin: 0; }
 .apply-state-page p { font-size: 15px; color: rgba(255,255,255,0.5); margin: 0; line-height: 1.6; }
-.apply-state-page a { color: #6366f1; }
+.apply-state-page a { color: #0D9488; }
 
 /* ── Spinner ── */
 .apply-spinner {
   width: 36px; height: 36px;
-  border: 3px solid rgba(99,102,241,0.2);
-  border-top-color: #6366f1;
+  border: 3px solid rgba(13,148,136,0.2);
+  border-top-color: #0D9488;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -389,9 +389,9 @@
 .apply-consent-note { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 12px !important; }
 .apply-consent-ai-notice {
   font-size: 12px;
-  color: rgba(99,102,241,0.9);
-  background: rgba(99,102,241,0.08);
-  border: 1px solid rgba(99,102,241,0.2);
+  color: rgba(13,148,136,0.9);
+  background: rgba(13,148,136,0.08);
+  border: 1px solid rgba(13,148,136,0.2);
   border-radius: 8px;
   padding: 10px 14px;
   line-height: 1.5;
@@ -399,7 +399,7 @@
 .apply-consent-actions { display: flex; flex-direction: column; gap: 10px; }
 .apply-consent-agree {
   padding: 14px;
-  background: #6366f1;
+  background: #0D9488;
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -421,5 +421,5 @@
 }
 .apply-consent-decline:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.2); }
 .apply-consent-privacy { font-size: 12px; color: rgba(255,255,255,0.3); text-align: center; margin: 0; }
-.apply-consent-privacy a { color: rgba(99,102,241,0.8); text-decoration: none; }
+.apply-consent-privacy a { color: rgba(13,148,136,0.8); text-decoration: none; }
 .apply-consent-privacy a:hover { text-decoration: underline; }

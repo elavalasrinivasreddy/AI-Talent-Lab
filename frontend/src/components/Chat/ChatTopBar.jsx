@@ -1,73 +1,44 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import { useChat } from '../../context/ChatContext';
-import PositionSetupModal from './PositionSetupModal';
 
 const STAGE_CONFIG = {
-    intake:           { label: 'Gathering Requirements', color: 'var(--color-info)' },
-    internal_check:   { label: 'Internal Skills Check', color: '#a855f7' },
-    market_research:  { label: 'Market Research',       color: '#06b6d4' },
-    benchmarking:     { label: 'Benchmarking',          color: '#06b6d4' },
-    jd_variants:      { label: 'Choose JD Style',       color: 'var(--color-warning)' },
-    final_jd:         { label: 'Generating JD',         color: 'var(--color-success)' },
-    bias_check:       { label: 'Bias Check',            color: 'var(--color-success)' },
-    complete:         { label: 'Complete',               color: 'var(--color-text-muted)' }
+    intake:          { label: 'Intake',           index: 1 },
+    internal_check:  { label: 'Internal check',   index: 2 },
+    market_research: { label: 'Market research',  index: 3 },
+    benchmarking:    { label: 'Benchmarking',     index: 3 },
+    jd_variants:     { label: 'Choose style',     index: 4 },
+    final_jd:        { label: 'Drafting JD',      index: 5 },
+    bias_check:      { label: 'Inclusivity',      index: 5 },
+    complete:        { label: 'Complete',         index: 5 },
 };
 
+const TOTAL_STAGES = 5;
+
 const ChatTopBar = () => {
-    const navigate = useNavigate();
-    const {
-        sessionTitle,
-        isTitleAnimating,
-        workflowStage,
-        currentSessionId,
-        deleteSession
-    } = useChat();
-
-    const stageInfo = STAGE_CONFIG[workflowStage] || STAGE_CONFIG.intake;
-
-    const handleDiscard = async () => {
-        if (currentSessionId) {
-            await deleteSession(currentSessionId);
-        }
-        navigate('/chat', { replace: true });
-    };
+    const { sessionTitle, isTitleAnimating, workflowStage, isStreaming } = useChat();
+    const stage = STAGE_CONFIG[workflowStage] || STAGE_CONFIG.intake;
+    const isActive = isStreaming || (workflowStage !== 'complete' && workflowStage !== 'intake');
 
     return (
-        <>
-            <div className="chat-topbar">
-                <div className="chat-topbar-left">
-                    {/* Title — read-only, updated via role extraction with animation */}
-                    <span
-                        className={`session-title ${isTitleAnimating ? 'title-pop' : ''}`}
-                        title={sessionTitle}
-                    >
-                        {sessionTitle}
-                    </span>
-                    <span
-                        className="stage-pill"
-                        style={{
-                            background: `${stageInfo.color}20`,
-                            color: stageInfo.color,
-                            border: `1px solid ${stageInfo.color}40`
-                        }}
-                    >
-                        <span style={{
-                            display: 'inline-block',
-                            width: 6,
-                            height: 6,
-                            borderRadius: '50%',
-                            backgroundColor: stageInfo.color,
-                            marginRight: 6
-                        }}></span>
-                        {stageInfo.label}
-                    </span>
-                </div>
-                <div className="d-flex gap-2">
-                    {/* Discard button removed as per user request */}
-                </div>
+        <header className="chat-topbar" role="banner">
+            <div className="chat-topbar-title">
+                <span
+                    className={`session-title ${isTitleAnimating ? 'title-pop' : ''}`}
+                    title={sessionTitle}
+                >
+                    {sessionTitle || 'New Hire'}
+                </span>
             </div>
-        </>
+            <div className="stage-meta" aria-live="polite">
+                <span
+                    className={`stage-meta-dot ${isActive ? 'stage-meta-dot--pulse' : ''}`}
+                    aria-hidden="true"
+                />
+                <span>
+                    Stage {stage.index} / {TOTAL_STAGES} · {stage.label}
+                </span>
+            </div>
+        </header>
     );
 };
 

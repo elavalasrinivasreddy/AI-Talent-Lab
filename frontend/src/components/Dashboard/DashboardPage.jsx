@@ -544,12 +544,12 @@ function StatsStrip({ stats, role }) {
   if (!stats) return null
 
   const cards = [
-    { key: 'positions', label: 'Open Positions', value: stats.active_positions ?? 0, icon: '💼', gradient: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', roles: ['admin', 'hiring_manager', 'recruiter', 'dept_admin'] },
-    { key: 'candidates', label: 'Total Candidates', value: stats.total_candidates ?? 0, icon: '👥', gradient: 'linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%)', roles: ['admin', 'hiring_manager', 'dept_admin'] },
-    { key: 'applied', label: 'Applications', value: stats.applied_this_period ?? 0, icon: '📋', gradient: 'linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%)', roles: ['admin', 'hiring_manager', 'recruiter', 'dept_admin'] },
-    { key: 'interviews', label: 'Interviews', value: stats.interviews_this_period ?? 0, icon: '🎯', gradient: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)', roles: ['admin', 'hiring_manager', 'recruiter', 'dept_admin'] },
-    { key: 'offers', label: 'Offers', value: stats.offers_this_period ?? 0, icon: '🎉', gradient: 'linear-gradient(135deg, #22c55e 0%, #4ade80 100%)', roles: ['admin', 'hiring_manager', 'dept_admin'] },
-    { key: 'time', label: 'Avg. Time to Hire', value: stats.avg_time_to_hire ? `${stats.avg_time_to_hire}d` : '—', icon: '⏱', gradient: 'linear-gradient(135deg, #fb923c 0%, #fdba74 100%)', roles: ['admin', 'dept_admin'] },
+    { key: 'positions', label: 'Open Positions', value: stats.active_positions ?? 0, icon: '💼', gradient: 'linear-gradient(135deg, #0D9488 0%, #14B8A6 100%)', roles: ['admin', 'hiring_manager', 'recruiter', 'dept_admin'] },
+    { key: 'candidates', label: 'Total Candidates', value: stats.total_candidates ?? 0, icon: '👥', gradient: 'linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)', roles: ['admin', 'hiring_manager', 'dept_admin'] },
+    { key: 'applied', label: 'Applications', value: stats.applied_this_period ?? 0, icon: '📋', gradient: 'linear-gradient(135deg, #6366F1 0%, #818CF8 100%)', roles: ['admin', 'hiring_manager', 'recruiter', 'dept_admin'] },
+    { key: 'interviews', label: 'Interviews', value: stats.interviews_this_period ?? 0, icon: '🎯', gradient: 'linear-gradient(135deg, #06B6D4 0%, #22D3EE 100%)', roles: ['admin', 'hiring_manager', 'recruiter', 'dept_admin'] },
+    { key: 'offers', label: 'Offers', value: stats.offers_this_period ?? 0, icon: '🎉', gradient: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)', roles: ['admin', 'hiring_manager', 'dept_admin'] },
+    { key: 'time', label: 'Avg. Time to Hire', value: stats.avg_time_to_hire ? `${stats.avg_time_to_hire}d` : '—', icon: '⏱', gradient: 'linear-gradient(135deg, #D97706 0%, #F59E0B 100%)', roles: ['admin', 'dept_admin'] },
   ].filter(c => c.roles.includes(role))
 
   return (
@@ -573,12 +573,12 @@ function StatsStrip({ stats, role }) {
 
 function FunnelViz({ funnel, role }) {
   const stages = [
-    { key: 'sourced', label: 'Sourced', color: '#6366f1', emoji: '🔍' },
-    { key: 'emailed', label: 'Outreach', color: '#8b5cf6', emoji: '📧' },
-    { key: 'applied', label: 'Applied', color: '#0ea5e9', emoji: '📋' },
-    { key: 'screening', label: 'Screening', color: '#f59e0b', emoji: '🔎' },
-    { key: 'interview', label: 'Interview', color: '#fb923c', emoji: '🎙' },
-    { key: 'selected', label: 'Selected', color: '#22c55e', emoji: '✅' },
+    { key: 'sourced', label: 'Sourced', color: '#06B6D4', emoji: '🔍' },
+    { key: 'emailed', label: 'Outreach', color: '#8B5CF6', emoji: '📧' },
+    { key: 'applied', label: 'Applied', color: '#3B82F6', emoji: '📋' },
+    { key: 'screening', label: 'Screening', color: '#0D9488', emoji: '🔎' },
+    { key: 'interview', label: 'Interview', color: '#6366F1', emoji: '🎙' },
+    { key: 'selected', label: 'Selected', color: '#10B981', emoji: '✅' },
   ]
   const maxVal = Math.max(...stages.map(s => funnel[s.key] || 0), 1)
 
@@ -804,17 +804,17 @@ function DeptOverview({ positions }) {
 function TodaysFocus({ stats, navigate }) {
   const items = [
     stats.applied_this_period > 0 && {
-      icon: '📥', color: '#6366f1',
+      icon: '📥', color: '#3B82F6',
       label: `${stats.applied_this_period} new application${stats.applied_this_period !== 1 ? 's' : ''} to review`,
       to: '/positions',
     },
     stats.interviews_this_period > 0 && {
-      icon: '🎙', color: '#8b5cf6',
+      icon: '🎙', color: '#6366F1',
       label: `${stats.interviews_this_period} interview${stats.interviews_this_period !== 1 ? 's' : ''} scheduled`,
       to: '/positions',
     },
     stats.pending_feedback > 0 && {
-      icon: '⏳', color: '#f59e0b',
+      icon: '⏳', color: '#D97706',
       label: `${stats.pending_feedback} panel feedback${stats.pending_feedback !== 1 ? 's' : ''} still pending`,
       to: '/positions',
     },
@@ -888,13 +888,13 @@ function timeAgo(dateStr) {
 // ── AI Copilot Bar ──────────────────────────────────────────────────────────
 
 const SUGGESTION_ICONS = {
-  uncontacted_high_score: { icon: '🔥', color: '#f97316' },
-  overdue_feedback: { icon: '⏰', color: '#eab308' },
-  stale_position: { icon: '📉', color: '#ef4444' },
-  interview_today: { icon: '🎙', color: '#8b5cf6' },
-  pending_rejection: { icon: '📤', color: '#f59e0b' },
-  pool_match: { icon: '🎯', color: '#22c55e' },
-  default: { icon: '💡', color: '#6366f1' },
+  uncontacted_high_score: { icon: '🔥', color: '#F97316' },
+  overdue_feedback: { icon: '⏰', color: '#D97706' },
+  stale_position: { icon: '📉', color: '#EF4444' },
+  interview_today: { icon: '🎙', color: '#6366F1' },
+  pending_rejection: { icon: '📤', color: '#8B5CF6' },
+  pool_match: { icon: '🎯', color: '#10B981' },
+  default: { icon: '💡', color: '#0D9488' },
 }
 
 function CopilotBar({ suggestions, onDismiss, onDismissAll, navigate }) {

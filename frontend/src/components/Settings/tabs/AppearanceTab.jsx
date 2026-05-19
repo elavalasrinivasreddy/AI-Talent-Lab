@@ -5,7 +5,7 @@ import api from '../../../utils/api'
 export default function AppearanceTab() {
   const { theme, setTheme } = useTheme()
   const [branding, setBranding] = useState({
-    career_primary_color: '#6366f1',
+    career_primary_color: '#0D9488',
     career_banner_url: '',
     career_tagline: '',
   })
@@ -16,7 +16,7 @@ export default function AppearanceTab() {
     api.get('/settings/org').then(({ data }) => {
       const org = data.org || {}
       setBranding({
-        career_primary_color: org.career_primary_color || '#6366f1',
+        career_primary_color: org.career_primary_color || '#0D9488',
         career_banner_url: org.career_banner_url || '',
         career_tagline: org.career_tagline || '',
       })
@@ -101,7 +101,7 @@ export default function AppearanceTab() {
               type="text"
               value={branding.career_primary_color}
               onChange={e => setBranding(b => ({ ...b, career_primary_color: e.target.value }))}
-              placeholder="#6366f1"
+              placeholder="#0D9488"
               style={{ width: 120, fontFamily: 'monospace' }}
             />
             <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>

@@ -60,7 +60,7 @@ export default function DeleteMyDataPage() {
           <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
             <rect width="40" height="40" rx="10" fill="url(#g1)" />
             <path d="M12 24h16M12 20h16M16 16h8" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
-            <defs><linearGradient id="g1" x1="0" y1="0" x2="40" y2="40"><stop stopColor="#6366f1" /><stop offset="1" stopColor="#8b5cf6" /></linearGradient></defs>
+            <defs><linearGradient id="g1" x1="0" y1="0" x2="40" y2="40"><stop stopColor="#0D9488" /><stop offset="1" stopColor="#14B8A6" /></linearGradient></defs>
           </svg>
           <span>AI Talent Lab</span>
         </div>

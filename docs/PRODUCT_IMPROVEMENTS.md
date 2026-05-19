@@ -154,6 +154,36 @@ Priority order based on user impact:
 - Reduces scheduling back-and-forth
 - Requires calendar integration to be live first
 
+### 5.6 Hire Request — Multi-Approver Relay + Wizard Polish
+
+**Current state (Phase 1, shipped 2026-05-19):**
+- Dedicated `/api/v1/hire-requests/*` router (service + repository, transactions, audit log, tenant isolation)
+- Frontend pages live: `/hire-requests` (list) · `/new` (wizard) · `/:id` (detail) · `/:id/edit`
+- Status flow: `pending → accepted → fulfilled` plus `cancelled`
+- Sidebar nav with pending-count badge
+- Dashboard widgets keep working via legacy `/positions/requests/*` shims
+- Relay viz renders dept-head + finance steps as **dimmed Phase 2 placeholders**
+
+**Phase 2 — backend (multi-approver flow):**
+- Add new statuses: `pending_dept_approval`, `pending_finance`, `approved`
+- Add `approval_chain JSONB` column (rows of `{role, user_id, status, decided_at, note}`)
+- New endpoints: `POST /:id/approve`, `POST /:id/reject`, `POST /:id/assign-recruiter`
+- Magic-link approval emails for dept-head + finance (reuse `consumed_magic_links` single-use enforcement from auth)
+- Service-layer FSM enforcing transitions per redesign §6 diagram
+
+**Phase 2 — frontend (wizard polish):**
+- **Two-column wizard layout (60/40)** — left "The role", right "Routing + context"
+- **Right-column approval routing toggles** — Dept-head / Finance / CEO checkboxes; finance auto-toggles when `comp_max > org_finance_threshold`
+- **"Context for the AI" explainer card** — preview of what auto-seeds the JD chat on pickup
+- **"Similar past requests" reference card** — needs an embedding-similarity service over historical `hire_requests`
+- **AI market-alignment estimate under comp band** — LLM/Tavily call ("₹30–55 LPA covers ~85% of Bangalore 4-8yr Go engineers")
+- **Auto-save every 30s while typing** — draft persistence for long wizard sessions
+- **Comment thread on detail page** — back-and-forth between HM and approver; needs `hire_request_comments` table
+
+**Production hardening** (not blocking Phase 1, tracked separately): see `docs/TECH_DEBT.md` for rate limiting on `/hire-requests/*`, cursor pagination on list endpoint, and unit/integration test coverage for `HireRequestService`.
+
+**Source-of-truth spec:** `docs/redesign/09_hire_request.md` §14 (Phase 1 vs Phase 2 split).
+
 ---
 
 ## 6. Phase 3 Roadmap

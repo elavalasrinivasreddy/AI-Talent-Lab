@@ -1,6 +1,8 @@
 # AI Talent Lab — Product Plan
-> **Version 2.1 — Finalized**
+> **Version 2.2 — May 18, 2026**
 > Single source of truth for all team members. Read this before building anything.
+>
+> **What changed in v2.2 (visual identity overhaul):** Primary color → Teal `#0D9488` (distinctive vs Greenhouse green / Lever blue-grey / Ashby dark / and the indigo-violet palette identifying every AI product). Font → Plus Jakarta Sans. Emoji nav icons → inline SVG. Pipeline stage palette refined for semantic clarity. **No product, scope, schema, API, or backend changes** — pure visual + frontend token layer. See `docs/FRONTEND_PLAN.md §2` for full token system.
 
 ---
 
@@ -361,6 +363,8 @@ Sourced → Emailed → Applied → Screening → Interview (R1, R2...) → Sele
 | 6 | GDPR data export (Article 20) | ❌ Not started | `GET /api/v1/gdpr/export/{candidate_id}` backend exists, no frontend |
 | 7 | Audit log UI | ❌ Not started | Settings → Security: table of all org actions with filters |
 | 8 | Hiring Manager dashboard | ❌ Not started | Role-focused view: assigned positions + weekly interview schedule |
+| 9 | Hire Request — multi-approver relay | ❌ Not started | Phase 1 ships simple `pending→accepted→fulfilled` flow (shipped 2026-05-19). Phase 2 adds dept-head + finance approval steps, magic-link approval emails, `approval_chain` JSONB column. See `docs/redesign/09_hire_request.md` §14 (B1–B3) |
+| 10 | Hire Request — wizard polish | ❌ Not started | Right-column approval-routing toggles, "Context for the AI" card, "Similar past requests" card (embedding similarity), AI market-alignment estimate, auto-save, comment thread. See `docs/redesign/09_hire_request.md` §14 (F1–F7) |
 
 ---
 

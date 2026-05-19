@@ -32,11 +32,11 @@
   font-weight: 700;
   padding: 3px 12px;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15));
+  background: linear-gradient(135deg, rgba(13,148,136,0.15), rgba(139,92,246,0.15));
   color: var(--color-primary);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  border: 1px solid rgba(99,102,241,0.25);
+  border: 1px solid rgba(13,148,136,0.25);
 }
 
 .dash-subtitle {
@@ -69,7 +69,7 @@
 .dash-period-btn.active {
   background: var(--color-primary);
   color: #fff;
-  box-shadow: 0 2px 12px rgba(99,102,241,0.35);
+  box-shadow: 0 2px 12px rgba(13,148,136,0.35);
 }
 
 .dash-period-btn:hover:not(.active) {
@@ -499,7 +499,7 @@
 }
 
 .dash-empty-cta:hover {
-  box-shadow: 0 0 20px rgba(99,102,241,0.3);
+  box-shadow: 0 0 20px rgba(13,148,136,0.3);
   transform: translateY(-1px);
 }
 
@@ -525,8 +525,8 @@
 /* ── AI Copilot Bar ─────────────────────────────────────────────────────────── */
 
 .copilot-bar {
-  background: linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.06) 50%, rgba(34,197,94,0.04) 100%);
-  border: 1px solid rgba(99,102,241,0.2);
+  background: linear-gradient(135deg, rgba(13,148,136,0.08) 0%, rgba(139,92,246,0.06) 50%, rgba(34,197,94,0.04) 100%);
+  border: 1px solid rgba(13,148,136,0.2);
   border-radius: var(--radius-xl);
   padding: var(--space-4);
   margin-bottom: var(--space-5);
@@ -564,8 +564,8 @@
 }
 
 @keyframes copilotPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
-  50% { box-shadow: 0 0 0 6px rgba(99,102,241,0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(13,148,136,0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(13,148,136,0); }
 }
 
 .copilot-count {
@@ -614,7 +614,7 @@
 
 .copilot-suggestion:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(99,102,241,0.1);
+  box-shadow: 0 2px 8px rgba(13,148,136,0.1);
 }
 
 .copilot-suggestion-icon {
@@ -654,7 +654,7 @@
   transition: all var(--transition-fast);
 }
 .copilot-action-btn:hover {
-  box-shadow: 0 2px 12px rgba(99,102,241,0.35);
+  box-shadow: 0 2px 12px rgba(13,148,136,0.35);
   transform: translateY(-1px);
 }
 

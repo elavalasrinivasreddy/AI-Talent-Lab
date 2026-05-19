@@ -46,6 +46,16 @@ class RegisterRequest(BaseModel):
         return v
 
 
+class MagicLinkRequest(BaseModel):
+    """Request a magic-link sign-in email."""
+    email: str
+
+
+class MagicLinkVerifyRequest(BaseModel):
+    """Exchange a magic-link token for a session JWT."""
+    token: str
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str

@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import LoginPage from './components/Auth/LoginPage'
 import RegisterPage from './components/Auth/RegisterPage'
+import MagicLinkExchange from './components/Auth/MagicLinkExchange'
 import Sidebar from './components/Sidebar/Sidebar'
 import NotificationBell from './components/common/NotificationBell'
 import SettingsPage from './components/Settings/SettingsPage'
@@ -20,6 +21,9 @@ import DeleteMyDataPage from './components/GDPR/DeleteMyDataPage'
 import CandidateStatusPage from './components/Status/CandidateStatusPage'
 import AnalyticsPage from './components/Analytics/AnalyticsPage'
 import PlatformPage from './components/Platform/PlatformPage'
+import HireRequestListPage from './components/HireRequests/HireRequestListPage'
+import HireRequestForm from './components/HireRequests/HireRequestForm'
+import HireRequestDetailPage from './components/HireRequests/HireRequestDetailPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -70,6 +74,9 @@ export const router = createBrowserRouter([
     ],
   },
 
+  // Magic-link exchange — always accessible, even when logged in (re-login flow)
+  { path: '/auth/verify', element: <MagicLinkExchange /> },
+
   // Protected routes
   {
     element: <AuthGuard />,
@@ -96,6 +103,12 @@ export const router = createBrowserRouter([
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/:tab', element: <SettingsPage /> },
           { path: '/analytics', element: <AnalyticsPage /> },
+
+          // Hire requests
+          { path: '/hire-requests', element: <HireRequestListPage /> },
+          { path: '/hire-requests/new', element: <HireRequestForm mode="create" /> },
+          { path: '/hire-requests/:id', element: <HireRequestDetailPage /> },
+          { path: '/hire-requests/:id/edit', element: <HireRequestForm mode="edit" /> },
         ],
       },
     ],

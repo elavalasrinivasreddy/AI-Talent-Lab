@@ -15,13 +15,26 @@ const PERIODS = [
 ]
 
 const STAGE_COLORS = {
-  sourced:   '#6366f1',
-  emailed:   '#8b5cf6',
-  applied:   '#0ea5e9',
-  screening: '#f59e0b',
-  interview: '#fb923c',
-  selected:  '#22c55e',
-  rejected:  '#ef4444',
+  sourced:   '#06B6D4',
+  emailed:   '#8B5CF6',
+  applied:   '#3B82F6',
+  screening: '#0D9488',
+  interview: '#6366F1',
+  selected:  '#10B981',
+  rejected:  '#64748B',
+}
+
+// Inline Lucide-style SVG icons (no external deps)
+const Icon = ({ d, size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {d}
+  </svg>
+)
+const ICONS = {
+  applications: <Icon d={<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></>} />,
+  clock: <Icon d={<><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>} />,
+  check: <Icon d={<polyline points="20 6 9 17 4 12" />} />,
+  award: <Icon d={<><circle cx="12" cy="8" r="6" /><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" /></>} />,
 }
 
 export default function AnalyticsPage() {
@@ -94,15 +107,15 @@ export default function AnalyticsPage() {
 
 function KPIStrip({ data }) {
   const kpis = [
-    { label: 'Total Applications', value: data.total_applications ?? '—', icon: '📋', color: '#6366f1' },
-    { label: 'Avg. Time to Hire', value: data.avg_time_to_hire ? `${Math.round(data.avg_time_to_hire)}d` : '—', icon: '⏱', color: '#f59e0b' },
-    { label: 'Selected', value: data.total_selected ?? '—', icon: '✅', color: '#22c55e' },
-    { label: 'Offer Accept Rate', value: data.offer_acceptance_rate ? `${data.offer_acceptance_rate}%` : '—', icon: '🎉', color: '#fb923c' },
+    { label: 'Total Applications', value: data.total_applications ?? '—', icon: ICONS.applications, color: '#0D9488' },
+    { label: 'Avg. Time to Hire',  value: data.avg_time_to_hire ? `${Math.round(data.avg_time_to_hire)}d` : '—', icon: ICONS.clock, color: '#D97706' },
+    { label: 'Selected',           value: data.total_selected ?? '—', icon: ICONS.check, color: '#10B981' },
+    { label: 'Offer Accept Rate',  value: data.offer_acceptance_rate ? `${data.offer_acceptance_rate}%` : '—', icon: ICONS.award, color: '#3B82F6' },
   ]
   return (
     <div className="analytics-kpi-strip">
       {kpis.map(k => (
-        <div key={k.label} className="analytics-kpi-card">
+        <div key={k.label} className="analytics-kpi-card" style={{ '--accent': k.color }}>
           <div className="analytics-kpi-icon" style={{ background: `${k.color}22`, color: k.color }}>{k.icon}</div>
           <div>
             <div className="analytics-kpi-value">{k.value}</div>
@@ -152,7 +165,7 @@ function FunnelCard({ funnel }) {
 
 function SourceCard({ sources }) {
   const total = sources.reduce((s, r) => s + (r.count || 0), 0) || 1
-  const colors = ['#6366f1', '#0ea5e9', '#22c55e', '#f59e0b', '#fb923c', '#8b5cf6']
+  const colors = ['#0D9488', '#3B82F6', '#10B981', '#D97706', '#8B5CF6', '#06B6D4']
   return (
     <div className="analytics-card">
       <h3 className="analytics-card-title">Source Effectiveness</h3>
@@ -211,9 +224,9 @@ function VelocityCard({ velocity }) {
         })}
       </div>
       <div className="analytics-velocity-legend">
-        <span><span style={{ background: '#6366f1' }} />Sourced</span>
-        <span><span style={{ background: '#0ea5e9' }} />Applied</span>
-        <span><span style={{ background: '#22c55e' }} />Hired</span>
+        <span><span style={{ background: '#06B6D4' }} />Sourced</span>
+        <span><span style={{ background: '#3B82F6' }} />Applied</span>
+        <span><span style={{ background: '#10B981' }} />Hired</span>
       </div>
     </div>
   )

@@ -1,6 +1,8 @@
 # AI Talent Lab — Frontend Plan
-> **Version 2.1 — Corrected & Complete**
-> Aligned with RESTRUCTURE_PLAN.md. PascalCase component folders, split CSS, hooks layer, full component tree including all new features.
+> **Version 2.2 — Design System Overhaul (May 18, 2026)**
+> v2.2 swaps the indigo-violet AI-default palette for a distinctive Teal primary (`#0D9488`) and replaces DM Sans with Plus Jakarta Sans. Pipeline stage colors stay semantically distinct (cyan→violet→blue→teal→indigo→emerald). Emoji nav icons replaced with inline Lucide-style SVG. No backend changes — purely token + visual layer. See §2 for the new tokens.
+>
+> v2.1: PascalCase component folders, split CSS, hooks layer, full component tree.
 
 ---
 
@@ -15,63 +17,71 @@
 | **HTTP Client** | Axios + native Fetch (SSE) | Axios for REST, Fetch for SSE streaming |
 | **Routing** | React Router v6 | URL-based, deep linking, code splitting |
 | **Markdown** | react-markdown + remark-gfm | JD rendering |
-| **Icons** | Inline SVG | No icon library dependency |
-| **Fonts** | DM Sans + DM Mono (Google Fonts) | Professional, distinctive |
+| **Icons** | Inline SVG (Lucide-style) | No icon library dependency |
+| **Fonts** | Plus Jakarta Sans + JetBrains Mono (Google Fonts) | Strong weight differentiation, geometric, distinctive vs DM Sans (v2.2 swap) |
 
 ---
 
 ## 2. Design System
 
+> **v2.2 design system (May 2026).** Source of truth: `frontend/src/styles/globals.css`.
+> Direction: "Serious AI Infrastructure" — premium, technical, calm. Distinctive vs. the indigo/violet AI-default palette used by ChatGPT, Linear, Notion AI, and most ATS competitors.
+
 ### 2.1 Color Palette
 
+**Why Teal?** No competing ATS (Greenhouse=botanical green, Lever=blue-grey, Ashby=dark, Workable=red, BambooHR=green) uses teal. Indigo `#6366f1` was identifying us with every other AI product 2023–2026. Teal reads as confident, technical, calm — and supports high contrast in both dark and light modes.
+
 ```css
-/* Dark Theme (default) */
+/* Dark Theme (default) — frontend/src/styles/globals.css */
 :root {
-  --bg-primary:      #0a0a1a;
-  --bg-secondary:    #12122a;
-  --bg-tertiary:     #1a1a3e;
-  --bg-hover:        #22224a;
-  --text-primary:    #e8e8f0;
-  --text-secondary:  #9898b8;
-  --text-tertiary:   #666680;
-  --accent-primary:  #667eea;
-  --accent-secondary:#764ba2;
-  --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --accent-success:  #22c55e;
-  --accent-warning:  #f59e0b;
-  --accent-danger:   #ef4444;
-  --accent-info:     #06b6d4;
-  --border:          #2a2a4a;
-  --border-light:    #1a1a3e;
-  --shadow:          0 4px 24px rgba(0,0,0,0.3);
-  --shadow-lg:       0 8px 40px rgba(0,0,0,0.4);
+  /* Backgrounds — deeper, "AI infrastructure" navy/slate */
+  --color-bg-primary:    #090E1A;
+  --color-bg-secondary:  #0F1524;
+  --color-bg-tertiary:   #161D2F;
+  --color-bg-card:       #111827;
+  --color-bg-elevated:   #1A2236;
+  --color-bg-hover:      #1E2740;
+  --color-border:        #1E3047;
+  --color-border-strong: #2C3E5D;
+
+  --color-text-primary:   #F1F5F9;
+  --color-text-secondary: #94A3B8;
+  --color-text-tertiary:  #64748B;
+  --color-text-muted:     #475569;
+
+  /* Primary — Teal */
+  --color-primary:        #0D9488;   /* teal-600  */
+  --color-primary-hover:  #14B8A6;   /* teal-500  */
+  --color-primary-active: #0F766E;   /* teal-700  */
+  --color-primary-bg:     rgba(13, 148, 136, 0.12);
+
+  /* Semantic */
+  --color-success: #10B981;   /* emerald — hired / positive terminal */
+  --color-warning: #D97706;   /* amber  — pending / offer / caution  */
+  --color-danger:  #EF4444;   /* red    — blocked / destructive      */
+  --color-info:    #3B82F6;   /* blue   — info / applied stage       */
 }
 
-/* Light Theme */
-.theme-light {
-  --bg-primary:    #f8f9fc;
-  --bg-secondary:  #ffffff;
-  --bg-tertiary:   #f0f1f5;
-  --bg-hover:      #e8e9f0;
-  --text-primary:  #1a1a2e;
-  --text-secondary:#555570;
-  --border:        #e0e0ee;
-  --shadow:        0 4px 24px rgba(0,0,0,0.08);
-}
+/* Light theme: same primary, inverted neutrals (see globals.css). */
 ```
 
 ### 2.2 Typography
 
+**Why Plus Jakarta Sans?** Strong weight differentiation (300–800), modern geometric letterforms, distinctive vs. DM Sans / Inter / system stacks. Renders crisp at small UI sizes (12–14px). JetBrains Mono kept for tabular numbers and code blocks.
+
 ```css
---font-sans: 'DM Sans', -apple-system, sans-serif;
---font-mono: 'DM Mono', monospace;
---text-xs:   0.75rem;    /* 12px */
---text-sm:   0.875rem;   /* 14px */
---text-base: 1rem;       /* 16px */
---text-lg:   1.125rem;   /* 18px */
---text-xl:   1.25rem;    /* 20px */
---text-2xl:  1.5rem;     /* 24px */
---text-3xl:  2rem;       /* 32px */
+--font-primary: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+--font-mono:    'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+--font-size-xs:   0.75rem;     /* 12px — captions, badge text       */
+--font-size-sm:   0.8125rem;   /* 13px — body small, table cells    */
+--font-size-base: 0.9375rem;   /* 15px — body                       */
+--font-size-lg:   1.25rem;     /* 20px — card titles                */
+--font-size-xl:   1.5rem;      /* 24px — page subtitles             */
+--font-size-2xl:  2rem;        /* 32px — page H1                    */
+
+/* Weights: extrabold (800) reserved for stat values, hero numbers */
+--font-weight-extrabold: 800;
 ```
 
 ### 2.3 Spacing & Layout Tokens
@@ -83,18 +93,26 @@
 --sidebar-width: 280px;  --topbar-height: 56px;
 ```
 
-### 2.4 Pipeline Status Colors
+### 2.4 Pipeline Status Colors (v2.2)
+
+> Each stage carries a distinct hue so funnel/kanban/bar-chart visualizations stay readable. Screening uses the brand teal because that's where the ATS does its primary work — every other stage uses a non-teal hue so "screening = active" reads clearly. **Source of truth:** `frontend/src/utils/constants.js` (`PIPELINE_STAGES`).
 
 ```css
---status-sourced:   #06b6d4;  /* cyan */
---status-emailed:   #8b5cf6;  /* violet */
---status-applied:   #3b82f6;  /* blue */
---status-screening: #f59e0b;  /* amber */
---status-interview: #667eea;  /* purple-blue */
---status-selected:  #22c55e;  /* green */
---status-rejected:  #ef4444;  /* red */
---status-on-hold:   #6b7280;  /* gray */
+--color-stage-sourced:   #06B6D4;  /* cyan     — AI found them, cold start  */
+--color-stage-emailed:   #8B5CF6;  /* violet   — outbound in motion         */
+--color-stage-applied:   #3B82F6;  /* blue     — intent confirmed           */
+--color-stage-screening: #0D9488;  /* teal     — we're actively reviewing   */
+--color-stage-interview: #6366F1;  /* indigo   — formal evaluation          */
+--color-stage-selected:  #10B981;  /* emerald  — positive terminal (hired)  */
+--color-stage-rejected:  #64748B;  /* slate    — neutral terminal (closed)  */
+--color-stage-on-hold:   #D97706;  /* amber    — paused                     */
 ```
+
+### 2.5 Iconography (v2.2)
+
+- **Nav & UI icons**: inline Lucide-style SVG (16–20px, `stroke="currentColor"`, no external dep). Defined per-component (Sidebar, Settings, Analytics) — no central icon registry yet; introduce one only when 4+ components share a non-trivial set.
+- **No emoji icons in navigation, tabs, or KPI labels.** Emoji is reserved for activity feed / chat content where it adds warmth (not structure).
+- Avatars use initial letters on a teal→teal-light gradient.
 
 ---
 

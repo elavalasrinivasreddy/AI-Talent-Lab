@@ -793,6 +793,30 @@ async def run_migrations(conn) -> None:
             ALTER TABLE hire_requests ADD COLUMN position_id INTEGER REFERENCES positions(id);
         END IF;
     END $$;
+
+    -- hire_requests: comp band + location (used by the redesigned wizard / detail UI)
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='comp_min') THEN
+            ALTER TABLE hire_requests
+                ADD COLUMN comp_min INTEGER,
+                ADD COLUMN comp_max INTEGER,
+                ADD COLUMN location TEXT;
+        END IF;
+    END $$;
+
+    -- consumed_magic_links: enforces single-use on magic-link JWTs (auth, password_reset, etc.)
+    -- jti is the unique JWT id minted at issue time; on verify we INSERT and rely on UNIQUE
+    -- to reject replays. Periodic cleanup removes rows older than 30 days.
+    CREATE TABLE IF NOT EXISTS consumed_magic_links (
+        jti              TEXT PRIMARY KEY,
+        token_type       TEXT NOT NULL,
+        entity_id        INTEGER,
+        consumed_at      TIMESTAMP DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_consumed_magic_links_consumed_at
+        ON consumed_magic_links(consumed_at);
     """
     await conn.execute(feature_sql)
     logger.info("  Feature schema additions (v2) applied.")

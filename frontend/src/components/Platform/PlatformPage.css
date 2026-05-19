@@ -23,7 +23,7 @@
 
 .plat-logo-icon {
   width: 36px; height: 36px;
-  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  background: linear-gradient(135deg, #0D9488, #7c3aed);
   border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   padding: 7px;
@@ -37,13 +37,13 @@
 .plat-header-right { display: flex; align-items: center; gap: 12px; }
 
 .plat-admin-pill {
-  background: rgba(99,102,241,0.15);
-  color: #a78bfa;
+  background: rgba(13,148,136,0.15);
+  color: #14B8A6;
   font-size: 11px;
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 20px;
-  border: 1px solid rgba(99,102,241,0.25);
+  border: 1px solid rgba(13,148,136,0.25);
   letter-spacing: 0.3px;
 }
 
@@ -95,8 +95,8 @@
 }
 .plat-tab:hover { color: var(--color-text-primary, #f1f5f9); }
 .plat-tab.active {
-  color: #a78bfa;
-  border-bottom-color: #6366f1;
+  color: #14B8A6;
+  border-bottom-color: #0D9488;
 }
 
 .plat-refresh-btn {
@@ -161,8 +161,8 @@
 }
 
 .plat-growth-card {
-  background: rgba(99,102,241,0.06);
-  border: 1px solid rgba(99,102,241,0.12);
+  background: rgba(13,148,136,0.06);
+  border: 1px solid rgba(13,148,136,0.12);
   border-radius: 12px;
   padding: 16px;
   display: flex;
@@ -172,7 +172,7 @@
   text-align: center;
 }
 .plat-growth-icon { font-size: 22px; }
-.plat-growth-value { font-size: 22px; font-weight: 800; color: #a78bfa; }
+.plat-growth-value { font-size: 22px; font-weight: 800; color: #14B8A6; }
 .plat-growth-label { font-size: 11px; color: var(--color-text-secondary, rgba(255,255,255,0.45)); font-weight: 500; }
 
 /* ── Card ── */
@@ -250,12 +250,12 @@
 .plat-activity-dot {
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: #6366f1;
+  background: #0D9488;
   flex-shrink: 0;
 }
 
 .plat-activity-body { flex: 1; font-size: 13px; }
-.plat-activity-org  { font-weight: 600; color: #a78bfa; }
+.plat-activity-org  { font-weight: 600; color: #14B8A6; }
 .plat-activity-text { color: var(--color-text-secondary, rgba(255,255,255,0.6)); }
 .plat-activity-time { font-size: 11px; color: var(--color-text-secondary, rgba(255,255,255,0.35)); flex-shrink: 0; }
 

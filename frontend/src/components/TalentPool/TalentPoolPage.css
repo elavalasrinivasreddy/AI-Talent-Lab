@@ -21,8 +21,8 @@
 
 /* ── Upload Zone ── */
 .tp-upload-zone {
-  background: rgba(99,102,241,0.04);
-  border: 2px dashed rgba(99,102,241,0.25);
+  background: rgba(13,148,136,0.04);
+  border: 2px dashed rgba(13,148,136,0.25);
   border-radius: 18px;
   padding: 40px 24px;
   display: flex;
@@ -35,8 +35,8 @@
   user-select: none;
 }
 .tp-upload-zone:hover, .tp-upload-zone.dragging {
-  border-color: #6366f1;
-  background: rgba(99,102,241,0.09);
+  border-color: #0D9488;
+  background: rgba(13,148,136,0.09);
   transform: scale(1.005);
 }
 .tp-upload-zone.uploading { cursor: default; }
@@ -55,7 +55,7 @@
 .tp-upload-text span { color: rgba(255,255,255,0.4); }
 .tp-upload-btn {
   padding: 8px 18px;
-  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  background: linear-gradient(135deg, #0D9488, #7c3aed);
   border: none;
   border-radius: 8px;
   color: white;
@@ -74,8 +74,8 @@
 }
 .tp-spinner {
   width: 32px; height: 32px;
-  border: 3px solid rgba(99,102,241,0.2);
-  border-top-color: #6366f1;
+  border: 3px solid rgba(13,148,136,0.2);
+  border-top-color: #0D9488;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -145,7 +145,7 @@
 .tp-suggest-select option { background: #1a1a24; }
 .tp-suggest-btn {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  background: linear-gradient(135deg, #0D9488, #7c3aed);
   border: none;
   border-radius: 10px;
   color: white;
@@ -166,8 +166,8 @@
   flex-wrap: wrap;
 }
 .tp-suggest-card {
-  background: rgba(99,102,241,0.07);
-  border: 1px solid rgba(99,102,241,0.15);
+  background: rgba(13,148,136,0.07);
+  border: 1px solid rgba(13,148,136,0.15);
   border-radius: 12px;
   padding: 16px;
   min-width: 150px;
@@ -176,23 +176,23 @@
   gap: 6px;
   animation: fadeIn 200ms ease;
 }
-.tp-suggest-score { font-size: 22px; font-weight: 800; color: #a78bfa; }
+.tp-suggest-score { font-size: 22px; font-weight: 800; color: #14B8A6; }
 .tp-suggest-name { font-size: 14px; font-weight: 700; color: #e2e8f0; }
 .tp-suggest-title { font-size: 12px; color: rgba(255,255,255,0.4); }
 .tp-suggest-reason { font-size: 11px; font-weight: 600; }
 .tp-suggest-add-btn {
   margin-top: 6px;
   padding: 8px 14px;
-  background: rgba(99,102,241,0.15);
-  border: 1px solid rgba(99,102,241,0.3);
+  background: rgba(13,148,136,0.15);
+  border: 1px solid rgba(13,148,136,0.3);
   border-radius: 8px;
-  color: #a78bfa;
+  color: #14B8A6;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 150ms;
 }
-.tp-suggest-add-btn:hover { background: rgba(99,102,241,0.25); }
+.tp-suggest-add-btn:hover { background: rgba(13,148,136,0.25); }
 
 /* ── Filters ── */
 .tp-filters {
@@ -255,8 +255,8 @@
   transition: all 200ms ease;
 }
 .tp-card:hover {
-  border-color: rgba(99,102,241,0.3);
-  background: rgba(99,102,241,0.04);
+  border-color: rgba(13,148,136,0.3);
+  background: rgba(13,148,136,0.04);
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.3);
 }
@@ -264,7 +264,7 @@
 .tp-card-avatar {
   width: 40px; height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  background: linear-gradient(135deg, #0D9488, #7c3aed);
   color: white;
   font-size: 14px;
   font-weight: 700;
@@ -286,7 +286,7 @@
 .tp-card-meta { display: flex; gap: 6px; font-size: 12px; color: rgba(255,255,255,0.35); flex-wrap: wrap; }
 .tp-card-skills { display: flex; gap: 6px; flex-wrap: wrap; }
 .tp-skill-tag {
-  background: rgba(99,102,241,0.1);
+  background: rgba(13,148,136,0.1);
   color: rgba(167,139,250,0.9);
   border-radius: 4px;
   padding: 2px 8px;
@@ -299,7 +299,7 @@
 .tp-view-btn {
   background: none;
   border: none;
-  color: #a78bfa;
+  color: #14B8A6;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -332,9 +332,9 @@
   transition: all 150ms;
 }
 .tp-page-btn:hover, .tp-page-btn.active {
-  background: rgba(99,102,241,0.2);
-  border-color: #6366f1;
-  color: #a78bfa;
+  background: rgba(13,148,136,0.2);
+  border-color: #0D9488;
+  color: #14B8A6;
 }
 
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }

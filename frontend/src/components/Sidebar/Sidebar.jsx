@@ -1,23 +1,41 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useChat } from '../../context/ChatContext'
+import { hireRequestsApi } from '../../utils/api'
 import SidebarSessions from './SidebarSessions'
 import '../../styles/layout.css'
+
+// Inline Lucide-style SVG icons (no external deps)
+const SvgIcon = ({ children }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
+)
+const Icons = {
+  sparkles:   <SvgIcon><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" /></SvgIcon>,
+  dashboard:  <SvgIcon><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></SvgIcon>,
+  briefcase:  <SvgIcon><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></SvgIcon>,
+  users:      <SvgIcon><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></SvgIcon>,
+  trending:   <SvgIcon><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></SvgIcon>,
+  settings:   <SvgIcon><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></SvgIcon>,
+  terminal:   <SvgIcon><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></SvgIcon>,
+  inbox:      <SvgIcon><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></SvgIcon>,
+}
 
 // roles: which roles can see this item. Omit = all roles.
 const ALL_NAV = [
   { section: 'Main', items: [
-    { to: '/chat',      icon: '✨', label: 'New Hire',   roles: ['admin', 'recruiter'] },
-    { to: '/dashboard', icon: '📊', label: 'Dashboard' },
+    { to: '/chat',      icon: Icons.sparkles,  label: 'New Hire',   roles: ['admin', 'recruiter'] },
+    { to: '/dashboard', icon: Icons.dashboard, label: 'Dashboard' },
   ]},
   { section: 'Hiring', items: [
-    { to: '/positions',   icon: '💼', label: 'Positions' },
-    { to: '/talent-pool', icon: '🗃', label: 'Talent Pool', roles: ['admin', 'recruiter'] },
-    { to: '/analytics',   icon: '📈', label: 'Analytics',   roles: ['admin', 'recruiter', 'dept_admin'] },
+    { to: '/positions',     icon: Icons.briefcase, label: 'Positions' },
+    { to: '/hire-requests', icon: Icons.inbox,     label: 'Hire Requests', roles: ['admin', 'recruiter', 'hiring_manager', 'dept_admin'], badge: 'hire_requests_pending' },
+    { to: '/talent-pool',   icon: Icons.users,     label: 'Talent Pool',   roles: ['admin', 'recruiter'] },
+    { to: '/analytics',     icon: Icons.trending,  label: 'Analytics',     roles: ['admin', 'recruiter', 'dept_admin'] },
   ]},
   { section: 'System', items: [
-    { to: '/settings', icon: '⚙️', label: 'Settings' },
-    { to: '/dev',      icon: '🛠', label: 'Dev Tools',   roles: ['admin', 'recruiter'] },
+    { to: '/settings', icon: Icons.settings, label: 'Settings' },
+    { to: '/dev',      icon: Icons.terminal, label: 'Dev Tools',   roles: ['admin', 'recruiter'] },
   ]},
 ]
 
@@ -31,7 +49,36 @@ function getNavForRole(role) {
 export default function Sidebar() {
   const { user, org, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { messages, workflowStage, resetChat } = useChat()
+
+  // Sidebar badge counts. Currently only hire-requests pending count is
+  // shown; refresh when the user navigates to or away from /hire-requests
+  // (so picking up or filing reflects immediately) and once per minute.
+  const [badges, setBadges] = useState({})
+
+  useEffect(() => {
+    const role = user?.role
+    if (!role) return
+    // hiring_manager doesn't need the org-wide pending count; their "Mine"
+    // tab is the meaningful one and we don't have a count for that yet.
+    if (!['admin', 'recruiter'].includes(role)) return
+
+    let cancelled = false
+    const refresh = async () => {
+      try {
+        const data = await hireRequestsApi.pendingCount()
+        if (!cancelled) {
+          setBadges(b => ({ ...b, hire_requests_pending: data?.count ?? 0 }))
+        }
+      } catch {
+        // sidebar badge is best-effort
+      }
+    }
+    refresh()
+    const intervalId = setInterval(refresh, 60_000)
+    return () => { cancelled = true; clearInterval(intervalId) }
+  }, [user?.role, location.pathname])
 
   const handleLogout = () => {
     logout()
@@ -97,7 +144,10 @@ export default function Sidebar() {
                   }
                 >
                   <span className="sidebar-link-icon">{item.icon}</span>
-                  {item.label}
+                  <span style={{ flex: 1 }}>{item.label}</span>
+                  {item.badge && badges[item.badge] > 0 && (
+                    <span className="sidebar-badge">{badges[item.badge]}</span>
+                  )}
                 </NavLink>
               )
             ))}

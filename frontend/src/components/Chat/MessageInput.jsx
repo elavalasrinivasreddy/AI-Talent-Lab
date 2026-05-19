@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from '../../context/ChatContext';
+import { IconPaperclip, IconSend, IconLoader } from './icons';
 
 const MessageInput = () => {
     const { sendMessage, isStreaming, workflowStage, currentSessionId } = useChat();
@@ -8,7 +9,6 @@ const MessageInput = () => {
     const textareaRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    // Auto-resize textarea
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -16,23 +16,21 @@ const MessageInput = () => {
         }
     }, [input]);
 
-    // Disabled states per spec
     const isComplete = workflowStage === 'complete';
     const isDisabled = isStreaming || fileUploading;
 
     const getPlaceholder = () => {
-        if (isComplete) return 'Position saved. Manage it in the dashboard.';
-        if (isStreaming) return 'AI is thinking...';
-        return 'Type your requirements here...';
+        if (isComplete) return 'Position saved — manage it from the dashboard.';
+        if (isStreaming) return 'AI is thinking…';
+        if (workflowStage === 'intake') return 'Describe the role you want to hire for…';
+        return 'Reply or refine…';
     };
 
     const handleSend = () => {
         if (!input.trim() || isDisabled || isComplete) return;
         sendMessage({ message: input.trim() });
         setInput('');
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-        }
+        if (textareaRef.current) textareaRef.current.style.height = 'auto';
     };
 
     const handleKeyDown = (e) => {
@@ -42,26 +40,20 @@ const MessageInput = () => {
         }
     };
 
-    const triggerFileUpload = () => {
-        if (fileInputRef.current) {
-            fileInputRef.current.click();
-        }
-    };
+    const triggerFileUpload = () => fileInputRef.current?.click();
 
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        // File size check (10MB max)
         if (file.size > 10 * 1024 * 1024) {
-            alert("File too large. Maximum 10MB.");
+            alert('File too large. Maximum 10MB.');
             return;
         }
 
         setFileUploading(true);
 
         try {
-            // If no session yet, just prefill the input with file name
             if (!currentSessionId) {
                 setInput(`I've uploaded a reference JD (${file.name}). Please use it to extract requirements.`);
                 setFileUploading(false);
@@ -73,99 +65,76 @@ const MessageInput = () => {
 
             const response = await fetch(`/api/v1/chat/sessions/${currentSessionId}/upload`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: formData
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                body: formData,
             });
 
             if (response.ok) {
                 setInput(`I've uploaded a reference JD (${file.name}). Please use it to extract requirements.`);
             } else {
-                alert("Could not read this file. Please try a different PDF or paste the JD as text.");
+                alert('Could not read this file. Please try a different PDF or paste the JD as text.');
             }
         } catch (err) {
-            console.error("File upload error:", err);
-            alert("Upload failed. Please try again.");
+            console.error('File upload error:', err);
+            alert('Upload failed. Please try again.');
         } finally {
             setFileUploading(false);
             e.target.value = '';
         }
     };
 
+    const canSend = Boolean(input.trim()) && !isDisabled && !isComplete;
+
     return (
-        <div className="chat-input-container">
-            <div className="chat-input-wrapper">
-                <textarea
-                    ref={textareaRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={getPlaceholder()}
-                    disabled={isDisabled || isComplete}
-                    rows={1}
-                />
-
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    style={{ display: 'none' }}
-                    accept=".pdf,.docx,.txt"
-                    onChange={handleFileUpload}
-                />
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: '0 var(--space-2)' }}>
-                    <button
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'var(--color-text-muted)',
-                            fontSize: '1.2rem',
-                            cursor: isDisabled ? 'not-allowed' : 'pointer',
-                            padding: 4,
-                            opacity: isDisabled ? 0.4 : 1
-                        }}
-                        title="Upload Reference JD (PDF/DOCX)"
-                        onClick={triggerFileUpload}
-                        disabled={isDisabled}
-                    >
-                        {fileUploading ? '⏳' : '📎'}
-                    </button>
-
-                    <button
-                        style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: '50%',
-                            background: input.trim() && !isDisabled ? 'var(--color-primary)' : 'var(--color-bg-tertiary)',
-                            color: input.trim() && !isDisabled ? '#fff' : 'var(--color-text-muted)',
-                            border: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: input.trim() && !isDisabled ? 'pointer' : 'not-allowed',
-                            transition: 'all var(--transition-fast)',
-                            flexShrink: 0
-                        }}
-                        onClick={handleSend}
-                        disabled={!input.trim() || isDisabled}
-                    >
-                        {isStreaming ? (
-                            <span style={{ fontSize: '0.7rem' }}>⏳</span>
-                        ) : (
-                            <span style={{ fontSize: '1rem', marginLeft: -1 }}>➤</span>
-                        )}
-                    </button>
+        <div className="composer">
+            <div className="composer-inner">
+                <div className="composer-shell">
+                    <textarea
+                        ref={textareaRef}
+                        className="composer-textarea"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder={getPlaceholder()}
+                        disabled={isDisabled || isComplete}
+                        rows={1}
+                        aria-label="Message"
+                    />
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        style={{ display: 'none' }}
+                        accept=".pdf,.docx,.txt"
+                        onChange={handleFileUpload}
+                    />
+                    <div className="composer-actions">
+                        <button
+                            type="button"
+                            className="icon-btn"
+                            title="Attach a reference JD (PDF / DOCX)"
+                            aria-label="Attach a reference JD"
+                            onClick={triggerFileUpload}
+                            disabled={isDisabled || isComplete}
+                        >
+                            {fileUploading ? <IconLoader size={16} /> : <IconPaperclip size={16} />}
+                        </button>
+                        <button
+                            type="button"
+                            className="composer-send"
+                            aria-label="Send"
+                            onClick={handleSend}
+                            disabled={!canSend}
+                        >
+                            {isStreaming ? <IconLoader size={14} /> : <IconSend size={14} />}
+                        </button>
+                    </div>
                 </div>
-            </div>
-            <div style={{
-                textAlign: 'center',
-                marginTop: 'var(--space-2)',
-                fontSize: 'var(--font-size-xs)',
-                color: 'var(--color-text-muted)',
-                padding: '0 var(--space-3)'
-            }}>
-                Press Enter to send, Shift+Enter for new line. AI Talent Lab can make mistakes — verify requirements.
+                <div className="composer-foot">
+                    <span>
+                        <span className="composer-foot-key">Enter</span> to send · <span className="composer-foot-key">Shift</span>+<span className="composer-foot-key">Enter</span> for a new line
+                    </span>
+                    <span>AI Talent Lab can make mistakes — verify requirements.</span>
+                </div>
             </div>
         </div>
     );

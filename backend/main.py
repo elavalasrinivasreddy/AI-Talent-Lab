@@ -35,6 +35,7 @@ from backend.routers import status as status_router
 from backend.routers import copilot as copilot_router
 from backend.routers import notes as notes_router
 from backend.routers import platform as platform_router
+from backend.routers import hire_requests as hire_requests_router
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -95,6 +96,7 @@ app.include_router(status_router.router)      # Public — candidate application
 app.include_router(copilot_router.router)     # AI Copilot suggestions
 app.include_router(notes_router.router)       # Collaborative hiring notes
 app.include_router(platform_router.router)    # Platform admin — cross-org SaaS analytics
+app.include_router(hire_requests_router.router)  # Hire requests (dedicated CRUD)
 
 # ── Root & Health ──────────────────────────────────────────────────────────────
 

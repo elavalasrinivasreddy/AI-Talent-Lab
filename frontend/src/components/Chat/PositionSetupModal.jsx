@@ -3,10 +3,11 @@ import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
+import { IconX, IconCheck, IconArrowRight } from './icons';
 
 /**
- * PositionSetupModal — full-screen overlay modal for completing a position.
- * Uses React Portal to render on top of everything (not inside chat scroll).
+ * PositionSetupModal — final activation form before sourcing kicks in.
+ * Calm two-column layout, no emoji, restrained success state.
  */
 const PositionSetupModal = ({ show, onClose }) => {
     const { token } = useAuth();
@@ -32,17 +33,17 @@ const PositionSetupModal = ({ show, onClose }) => {
         const fetchDeps = async () => {
             try {
                 const res = await fetch('/api/v1/settings/departments', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {
                     const data = await res.json();
                     setDepartments(data.departments || []);
                     if (data.departments?.length > 0) {
-                        setFormData(prev => ({ ...prev, department_id: data.departments[0].id }));
+                        setFormData((prev) => ({ ...prev, department_id: data.departments[0].id }));
                     }
                 }
             } catch (err) {
-                console.error("Failed to fetch departments", err);
+                console.error('Failed to fetch departments', err);
             }
         };
         fetchDeps();
@@ -51,7 +52,7 @@ const PositionSetupModal = ({ show, onClose }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.department_id) {
-            setError("Please select a department.");
+            setError('Please select a department.');
             return;
         }
 
@@ -62,33 +63,32 @@ const PositionSetupModal = ({ show, onClose }) => {
             const res = await fetch(`/api/v1/chat/sessions/${currentSessionId}/save-position`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     department_id: parseInt(formData.department_id),
                     headcount: parseInt(formData.headcount),
                     priority: formData.priority,
                     ats_threshold: parseFloat(formData.ats_threshold),
-                    search_interval_hours: parseInt(formData.search_interval_hours)
-                })
+                    search_interval_hours: parseInt(formData.search_interval_hours),
+                }),
             });
 
             if (res.ok) {
                 const data = await res.json();
                 setSuccess(true);
                 fetchSessions();
-                // Auto-navigate after brief success state
                 setTimeout(() => {
                     onClose();
                     navigate(data.position_id ? `/positions/${data.position_id}` : '/positions');
                 }, 1200);
             } else {
                 const errData = await res.json();
-                setError(errData?.error?.message || errData?.detail || "Failed to create position.");
+                setError(errData?.error?.message || errData?.detail || 'Failed to create position.');
             }
         } catch (err) {
-            setError("Network error. Please try again.");
+            setError('Network error. Please try again.');
             console.error(err);
         } finally {
             setIsLoading(false);
@@ -97,119 +97,127 @@ const PositionSetupModal = ({ show, onClose }) => {
 
     if (!show) return null;
 
-    // Render via Portal to escape chat scroll container
     return ReactDOM.createPortal(
-        <div className="position-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-            <div className={`position-modal ${success ? 'position-modal--success' : ''}`}>
-                {/* Header */}
-                <div className="position-modal-header">
-                    <div>
-                        <h2 className="position-modal-title">
-                            {success ? '🎉 Position Created!' : '🚀 Complete Position Setup'}
-                        </h2>
-                        <p className="position-modal-sub">
-                            {success
-                                ? 'Candidate search will begin shortly. Redirecting...'
-                                : 'Configure hiring parameters before activating the position.'
-                            }
-                        </p>
-                    </div>
-                    {!success && (
-                        <button className="position-modal-close" onClick={onClose}>✕</button>
-                    )}
-                </div>
-
+        <div
+            className="pmodal-overlay"
+            onClick={(e) => {
+                if (e.target === e.currentTarget && !success) onClose();
+            }}
+        >
+            <div className="pmodal" role="dialog" aria-modal="true" aria-labelledby="pmodal-title">
                 {success ? (
-                    <div className="position-modal-success-body">
-                        <div className="position-modal-success-icon">✅</div>
-                        <p>Position saved & candidate sourcing activated</p>
-                        <div className="position-modal-success-loader" />
+                    <div className="pmodal-success">
+                        <div className="pmodal-success-mark">
+                            <IconCheck size={22} />
+                        </div>
+                        <h2 className="pmodal-success-title">Position activated.</h2>
+                        <p className="pmodal-success-sub">
+                            Candidate sourcing is running. Taking you to the position…
+                        </p>
+                        <div className="pmodal-success-bar" aria-hidden="true" />
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit}>
-                        <div className="position-modal-body">
-                            {error && <div className="position-modal-error">{error}</div>}
+                        <div className="pmodal-head">
+                            <div>
+                                <div className="pmodal-eyebrow">Activate position</div>
+                                <h2 id="pmodal-title" className="pmodal-title">Configure hiring parameters</h2>
+                                <p className="pmodal-sub">
+                                    These settings drive how often we source and how strict the ATS match must be.
+                                </p>
+                            </div>
+                            <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+                                <IconX size={16} />
+                            </button>
+                        </div>
 
-                            {/* Department */}
-                            <div className="position-field">
-                                <label className="position-field-label">Department</label>
+                        <div className="pmodal-body">
+                            {error && <div className="pmodal-error">{error}</div>}
+
+                            <div className="pfield">
+                                <label className="pfield-label" htmlFor="pf-dept">Department</label>
                                 <select
-                                    className="position-field-select"
+                                    id="pf-dept"
+                                    className="pfield-select"
                                     value={formData.department_id}
-                                    onChange={(e) => setFormData({...formData, department_id: e.target.value})}
+                                    onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
                                     required
                                 >
-                                    <option value="" disabled>Select Department...</option>
-                                    {departments.map(d => (
+                                    <option value="" disabled>Select a department…</option>
+                                    {departments.map((d) => (
                                         <option key={d.id} value={d.id}>{d.name}</option>
                                     ))}
                                 </select>
                             </div>
 
-                            {/* Headcount + Priority */}
-                            <div className="position-field-row">
-                                <div className="position-field">
-                                    <label className="position-field-label">Headcount</label>
+                            <div className="pmodal-row">
+                                <div className="pfield">
+                                    <label className="pfield-label" htmlFor="pf-hc">Headcount</label>
                                     <input
+                                        id="pf-hc"
                                         type="number"
-                                        className="position-field-input"
+                                        className="pfield-input"
                                         min="1"
                                         value={formData.headcount}
-                                        onChange={(e) => setFormData({...formData, headcount: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, headcount: e.target.value })}
                                     />
                                 </div>
-                                <div className="position-field">
-                                    <label className="position-field-label">Priority</label>
+                                <div className="pfield">
+                                    <label className="pfield-label" htmlFor="pf-pri">Priority</label>
                                     <select
-                                        className="position-field-select"
+                                        id="pf-pri"
+                                        className="pfield-select"
                                         value={formData.priority}
-                                        onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                                     >
-                                        <option value="low">🟢 Low</option>
-                                        <option value="normal">🟡 Normal</option>
-                                        <option value="high">🟠 High</option>
-                                        <option value="critical">🔴 Critical</option>
+                                        <option value="low">Low</option>
+                                        <option value="normal">Normal</option>
+                                        <option value="high">High</option>
+                                        <option value="critical">Critical</option>
                                     </select>
                                 </div>
                             </div>
 
-                            {/* ATS + Frequency */}
-                            <div className="position-field-row">
-                                <div className="position-field">
-                                    <label className="position-field-label">ATS Score Threshold (%)</label>
+                            <div className="pmodal-row">
+                                <div className="pfield">
+                                    <label className="pfield-label" htmlFor="pf-ats">ATS threshold (%)</label>
                                     <input
+                                        id="pf-ats"
                                         type="number"
-                                        className="position-field-input"
+                                        className="pfield-input"
                                         min="0" max="100" step="0.1"
                                         value={formData.ats_threshold}
-                                        onChange={(e) => setFormData({...formData, ats_threshold: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, ats_threshold: e.target.value })}
                                     />
-                                    <span className="position-field-hint">Min fit score to move to screening</span>
+                                    <span className="pfield-hint">Min score to advance to screening</span>
                                 </div>
-                                <div className="position-field">
-                                    <label className="position-field-label">Sourcing Frequency</label>
+                                <div className="pfield">
+                                    <label className="pfield-label" htmlFor="pf-freq">Sourcing frequency</label>
                                     <select
-                                        className="position-field-select"
+                                        id="pf-freq"
+                                        className="pfield-select"
                                         value={formData.search_interval_hours}
-                                        onChange={(e) => setFormData({...formData, search_interval_hours: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, search_interval_hours: e.target.value })}
                                     >
                                         <option value="12">Every 12 hours</option>
                                         <option value="24">Every 24 hours</option>
                                         <option value="48">Every 48 hours</option>
                                     </select>
-                                    <span className="position-field-hint">How often AI searches for candidates</span>
+                                    <span className="pfield-hint">How often we re-run candidate search</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="position-modal-footer">
-                            <button type="button" className="position-btn-cancel" onClick={onClose}>Cancel</button>
+                        <div className="pmodal-foot">
+                            <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
                             <button
                                 type="submit"
-                                className="position-btn-submit"
+                                className="btn-primary"
                                 disabled={isLoading || !formData.department_id}
                             >
-                                {isLoading ? '⏳ Creating...' : '🚀 Create & Activate Position'}
+                                {isLoading ? 'Activating…' : (
+                                    <>Activate position <IconArrowRight size={14} /></>
+                                )}
                             </button>
                         </div>
                     </form>
