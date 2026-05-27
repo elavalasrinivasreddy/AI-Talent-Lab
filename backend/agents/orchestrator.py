@@ -114,6 +114,23 @@ async def run_agent(
             state["stage"] = "bias_check"
             state["awaiting_user_input"] = True
 
+        elif action == "edit_variant":
+            variant_type = action_data.get("variant_type")
+            new_summary = action_data.get("summary")
+            variants = state.get("jd_variants", []) or []
+            for v in variants:
+                if v.get("type") == variant_type:
+                    if new_summary is not None:
+                        v["summary"] = new_summary
+                    # Allow overwriting description / tone / skills_count if provided
+                    for key in ("description", "tone", "skills_count"):
+                        if key in action_data:
+                            v[key] = action_data[key]
+                    break
+            state["jd_variants"] = variants
+            state["stage"] = "jd_variants"
+            state["awaiting_user_input"] = True
+
     # ── 2. Sequential node execution based on current stage ────────────
     # `_run_meta` is a transient state field (not persisted long-term — chat_service
     # consumes it on the same turn) that lets chat_service emit one SSE

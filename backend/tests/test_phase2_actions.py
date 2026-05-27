@@ -94,3 +94,27 @@ async def test_apply_bias_fix_patches_jd_and_drops_issue():
     assert new_state["bias_issues"][0]["phrase"] == "join our team"
     assert new_state["stage"] == "bias_check"
     assert new_state["awaiting_user_input"] is True
+
+
+@pytest.mark.asyncio
+async def test_edit_variant_overwrites_named_variant():
+    state = {
+        "stage": "jd_variants",
+        "jd_variants": [
+            {"type": "skill_focused", "summary": "old skill"},
+            {"type": "outcome_focused", "summary": "old outcome"},
+            {"type": "hybrid", "summary": "old hybrid"},
+        ],
+        "awaiting_user_input": True,
+        "messages": [],
+    }
+
+    new_state = await run_agent(
+        state=state,
+        action="edit_variant",
+        action_data={"variant_type": "hybrid", "summary": "new hybrid blurb"},
+    )
+
+    hybrid = next(v for v in new_state["jd_variants"] if v["type"] == "hybrid")
+    assert hybrid["summary"] == "new hybrid blurb"
+    assert new_state["stage"] == "jd_variants"
