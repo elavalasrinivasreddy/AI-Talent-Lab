@@ -118,3 +118,41 @@ async def test_edit_variant_overwrites_named_variant():
     hybrid = next(v for v in new_state["jd_variants"] if v["type"] == "hybrid")
     assert hybrid["summary"] == "new hybrid blurb"
     assert new_state["stage"] == "jd_variants"
+
+
+@pytest.mark.asyncio
+async def test_regenerate_variants_clears_and_reenters_variants_stage(monkeypatch):
+    """regenerate_variants must clear jd_variants, set refinement, and route
+    back to drafting_variants. We stub the drafting node to a no-op so we can
+    assert routing without invoking the LLM."""
+    calls = []
+
+    async def _fake_variants(state):
+        calls.append({"refinement": state.get("variant_refinement")})
+        state["jd_variants"] = [
+            {"type": "skill_focused", "summary": "S"},
+            {"type": "outcome_focused", "summary": "O"},
+            {"type": "hybrid", "summary": "H"},
+        ]
+        state["stage"] = "jd_variants"
+        state["awaiting_user_input"] = True
+        return state
+
+    from backend.agents import orchestrator as orch
+    monkeypatch.setattr(orch, "run_drafting_variants", _fake_variants)
+
+    state = {
+        "stage": "final_jd",
+        "jd_variants": [{"type": "hybrid", "summary": "old"}],
+        "messages": [],
+    }
+
+    new_state = await run_agent(
+        state=state,
+        action="regenerate_variants",
+        action_data={"refinement": "make B more senior"},
+    )
+
+    assert calls == [{"refinement": "make B more senior"}]
+    assert len(new_state["jd_variants"]) == 3
+    assert new_state["stage"] == "jd_variants"

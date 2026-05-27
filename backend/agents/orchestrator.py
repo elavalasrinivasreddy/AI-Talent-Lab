@@ -131,6 +131,14 @@ async def run_agent(
             state["stage"] = "jd_variants"
             state["awaiting_user_input"] = True
 
+        elif action == "regenerate_variants":
+            state["jd_variants"] = []
+            refinement = action_data.get("refinement")
+            if refinement:
+                state["variant_refinement"] = refinement
+            state["stage"] = "jd_variants"
+            state["awaiting_user_input"] = False  # let the for-loop run drafting_variants
+
     # ── 2. Sequential node execution based on current stage ────────────
     # `_run_meta` is a transient state field (not persisted long-term — chat_service
     # consumes it on the same turn) that lets chat_service emit one SSE

@@ -41,6 +41,12 @@ async def run_drafting_variants(state: AgentState) -> AgentState:
         about_us = state.get("org_about_us", "An innovative tech company.")
         benefits = state.get("org_benefits_text", "Competitive salary and benefits.")
 
+        refinement = state.get("variant_refinement")
+        refinement_block = (
+            f"\nREFINEMENT FROM PREVIOUS ROUND: {refinement}\n"
+            if refinement else ""
+        )
+
         user_content = f"""Mode: VARIANT_GENERATION
 
 Role: {role_name}
@@ -49,7 +55,7 @@ Experience: {state.get('experience_min')} - {state.get('experience_max')} years
 Location/Work Type: {state.get('location')} / {state.get('work_type')}
 About Us: {about_us}
 Benefits: {benefits}
-
+{refinement_block}
 Generate the 3 JD variants now."""
 
         messages = [
@@ -75,6 +81,7 @@ Generate the 3 JD variants now."""
             raise ValueError(f"Expected 3 variants, got {len(variants)}")
 
         state["jd_variants"] = variants
+        state.pop("variant_refinement", None)  # one-shot
         state["stage"] = "jd_variants"
         state["awaiting_user_input"] = True
         state["error_stage"] = None
