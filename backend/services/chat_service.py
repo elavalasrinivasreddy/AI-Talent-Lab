@@ -234,7 +234,13 @@ class ChatService:
                 issues = new_state.get("bias_issues", [])
                 yield StreamHandler.emit_card_bias(issues, len(issues) == 0)
 
-
+                # After apply_bias_fix, also re-publish the patched final JD so
+                # the canvas re-renders. We emit it as a metadata event since
+                # jd_token would append; metadata replaces.
+                if action == "apply_bias_fix":
+                    yield StreamHandler.emit_metadata({
+                        "final_jd": new_state.get("final_jd", "")
+                    })
 
             # ── Persist state back to DB ──────────────────────────────
             await ChatSessionRepository.update_state(

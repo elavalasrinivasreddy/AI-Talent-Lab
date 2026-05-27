@@ -64,3 +64,33 @@ async def test_drafting_final_streams_chunks_to_queue(monkeypatch):
     assert new_state["final_jd"] == "".join(chunks).strip()
     assert new_state["stage"] == "final_jd"
     assert not fake.ainvoke_called  # streaming path, not ainvoke
+
+
+from backend.agents.orchestrator import run_agent
+
+
+@pytest.mark.asyncio
+async def test_apply_bias_fix_patches_jd_and_drops_issue():
+    state = {
+        "stage": "bias_check",
+        "final_jd": "We want a rockstar engineer to join our team.",
+        "bias_issues": [
+            {"phrase": "rockstar", "suggestion": "high-performing", "reason": "gendered"},
+            {"phrase": "join our team", "suggestion": "collaborate with us", "reason": "vague"},
+        ],
+        "awaiting_user_input": True,
+        "messages": [],
+    }
+
+    new_state = await run_agent(
+        state=state,
+        action="apply_bias_fix",
+        action_data={"phrase": "rockstar", "suggestion": "high-performing"},
+    )
+
+    assert "high-performing" in new_state["final_jd"]
+    assert "rockstar" not in new_state["final_jd"]
+    assert len(new_state["bias_issues"]) == 1
+    assert new_state["bias_issues"][0]["phrase"] == "join our team"
+    assert new_state["stage"] == "bias_check"
+    assert new_state["awaiting_user_input"] is True

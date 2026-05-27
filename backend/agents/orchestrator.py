@@ -97,6 +97,23 @@ async def run_agent(
             else:
                 state["stage"] = "complete"
 
+        elif action == "apply_bias_fix":
+            phrase = action_data.get("phrase", "")
+            suggestion = action_data.get("suggestion", "")
+            jd = state.get("final_jd", "")
+            if phrase and phrase in jd:
+                state["final_jd"] = jd.replace(phrase, suggestion, 1)
+            # Drop one matching issue (the first occurrence) from the list
+            issues = state.get("bias_issues", []) or []
+            for idx, issue in enumerate(issues):
+                if issue.get("phrase") == phrase:
+                    issues.pop(idx)
+                    break
+            state["bias_issues"] = issues
+            # Stay on bias_check, awaiting further user action
+            state["stage"] = "bias_check"
+            state["awaiting_user_input"] = True
+
     # ── 2. Sequential node execution based on current stage ────────────
     # `_run_meta` is a transient state field (not persisted long-term — chat_service
     # consumes it on the same turn) that lets chat_service emit one SSE

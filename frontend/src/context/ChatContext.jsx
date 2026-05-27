@@ -344,6 +344,13 @@ export const ChatProvider = ({ children }) => {
                 }]);
                 break;
 
+            case 'metadata':
+                if (typeof data.final_jd === 'string') {
+                    setFinalJdMarkdown(data.final_jd);
+                    setStreamingJdText('');
+                }
+                break;
+
             case 'draft_saved':
                 // Draft was saved — don't change stage to complete
                 // Just refresh sessions to show updated draft indicator
