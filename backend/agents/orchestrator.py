@@ -23,7 +23,8 @@ async def run_agent(
     state: dict,
     user_message: Optional[str] = None,
     action: Optional[str] = None,
-    action_data: Optional[dict] = None
+    action_data: Optional[dict] = None,
+    token_queue=None,
 ) -> dict:
     """
     Stateful runner for the recruiter chat pipeline.
@@ -161,7 +162,7 @@ async def run_agent(
             break  # Always pause here for user to select variant
 
         elif current_stage == "final_jd":
-            state = await run_drafting_final(state)
+            state = await run_drafting_final(state, token_queue=token_queue)
             if not state.get("error_stage"):
                 # No longer run bias check automatically. Wait for user to trigger or finalize.
                 state["awaiting_user_input"] = True
