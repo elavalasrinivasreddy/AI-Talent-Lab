@@ -63,6 +63,8 @@ These predate the redesign work — fix opportunistically during related page wo
 
 | Severity | Item | Notes |
 |---|---|---|
+| 🟠 High | **HTML injection in transactional email templates** | `backend/services/email_service.py` interpolates `candidate_name`, `role_name`, `org_name`, `round_name`, `meeting_link`, `apply_url`, `feedback_url`, etc. directly into f-strings. Escape with `html.escape()` and validate URL schemes (only `https://`). Better: move to Jinja2 with `autoescape=True`. Flagged by automated security review 2026-05-27. |
+| 🟠 High | **Notification IDOR within tenant** | `backend/services/notification_service.py:mark_read(org_id, notification_id)` scopes by tenant but not by user. Any user in the org can mark another user's notifications read. Add `user_id` to signature + WHERE clause. Flagged by automated security review 2026-05-27. |
 | 🟠 High | **`backend/dist/` and chroma binary noise in working tree** | `backend/data/chroma/*.sqlite3` shows as modified on every run. Either add to `.gitignore` or move to a runtime-only path. |
 | 🟡 Medium | **Frontend bundle is >500KB after minify** | Vite warns. Code-split routes (especially `/dev`, `/platform`) via `React.lazy` + `Suspense`. |
 | 🟡 Medium | **No E2E tests** | Manual smoke tests cover auth + hire request today. Phase 1 cohort can ship without, but post-customer-1 we need Playwright or similar. |
