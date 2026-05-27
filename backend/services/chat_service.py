@@ -5,6 +5,7 @@ Orchestrates the LangGraph agent state and SSE stream streaming.
 import asyncio
 import json
 import logging
+import os
 from typing import AsyncGenerator, Optional, Any
 
 from backend.agents.orchestrator import run_agent
@@ -96,16 +97,52 @@ class ChatService:
         if user_message:
             await ChatSessionRepository.add_message(session_id, "user", user_message)
 
-        initial_stage = state.get("stage", "intake")
-
         try:
-            # ── Run the pipeline ──────────────────────────────────────
-            new_state = await run_agent(
-                state=state,
-                user_message=user_message,
-                action=action,
-                action_data=action_data
+            stream_live = os.environ.get("JD_STREAM_LIVE", "1") == "1"
+            initial_stage = state.get("stage", "intake")
+
+            # We only want token-level streaming when the upcoming turn is going
+            # to draft the final JD. That is true when:
+            #   (a) the user just selected a variant (action == "select_variant"), or
+            #   (b) we're already on final_jd and getting a refinement/rewrite.
+            will_stream_final = stream_live and (
+                action == "select_variant"
+                or action in {"rewrite_section", "regenerate_variants"}
+                or (state.get("stage") == "final_jd" and user_message)
             )
+
+            if will_stream_final:
+                token_queue: asyncio.Queue = asyncio.Queue()
+
+                async def _runner():
+                    try:
+                        return await run_agent(
+                            state=state,
+                            user_message=user_message,
+                            action=action,
+                            action_data=action_data,
+                            token_queue=token_queue,
+                        )
+                    finally:
+                        await token_queue.put(None)  # sentinel
+
+                agent_task = asyncio.create_task(_runner())
+
+                # Drain the queue → SSE jd_token events
+                while True:
+                    chunk = await token_queue.get()
+                    if chunk is None:
+                        break
+                    yield StreamHandler.emit_jd_token(chunk)
+
+                new_state = await agent_task
+            else:
+                new_state = await run_agent(
+                    state=state,
+                    user_message=user_message,
+                    action=action,
+                    action_data=action_data,
+                )
 
             current_stage = new_state.get("stage")
 
@@ -176,13 +213,19 @@ class ChatService:
                 if jd_variants and current_stage == "jd_variants":
                     yield StreamHandler.emit_card_variants(jd_variants)
 
-            # ── Stream final JD token by token ────────────────────────
-            # Only stream if this is the FIRST time final_jd appears (transitioning to final_jd stage)
-            if current_stage in ("final_jd",) and initial_stage != "final_jd" and new_state.get("final_jd"):
+            # ── Fallback typewriter (only when live-stream flag is off) ───
+            # When JD_STREAM_LIVE=1 (default), tokens already flowed during
+            # the queue drain above, so we skip this. When JD_STREAM_LIVE=0,
+            # the agent ran in non-streaming mode and we keep the legacy
+            # word-split for compatibility.
+            if (
+                not stream_live
+                and current_stage == "final_jd"
+                and initial_stage != "final_jd"
+                and new_state.get("final_jd")
+            ):
                 final_text = new_state["final_jd"]
-                # Stream word-by-word for natural typing effect
-                words = final_text.split(" ")
-                for word in words:
+                for word in final_text.split(" "):
                     yield StreamHandler.emit_jd_token(word + " ")
                     await asyncio.sleep(0.012)
 
