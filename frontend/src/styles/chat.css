@@ -2004,3 +2004,40 @@
   justify-content: flex-end;
   margin-top: 6px;
 }
+
+/* B6: AgentBlockVariants — Edit + Regenerate */
+.variant-card-buttons {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.variant-card-edit {
+  width: 100%;
+  min-height: 80px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  font: inherit;
+  resize: vertical;
+}
+.variant-card-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+.variant-regenerate {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+.variant-regenerate-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  font: inherit;
+}
