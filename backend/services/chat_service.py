@@ -109,9 +109,25 @@ class ChatService:
 
             current_stage = new_state.get("stage")
 
-            # ── Emit stage change if it changed ───────────────────────
-            if current_stage != initial_stage:
+            # ── Emit one stage_change per actual transition ──────────
+            # Orchestrator stamps `_run_meta.transitions` with every stage it
+            # entered during this turn (intake → internal_check → market_research
+            # → … ). Without iterating over it we'd only ever emit the final
+            # stage, and the UI stepper would skip pills.
+            run_meta = new_state.pop("_run_meta", None) or {}
+            for transition_stage in run_meta.get("transitions", []):
+                yield StreamHandler.emit_stage_change(transition_stage)
+
+            # If the orchestrator didn't record any transitions but the stage
+            # actually moved (e.g. interviewer set stage directly), emit once.
+            if not run_meta.get("transitions") and current_stage != initial_stage:
                 yield StreamHandler.emit_stage_change(current_stage)
+
+            # ── Emit one stage_skipped per soft-skipped stage ────────
+            for skipped in run_meta.get("skipped", []):
+                yield StreamHandler.emit_stage_skipped(
+                    skipped["stage"], skipped.get("reason", "")
+                )
 
             # ── Emit errors ───────────────────────────────────────────
             if new_state.get("error_stage"):
@@ -131,7 +147,7 @@ class ChatService:
             if new_state.get("messages") and user_message:
                 last_msg = new_state["messages"][-1]
                 if last_msg.get("role") == "assistant":
-                    yield StreamHandler.emit_token(last_msg["content"])
+                    yield StreamHandler.emit_message(last_msg["content"])
                     await ChatSessionRepository.add_message(
                         session_id, "assistant", last_msg["content"]
                     )
