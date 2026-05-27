@@ -1,3 +1,6 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
 [tool.pyright]
 include = ["backend"]
 exclude = ["**/node_modules", "**/__pycache__", "frontend"]
