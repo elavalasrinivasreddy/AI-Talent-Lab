@@ -208,3 +208,226 @@ class EmailService:
             body_html=_wrap_html(content_html),
             body_text=body_text,
         )
+
+    # ── Candidate: outreach (magic link) ──────────────────────────────────────
+
+    @staticmethod
+    async def send_candidate_outreach(
+        to_email: str,
+        candidate_name: Optional[str],
+        role_name: str,
+        org_name: str,
+        apply_url: str,
+    ) -> bool:
+        greeting = f"Hi {candidate_name}," if candidate_name else "Hi,"
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  We found your profile and think you'd be a great fit for the
+  <strong>{role_name}</strong> position at <strong>{org_name}</strong>.
+</p>
+<p style="margin:0 0 16px;">
+  We've prepared a quick, chat-based application — it takes less than 5 minutes.
+  No account needed, just click the link below:
+</p>
+{_button("Apply Now", apply_url)}
+<p style="margin:0;font-size:13px;color:#64748B;">
+  This link expires in 72 hours. If you're not interested, simply ignore this email.
+</p>"""
+        body_text = (
+            f"{greeting}\n\nWe found your profile and think you'd be a great fit for "
+            f"{role_name} at {org_name}.\n\nApply here: {apply_url}\n\n"
+            f"This link expires in 72 hours."
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"{org_name} — You've been invited to apply for {role_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
+    # ── Candidate: follow-up reminder ─────────────────────────────────────────
+
+    @staticmethod
+    async def send_candidate_followup(
+        to_email: str,
+        candidate_name: Optional[str],
+        role_name: str,
+        org_name: str,
+        apply_url: str,
+    ) -> bool:
+        greeting = f"Hi {candidate_name}," if candidate_name else "Hi,"
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  Just a friendly reminder — we'd love to hear from you about the
+  <strong>{role_name}</strong> role at <strong>{org_name}</strong>.
+</p>
+<p style="margin:0 0 16px;">
+  The application is quick and chat-based. Click below to get started:
+</p>
+{_button("Complete Your Application", apply_url)}
+<p style="margin:0;font-size:13px;color:#64748B;">
+  This is a one-time reminder. If this role isn't for you, no action is needed.
+</p>"""
+        body_text = (
+            f"{greeting}\n\nReminder: We'd love to hear from you about the {role_name} "
+            f"role at {org_name}.\n\nApply: {apply_url}"
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"Reminder: {org_name} is waiting for your application — {role_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
+    # ── Candidate: interview invitation ───────────────────────────────────────
+
+    @staticmethod
+    async def send_interview_invite(
+        to_email: str,
+        candidate_name: Optional[str],
+        role_name: str,
+        org_name: str,
+        round_name: str,
+        scheduled_at: Optional["datetime"] = None,
+        duration_minutes: int = 60,
+        meeting_link: Optional[str] = None,
+    ) -> bool:
+        from datetime import datetime as dt
+        greeting = f"Hi {candidate_name}," if candidate_name else "Hi,"
+        when = ""
+        if scheduled_at:
+            if isinstance(scheduled_at, str):
+                scheduled_at = dt.fromisoformat(scheduled_at)
+            when = scheduled_at.strftime("%A, %B %d, %Y at %I:%M %p")
+
+        meet_section = ""
+        if meeting_link:
+            meet_section = f"""
+<p style="margin:16px 0 8px;font-size:13px;color:#64748B;">Meeting link:</p>
+<p style="margin:0 0 16px;">
+  <a href="{meeting_link}" style="color:{_BRAND_TEAL};font-weight:600;text-decoration:none;">{meeting_link}</a>
+</p>"""
+
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  Great news! You've been selected for the next step in the interview process
+  for <strong>{role_name}</strong> at <strong>{org_name}</strong>.
+</p>
+<table style="margin:16px 0;width:100%;border-collapse:collapse;">
+  <tr>
+    <td style="padding:8px 0;font-size:13px;color:#64748B;">Round</td>
+    <td style="padding:8px 0;font-weight:600;">{round_name}</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 0;font-size:13px;color:#64748B;">When</td>
+    <td style="padding:8px 0;font-weight:600;">{when or 'To be confirmed'}</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 0;font-size:13px;color:#64748B;">Duration</td>
+    <td style="padding:8px 0;font-weight:600;">{duration_minutes} minutes</td>
+  </tr>
+</table>
+{meet_section}
+<p style="margin:0;font-size:13px;color:#64748B;">
+  Please reply to this email if you need to reschedule or have any questions.
+</p>"""
+        body_text = (
+            f"{greeting}\n\nYou've been selected for {round_name} for {role_name} "
+            f"at {org_name}.\n\nWhen: {when or 'TBC'}\nDuration: {duration_minutes} min"
+            f"\n\n{'Meeting: ' + meeting_link if meeting_link else ''}"
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"Interview Invitation: {round_name} — {role_name} at {org_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
+    # ── Panel: feedback link ──────────────────────────────────────────────────
+
+    @staticmethod
+    async def send_panel_feedback_link(
+        to_email: str,
+        panelist_name: Optional[str],
+        candidate_name: str,
+        role_name: str,
+        org_name: str,
+        round_name: str,
+        feedback_url: str,
+    ) -> bool:
+        greeting = f"Hi {panelist_name}," if panelist_name else "Hi,"
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  You've been assigned as an interviewer for <strong>{candidate_name}</strong>
+  applying for <strong>{role_name}</strong> at <strong>{org_name}</strong>.
+</p>
+<p style="margin:0 0 16px;">
+  Please submit your feedback using the secure link below. No login required —
+  the link is unique to you.
+</p>
+{_button("Submit Feedback", feedback_url)}
+<p style="margin:16px 0 0;font-size:13px;color:#64748B;">
+  <strong>Round:</strong> {round_name}<br>
+  This link expires in 7 days and can only be submitted once.
+</p>"""
+        body_text = (
+            f"{greeting}\n\nPlease submit your interview feedback for {candidate_name} "
+            f"({role_name} at {org_name}).\n\n{round_name}\n\n"
+            f"Submit: {feedback_url}\n\nThis link expires in 7 days."
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"Feedback Requested: {candidate_name} — {round_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
+    # ── Candidate: rejection ──────────────────────────────────────────────────
+
+    @staticmethod
+    async def send_rejection(
+        to_email: str,
+        candidate_name: Optional[str],
+        role_name: str,
+        org_name: str,
+        rejection_message: Optional[str] = None,
+    ) -> bool:
+        greeting = f"Dear {candidate_name}," if candidate_name else "Dear Applicant,"
+        custom_msg = ""
+        if rejection_message:
+            custom_msg = f'<p style="margin:16px 0;padding:12px 16px;background:#F8FAFC;border-left:3px solid #E2E8F0;border-radius:4px;font-size:14px;color:#334155;">{rejection_message}</p>'
+
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  Thank you for your interest in the <strong>{role_name}</strong> position
+  at <strong>{org_name}</strong> and for taking the time to apply.
+</p>
+<p style="margin:0 0 16px;">
+  After careful consideration, we've decided to move forward with other
+  candidates whose qualifications more closely match our current needs.
+</p>
+{custom_msg}
+<p style="margin:0 0 16px;">
+  This decision doesn't reflect on your abilities, and we encourage you to
+  apply for future positions that align with your experience.
+</p>
+<p style="margin:0;font-size:13px;color:#64748B;">
+  We wish you the best in your career. If you'd like your data removed from
+  our system, visit <a href="https://app.aitalentlab.com/delete-my-data" style="color:{_BRAND_TEAL};">our privacy page</a>.
+</p>"""
+        body_text = (
+            f"{greeting}\n\nThank you for your interest in {role_name} at {org_name}.\n\n"
+            f"After careful consideration, we've decided to move forward with other candidates.\n\n"
+            f"We wish you the best in your career."
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"Update on your application — {role_name} at {org_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )

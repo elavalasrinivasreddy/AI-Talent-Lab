@@ -24,6 +24,7 @@ import PlatformPage from './components/Platform/PlatformPage'
 import HireRequestListPage from './components/HireRequests/HireRequestListPage'
 import HireRequestForm from './components/HireRequests/HireRequestForm'
 import HireRequestDetailPage from './components/HireRequests/HireRequestDetailPage'
+import InterviewsListPage from './components/Interviews/InterviewsListPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -99,7 +100,7 @@ export const router = createBrowserRouter([
           // Other pages
           { path: '/dashboard', element: <DashboardPage /> },
           { path: '/talent-pool', element: <TalentPoolPage /> },
-          { path: '/interviews', element: <Navigate to="/positions" replace /> },
+          { path: '/interviews', element: <InterviewsListPage /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/:tab', element: <SettingsPage /> },
           { path: '/analytics', element: <AnalyticsPage /> },

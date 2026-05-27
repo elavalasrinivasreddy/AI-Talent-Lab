@@ -365,6 +365,8 @@ Sourced → Emailed → Applied → Screening → Interview (R1, R2...) → Sele
 | 8 | Hiring Manager dashboard | ❌ Not started | Role-focused view: assigned positions + weekly interview schedule |
 | 9 | Hire Request — multi-approver relay | ❌ Not started | Phase 1 ships simple `pending→accepted→fulfilled` flow (shipped 2026-05-19). Phase 2 adds dept-head + finance approval steps, magic-link approval emails, `approval_chain` JSONB column. See `docs/redesign/09_hire_request.md` §14 (B1–B3) |
 | 10 | Hire Request — wizard polish | ❌ Not started | Right-column approval-routing toggles, "Context for the AI" card, "Similar past requests" card (embedding similarity), AI market-alignment estimate, auto-save, comment thread. See `docs/redesign/09_hire_request.md` §14 (F1–F7) |
+| 11 | JD Chat — real LLM token streaming | ❌ Not started | Phase 1 ships the document-first canvas + 8-stage stepper + inline agent blocks (shipped 2026-05-20). Phase 2 replaces typewriter-illusion `jd_token` streaming with real LLM streaming through the adapter layer. See `docs/redesign/05_jd_chat.md` §13 (F1–F2) |
+| 12 | JD Chat — interactive refinement | ❌ Not started | In-canvas bias-fix `[Apply]` patching, per-variant Edit + Regenerate, "make B more senior" rail-driven variant refinement, whole-section rail rewrites, click-to-scroll stepper, stage retry card. See `docs/redesign/05_jd_chat.md` §13 (F3–F8) |
 
 ---
 

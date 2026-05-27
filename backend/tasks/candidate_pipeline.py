@@ -263,3 +263,34 @@ async def _process_candidate(
 
     except Exception as e:
         logger.warning(f"[Pipeline] ATS scoring failed for candidate {candidate_id}: {e}")
+
+
+@celery_app.task(name="tasks.source_candidates_for_position")
+def source_candidates_for_position(position_id: int, org_id: int):
+    """
+    Alias called by scheduled_search — looks up department_id and
+    delegates to the main run_candidate_search task.
+    """
+    import asyncio
+
+    async def _get_dept():
+        async with get_connection() as conn:
+            row = await conn.fetchrow(
+                "SELECT department_id, created_by FROM positions WHERE id=$1 AND org_id=$2",
+                position_id, org_id,
+            )
+        return row
+
+    try:
+        loop = asyncio.get_event_loop()
+        row = loop.run_until_complete(_get_dept())
+    except RuntimeError:
+        row = asyncio.run(_get_dept())
+
+    if not row:
+        logger.warning(f"Position {position_id} not found for scheduled search")
+        return
+
+    run_candidate_search.delay(
+        position_id, org_id, row["department_id"], row.get("created_by")
+    )

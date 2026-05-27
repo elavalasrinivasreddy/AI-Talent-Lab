@@ -97,6 +97,19 @@ async def run_agent(
                 state["stage"] = "complete"
 
     # ── 2. Sequential node execution based on current stage ────────────
+    # `_run_meta` is a transient state field (not persisted long-term — chat_service
+    # consumes it on the same turn) that lets chat_service emit one SSE
+    # `stage_change` per actual transition and one `stage_skipped` per soft-skip.
+    # Without this, chat_service can only compare initial vs final stage and the
+    # UI loses any intermediate transitions that happened during a single run.
+    state["_run_meta"] = {"transitions": [], "skipped": []}
+
+    def _record_transition(to_stage: str) -> None:
+        state["_run_meta"]["transitions"].append(to_stage)
+
+    def _record_skip(stage_name: str, reason: str) -> None:
+        state["_run_meta"]["skipped"].append({"stage": stage_name, "reason": reason})
+
     current_stage = state.get("stage", "intake")
     max_iterations = 6  # safety net against infinite loops
 
@@ -108,6 +121,7 @@ async def run_agent(
             state = await run_interviewer(state)
             # Interviewer either waits for user (more questions) or completes (stage -> internal_check)
             if state.get("stage") == "internal_check" and not state.get("error_stage"):
+                _record_transition("internal_check")
                 current_stage = "internal_check"
                 continue
             break
@@ -117,7 +131,10 @@ async def run_agent(
             if state.get("awaiting_user_input"):
                 break  # Show InternalCheckCard
             # Auto-skipped, advance
+            if state.get("internal_skipped"):
+                _record_skip("internal_check", "no past JDs to draw from")
             if state.get("stage") == "market_research":
+                _record_transition("market_research")
                 current_stage = "market_research"
                 continue
             break
@@ -126,11 +143,15 @@ async def run_agent(
             state = await run_market_intelligence(state)
             # Market intel may transition to benchmarking
             if state.get("stage") == "benchmarking":
+                _record_transition("benchmarking")
                 state = await run_benchmarking(state)
             if state.get("awaiting_user_input"):
                 break  # Show MarketResearchCard
             # Auto-skipped, advance
+            if state.get("market_skipped"):
+                _record_skip("market_research", "market scan unavailable or yielded no useful signals")
             if state.get("stage") == "jd_variants":
+                _record_transition("jd_variants")
                 current_stage = "jd_variants"
                 continue
             break
@@ -157,7 +178,8 @@ async def run_agent(
                 logger.warning(f"Bias check failed: {e}")
                 state["bias_issues"] = []
                 state["bias_skipped"] = True
-            
+                _record_skip("bias_check", "bias check unavailable")
+
             state["awaiting_user_input"] = True
             break
 

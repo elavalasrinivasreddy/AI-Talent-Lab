@@ -156,6 +156,7 @@ export const notificationsApi = {
 // ── Interviews ────────────────────────────────────────────────────────────────
 
 export const interviewsApi = {
+  list: (params = {}) => _get(`/interviews/?${new URLSearchParams(params)}`),
   create: (data) => _post('/interviews/', data),
   listForCandidate: (candidateId) => _get(`/interviews/candidate/${candidateId}`),
   listForPosition: (positionId) => _get(`/interviews/position/${positionId}`),

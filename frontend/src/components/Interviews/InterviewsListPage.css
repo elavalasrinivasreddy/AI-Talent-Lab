@@ -1,0 +1,198 @@
+/* InterviewsListPage.css */
+
+.interviews-page {
+  padding: var(--space-6) var(--space-8);
+  max-width: 1100px;
+  animation: fadeInUp 400ms ease both;
+}
+
+.interviews-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-5);
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.interviews-header h1 {
+  font-size: var(--font-size-2xl);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+.interviews-subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 2px 0 0;
+}
+.interviews-search input {
+  padding: 8px 14px;
+  background: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  width: 240px;
+}
+
+/* Tabs */
+.interviews-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: var(--space-5);
+  background: var(--color-bg-input);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  width: fit-content;
+}
+.interviews-tab {
+  padding: 6px 16px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.interviews-tab.active {
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* List */
+.interviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.interview-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 200ms;
+  gap: var(--space-4);
+}
+.interview-card:hover {
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  transform: translateY(-1px);
+}
+
+.iv-card-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.iv-card-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+.iv-card-info { min-width: 0; }
+.iv-card-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.iv-card-role {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin: 1px 0 0;
+}
+.iv-card-type {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-transform: capitalize;
+  margin: 0;
+}
+
+.iv-card-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 100px;
+}
+.iv-card-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.iv-card-time {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.iv-card-duration {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.iv-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 100px;
+}
+.iv-card-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.iv-card-panel {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* Empty / Loading */
+.interviews-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 0;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+.interviews-empty-icon { font-size: 2.5rem; margin-bottom: var(--space-3); }
+.interviews-empty h3 { font-size: 16px; font-weight: 700; color: var(--color-text-primary); margin: 0 0 4px; }
+.interviews-empty p { font-size: 13px; margin: 0; max-width: 340px; }
+
+.interviews-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.interviews-skeleton {
+  height: 64px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}

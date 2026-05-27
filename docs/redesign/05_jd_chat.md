@@ -301,3 +301,46 @@ Keep:
 JD chat redesign is the single largest piece of work in v3. It replaces ~6 components with 12 new ones and reorganizes the entire chat surface from vertical scroll into a 2-pane canvas/rail layout. Estimated build effort: **3-5 days** depending on whether SSE event mapping needs backend changes.
 
 If we ship the redesign incrementally, this page can ship **last** — Dashboard / Positions / Candidate Detail / Analytics can all ship first since they don't touch the SSE flow.
+
+---
+
+## 13. Phase 1 (shipped 2026-05-20) vs Phase 2 (deferred)
+
+The layout inversion, inline agent blocks, stepper, and rail are live. The
+heavier interactions (real LLM token streaming, in-canvas bias-fix patching,
+variant follow-up refinement) are explicitly Phase 2.
+
+### ✅ Phase 1 — shipped
+
+| Area | Detail |
+|---|---|
+| Layout | `chat-page--v3` with `JDStepper` on top, `JDCanvas` (~65%) on left, `JDRail` (360px) on right |
+| Stepper | 8-stage pill row with HARD/SOFT badges and done/current/skipped/pending state dots |
+| Canvas | Inline doc with header (role + meta) + 5 inline agent blocks + JD body |
+| Agent blocks | `AgentBlockIntake` (new — renders captured fields as a grid), `AgentBlockInternal`, `AgentBlockMarket`, `AgentBlockVariants`, `AgentBlockBias` — all share `AgentBlockShell` for the frame |
+| Shared atoms | `ProvenanceChip` (skill + source attribution), `AgentBlockShell` (number badge + title + status pill) |
+| Rail | `RailStateCard` (current stage + retry + error), `RailConversation` (supplementary chat feed), `MessageInput`, `FinalizeCTA` |
+| Finalize CTA | Lives in rail footer; opens existing `PositionSetupModal`; disabled until a final JD exists |
+| Backend | Orchestrator records each stage transition + soft-skip in transient `_run_meta`; `chat_service` emits one `stage_change` per transition and one `stage_skipped` per soft-skip (was previously only emitting one event per turn) |
+| ChatContext | Mirrors backend `graph_state_parsed` into `graphState`; refreshes on every SSE `done`; tracks `stageSkipped[]` so the stepper renders skipped pills correctly across resumes |
+| Hire-request handoff | Switched from legacy `positionsApi.linkViaSession` to new `hireRequestsApi.linkSession`. Auto-seed message now includes location + comp band fields |
+
+### ❌ Phase 2 — deferred
+
+| # | Item | Notes |
+|---|---|---|
+| F1 | **Real LLM token streaming for `final_jd`** | Today `chat_service.run_chat_stream` splits the finished JD into words and `asyncio.sleep(0.012)` between them — typewriter illusion, not actual streaming. Real streaming needs adapter changes in `backend/adapters/llm/*` to expose `astream_tokens` and `drafting_final` to consume it |
+| F2 | **`emit_token` is misnamed** | Sends the *complete* assistant message as one chunk. Same fix as F1 — wire real token streaming through |
+| F3 | **In-canvas bias-fix patching** | `AgentBlockBias` lists `find → replace` pairs but each pair is advisory only. Spec calls for per-pair `[Apply]` that patches the JD markdown in place. Needs editable canvas content + `apply_bias_fix` action wired through orchestrator |
+| F4 | **Variant follow-up refinement** | "Make B more senior-leaning" — user types in rail, AI re-runs variant generation with refinement context. Needs `refine_variant` action + UI hint surfacing |
+| F5 | **Variant inline `Edit` + `Regenerate`** | `AgentBlockVariants` ships pick-only. Spec wants per-variant Edit (free text override) and overall Regenerate. Needs new actions + writeback to `jd_variants` |
+| F6 | **Click-to-scroll stepper** | Clicking a `done` pill should scroll the canvas to that agent block. Trivial DOM work; deferred so this PR stays focused |
+| F7 | **Whole-section rail rewrites** | "Rewrite responsibilities in second person" — user types in rail, AI rewrites a specific section. Needs section-aware editing of `final_jd` markdown |
+| F8 | **Stage retry card in rail** | When `error_stage` is set, surface a retry button bound to a `retry_stage` action. Today errors render as a banner without recovery affordance |
+| F9 | **Centralized greeting** | `chat_service.GREETING_MESSAGE` and `ChatContext.resetChat` both hardcode the welcome text. Will drift. Phase 2: extract to a config endpoint or single source |
+
+### ⚠️ Tech debt — production hardening (not blocking Phase 1, see `docs/TECH_DEBT.md`)
+
+- Stage skip emission for `intake` / `final_jd` stages doesn't fire (only internal/market/bias do). Low priority because only soft-skippable stages need the event today
+- Pre-existing type-checker warnings in `agents/orchestrator.py` (TypedDict vs `dict` parameter typing, `action_data` potentially None when `action` is set). Static analysis only — runtime is safe because Python doesn't enforce TypedDict
+- `routers/positions.py`, `candidates.py`, `talent_pool.py` still use `current_user["id"]` instead of `user_id` (pre-existing) — already tracked in TECH_DEBT
