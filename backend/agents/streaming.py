@@ -61,9 +61,17 @@ class StreamHandler:
     Helper class to emit formatted SSE events to an async queue or directly to response generators.
     """
     @staticmethod
-    def emit_token(token: str) -> str:
-        """Text generation tokens"""
-        return create_sse_event("token", {"content": token})
+    def emit_message(content: str) -> str:
+        """A complete assistant chat message sent as one SSE event. Used when
+        the underlying LLM call is non-streaming and we want the message to
+        appear in one go in the rail conversation."""
+        return create_sse_event("token", {"content": content})
+
+    @staticmethod
+    def emit_token(chunk: str) -> str:
+        """A single streamed chunk for the rail conversation. Same SSE event
+        name as `emit_message` — the frontend appends either way."""
+        return create_sse_event("token", {"content": chunk})
 
     @staticmethod
     def emit_stage_change(stage: str) -> str:
