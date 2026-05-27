@@ -156,3 +156,40 @@ async def test_regenerate_variants_clears_and_reenters_variants_stage(monkeypatc
     assert calls == [{"refinement": "make B more senior"}]
     assert len(new_state["jd_variants"]) == 3
     assert new_state["stage"] == "jd_variants"
+
+
+@pytest.mark.asyncio
+async def test_rewrite_section_routes_into_drafting_final(monkeypatch):
+    calls = []
+
+    async def _fake_final(state, token_queue=None):
+        calls.append({
+            "section_rewrite": state.get("section_rewrite"),
+            "had_queue": token_queue is not None,
+        })
+        state["final_jd"] = "REWRITTEN"
+        state["stage"] = "final_jd"
+        state["awaiting_user_input"] = True
+        state.pop("section_rewrite", None)
+        return state
+
+    from backend.agents import orchestrator as orch
+    monkeypatch.setattr(orch, "run_drafting_final", _fake_final)
+
+    state = {
+        "stage": "complete",
+        "final_jd": "old text",
+        "messages": [],
+    }
+
+    new_state = await run_agent(
+        state=state,
+        action="rewrite_section",
+        action_data={"section": None, "instruction": "second person"},
+    )
+
+    assert calls and calls[0]["section_rewrite"] == {
+        "section": None, "instruction": "second person",
+    }
+    assert new_state["final_jd"] == "REWRITTEN"
+    assert new_state["stage"] == "final_jd"

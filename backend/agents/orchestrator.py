@@ -139,6 +139,14 @@ async def run_agent(
             state["stage"] = "jd_variants"
             state["awaiting_user_input"] = False  # let the for-loop run drafting_variants
 
+        elif action == "rewrite_section":
+            state["section_rewrite"] = {
+                "section": action_data.get("section"),
+                "instruction": action_data.get("instruction", ""),
+            }
+            state["stage"] = "final_jd"
+            state["awaiting_user_input"] = False  # re-enter drafting_final
+
     # ── 2. Sequential node execution based on current stage ────────────
     # `_run_meta` is a transient state field (not persisted long-term — chat_service
     # consumes it on the same turn) that lets chat_service emit one SSE
