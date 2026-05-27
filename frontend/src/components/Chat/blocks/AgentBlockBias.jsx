@@ -101,13 +101,27 @@ export default function AgentBlockBias() {
             {issue.reason && (
               <p className="bias-issue-why">{issue.reason}</p>
             )}
+            <div className="bias-issue-actions">
+              <button
+                type="button"
+                className="btn btn--sm btn--primary"
+                disabled={isStreaming}
+                onClick={() =>
+                  sendMessage({
+                    action: 'apply_bias_fix',
+                    action_data: {
+                      phrase: issue.phrase,
+                      suggestion: issue.suggestion,
+                    },
+                  })
+                }
+              >
+                Apply
+              </button>
+            </div>
           </li>
         ))}
       </ul>
-      <p className="bias-issue-foot">
-        Suggestions are advisory. Apply by editing the JD body above directly,
-        or re-run after manual fixes.
-      </p>
     </AgentBlockShell>
   );
 }
