@@ -170,6 +170,9 @@ async def run_agent(
         state["_run_meta"]["transitions"].append(to_stage)
 
     def _record_skip(stage_name: str, reason: str) -> None:
+        # Only emit for soft-skippable stages (internal_check, market_research,
+        # bias_check). HARD-STOP stages (intake, jd_variants, final_jd) never
+        # reach this path — they either succeed or surface an error.
         state["_run_meta"]["skipped"].append({"stage": stage_name, "reason": reason})
 
     current_stage = state.get("stage", "intake")
