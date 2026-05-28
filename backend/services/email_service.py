@@ -209,6 +209,62 @@ class EmailService:
             body_text=body_text,
         )
 
+    # ── Auth: user invite ─────────────────────────────────────────────────────
+
+    @staticmethod
+    async def send_user_invite(
+        to_email: str,
+        invitee_name: str,
+        inviter_name: str,
+        org_name: str,
+        role_label: str,
+        set_password_url: str,
+    ) -> bool:
+        """
+        Send an invite email to a new team member so they can set their own
+        password and activate their account.
+        """
+        greeting = f"Hi {invitee_name},"
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  <strong>{inviter_name}</strong> has invited you to join
+  <strong>{org_name}</strong> on AI Talent Lab as <strong>{role_label}</strong>.
+</p>
+<p style="margin:0 0 16px;">
+  Click the button below to set your password and activate your account.
+  The link expires in 24 hours and can only be used once.
+</p>
+{_button("Set Your Password", set_password_url)}
+<p style="margin:16px 0 8px;font-size:13px;color:#64748B;">
+  Or paste this link into your browser:
+</p>
+<p style="margin:0 0 16px;font-size:12px;color:#0D9488;word-break:break-all;">
+  <a href="{set_password_url}" style="color:#0D9488;text-decoration:none;">{set_password_url}</a>
+</p>
+<p style="margin:0;font-size:13px;color:#64748B;">
+  If you weren't expecting this invite, you can safely ignore this email.
+  Your account will not be active until you set a password.
+</p>"""
+        body_text = (
+            f"{greeting}\n\n"
+            f"{inviter_name} has invited you to join {org_name} on AI Talent Lab "
+            f"as {role_label}.\n\n"
+            f"Set your password here: {set_password_url}\n\n"
+            f"This link expires in 24 hours and can only be used once.\n\n"
+            f"If you weren't expecting this invite, you can safely ignore this email."
+        )
+        logger.info(
+            "[email] Sending user invite to %s for org %s (role=%s)",
+            to_email, org_name, role_label,
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"You've been invited to {org_name} on AI Talent Lab",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
     # ── Candidate: outreach (magic link) ──────────────────────────────────────
 
     @staticmethod

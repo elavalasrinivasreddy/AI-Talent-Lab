@@ -4,6 +4,7 @@ Register, login, magic-link sign-in, password management.
 No HTTP, no SQL — uses repositories.
 """
 import logging
+import secrets
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -380,14 +381,29 @@ class AuthService:
         admin_user_id: Optional[int] = None,
         ip_address: Optional[str] = None,
     ) -> dict:
-        """Add a new team member (admin only)."""
+        """
+        Add a new team member (admin only).
+
+        If ``password`` is provided: create the user with that password (legacy
+        dev/seeding path — no email sent).
+
+        If ``password`` is None: create the user with a random temporary
+        password, issue a password-reset token, and email the invitee a
+        "set your password" link via EmailService.send_user_invite.
+        """
         email = validate_email(email)
-        validate_password(password)
+
+        if password is not None:
+            # Legacy path — admin sets password explicitly.
+            validate_password(password)
+            password_hash = hash_password(password)
+        else:
+            # Invite path — generate a random unusable temp password.
+            password_hash = hash_password(secrets.token_urlsafe(16))
 
         if await UserRepository.get_by_email(conn, email):
             raise AlreadyExistsError("This email is already registered")
 
-        password_hash = hash_password(password)
         user = await UserRepository.create(
             conn,
             org_id=org_id,
@@ -398,16 +414,61 @@ class AuthService:
             department_id=department_id,
         )
 
-        await AuditLogRepository.create(
-            conn,
-            org_id=org_id,
-            user_id=admin_user_id,
-            action="user_created",
-            entity_type="user",
-            entity_id=str(user["id"]),
-            details={"role": role, "method": "admin_add"},
-            ip_address=ip_address,
-        )
+        if password is None:
+            # Issue a password-reset token and send the invite email.
+            token = create_magic_link_token(
+                token_type="password_reset",
+                entity_id=user["id"],
+                expires_hours=settings.RESET_LINK_EXPIRY_HOURS,
+            )
+            set_password_url = f"{settings.MAGIC_LINK_BASE_URL}/set-password/{token}"
+
+            # Fetch org so we can include name in the email.
+            org = await OrgRepository.get_by_id(conn, org_id)
+            org_name = org["name"] if org else "your organisation"
+
+            # Best-effort: we don't know the admin's name here without a DB
+            # lookup; use the org name as the inviter label if unavailable.
+            inviter_name = org_name
+
+            role_labels = {
+                "org_head": "Org Head",
+                "dept_admin": "Dept Admin",
+                "hr": "HR",
+                "team_lead": "Team Lead",
+            }
+            role_label = role_labels.get(role, role)
+
+            await EmailService.send_user_invite(
+                to_email=email,
+                invitee_name=name.strip(),
+                inviter_name=inviter_name,
+                org_name=org_name,
+                role_label=role_label,
+                set_password_url=set_password_url,
+            )
+
+            await AuditLogRepository.create(
+                conn,
+                org_id=org_id,
+                user_id=admin_user_id,
+                action="user_invited",
+                entity_type="user",
+                entity_id=str(user["id"]),
+                details={"role": role, "via_invite_email": True},
+                ip_address=ip_address,
+            )
+        else:
+            await AuditLogRepository.create(
+                conn,
+                org_id=org_id,
+                user_id=admin_user_id,
+                action="user_created",
+                entity_type="user",
+                entity_id=str(user["id"]),
+                details={"role": role, "method": "admin_add"},
+                ip_address=ip_address,
+            )
 
         return user
 
