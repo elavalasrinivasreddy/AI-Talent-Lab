@@ -147,6 +147,16 @@ async def run_agent(
             state["stage"] = "final_jd"
             state["awaiting_user_input"] = False  # re-enter drafting_final
 
+        elif action == "retry_stage":
+            failed = state.get("error_stage")
+            if failed:
+                state["retry_count"] = 0
+                state["error_stage"] = None
+                state["error_code"] = None
+                state["error_message"] = None
+                state["stage"] = failed
+                state["awaiting_user_input"] = False
+
     # ── 2. Sequential node execution based on current stage ────────────
     # `_run_meta` is a transient state field (not persisted long-term — chat_service
     # consumes it on the same turn) that lets chat_service emit one SSE

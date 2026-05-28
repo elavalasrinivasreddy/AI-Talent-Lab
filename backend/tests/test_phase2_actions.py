@@ -193,3 +193,35 @@ async def test_rewrite_section_routes_into_drafting_final(monkeypatch):
     }
     assert new_state["final_jd"] == "REWRITTEN"
     assert new_state["stage"] == "final_jd"
+
+
+@pytest.mark.asyncio
+async def test_retry_stage_resets_error_and_reenters_failed_stage(monkeypatch):
+    calls = []
+
+    async def _fake_final(state, token_queue=None):
+        calls.append("ran")
+        state["final_jd"] = "DONE"
+        state["stage"] = "final_jd"
+        state["awaiting_user_input"] = True
+        return state
+
+    from backend.agents import orchestrator as orch
+    monkeypatch.setattr(orch, "run_drafting_final", _fake_final)
+
+    state = {
+        "stage": "complete",
+        "error_stage": "final_jd",
+        "error_code": "FINAL_JD_FAILED",
+        "error_message": "boom",
+        "retry_count": 2,
+        "messages": [],
+    }
+
+    new_state = await run_agent(state=state, action="retry_stage")
+
+    assert calls == ["ran"]
+    assert new_state["error_stage"] is None
+    assert new_state["error_code"] is None
+    assert new_state["retry_count"] == 0
+    assert new_state["final_jd"] == "DONE"
