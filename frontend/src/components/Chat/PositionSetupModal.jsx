@@ -110,9 +110,9 @@ const PositionSetupModal = ({ show, onClose }) => {
                         <div className="pmodal-success-mark">
                             <IconCheck size={22} />
                         </div>
-                        <h2 className="pmodal-success-title">Position activated.</h2>
+                        <h2 className="pmodal-success-title">JD submitted for approval.</h2>
                         <p className="pmodal-success-sub">
-                            Candidate sourcing is running. Taking you to the position…
+                            Your team lead has been notified. You'll receive an email once they review it. Taking you to the position…
                         </p>
                         <div className="pmodal-success-bar" aria-hidden="true" />
                     </div>
@@ -120,10 +120,10 @@ const PositionSetupModal = ({ show, onClose }) => {
                     <form onSubmit={handleSubmit}>
                         <div className="pmodal-head">
                             <div>
-                                <div className="pmodal-eyebrow">Activate position</div>
+                                <div className="pmodal-eyebrow">Submit for team lead approval</div>
                                 <h2 id="pmodal-title" className="pmodal-title">Configure hiring parameters</h2>
                                 <p className="pmodal-sub">
-                                    These settings drive how often we source and how strict the ATS match must be.
+                                    Set the hiring parameters below. Your team lead will review the JD before candidate sourcing begins.
                                 </p>
                             </div>
                             <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
@@ -215,8 +215,8 @@ const PositionSetupModal = ({ show, onClose }) => {
                                 className="btn-primary"
                                 disabled={isLoading || !formData.department_id}
                             >
-                                {isLoading ? 'Activating…' : (
-                                    <>Activate position <IconArrowRight size={14} /></>
+                                {isLoading ? 'Submitting…' : (
+                                    <>Submit for approval <IconArrowRight size={14} /></>
                                 )}
                             </button>
                         </div>

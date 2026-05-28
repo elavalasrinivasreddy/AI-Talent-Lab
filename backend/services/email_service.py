@@ -442,6 +442,292 @@ class EmailService:
             body_text=body_text,
         )
 
+    # ── JD Approval: ready for review (to team_lead) ─────────────────────────
+
+    @staticmethod
+    async def send_jd_ready_for_review(
+        to_email: str,
+        team_lead_name: str,
+        role_name: str,
+        hr_name: str,
+        review_url: str,
+    ) -> bool:
+        """Notify team_lead that an HR-authored JD is waiting for their approval."""
+        content_html = f"""\
+<p style="margin:0 0 16px;">Hi {team_lead_name},</p>
+<p style="margin:0 0 16px;">
+  <strong>{hr_name}</strong> has finished the job description for
+  <strong>{role_name}</strong> and submitted it for your approval.
+</p>
+<p style="margin:0 0 16px;">
+  Candidate sourcing is paused until you review and approve the JD.
+  Please take a moment to review it and either approve or request changes.
+</p>
+{_button("Review JD", review_url)}
+<p style="margin:0;font-size:13px;color:#64748B;">
+  You can also find this position in your dashboard under <em>My Hire Requests</em>.
+</p>"""
+        body_text = (
+            f"Hi {team_lead_name},\n\n"
+            f"{hr_name} has submitted the JD for {role_name} and is waiting for your approval.\n\n"
+            f"Review it here: {review_url}\n\n"
+            f"Candidate sourcing is paused until you approve."
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"JD ready for your approval — {role_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
+    # ── JD Approval: approved (to HR) ────────────────────────────────────────
+
+    @staticmethod
+    async def send_jd_approved(
+        to_email: str,
+        hr_name: str,
+        role_name: str,
+        team_lead_name: str,
+        position_url: str,
+    ) -> bool:
+        """Notify HR that the team_lead approved the JD and sourcing has started."""
+        content_html = f"""\
+<p style="margin:0 0 16px;">Hi {hr_name},</p>
+<p style="margin:0 0 16px;">
+  Great news — <strong>{team_lead_name}</strong> has approved the JD for
+  <strong>{role_name}</strong>.
+</p>
+<p style="margin:0 0 16px;">
+  Candidate sourcing has started automatically. Candidates will begin appearing
+  in the pipeline shortly.
+</p>
+{_button("View Position", position_url)}"""
+        body_text = (
+            f"Hi {hr_name},\n\n"
+            f"{team_lead_name} approved the JD for {role_name}.\n\n"
+            f"Candidate sourcing is now running.\n\nView: {position_url}"
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"JD approved — sourcing started for {role_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
+    # ── JD Approval: changes requested (to HR) ────────────────────────────────
+
+    @staticmethod
+    async def send_jd_changes_requested(
+        to_email: str,
+        hr_name: str,
+        role_name: str,
+        team_lead_name: str,
+        reason: str,
+        position_url: str,
+    ) -> bool:
+        """Notify HR that the team_lead requested changes to the JD."""
+        reason_section = ""
+        if reason:
+            reason_section = f"""\
+<p style="margin:16px 0 8px;font-size:13px;color:#64748B;">Feedback from {team_lead_name}:</p>
+<p style="margin:0 0 16px;padding:12px 16px;background:#FEF2F2;border-left:3px solid #EF4444;border-radius:4px;font-size:14px;color:#334155;">
+  {reason}
+</p>"""
+        content_html = f"""\
+<p style="margin:0 0 16px;">Hi {hr_name},</p>
+<p style="margin:0 0 16px;">
+  <strong>{team_lead_name}</strong> has reviewed the JD for
+  <strong>{role_name}</strong> and requested some changes before approval.
+</p>
+{reason_section}
+<p style="margin:0 0 16px;">
+  Please update the JD via the AI chat and resubmit it for approval.
+  Candidate sourcing remains paused until the JD is approved.
+</p>
+{_button("Update JD", position_url)}"""
+        body_text = (
+            f"Hi {hr_name},\n\n"
+            f"{team_lead_name} requested changes to the JD for {role_name}.\n\n"
+            f"{'Feedback: ' + reason + chr(10) + chr(10) if reason else ''}"
+            f"Please update the JD and resubmit.\n\nView: {position_url}"
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"Changes requested on JD — {role_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
+    # ── Hire Request: raised (to dept_admin / org_head) ──────────────────────
+
+    @staticmethod
+    async def send_hire_request_raised(
+        to_email: str,
+        dept_admin_name: Optional[str],
+        raiser_name: str,
+        role_name: str,
+        dept_name: str,
+        request_url: str,
+    ) -> bool:
+        """Notify dept_admin (or org_head) that a new hire request needs approval."""
+        greeting = f"Hi {dept_admin_name}," if dept_admin_name else "Hi,"
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  <strong>{raiser_name}</strong> has submitted a new hire request that needs your approval.
+</p>
+<table style="margin:16px 0;width:100%;border-collapse:collapse;">
+  <tr>
+    <td style="padding:8px 0;font-size:13px;color:#64748B;">Role</td>
+    <td style="padding:8px 0;font-weight:600;">{role_name}</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 0;font-size:13px;color:#64748B;">Department</td>
+    <td style="padding:8px 0;font-weight:600;">{dept_name}</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 0;font-size:13px;color:#64748B;">Requested by</td>
+    <td style="padding:8px 0;font-weight:600;">{raiser_name}</td>
+  </tr>
+</table>
+<p style="margin:0 0 16px;">
+  Please review the request details and approve or reject it at your earliest convenience.
+</p>
+{_button("Review Request", request_url)}
+<p style="margin:0;font-size:13px;color:#64748B;">
+  You can also find this in the <em>Pending Approvals</em> widget on your dashboard.
+</p>"""
+        body_text = (
+            f"{greeting}\n\n{raiser_name} submitted a hire request for {role_name} "
+            f"in {dept_name}.\n\nReview it here: {request_url}"
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"Hire request pending your approval — {role_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
+    # ── Hire Request: approved (to raiser + HR) ───────────────────────────────
+
+    @staticmethod
+    async def send_hire_request_approved(
+        to_email: str,
+        recipient_name: Optional[str],
+        role_name: str,
+        dept_name: str,
+        approver_name: str,
+        request_url: str,
+    ) -> bool:
+        """Notify raiser (and HR users) that the request has been approved."""
+        greeting = f"Hi {recipient_name}," if recipient_name else "Hi,"
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  Great news — the hire request for <strong>{role_name}</strong> in
+  <strong>{dept_name}</strong> has been
+  <span style="color:{_BRAND_TEAL};font-weight:600;">approved</span>
+  by <strong>{approver_name}</strong>.
+</p>
+<p style="margin:0 0 16px;">
+  The request is now in the HR queue and will be picked up shortly to begin the
+  job description process.
+</p>
+{_button("View Request", request_url)}
+<p style="margin:0;font-size:13px;color:#64748B;">
+  You'll receive another update when HR picks up the request and begins drafting the JD.
+</p>"""
+        body_text = (
+            f"{greeting}\n\nThe hire request for {role_name} in {dept_name} has been "
+            f"approved by {approver_name}.\n\nView it: {request_url}"
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"Hire request approved — {role_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
+    # ── Hire Request: rejected (to raiser) ────────────────────────────────────
+
+    @staticmethod
+    async def send_hire_request_rejected(
+        to_email: str,
+        raiser_name: Optional[str],
+        role_name: str,
+        reason: str,
+        approver_name: str,
+    ) -> bool:
+        """Notify raiser that their hire request was rejected, with reason."""
+        greeting = f"Hi {raiser_name}," if raiser_name else "Hi,"
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  Your hire request for <strong>{role_name}</strong> was reviewed by
+  <strong>{approver_name}</strong> and was
+  <span style="color:#EF4444;font-weight:600;">not approved</span>.
+</p>
+<p style="margin:0 0 8px;font-size:14px;font-weight:600;">Reason provided:</p>
+<p style="margin:0 0 16px;padding:12px 16px;background:#FEF2F2;border-left:3px solid #EF4444;border-radius:4px;font-size:14px;color:#991B1B;">
+  {reason}
+</p>
+<p style="margin:0 0 16px;">
+  If you believe this decision should be revisited, please reach out to
+  <strong>{approver_name}</strong> directly or raise a new request with updated details.
+</p>
+<p style="margin:0;font-size:13px;color:#64748B;">
+  Thank you for using AI Talent Lab.
+</p>"""
+        body_text = (
+            f"{greeting}\n\nYour hire request for {role_name} was not approved by "
+            f"{approver_name}.\n\nReason: {reason}\n\n"
+            f"Please reach out to {approver_name} if you'd like to discuss further."
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"Hire request not approved — {role_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
+    # ── Hire Request: picked up by HR (to raiser) ─────────────────────────────
+
+    @staticmethod
+    async def send_hire_request_picked_up(
+        to_email: str,
+        raiser_name: Optional[str],
+        role_name: str,
+        hr_name: str,
+        request_url: str,
+    ) -> bool:
+        """Notify raiser that HR has picked up their approved request."""
+        greeting = f"Hi {raiser_name}," if raiser_name else "Hi,"
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  <strong>{hr_name}</strong> from HR has picked up your hire request for
+  <strong>{role_name}</strong> and is now drafting the job description.
+</p>
+<p style="margin:0 0 16px;">
+  You'll be notified when the JD is ready for your review and approval. In the
+  meantime, you can track progress on the request page.
+</p>
+{_button("Track Request", request_url)}
+<p style="margin:0;font-size:13px;color:#64748B;">
+  If you have additional context that would help with the JD, reach out to
+  <strong>{hr_name}</strong> directly.
+</p>"""
+        body_text = (
+            f"{greeting}\n\n{hr_name} has picked up your hire request for {role_name} "
+            f"and is now drafting the job description.\n\nTrack progress: {request_url}"
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"HR is now drafting the JD for {role_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
     # ── Candidate: rejection ──────────────────────────────────────────────────
 
     @staticmethod

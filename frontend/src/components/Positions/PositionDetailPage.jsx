@@ -146,6 +146,30 @@ export default function PositionDetailPage() {
 
         {searchMsg && <div className="pos-search-msg">{searchMsg}</div>}
 
+        {/* ── Approval-pending banner ── */}
+        {position.approval_status === 'pending' && (
+          <div
+            className="pos-approval-banner"
+            style={{
+              margin: '12px 0 0',
+              padding: '10px 16px',
+              background: 'rgba(245,158,11,0.08)',
+              border: '1px solid rgba(245,158,11,0.35)',
+              borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              fontSize: 13,
+              color: 'var(--color-text-primary)',
+            }}
+          >
+            <span style={{ fontSize: 16 }}>⏳</span>
+            <span>
+              <strong>Awaiting team-lead approval.</strong> Candidate sourcing is paused until the JD is approved.
+            </span>
+          </div>
+        )}
+
         {/* ── Stats Row ── */}
         <div className="pos-stats-row">
           {[

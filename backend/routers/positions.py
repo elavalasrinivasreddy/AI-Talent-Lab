@@ -222,41 +222,17 @@ async def approval_decision(
     if decision not in ("approved", "changes_requested"):
         raise HTTPException(status_code=422, detail={"error": {"code": "INVALID_DECISION", "message": "decision must be 'approved' or 'changes_requested'", "details": None}})
 
-    from backend.db.connection import get_connection
-    async with get_connection() as conn:
-        row = await conn.fetchrow(
-            "SELECT id, created_by, role_name FROM positions WHERE id=$1 AND org_id=$2",
-            position_id, current_user["org_id"],
+    notes = body.get("notes", "") or ""
+    try:
+        await PositionService.record_approval_decision(
+            position_id=position_id,
+            org_id=current_user["org_id"],
+            approver_user_id=current_user["user_id"],
+            decision=decision,
+            notes=notes,
         )
-        if not row:
-            raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": "Position not found", "details": None}})
-
-        approved_by = current_user["user_id"] if decision == "approved" else None
-        await conn.execute(
-            f"""
-            UPDATE positions
-            SET approval_status=$1,
-                approved_by=$2,
-                approved_at={'NOW()' if decision == 'approved' else 'NULL'},
-                updated_at=NOW()
-            WHERE id=$3
-            """,
-            decision, approved_by, position_id,
-        )
-
-        # Notify the recruiter who created it
-        if row["created_by"]:
-            msg = (f"\"{row['role_name']}\" was approved" if decision == "approved"
-                   else f"\"{row['role_name']}\" needs changes before approval")
-            await conn.execute(
-                """
-                INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                VALUES ($1,$2,$3,$4,$5,$6)
-                """,
-                current_user["org_id"], row["created_by"],
-                "approval_decision", "Position approval update", msg,
-                f"/positions/{position_id}",
-            )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": str(e), "details": None}})
 
     return {"ok": True, "approval_status": decision}
 

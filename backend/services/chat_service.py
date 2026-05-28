@@ -274,7 +274,7 @@ class ChatService:
                 role_name=role_name,
                 jd_markdown=final_jd,
                 jd_variant_selected=state.get("selected_variant"),
-                status="open",   # Activate immediately on save
+                status="draft",  # Stays draft until team_lead approves
                 headcount=setup_data.get("headcount", 1),
                 priority=setup_data.get("priority", "normal"),
                 ats_threshold=setup_data.get("ats_threshold", 80.0),
@@ -344,14 +344,18 @@ class ChatService:
         except Exception as e:
             logger.warning(f"ChromaDB JD embedding failed (non-blocking): {e}")
 
-        # ── Trigger Celery candidate pipeline ─────────────────────────────────
+        # ── Auto-submit for team_lead approval ────────────────────────────────
+        # Candidate sourcing is NOT started here — it fires only after approval.
         try:
-            from backend.tasks.candidate_pipeline import run_candidate_search
-            run_candidate_search.delay(position_id, org_id, department_id, user_id)
-            logger.info(f"Candidate pipeline task queued for position {position_id}")
+            from backend.services.position_service import PositionService
+            await PositionService.submit_for_approval(
+                position_id=position_id,
+                org_id=org_id,
+                submitted_by_user_id=user_id,
+            )
+            logger.info(f"Position {position_id} auto-submitted for team_lead approval")
         except Exception as e:
-            logger.warning(f"Could not enqueue candidate pipeline (non-blocking): {e}")
-
+            logger.warning(f"Auto-submit for approval failed (non-blocking): {e}")
 
         return position
 
