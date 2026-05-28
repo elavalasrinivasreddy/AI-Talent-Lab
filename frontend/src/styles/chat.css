@@ -1455,6 +1455,18 @@
 .jd-stepper-item[data-state="skipped"] .jd-stepper-dot {
   background: transparent; border-style: dashed; color: var(--color-text-muted);
 }
+.jd-stepper-item.is-clickable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background-color 120ms ease;
+}
+.jd-stepper-item.is-clickable:hover {
+  background: var(--color-bg-tertiary);
+}
+.jd-stepper-item.is-clickable:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
 
 /* ── JD doc surface (canvas content) ──────────────────────── */
 .jd-doc {

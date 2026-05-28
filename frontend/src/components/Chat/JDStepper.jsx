@@ -71,11 +71,26 @@ export default function JDStepper() {
       <ol className="jd-stepper-list">
         {STAGES.map((s, idx) => {
           const state = states[s.key] || 'pending';
+          const clickable = state === 'done';
+          const onClick = () => {
+            if (!clickable) return;
+            const el = document.querySelector(`.agent-block[data-stage="${s.key}"]`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          };
           return (
             <li
               key={s.key}
-              className="jd-stepper-item"
+              className={`jd-stepper-item${clickable ? ' is-clickable' : ''}`}
               data-state={state}
+              onClick={onClick}
+              role={clickable ? 'button' : undefined}
+              tabIndex={clickable ? 0 : undefined}
+              onKeyDown={(e) => {
+                if (clickable && (e.key === 'Enter' || e.key === ' ')) {
+                  e.preventDefault();
+                  onClick();
+                }
+              }}
             >
               <span className="jd-stepper-dot" aria-hidden="true">
                 {state === 'done' && <IconCheck size={12} />}
