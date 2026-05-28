@@ -56,7 +56,7 @@ These predate the redesign work — fix opportunistically during related page wo
 
 | Severity | Item | Where | Notes |
 |---|---|---|---|
-| 🟠 High | `current_user["id"]` KeyError | `routers/positions.py`, `routers/candidates.py`, `routers/talent_pool.py` | `get_current_user` returns `user_id`, not `id`. `routers/notifications.py` already has a fix-comment. Will 500 any code path that hits it. Fix during next positions / candidate / talent-pool page audit. |
+| ~~🟠 High~~ | ~~`current_user["id"]` KeyError~~ | ~~`routers/positions.py`, `routers/candidates.py`, `routers/talent_pool.py`~~ | ~~`get_current_user` returns `user_id`, not `id`. `routers/notifications.py` already has a fix-comment. Will 500 any code path that hits it. Fix during next positions / candidate / talent-pool page audit.~~ (resolved 2026-05-28) |
 | 🟡 Medium | Inconsistent error format in legacy endpoints | Various pre-redesign routers | Some still use `HTTPException(detail={"error": ...})` instead of `AppError`. Standardize during page-by-page work. |
 
 ## General
