@@ -53,10 +53,11 @@ async def update_position(
     current_user=Depends(get_current_user),
 ):
     """Update position settings (headcount, priority, deadline, etc.)."""
+    user_id = current_user["user_id"]
     pos = await PositionService.update_position(
         position_id=position_id,
         org_id=current_user["org_id"],
-        user_id=current_user["id"],
+        user_id=user_id,
         data=body,
     )
     if not pos:
@@ -73,6 +74,7 @@ async def update_position_status(
     current_user=Depends(get_current_user),
 ):
     """Change position status (open, on_hold, closed, archived)."""
+    user_id = current_user["user_id"]
     new_status = body.get("status")
     if not new_status:
         raise HTTPException(status_code=422, detail={
@@ -82,7 +84,7 @@ async def update_position_status(
         pos = await PositionService.update_status(
             position_id=position_id,
             org_id=current_user["org_id"],
-            user_id=current_user["id"],
+            user_id=user_id,
             new_status=new_status,
         )
     except ValueError as e:
@@ -102,6 +104,7 @@ async def trigger_search_now(
     current_user=Depends(get_current_user),
 ):
     """Trigger an immediate candidate search for this position via Celery."""
+    user_id = current_user["user_id"]
     pos = await PositionService.get_position(position_id, current_user["org_id"])
     if not pos:
         raise HTTPException(status_code=404, detail={
@@ -111,7 +114,7 @@ async def trigger_search_now(
         position_id=position_id,
         org_id=current_user["org_id"],
         department_id=pos["department_id"],
-        user_id=current_user["id"],
+        user_id=user_id,
     )
     return result
 
@@ -140,11 +143,12 @@ async def generate_interview_kit(
     current_user=Depends(get_current_user),
 ):
     """Generate or regenerate the AI interview kit for this position."""
+    user_id = current_user["user_id"]
     try:
         kit = await PositionService.generate_interview_kit(
             position_id=position_id,
             org_id=current_user["org_id"],
-            user_id=current_user["id"],
+            user_id=user_id,
         )
         return kit
     except ValueError as e:
@@ -227,7 +231,7 @@ async def approval_decision(
         if not row:
             raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": "Position not found", "details": None}})
 
-        approved_by = current_user["id"] if decision == "approved" else None
+        approved_by = current_user["user_id"] if decision == "approved" else None
         await conn.execute(
             f"""
             UPDATE positions
