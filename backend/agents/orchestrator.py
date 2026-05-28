@@ -20,12 +20,12 @@ logger = logging.getLogger(__name__)
 
 
 async def run_agent(
-    state: dict,
+    state: AgentState,
     user_message: Optional[str] = None,
     action: Optional[str] = None,
     action_data: Optional[dict] = None,
     token_queue=None,
-) -> dict:
+) -> AgentState:
     """
     Stateful runner for the recruiter chat pipeline.
     Resumes from the current stage, executes nodes sequentially,
@@ -53,6 +53,7 @@ async def run_agent(
         state["user_action"] = action
         state["user_action_data"] = action_data or {}
         state["awaiting_user_input"] = False
+        action_data = action_data or {}  # local rebind so .get() is safe in all branches
 
         # Apply action effects
         if action == "accept_internal":
