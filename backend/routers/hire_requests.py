@@ -20,6 +20,7 @@ from backend.models.hire_request import (
     HireRequestUpdate,
     HireRequestAccept,
     HireRequestLinkSession,
+    HireRequestReject,
 )
 
 router = APIRouter(prefix="/api/v1/hire-requests", tags=["HireRequests"])
@@ -120,6 +121,48 @@ async def update_hire_request(
         role=current_user["role"],
         ip_address=_get_ip(request),
         **fields,
+    )
+    return {"request": updated}
+
+
+# ── Approve (dept_admin / org_head) ─────────────────────────────────────────
+
+@router.post("/{request_id}/approve")
+async def approve_hire_request(
+    request_id: int,
+    request: Request,
+    current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Approve a pending hire request. Requires dept_admin or org_head role."""
+    updated = await HireRequestService.approve_request(
+        db, request_id, current_user["org_id"],
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+        dept_id=current_user.get("department_id"),
+        ip_address=_get_ip(request),
+    )
+    return {"request": updated}
+
+
+# ── Reject (dept_admin / org_head) ───────────────────────────────────────────
+
+@router.post("/{request_id}/reject")
+async def reject_hire_request(
+    request_id: int,
+    request: Request,
+    body: HireRequestReject,
+    current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Reject a pending hire request with a mandatory reason."""
+    updated = await HireRequestService.reject_request(
+        db, request_id, current_user["org_id"],
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+        dept_id=current_user.get("department_id"),
+        reason=body.reason,
+        ip_address=_get_ip(request),
     )
     return {"request": updated}
 

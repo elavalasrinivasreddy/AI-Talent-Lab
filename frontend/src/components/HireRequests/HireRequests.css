@@ -672,3 +672,74 @@
   gap: 10px;
   padding-top: 6px;
 }
+
+/* ── Dept-admin approval: inline reject form ─────────────────────────────── */
+
+.hr-reject-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.hr-reject-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-danger, #EF4444);
+  margin: 0;
+}
+
+.hr-reject-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--color-bg-primary);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.hr-reject-textarea:focus {
+  outline: none;
+  border-color: #EF4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.hr-reject-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Rejection reason display (read-only, post-rejection) ─────────────────── */
+
+.hr-rejection-display {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: rgba(239, 68, 68, 0.06);
+  border-left: 3px solid #EF4444;
+  border-radius: 6px;
+}
+
+.hr-rejection-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #EF4444;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hr-rejection-body {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: 1.5;
+}

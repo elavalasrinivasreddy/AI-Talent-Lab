@@ -814,6 +814,22 @@ async def run_migrations(conn) -> None:
         END IF;
     END $$;
 
+    -- hire_requests: dept_admin approval workflow (2026-05-28)
+    -- New status values: pending → approved → accepted → fulfilled
+    --                    pending → rejected  (terminal, reason stored)
+    -- approved_by / approved_at: set when dept_admin or org_head approves.
+    -- rejection_reason: free-text, required on reject.
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='approved_by') THEN
+            ALTER TABLE hire_requests
+                ADD COLUMN approved_by INTEGER REFERENCES users(id),
+                ADD COLUMN approved_at TIMESTAMP,
+                ADD COLUMN rejection_reason TEXT;
+        END IF;
+    END $$;
+
     -- consumed_magic_links: enforces single-use on magic-link JWTs (auth, password_reset, etc.)
     -- jti is the unique JWT id minted at issue time; on verify we INSERT and rely on UNIQUE
     -- to reject replays. Periodic cleanup removes rows older than 30 days.

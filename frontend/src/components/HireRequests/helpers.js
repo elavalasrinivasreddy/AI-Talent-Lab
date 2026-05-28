@@ -3,56 +3,73 @@
  * and the small bits of formatting that appear in both list and detail views.
  */
 
-// Stages of the relay visualization. Today the backend has only 3 active
-// states (pending → accepted → fulfilled), so the dept-head / finance steps
-// render as "(Phase 2)" placeholders. Keep this array in sync with the
-// 5-step viz in docs/redesign/09_hire_request.md §4.
+// 4-step relay: filed → dept → hr → position
+// (Finance step dropped — still Phase 2 placeholder, not wired to backend)
+// dept step is now REAL: backed by dept_admin approval workflow.
 export const RELAY_STAGES = [
-  { key: 'filed',     label: 'Filed',          who: req => req.requested_by_name || 'Requester' },
-  { key: 'dept',      label: 'Dept review',    who: () => 'Phase 2', phase2: true },
-  { key: 'finance',   label: 'Finance review', who: () => 'Phase 2', phase2: true },
-  { key: 'hr',        label: 'HR',             who: req => req.accepted_by_name || 'Awaiting pickup' },
-  { key: 'position',  label: 'Position open',  who: req => req.position_role_name ? 'Live' : 'After JD save' },
+  { key: 'filed',    label: 'Filed',         who: req => req.requested_by_name || 'Requester' },
+  { key: 'dept',     label: 'Dept approval', who: req => req.approved_by_name || 'Dept admin' },
+  { key: 'hr',       label: 'HR',            who: req => req.accepted_by_name || 'Awaiting pickup' },
+  { key: 'position', label: 'Position open', who: req => req.position_role_name ? 'Live' : 'After JD save' },
 ]
 
 /**
- * Given a hire-request row, return {key: 'done' | 'current' | 'pending'} per stage.
- * Cancelled requests show every step as `pending` except the first.
+ * Valid relay state values per step:
+ *   'done'     – completed
+ *   'current'  – active now
+ *   'pending'  – not yet reached
+ *   'rejected' – terminal failure (dept step only)
+ *
+ * Status → relay mapping:
+ *   pending   → filed:done,  dept:current, hr:pending,  position:pending
+ *   approved  → filed:done,  dept:done,    hr:current,  position:pending
+ *   rejected  → filed:done,  dept:rejected, hr:pending, position:pending
+ *   accepted  → filed:done,  dept:done,    hr:done,     position:current
+ *   fulfilled → filed:done,  dept:done,    hr:done,     position:done
+ *   cancelled → filed:done,  dept:pending, hr:pending,  position:pending
  */
 export function computeRelayStates(req) {
   if (!req) return {}
   const s = req.status
 
   if (s === 'cancelled') {
+    return { filed: 'done', dept: 'pending', hr: 'pending', position: 'pending' }
+  }
+
+  if (s === 'rejected') {
+    return { filed: 'done', dept: 'rejected', hr: 'pending', position: 'pending' }
+  }
+
+  if (s === 'pending') {
+    return { filed: 'done', dept: 'current', hr: 'pending', position: 'pending' }
+  }
+
+  if (s === 'approved') {
+    return { filed: 'done', dept: 'done', hr: 'current', position: 'pending' }
+  }
+
+  if (s === 'accepted') {
     return {
-      filed: 'done', dept: 'pending', finance: 'pending',
-      hr: 'pending', position: 'pending',
+      filed: 'done', dept: 'done', hr: 'done',
+      position: req.position_id ? 'done' : 'current',
     }
   }
-  const states = {
-    filed: 'done',
-    dept: 'done',      // skipped — Phase 2 placeholder
-    finance: 'done',   // skipped — Phase 2 placeholder
-    hr: 'pending',
-    position: 'pending',
+
+  if (s === 'fulfilled') {
+    return { filed: 'done', dept: 'done', hr: 'done', position: 'done' }
   }
-  if (s === 'pending') {
-    states.hr = 'current'
-  } else if (s === 'accepted') {
-    states.hr = 'done'
-    states.position = req.position_id ? 'done' : 'current'
-  } else if (s === 'fulfilled') {
-    states.hr = 'done'
-    states.position = 'done'
-  }
-  return states
+
+  // Unknown status — show everything pending
+  return { filed: 'done', dept: 'pending', hr: 'pending', position: 'pending' }
 }
 
 export function statusLabel(req) {
   if (!req) return ''
   switch (req.status) {
-    case 'pending':   return 'Awaiting recruiter pickup'
-    case 'accepted':  return req.position_id ? 'JD in progress' : 'Recruiter working on JD'
+    case 'pending':   return 'Awaiting dept approval'
+    case 'approved':  return 'Approved — awaiting HR pickup'
+    case 'rejected':  return 'Not approved'
+    case 'accepted':  return req.position_id ? 'JD in progress' : 'HR working on JD'
     case 'fulfilled': {
       const ap = req.position_approval_status
       if (ap === 'pending')           return 'JD ready — awaiting your approval'
@@ -67,7 +84,9 @@ export function statusLabel(req) {
 export function statusTone(req) {
   if (!req) return 'neutral'
   if (req.status === 'cancelled')                                    return 'neutral'
+  if (req.status === 'rejected')                                     return 'danger'
   if (req.status === 'pending')                                      return 'warning'
+  if (req.status === 'approved')                                     return 'info'
   if (req.status === 'fulfilled' && req.position_approval_status === 'pending') return 'warning'
   if (req.status === 'fulfilled' && req.position_approval_status === 'changes_requested') return 'danger'
   if (req.status === 'fulfilled')                                    return 'success'

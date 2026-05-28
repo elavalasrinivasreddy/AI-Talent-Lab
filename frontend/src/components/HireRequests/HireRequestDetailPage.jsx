@@ -24,6 +24,8 @@ export default function HireRequestDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(null)
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -56,11 +58,44 @@ export default function HireRequestDetailPage() {
   const role = user?.role
   const isOwner = req.requested_by === user?.id
   const isAdmin = role === 'org_head' || role === 'dept_admin'
-  const isRecruiter = role === 'hr' || isAdmin
+  const isRecruiter = role === 'hr' || role === 'org_head'
 
   const canEdit = (isOwner || isAdmin) && req.status === 'pending'
-  const canCancel = (isOwner || isAdmin) && req.status !== 'cancelled' && req.status !== 'fulfilled'
-  const canPickup = isRecruiter && req.status === 'pending'
+  const canCancel = (isOwner || isAdmin) && !['cancelled', 'fulfilled', 'rejected'].includes(req.status)
+  const canPickup = isRecruiter && req.status === 'approved'
+  const canApprove = isAdmin && req.status === 'pending'
+
+  const handleApprove = async () => {
+    setBusy('approve')
+    try {
+      const res = await hireRequestsApi.approve(req.id)
+      setReq(res?.request || null)
+      setError('')
+    } catch (err) {
+      setError(err?.message || 'Couldn\'t approve request.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handleReject = async () => {
+    if (!rejectReason.trim()) {
+      setError('Please enter a reason for rejection.')
+      return
+    }
+    setBusy('reject')
+    try {
+      const res = await hireRequestsApi.reject(req.id, rejectReason.trim())
+      setReq(res?.request || null)
+      setRejectOpen(false)
+      setRejectReason('')
+      setError('')
+    } catch (err) {
+      setError(err?.message || 'Couldn\'t reject request.')
+    } finally {
+      setBusy(null)
+    }
+  }
 
   const handlePickup = async () => {
     setBusy('pickup')
@@ -180,6 +215,63 @@ export default function HireRequestDetailPage() {
 
           <div className="hr-side-card hr-side-card-actions">
             <h3>Actions</h3>
+
+            {/* dept_admin / org_head: approve or reject while pending */}
+            {canApprove && (
+              <>
+                <button
+                  type="button"
+                  className="hr-btn hr-btn-primary hr-btn-block"
+                  onClick={handleApprove}
+                  disabled={busy !== null}
+                >
+                  {busy === 'approve' ? <><SpinnerIcon /> Approving…</> : <><CheckIcon /> Approve request</>}
+                </button>
+
+                {rejectOpen ? (
+                  <div className="hr-reject-inline">
+                    <label className="hr-reject-label">Reason for rejection</label>
+                    <textarea
+                      className="hr-reject-textarea"
+                      rows={3}
+                      value={rejectReason}
+                      onChange={e => setRejectReason(e.target.value)}
+                      placeholder="Explain why the request isn't approved…"
+                      autoFocus
+                    />
+                    <div className="hr-reject-actions">
+                      <button
+                        type="button"
+                        className="hr-btn hr-btn-ghost-danger"
+                        onClick={handleReject}
+                        disabled={busy !== null || !rejectReason.trim()}
+                      >
+                        {busy === 'reject' ? <><SpinnerIcon /> Rejecting…</> : 'Confirm rejection'}
+                      </button>
+                      <button
+                        type="button"
+                        className="hr-btn hr-btn-ghost"
+                        onClick={() => { setRejectOpen(false); setRejectReason('') }}
+                        disabled={busy !== null}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="hr-btn hr-btn-ghost-danger hr-btn-block"
+                    onClick={() => setRejectOpen(true)}
+                    disabled={busy !== null}
+                  >
+                    <XIcon /> Reject request
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* HR / org_head: pick up after dept approval */}
             {canPickup && (
               <button
                 type="button"
@@ -190,6 +282,7 @@ export default function HireRequestDetailPage() {
                 {busy === 'pickup' ? <><SpinnerIcon /> Picking up…</> : <><CheckIcon /> Pick up & start JD chat</>}
               </button>
             )}
+
             {canEdit && (
               <Link to={`/hire-requests/${req.id}/edit`} className="hr-btn hr-btn-secondary hr-btn-block">
                 Edit request
@@ -205,8 +298,16 @@ export default function HireRequestDetailPage() {
                 {busy === 'cancel' ? <><SpinnerIcon /> Cancelling…</> : <><XIcon /> Cancel request</>}
               </button>
             )}
-            {!canPickup && !canEdit && !canCancel && (
+            {!canApprove && !canPickup && !canEdit && !canCancel && (
               <p className="hr-side-empty">No actions available for this request.</p>
+            )}
+
+            {/* Rejection reason display (read-only, once rejected) */}
+            {req.status === 'rejected' && req.rejection_reason && (
+              <div className="hr-rejection-display">
+                <p className="hr-rejection-label">Rejection reason</p>
+                <p className="hr-rejection-body">{req.rejection_reason}</p>
+              </div>
             )}
           </div>
         </aside>

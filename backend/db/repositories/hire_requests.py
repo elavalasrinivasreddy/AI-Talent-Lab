@@ -6,9 +6,11 @@ org_id (enforced by callers — the service layer); no method bypasses tenant
 isolation. Status transitions are intentionally guarded at the service layer,
 not here, so the repo stays a thin data-access surface.
 
-Status lifecycle today:
-    pending → accepted → fulfilled
-       │
+Status lifecycle:
+    pending → approved → accepted → fulfilled
+       │         │
+       │         └→ cancelled
+       └→ rejected (terminal, with reason)
        └→ cancelled
 """
 from typing import Optional, List
@@ -25,6 +27,7 @@ _BASE_RETURN = """
     hr.target_start, hr.requirements,
     hr.comp_min, hr.comp_max, hr.location,
     hr.status, hr.chat_session_id, hr.position_id,
+    hr.approved_by, hr.approved_at, hr.rejection_reason,
     hr.created_at, hr.updated_at
 """
 
@@ -34,6 +37,7 @@ SELECT {_BASE_RETURN},
        u.name AS requested_by_name,
        u.email AS requested_by_email,
        acc.name AS accepted_by_name,
+       appr.name AS approved_by_name,
        p.role_name AS position_role_name,
        p.status AS position_status,
        p.approval_status AS position_approval_status,
@@ -45,6 +49,7 @@ SELECT {_BASE_RETURN},
   LEFT JOIN departments d  ON d.id  = hr.department_id
   LEFT JOIN users u        ON u.id  = hr.requested_by
   LEFT JOIN users acc      ON acc.id = hr.accepted_by
+  LEFT JOIN users appr     ON appr.id = hr.approved_by
   LEFT JOIN positions p    ON p.id  = hr.position_id
 """
 
@@ -99,9 +104,12 @@ class HireRequestRepository:
 
     @staticmethod
     async def count_pending_for_org(conn: asyncpg.Connection, org_id: int) -> int:
-        """Cheap counter for the sidebar badge (admin/recruiter view)."""
+        """Cheap counter for sidebar badge — counts requests needing action.
+
+        Returns approved (awaiting HR pickup) + pending (awaiting dept_admin approval).
+        """
         return await conn.fetchval(
-            "SELECT COUNT(*) FROM hire_requests WHERE org_id = $1 AND status = 'pending'",
+            "SELECT COUNT(*) FROM hire_requests WHERE org_id = $1 AND status IN ('pending', 'approved')",
             org_id,
         )
 
@@ -177,6 +185,45 @@ class HireRequestRepository:
         return await HireRequestRepository.get_by_id(conn, row["id"], org_id)
 
     @staticmethod
+    async def approve(
+        conn: asyncpg.Connection,
+        request_id: int,
+        org_id: int,
+        approved_by: int,
+    ) -> None:
+        """Mark `pending` → `approved`. Caller verifies state + permission."""
+        await conn.execute(
+            """
+            UPDATE hire_requests
+               SET status = 'approved',
+                   approved_by = $1,
+                   approved_at = NOW(),
+                   updated_at = NOW()
+             WHERE id = $2 AND org_id = $3
+            """,
+            approved_by, request_id, org_id,
+        )
+
+    @staticmethod
+    async def reject(
+        conn: asyncpg.Connection,
+        request_id: int,
+        org_id: int,
+        rejection_reason: str,
+    ) -> None:
+        """Mark `pending` → `rejected` (terminal). Caller verifies state + permission."""
+        await conn.execute(
+            """
+            UPDATE hire_requests
+               SET status = 'rejected',
+                   rejection_reason = $1,
+                   updated_at = NOW()
+             WHERE id = $2 AND org_id = $3
+            """,
+            rejection_reason, request_id, org_id,
+        )
+
+    @staticmethod
     async def accept(
         conn: asyncpg.Connection,
         request_id: int,
@@ -184,7 +231,7 @@ class HireRequestRepository:
         accepted_by: int,
         chat_session_id: Optional[str] = None,
     ) -> None:
-        """Mark `pending` → `accepted` by a recruiter. Caller verifies state first."""
+        """Mark `approved` → `accepted` by a recruiter. Caller verifies state first."""
         await conn.execute(
             """
             UPDATE hire_requests

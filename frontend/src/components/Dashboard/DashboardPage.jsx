@@ -10,7 +10,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { dashboardApi, copilotApi, positionsApi } from '../../utils/api'
+import { dashboardApi, copilotApi, positionsApi, hireRequestsApi } from '../../utils/api'
 import StatusBadge from '../common/StatusBadge'
 import './DashboardPage.css'
 
@@ -28,15 +28,28 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [hireRequests, setHireRequests] = useState([])
   const [showRequestModal, setShowRequestModal] = useState(false)
+  const [pendingApprovals, setPendingApprovals] = useState([])
 
   useEffect(() => { loadAll() }, [period])
   useEffect(() => { loadSuggestions() }, [])
   useEffect(() => { loadHireRequests() }, [role])
+  useEffect(() => {
+    if (role === 'dept_admin' || role === 'org_head') loadPendingApprovals()
+  }, [role])
 
   const loadHireRequests = async () => {
     try {
       const data = await positionsApi.listRequests()
       setHireRequests(data?.requests || [])
+    } catch {
+      // non-critical
+    }
+  }
+
+  const loadPendingApprovals = async () => {
+    try {
+      const data = await hireRequestsApi.list({ status: 'pending' })
+      setPendingApprovals(data?.requests || [])
     } catch {
       // non-critical
     }
@@ -179,6 +192,14 @@ export default function DashboardPage() {
           {/* HR Quick Actions */}
           {role === 'hr' && <QuickActions navigate={navigate} />}
 
+          {/* Pending Approvals (dept_admin / org_head) */}
+          {(role === 'dept_admin' || role === 'org_head') && (
+            <PendingApprovals
+              requests={pendingApprovals}
+              onActioned={() => { loadPendingApprovals(); loadHireRequests() }}
+            />
+          )}
+
           {/* Hire Requests Queue (hr / dept_admin / org_head) */}
           {(role === 'hr' || role === 'dept_admin' || role === 'org_head') && (
             <HireRequestsQueue
@@ -196,6 +217,143 @@ export default function DashboardPage() {
             />
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Pending Approvals (dept_admin / org_head) ────────────────────────────────
+
+function PendingApprovals({ requests, onActioned }) {
+  const [acting, setActing] = useState(null)  // `${id}-approve` or `${id}-reject`
+  const [rejectOpenId, setRejectOpenId] = useState(null)
+  const [rejectReasons, setRejectReasons] = useState({})
+
+  const handleApprove = async (req) => {
+    setActing(`${req.id}-approve`)
+    try {
+      await hireRequestsApi.approve(req.id)
+      onActioned()
+    } catch {
+      // silently reset — error surfacing can be added later
+    } finally {
+      setActing(null)
+    }
+  }
+
+  const handleReject = async (req) => {
+    const reason = (rejectReasons[req.id] || '').trim()
+    if (!reason) return
+    setActing(`${req.id}-reject`)
+    try {
+      await hireRequestsApi.reject(req.id, reason)
+      setRejectOpenId(null)
+      setRejectReasons(prev => { const n = { ...prev }; delete n[req.id]; return n })
+      onActioned()
+    } catch {
+      // silently reset
+    } finally {
+      setActing(null)
+    }
+  }
+
+  if (requests.length === 0) return null
+
+  return (
+    <div className="dash-card dash-card--compact">
+      <div className="dash-card-head">
+        <h3 className="dash-card-title">Pending Approvals</h3>
+        <span className="dash-card-badge" style={{ background: 'rgba(245,158,11,0.15)', color: '#D97706' }}>
+          {requests.length} awaiting
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {requests.map(req => (
+          <div
+            key={req.id}
+            style={{
+              padding: '12px 14px', borderRadius: 8,
+              background: 'rgba(245,158,11,0.04)',
+              border: '1px solid rgba(245,158,11,0.25)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontWeight: 600, fontSize: 13, flex: 1, color: 'var(--color-text-primary)' }}>
+                {req.role_name}
+              </span>
+              <Link
+                to={`/hire-requests/${req.id}`}
+                style={{ fontSize: 11, color: 'var(--color-primary)', textDecoration: 'none' }}
+              >
+                View →
+              </Link>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 10 }}>
+              {req.requested_by_name} · {req.department_name || 'No dept'} · {req.headcount} headcount
+            </div>
+
+            {rejectOpenId === req.id ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <textarea
+                  rows={2}
+                  placeholder="Reason for rejection…"
+                  value={rejectReasons[req.id] || ''}
+                  onChange={e => setRejectReasons(prev => ({ ...prev, [req.id]: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '6px 8px', fontSize: 12,
+                    borderRadius: 6, border: '1px solid rgba(239,68,68,0.4)',
+                    background: 'var(--color-bg-primary)', fontFamily: 'inherit',
+                    color: 'var(--color-text-primary)', resize: 'none', boxSizing: 'border-box',
+                  }}
+                  autoFocus
+                />
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    className="btn btn-primary"
+                    style={{ fontSize: 11, padding: '4px 10px', flex: 1, background: '#EF4444', borderColor: '#EF4444' }}
+                    onClick={() => handleReject(req)}
+                    disabled={!!acting || !(rejectReasons[req.id] || '').trim()}
+                  >
+                    {acting === `${req.id}-reject` ? '…' : 'Confirm rejection'}
+                  </button>
+                  <button
+                    style={{
+                      fontSize: 11, padding: '4px 10px', borderRadius: 6, flex: 1,
+                      background: 'transparent', border: '1px solid var(--color-border)',
+                      cursor: 'pointer', color: 'var(--color-text-secondary)',
+                    }}
+                    onClick={() => setRejectOpenId(null)}
+                    disabled={!!acting}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  className="btn btn-primary"
+                  style={{ fontSize: 11, padding: '5px 12px', flex: 1 }}
+                  onClick={() => handleApprove(req)}
+                  disabled={!!acting}
+                >
+                  {acting === `${req.id}-approve` ? '…' : 'Approve'}
+                </button>
+                <button
+                  style={{
+                    fontSize: 11, padding: '5px 12px', borderRadius: 6, flex: 1,
+                    background: 'transparent', border: '1px solid rgba(239,68,68,0.4)',
+                    cursor: 'pointer', color: '#EF4444',
+                  }}
+                  onClick={() => setRejectOpenId(req.id)}
+                  disabled={!!acting}
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -238,7 +396,7 @@ function HireRequestsQueue({ requests, navigate, onAccepted }) {
     <div className="dash-card dash-card--compact">
       <div className="dash-card-head">
         <h3 className="dash-card-title">Hire Requests</h3>
-        <span className="dash-card-badge">{requests.length} pending</span>
+        <span className="dash-card-badge">{requests.length} approved</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {requests.map(req => (
