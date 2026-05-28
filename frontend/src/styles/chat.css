@@ -2063,3 +2063,22 @@
   border-radius: 6px;
   font: inherit;
 }
+
+/* --- C3: retry card -------------------------------------------------- */
+.rail-state-retry-card {
+  margin-top: 10px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--bad, #dc2626) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--bad, #dc2626) 30%, transparent);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rail-state-retry-head {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  color: var(--bad, #dc2626);
+  font-size: 12px;
+}

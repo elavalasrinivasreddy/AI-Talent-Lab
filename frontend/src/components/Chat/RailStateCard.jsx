@@ -1,6 +1,6 @@
 import React from 'react';
 import { useChat } from '../../context/ChatContext';
-import { IconLoader, IconAlertCircle, IconCheck } from './icons';
+import { IconLoader, IconAlertCircle, IconCheck, IconRefreshCw } from './icons';
 
 const STAGE_META = {
   intake:          { label: 'Intake',            retry: 'HARD', hint: "Tell me about the role you're hiring for." },
@@ -13,17 +13,15 @@ const STAGE_META = {
   complete:        { label: 'Ready to save',     retry: 'HARD', hint: 'Save to create the position and trigger sourcing.' },
 };
 
-/**
- * Right-rail card showing the current stage with HARD/SOFT semantics and
- * a one-line hint. Doubles as the retry surface if the orchestrator hits
- * an error (`error` from ChatContext).
- *
- * Spec: docs/redesign/05_jd_chat.md §6.A.
- */
 export default function RailStateCard() {
-  const { workflowStage, isStreaming, error } = useChat();
+  const { workflowStage, isStreaming, error, graphState, sendMessage } = useChat();
   const stage = STAGE_META[workflowStage] || STAGE_META.intake;
   const showActive = isStreaming || workflowStage !== 'complete';
+  const errorStage = graphState?.error_stage;
+
+  const onRetry = () => {
+    sendMessage({ action: 'retry_stage', action_data: {} });
+  };
 
   return (
     <div className="rail-state">
@@ -42,7 +40,24 @@ export default function RailStateCard() {
         )}
       </p>
 
-      {error && (
+      {errorStage && (
+        <div className="rail-state-retry-card" role="alert">
+          <div className="rail-state-retry-head">
+            <IconAlertCircle size={14} />
+            <span>{graphState?.error_message || `Stage ${errorStage} failed.`}</span>
+          </div>
+          <button
+            type="button"
+            className="btn btn--sm btn--primary"
+            disabled={isStreaming}
+            onClick={onRetry}
+          >
+            <IconRefreshCw size={12} /> Retry stage
+          </button>
+        </div>
+      )}
+
+      {error && !errorStage && (
         <div className="rail-state-error" role="alert">
           <IconAlertCircle size={14} />
           <span>{error}</span>
