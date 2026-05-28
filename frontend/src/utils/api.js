@@ -218,6 +218,13 @@ export const hireRequestsApi = {
   linkSession: (id, sessionId) => _post(`/hire-requests/${id}/link-session`, { session_id: sessionId }),
 }
 
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+export const authApi = {
+  forgotPassword: (email) => _post('/auth/forgot-password', { email }),
+  resetPassword: (token, new_password) => _post('/auth/reset-password', { token, new_password }),
+}
+
 // ── GDPR / Privacy ────────────────────────────────────────────────────────────
 
 export const gdprApi = {

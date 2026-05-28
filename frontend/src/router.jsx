@@ -3,6 +3,9 @@ import { useAuth } from './context/AuthContext'
 import LoginPage from './components/Auth/LoginPage'
 import RegisterPage from './components/Auth/RegisterPage'
 import MagicLinkExchange from './components/Auth/MagicLinkExchange'
+import ForgotPasswordPage from './components/Auth/ForgotPasswordPage'
+import ResetPasswordPage from './components/Auth/ResetPasswordPage'
+import SetPasswordPage from './components/Auth/SetPasswordPage'
 import Sidebar from './components/Sidebar/Sidebar'
 import NotificationBell from './components/common/NotificationBell'
 import SettingsPage from './components/Settings/SettingsPage'
@@ -86,6 +89,9 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/reset-password/:token', element: <ResetPasswordPage /> },
+      { path: '/set-password/:token', element: <SetPasswordPage /> },
     ],
   },
 
