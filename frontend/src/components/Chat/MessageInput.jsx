@@ -3,7 +3,7 @@ import { useChat } from '../../context/ChatContext';
 import { IconPaperclip, IconSend, IconLoader } from './icons';
 
 const MessageInput = () => {
-    const { sendMessage, isStreaming, workflowStage, currentSessionId } = useChat();
+    const { sendMessage, isStreaming, workflowStage, currentSessionId, finalJdMarkdown } = useChat();
     const [input, setInput] = useState('');
     const [fileUploading, setFileUploading] = useState(false);
     const textareaRef = useRef(null);
@@ -28,7 +28,29 @@ const MessageInput = () => {
 
     const handleSend = () => {
         if (!input.trim() || isDisabled || isComplete) return;
-        sendMessage({ message: input.trim() });
+        const text = input.trim();
+
+        const canRewriteSection =
+            Boolean(finalJdMarkdown) &&
+            (workflowStage === 'final_jd' || workflowStage === 'bias_check');
+
+        if (canRewriteSection) {
+            sendMessage({
+                action: 'rewrite_section',
+                section: null,
+                instruction: text,
+                message: text,
+            });
+        } else if (workflowStage === 'jd_variants') {
+            sendMessage({
+                action: 'regenerate_variants',
+                refinement: text,
+                message: text,
+            });
+        } else {
+            sendMessage({ message: text });
+        }
+
         setInput('');
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
     };

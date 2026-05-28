@@ -220,10 +220,13 @@ export const ChatProvider = ({ children }) => {
         }
 
         // Reset streaming JD text if we're generating a new one
-        if (payload.action === 'select_variant') {
+        if (payload.action === 'select_variant' || payload.action === 'rewrite_section') {
             setStreamingJdText('');
             setFinalJdMarkdown(null);
             setIsJdStreaming(true);
+        }
+        if (payload.action === 'regenerate_variants') {
+            setVariantsCard(null);
         }
 
         try {
