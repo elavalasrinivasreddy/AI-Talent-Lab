@@ -5,7 +5,6 @@ Orchestrates the LangGraph agent state and SSE stream streaming.
 import asyncio
 import json
 import logging
-import os
 from typing import AsyncGenerator, Optional, Any
 
 from backend.agents.orchestrator import run_agent
@@ -98,14 +97,13 @@ class ChatService:
             await ChatSessionRepository.add_message(session_id, "user", user_message)
 
         try:
-            stream_live = os.environ.get("JD_STREAM_LIVE", "1") == "1"
             initial_stage = state.get("stage", "intake")
 
             # We only want token-level streaming when the upcoming turn is going
             # to draft the final JD. That is true when:
             #   (a) the user just selected a variant (action == "select_variant"), or
             #   (b) we're already on final_jd and getting a refinement/rewrite.
-            will_stream_final = stream_live and (
+            will_stream_final = (
                 action == "select_variant"
                 or action in {"rewrite_section", "regenerate_variants"}
                 or (state.get("stage") == "final_jd" and user_message)
@@ -212,22 +210,6 @@ class ChatService:
 
                 if jd_variants and current_stage == "jd_variants":
                     yield StreamHandler.emit_card_variants(jd_variants)
-
-            # ── Fallback typewriter (only when live-stream flag is off) ───
-            # When JD_STREAM_LIVE=1 (default), tokens already flowed during
-            # the queue drain above, so we skip this. When JD_STREAM_LIVE=0,
-            # the agent ran in non-streaming mode and we keep the legacy
-            # word-split for compatibility.
-            if (
-                not stream_live
-                and current_stage == "final_jd"
-                and initial_stage != "final_jd"
-                and new_state.get("final_jd")
-            ):
-                final_text = new_state["final_jd"]
-                for word in final_text.split(" "):
-                    yield StreamHandler.emit_jd_token(word + " ")
-                    await asyncio.sleep(0.012)
 
             # ── Bias check card ───────────────────────────────────────
             if current_stage == "bias_check" and new_state.get("bias_issues") is not None:
