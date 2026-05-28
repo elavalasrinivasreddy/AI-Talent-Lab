@@ -13,7 +13,7 @@ import { useChat } from '../../context/ChatContext';
  * Spec: docs/redesign/05_jd_chat.md §6.B.
  */
 export default function RailConversation() {
-  const { messages, isStreaming } = useChat();
+  const { messages, isStreaming, workflowStage, finalJdMarkdown } = useChat();
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -25,8 +25,11 @@ export default function RailConversation() {
     isStreaming &&
     (!lastMsg || lastMsg.role === 'user' || lastMsg.isComplete);
 
+  const hint = getStageHint(workflowStage, finalJdMarkdown);
+
   return (
     <div className="rail-convo">
+      {hint && <div className="rail-convo-hint">{hint}</div>}
       <ul className="rail-convo-list">
         {messages.map((m, i) => (
           <Bubble key={i} message={m} />
@@ -36,6 +39,16 @@ export default function RailConversation() {
       <div ref={endRef} />
     </div>
   );
+}
+
+function getStageHint(stage, finalJdMarkdown) {
+  if (stage === 'jd_variants') {
+    return 'Type a refinement to regenerate variants, or pick one on the canvas.';
+  }
+  if ((stage === 'final_jd' || stage === 'bias_check') && finalJdMarkdown) {
+    return 'Type an instruction to rewrite a section, or use the Apply buttons on bias issues.';
+  }
+  return null;
 }
 
 function Bubble({ message }) {
