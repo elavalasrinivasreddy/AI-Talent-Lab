@@ -7,12 +7,12 @@ import { PlusIcon, InboxIcon, AlertIcon, SpinnerIcon } from './icons'
 import './HireRequests.css'
 
 const FILTERS = [
-  { key: 'queue',     label: 'Pending pickup', scopeStatus: { scope: 'all', status: 'pending' }, roles: ['admin', 'recruiter'] },
-  { key: 'mine',      label: 'Mine',           scopeStatus: { scope: 'mine' },                    roles: ['admin', 'recruiter', 'hiring_manager', 'dept_admin'] },
-  { key: 'accepted',  label: 'In progress',    scopeStatus: { scope: 'all', status: 'accepted' }, roles: ['admin', 'recruiter'] },
-  { key: 'fulfilled', label: 'Fulfilled',      scopeStatus: { scope: 'all', status: 'fulfilled' },roles: ['admin', 'recruiter'] },
-  { key: 'cancelled', label: 'Cancelled',      scopeStatus: { scope: 'all', status: 'cancelled' },roles: ['admin', 'recruiter'] },
-  { key: 'all',       label: 'All',            scopeStatus: { scope: 'all' },                     roles: ['admin', 'recruiter'] },
+  { key: 'queue',     label: 'Pending pickup', scopeStatus: { scope: 'all', status: 'pending' }, roles: ['org_head', 'hr'] },
+  { key: 'mine',      label: 'Mine',           scopeStatus: { scope: 'mine' },                    roles: ['org_head', 'hr', 'team_lead', 'dept_admin'] },
+  { key: 'accepted',  label: 'In progress',    scopeStatus: { scope: 'all', status: 'accepted' }, roles: ['org_head', 'hr'] },
+  { key: 'fulfilled', label: 'Fulfilled',      scopeStatus: { scope: 'all', status: 'fulfilled' },roles: ['org_head', 'hr'] },
+  { key: 'cancelled', label: 'Cancelled',      scopeStatus: { scope: 'all', status: 'cancelled' },roles: ['org_head', 'hr'] },
+  { key: 'all',       label: 'All',            scopeStatus: { scope: 'all' },                     roles: ['org_head', 'hr'] },
 ]
 
 /**
@@ -22,14 +22,14 @@ const FILTERS = [
  */
 export default function HireRequestListPage() {
   const { user } = useAuth()
-  const role = user?.role || 'recruiter'
-  const canFile = ['hiring_manager', 'dept_admin', 'admin'].includes(role)
+  const role = user?.role || 'hr'
+  const canFile = ['team_lead', 'dept_admin', 'org_head'].includes(role)
 
   const availableFilters = useMemo(
     () => FILTERS.filter(f => f.roles.includes(role)),
     [role],
   )
-  const defaultFilter = role === 'hiring_manager' ? 'mine' : (availableFilters[0]?.key || 'mine')
+  const defaultFilter = role === 'team_lead' ? 'mine' : (availableFilters[0]?.key || 'mine')
 
   const [activeFilter, setActiveFilter] = useState(defaultFilter)
   const [requests, setRequests] = useState([])
@@ -61,7 +61,7 @@ export default function HireRequestListPage() {
         <div>
           <h1 className="hr-page-title">Hire requests</h1>
           <p className="hr-page-sub">
-            {role === 'hiring_manager'
+            {role === 'team_lead'
               ? 'Your open requests and their status.'
               : 'Requests filed across the org — pick one up to start the JD.'}
           </p>

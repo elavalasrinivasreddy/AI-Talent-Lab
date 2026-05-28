@@ -9,7 +9,7 @@ export default function TeamTab() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'recruiter', department_id: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'hr', department_id: '' })
   const [adding, setAdding] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -43,7 +43,7 @@ export default function TeamTab() {
         department_id: form.department_id ? Number(form.department_id) : null,
       })
       setMsg('User added!')
-      setForm({ name: '', email: '', password: '', role: 'recruiter', department_id: '' })
+      setForm({ name: '', email: '', password: '', role: 'hr', department_id: '' })
       fetchUsers()
       setTimeout(() => setShowModal(false), 800)
     } catch (e) {
@@ -76,7 +76,12 @@ export default function TeamTab() {
   }
 
   const roleBadge = (role) => {
-    const map = { admin: { icon: '🟣', label: 'Admin' }, recruiter: { icon: '🔵', label: 'Recruiter' }, hiring_manager: { icon: '🟢', label: 'Hiring Mgr' } }
+    const map = {
+      org_head:    { icon: '🟣', label: 'Org Head' },
+      dept_admin:  { icon: '🟠', label: 'Dept Admin' },
+      hr:          { icon: '🔵', label: 'HR' },
+      team_lead:   { icon: '🟢', label: 'Team Lead' },
+    }
     return map[role] || { icon: '⚪', label: role }
   }
 
@@ -122,13 +127,14 @@ export default function TeamTab() {
                       </td>
                       <td style={{color: 'var(--color-text-secondary)'}}>{u.email}</td>
                       <td>
-                        {isCurrent && u.role === 'admin' ? (
-                          <span>{roleBadge('admin').icon} Admin</span>
+                        {isCurrent && u.role === 'org_head' ? (
+                          <span>{roleBadge('org_head').icon} Org Head</span>
                         ) : (
                           <select value={u.role} onChange={e => updateRole(u.id, e.target.value)} className="inline-select" disabled={isCurrent}>
-                            <option value="admin">{roleBadge('admin').icon} Admin</option>
-                            <option value="recruiter">{roleBadge('recruiter').icon} Recruiter</option>
-                            <option value="hiring_manager">{roleBadge('hiring_manager').icon} Hiring Mgr</option>
+                            <option value="org_head">{roleBadge('org_head').icon} Org Head</option>
+                            <option value="dept_admin">{roleBadge('dept_admin').icon} Dept Admin</option>
+                            <option value="hr">{roleBadge('hr').icon} HR</option>
+                            <option value="team_lead">{roleBadge('team_lead').icon} Team Lead</option>
                           </select>
                         )}
                       </td>
@@ -189,9 +195,10 @@ export default function TeamTab() {
               <div className="form-group">
                 <label>Role</label>
                 <select value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
-                  <option value="recruiter">Recruiter</option>
-                  <option value="hiring_manager">Hiring Manager</option>
-                  <option value="admin">Admin</option>
+                  <option value="hr">HR</option>
+                  <option value="team_lead">Team Lead</option>
+                  <option value="dept_admin">Dept Admin</option>
+                  <option value="org_head">Org Head</option>
                 </select>
               </div>
             </div>

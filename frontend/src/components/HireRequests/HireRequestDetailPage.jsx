@@ -55,8 +55,8 @@ export default function HireRequestDetailPage() {
 
   const role = user?.role
   const isOwner = req.requested_by === user?.id
-  const isAdmin = role === 'admin'
-  const isRecruiter = role === 'recruiter' || role === 'admin'
+  const isAdmin = role === 'org_head' || role === 'dept_admin'
+  const isRecruiter = role === 'hr' || isAdmin
 
   const canEdit = (isOwner || isAdmin) && req.status === 'pending'
   const canCancel = (isOwner || isAdmin) && req.status !== 'cancelled' && req.status !== 'fulfilled'

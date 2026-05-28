@@ -17,7 +17,7 @@ import './DashboardPage.css'
 export default function DashboardPage() {
   const { user, org } = useAuth()
   const navigate = useNavigate()
-  const role = user?.role || 'recruiter'
+  const role = user?.role || 'hr'
 
   const [stats, setStats] = useState(null)
   const [positions, setPositions] = useState([])
@@ -83,7 +83,7 @@ export default function DashboardPage() {
   }
 
   const greeting = getGreeting()
-  const roleBadge = { admin: 'Director', hiring_manager: 'Manager', recruiter: 'Recruiter', dept_admin: 'Dept Head' }[role] || role
+  const roleBadge = { org_head: 'Org Head', dept_admin: 'Dept Admin', hr: 'HR', team_lead: 'Team Lead' }[role] || role
 
   return (
     <div className="dash">
@@ -95,9 +95,9 @@ export default function DashboardPage() {
             <span className="dash-role-pill">{roleBadge}</span>
           </h1>
           <p className="dash-subtitle">
-            {role === 'admin'
+            {role === 'org_head'
               ? `${org?.name || 'Organization'} hiring overview`
-              : role === 'hiring_manager'
+              : role === 'team_lead'
                 ? 'Your department pipeline'
                 : role === 'dept_admin'
                   ? 'Department hiring overview'
@@ -105,7 +105,7 @@ export default function DashboardPage() {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {role === 'hiring_manager' && (
+          {role === 'team_lead' && (
             <button
               className="btn btn-primary"
               onClick={() => setShowRequestModal(true)}
@@ -124,7 +124,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Hire Request Modal (hiring_manager) ── */}
+      {/* ── Hire Request Modal (team_lead) ── */}
       {showRequestModal && (
         <HireRequestModal
           onClose={() => setShowRequestModal(false)}
@@ -143,10 +143,10 @@ export default function DashboardPage() {
       )}
 
       {/* ── Stats Strip ── */}
-      {loading ? <StatsSkeleton count={role === 'admin' ? 6 : 4} /> : <StatsStrip stats={stats} role={role} />}
+      {loading ? <StatsSkeleton count={role === 'org_head' ? 6 : 4} /> : <StatsStrip stats={stats} role={role} />}
 
-      {/* ── Admin: Department Overview ── */}
-      {role === 'admin' && positions.length > 0 && (
+      {/* ── Org Head: Department Overview ── */}
+      {role === 'org_head' && positions.length > 0 && (
         <DeptOverview positions={positions} />
       )}
 
@@ -157,8 +157,8 @@ export default function DashboardPage() {
           {/* Funnel Visualization */}
           {funnel && <FunnelViz funnel={funnel} role={role} />}
 
-          {/* Recruiter: Today's Focus */}
-          {role === 'recruiter' && stats && (
+          {/* HR: Today's Focus */}
+          {role === 'hr' && stats && (
             <TodaysFocus stats={stats} navigate={navigate} />
           )}
 
@@ -168,19 +168,19 @@ export default function DashboardPage() {
 
         {/* Right Column */}
         <div className="dash-col-side">
-          {/* Pipeline Health (admin/manager only) */}
-          {(role === 'admin' || role === 'hiring_manager' || role === 'dept_admin') && stats && (
+          {/* Pipeline Health (org_head/dept_admin/team_lead) */}
+          {(role === 'org_head' || role === 'dept_admin' || role === 'team_lead') && stats && (
             <PipelineHealth stats={stats} />
           )}
 
           {/* Activity Feed */}
           <ActivityFeed activity={activity} loading={loading} />
 
-          {/* Recruiter Quick Actions */}
-          {role === 'recruiter' && <QuickActions navigate={navigate} />}
+          {/* HR Quick Actions */}
+          {role === 'hr' && <QuickActions navigate={navigate} />}
 
-          {/* Hire Requests Queue (recruiter/admin) */}
-          {(role === 'recruiter' || role === 'admin') && (
+          {/* Hire Requests Queue (hr / dept_admin / org_head) */}
+          {(role === 'hr' || role === 'dept_admin' || role === 'org_head') && (
             <HireRequestsQueue
               requests={hireRequests}
               navigate={navigate}
@@ -188,8 +188,8 @@ export default function DashboardPage() {
             />
           )}
 
-          {/* Hiring Manager: My Requests */}
-          {role === 'hiring_manager' && (
+          {/* Team Lead: My Requests */}
+          {role === 'team_lead' && (
             <MyHireRequests
               requests={hireRequests}
               onCancelled={loadHireRequests}
@@ -544,12 +544,12 @@ function StatsStrip({ stats, role }) {
   if (!stats) return null
 
   const cards = [
-    { key: 'positions', label: 'Open Positions', value: stats.active_positions ?? 0, icon: '💼', gradient: 'linear-gradient(135deg, #0D9488 0%, #14B8A6 100%)', roles: ['admin', 'hiring_manager', 'recruiter', 'dept_admin'] },
-    { key: 'candidates', label: 'Total Candidates', value: stats.total_candidates ?? 0, icon: '👥', gradient: 'linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)', roles: ['admin', 'hiring_manager', 'dept_admin'] },
-    { key: 'applied', label: 'Applications', value: stats.applied_this_period ?? 0, icon: '📋', gradient: 'linear-gradient(135deg, #6366F1 0%, #818CF8 100%)', roles: ['admin', 'hiring_manager', 'recruiter', 'dept_admin'] },
-    { key: 'interviews', label: 'Interviews', value: stats.interviews_this_period ?? 0, icon: '🎯', gradient: 'linear-gradient(135deg, #06B6D4 0%, #22D3EE 100%)', roles: ['admin', 'hiring_manager', 'recruiter', 'dept_admin'] },
-    { key: 'offers', label: 'Offers', value: stats.offers_this_period ?? 0, icon: '🎉', gradient: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)', roles: ['admin', 'hiring_manager', 'dept_admin'] },
-    { key: 'time', label: 'Avg. Time to Hire', value: stats.avg_time_to_hire ? `${stats.avg_time_to_hire}d` : '—', icon: '⏱', gradient: 'linear-gradient(135deg, #D97706 0%, #F59E0B 100%)', roles: ['admin', 'dept_admin'] },
+    { key: 'positions', label: 'Open Positions', value: stats.active_positions ?? 0, icon: '💼', gradient: 'linear-gradient(135deg, #0D9488 0%, #14B8A6 100%)', roles: ['org_head', 'dept_admin', 'hr', 'team_lead'] },
+    { key: 'candidates', label: 'Total Candidates', value: stats.total_candidates ?? 0, icon: '👥', gradient: 'linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)', roles: ['org_head', 'dept_admin', 'team_lead'] },
+    { key: 'applied', label: 'Applications', value: stats.applied_this_period ?? 0, icon: '📋', gradient: 'linear-gradient(135deg, #6366F1 0%, #818CF8 100%)', roles: ['org_head', 'dept_admin', 'hr', 'team_lead'] },
+    { key: 'interviews', label: 'Interviews', value: stats.interviews_this_period ?? 0, icon: '🎯', gradient: 'linear-gradient(135deg, #06B6D4 0%, #22D3EE 100%)', roles: ['org_head', 'dept_admin', 'hr', 'team_lead'] },
+    { key: 'offers', label: 'Offers', value: stats.offers_this_period ?? 0, icon: '🎉', gradient: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)', roles: ['org_head', 'dept_admin', 'team_lead'] },
+    { key: 'time', label: 'Avg. Time to Hire', value: stats.avg_time_to_hire ? `${stats.avg_time_to_hire}d` : '—', icon: '⏱', gradient: 'linear-gradient(135deg, #D97706 0%, #F59E0B 100%)', roles: ['org_head', 'dept_admin'] },
   ].filter(c => c.roles.includes(role))
 
   return (
@@ -594,7 +594,7 @@ function FunnelViz({ funnel, role }) {
       <div className="dash-card-head">
         <h3 className="dash-card-title">Hiring Funnel</h3>
         <span className="dash-card-badge">
-          {role === 'admin' ? 'Org-wide' : 'Department'}
+          {role === 'org_head' ? 'Org-wide' : 'Department'}
         </span>
       </div>
       <div className="funnel-viz">
@@ -659,7 +659,7 @@ function PipelineHealth({ stats }) {
 // ── Positions Section ───────────────────────────────────────────────────────
 
 function PositionsSection({ positions, role, loading }) {
-  const label = role === 'admin' ? 'All Open Positions' : (role === 'hiring_manager' || role === 'dept_admin') ? 'Department Positions' : 'My Positions'
+  const label = role === 'org_head' ? 'All Open Positions' : (role === 'team_lead' || role === 'dept_admin') ? 'Department Positions' : 'My Positions'
 
   return (
     <div className="dash-card">
@@ -674,9 +674,9 @@ function PositionsSection({ positions, role, loading }) {
           <span className="dash-empty-icon">💼</span>
           <p className="dash-empty-title">No open positions yet</p>
           <p className="dash-empty-desc">
-            {role === 'recruiter' ? 'No positions assigned to you' : 'Create your first position to start hiring'}
+            {role === 'hr' ? 'No positions assigned to you' : 'Create your first position to start hiring'}
           </p>
-          {role !== 'recruiter' && (
+          {role !== 'hr' && (
             <Link to="/chat" className="dash-empty-cta">✨ Create position</Link>
           )}
         </div>

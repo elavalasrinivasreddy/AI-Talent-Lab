@@ -25,19 +25,19 @@ const Icons = {
 // roles: which roles can see this item. Omit = all roles.
 const ALL_NAV = [
   { section: 'Main', items: [
-    { to: '/chat',      icon: Icons.sparkles,  label: 'New Hire',   roles: ['admin', 'recruiter'] },
+    { to: '/chat',      icon: Icons.sparkles,  label: 'New Hire',   roles: ['org_head', 'dept_admin', 'hr'] },
     { to: '/dashboard', icon: Icons.dashboard, label: 'Dashboard' },
   ]},
   { section: 'Hiring', items: [
     { to: '/positions',     icon: Icons.briefcase, label: 'Positions' },
     { to: '/interviews',    icon: Icons.calendar,  label: 'Interviews' },
-    { to: '/hire-requests', icon: Icons.inbox,     label: 'Hire Requests', roles: ['admin', 'recruiter', 'hiring_manager', 'dept_admin'], badge: 'hire_requests_pending' },
-    { to: '/talent-pool',   icon: Icons.users,     label: 'Talent Pool',   roles: ['admin', 'recruiter'] },
-    { to: '/analytics',     icon: Icons.trending,  label: 'Analytics',     roles: ['admin', 'recruiter', 'dept_admin'] },
+    { to: '/hire-requests', icon: Icons.inbox,     label: 'Hire Requests', roles: ['org_head', 'dept_admin', 'hr', 'team_lead'], badge: 'hire_requests_pending' },
+    { to: '/talent-pool',   icon: Icons.users,     label: 'Talent Pool',   roles: ['org_head', 'dept_admin', 'hr'] },
+    { to: '/analytics',     icon: Icons.trending,  label: 'Analytics',     roles: ['org_head', 'dept_admin', 'hr'] },
   ]},
   { section: 'System', items: [
     { to: '/settings', icon: Icons.settings, label: 'Settings' },
-    { to: '/dev',      icon: Icons.terminal, label: 'Dev Tools',   roles: ['admin', 'recruiter'] },
+    { to: '/dev',      icon: Icons.terminal, label: 'Dev Tools',   roles: ['platform_admin'] },
   ]},
 ]
 
@@ -62,9 +62,9 @@ export default function Sidebar() {
   useEffect(() => {
     const role = user?.role
     if (!role) return
-    // hiring_manager doesn't need the org-wide pending count; their "Mine"
+    // team_lead doesn't need the org-wide pending count; their "Mine"
     // tab is the meaningful one and we don't have a count for that yet.
-    if (!['admin', 'recruiter'].includes(role)) return
+    if (!['org_head', 'dept_admin', 'hr'].includes(role)) return
 
     let cancelled = false
     const refresh = async () => {
@@ -102,7 +102,7 @@ export default function Sidebar() {
     }
   }
 
-  const role = user?.role || 'recruiter'
+  const role = user?.role || 'hr'
   const navItems = getNavForRole(role)
 
   const initials = user?.name

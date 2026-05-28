@@ -575,6 +575,14 @@ async def run_migrations(conn) -> None:
             ALTER TABLE positions ADD COLUMN assigned_to INTEGER REFERENCES users(id);
         END IF;
     END $$;
+
+    -- Role rename + dept_admin tier (2026-05-28)
+    -- Renames the legacy role names to the explicit org-hierarchy roles.
+    -- Idempotent: only updates rows that still hold the legacy value.
+    UPDATE users SET role = 'org_head'  WHERE role = 'admin';
+    UPDATE users SET role = 'hr'        WHERE role = 'recruiter';
+    UPDATE users SET role = 'team_lead' WHERE role = 'hiring_manager';
+    ALTER TABLE users ALTER COLUMN role SET DEFAULT 'hr';
     """
     await conn.execute(incremental_sql)
 

@@ -4,7 +4,7 @@ import api from '../../../utils/api'
 
 export default function OrganizationTab() {
   const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'org_head'
   const [org, setOrg] = useState(null)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')

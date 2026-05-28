@@ -11,7 +11,7 @@ export const RELAY_STAGES = [
   { key: 'filed',     label: 'Filed',          who: req => req.requested_by_name || 'Requester' },
   { key: 'dept',      label: 'Dept review',    who: () => 'Phase 2', phase2: true },
   { key: 'finance',   label: 'Finance review', who: () => 'Phase 2', phase2: true },
-  { key: 'recruiter', label: 'Recruiter',      who: req => req.accepted_by_name || 'Awaiting pickup' },
+  { key: 'hr',        label: 'HR',             who: req => req.accepted_by_name || 'Awaiting pickup' },
   { key: 'position',  label: 'Position open',  who: req => req.position_role_name ? 'Live' : 'After JD save' },
 ]
 
@@ -26,23 +26,23 @@ export function computeRelayStates(req) {
   if (s === 'cancelled') {
     return {
       filed: 'done', dept: 'pending', finance: 'pending',
-      recruiter: 'pending', position: 'pending',
+      hr: 'pending', position: 'pending',
     }
   }
   const states = {
     filed: 'done',
     dept: 'done',      // skipped — Phase 2 placeholder
     finance: 'done',   // skipped — Phase 2 placeholder
-    recruiter: 'pending',
+    hr: 'pending',
     position: 'pending',
   }
   if (s === 'pending') {
-    states.recruiter = 'current'
+    states.hr = 'current'
   } else if (s === 'accepted') {
-    states.recruiter = 'done'
+    states.hr = 'done'
     states.position = req.position_id ? 'done' : 'current'
   } else if (s === 'fulfilled') {
-    states.recruiter = 'done'
+    states.hr = 'done'
     states.position = 'done'
   }
   return states

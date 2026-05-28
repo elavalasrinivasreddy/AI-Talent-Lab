@@ -136,7 +136,7 @@ class CreateUserBody(BaseModel):
     name: str
     email: EmailStr
     password: str
-    role: str = "recruiter"
+    role: str = "hr"
     org_id: Optional[int] = None
     org_name: Optional[str] = None   # create new org if org_id not given
     department_id: Optional[int] = None
@@ -149,7 +149,7 @@ async def create_user(body: CreateUserBody):
     Either org_id or org_name must be provided.
     """
     _require_dev_mode()
-    valid_roles = ("admin", "recruiter", "hiring_manager", "dept_admin", "platform_admin")
+    valid_roles = ("org_head", "dept_admin", "hr", "team_lead", "platform_admin")
     if body.role not in valid_roles:
         raise HTTPException(status_code=400, detail=f"role must be one of: {', '.join(valid_roles)}")
 

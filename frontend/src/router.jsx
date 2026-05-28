@@ -39,7 +39,21 @@ function PublicGuard() {
   const { isAuthenticated, loading, user } = useAuth()
   if (loading) return null
   if (isAuthenticated) {
-    return <Navigate to={user?.role === 'platform_admin' ? '/platform' : '/chat'} replace />
+    return <Navigate to={user?.role === 'platform_admin' ? '/platform' : '/dashboard'} replace />
+  }
+  return <Outlet />
+}
+
+// ── Dev Guard (platform_admin only) ─────────────────────────────────────────
+
+function DevGuard() {
+  const { isAuthenticated, loading, user } = useAuth()
+  if (loading) return null
+  // Dev console is accessible without login, but if logged in as a non-platform_admin
+  // org user, redirect away to avoid confusion. Unauthenticated access is allowed
+  // so developers can create first users without a session.
+  if (isAuthenticated && user?.role !== 'platform_admin') {
+    return <Navigate to="/dashboard" replace />
   }
   return <Outlet />
 }
@@ -123,8 +137,13 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // Public pages (no auth) — magic links, career page, dev console
-  { path: '/dev', element: <DevAdminPage /> },
+  // Dev console — unauthenticated allowed, but org-role users are redirected away
+  {
+    element: <DevGuard />,
+    children: [
+      { path: '/dev', element: <DevAdminPage /> },
+    ],
+  },
   { path: '/apply/:token', element: <ApplyPage /> },
   { path: '/panel/:token', element: <PanelPage /> },
   { path: '/careers/:orgSlug', element: <CareerPage /> },

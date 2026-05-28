@@ -215,7 +215,7 @@ async def approval_decision(
     Body: { decision: 'approved' | 'changes_requested', notes: str }
     Requires role = admin or hiring_manager.
     """
-    if current_user.get("role") not in ("admin", "hiring_manager", "dept_admin"):
+    if current_user.get("role") not in ("org_head", "team_lead", "dept_admin"):
         raise HTTPException(status_code=403, detail={"error": {"code": "FORBIDDEN", "message": "Only admins, hiring managers, and dept heads can approve positions", "details": None}})
 
     decision = body.get("decision")

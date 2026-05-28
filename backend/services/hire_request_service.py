@@ -29,10 +29,10 @@ from backend.exceptions import (
 
 # Roles allowed to file a hire request. dept_admin and hiring_manager are the
 # obvious filers; admin can file on behalf of either (e.g. demo seeding).
-_FILER_ROLES = {"hiring_manager", "dept_admin", "admin"}
+_FILER_ROLES = {"team_lead", "dept_admin", "org_head"}
 
 # Roles allowed to pick up a pending request.
-_PICKUP_ROLES = {"recruiter", "admin"}
+_PICKUP_ROLES = {"hr", "org_head"}
 
 _VALID_WORK_TYPES = ("onsite", "remote", "hybrid")
 
@@ -80,7 +80,7 @@ class HireRequestService:
             )
 
         if scope == "all":
-            if role not in ("admin", "recruiter"):
+            if role not in ("org_head", "hr"):
                 raise InsufficientPermissionsError(
                     "Only admins or recruiters can list all hire requests."
                 )
@@ -89,7 +89,7 @@ class HireRequestService:
             )
 
         # scope == "default"
-        if role == "hiring_manager":
+        if role == "team_lead":
             return await HireRequestRepository.list_for_org(
                 conn, org_id, status=eff_status, requested_by=user_id,
             )
@@ -219,7 +219,7 @@ class HireRequestService:
     ) -> dict:
         existing = await HireRequestService.get(conn, request_id, org_id)
         is_owner = existing["requested_by"] == user_id
-        is_admin = role == "admin"
+        is_admin = role in ("org_head", "dept_admin")
         if not (is_owner or is_admin):
             raise InsufficientPermissionsError(
                 "You can only edit your own hire requests."
@@ -326,7 +326,7 @@ class HireRequestService:
     ) -> dict:
         existing = await HireRequestService.get(conn, request_id, org_id)
         is_owner = existing["requested_by"] == user_id
-        is_admin = role == "admin"
+        is_admin = role in ("org_head", "dept_admin")
         if not (is_owner or is_admin):
             raise InsufficientPermissionsError(
                 "You can only cancel your own hire requests."

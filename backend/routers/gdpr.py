@@ -18,7 +18,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
-from backend.dependencies import get_current_user, require_admin
+from backend.dependencies import get_current_user, require_org_head
 from backend.services.gdpr_service import GDPRService
 
 router = APIRouter(prefix="/api/v1/gdpr", tags=["GDPR / Privacy"])
@@ -69,7 +69,7 @@ async def verify_deletion(token: str):
 # ── Authenticated Endpoints (admin only) ──────────────────────────────────────
 
 @router.get("/deletion-requests")
-async def list_deletion_requests(user=Depends(require_admin)):
+async def list_deletion_requests(user=Depends(require_org_head)):
     """List all data deletion requests for the organization."""
     from backend.db.connection import get_connection
     async with get_connection() as conn:
@@ -87,7 +87,7 @@ async def list_deletion_requests(user=Depends(require_admin)):
 
 
 @router.post("/process-deletion/{request_id}")
-async def process_deletion(request_id: int, user=Depends(require_admin)):
+async def process_deletion(request_id: int, user=Depends(require_org_head)):
     """
     Process a verified deletion request.
     Anonymizes all candidate PII while preserving aggregate metrics.
@@ -102,7 +102,7 @@ async def process_deletion(request_id: int, user=Depends(require_admin)):
 
 
 @router.get("/export/{candidate_id}")
-async def export_candidate_data(candidate_id: int, user=Depends(require_admin)):
+async def export_candidate_data(candidate_id: int, user=Depends(require_org_head)):
     """Export all data held about a candidate (Right to Access / Portability)."""
     result = await GDPRService.export_candidate_data(user["org_id"], candidate_id)
     if result.get("error"):
@@ -114,7 +114,7 @@ async def export_candidate_data(candidate_id: int, user=Depends(require_admin)):
 
 
 @router.get("/consent/{candidate_id}")
-async def get_consent_records(candidate_id: int, user=Depends(require_admin)):
+async def get_consent_records(candidate_id: int, user=Depends(require_org_head)):
     """View all consent records for a candidate."""
     records = await GDPRService.get_consent_status(user["org_id"], candidate_id)
     return {"consent_records": records}

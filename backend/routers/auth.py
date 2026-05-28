@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 
 import asyncpg
 
-from backend.dependencies import get_db, get_current_user, require_admin
+from backend.dependencies import get_db, get_current_user, require_org_head
 from backend.services.auth_service import AuthService
 from backend.models.auth import (
     LoginRequest,
@@ -179,7 +179,7 @@ async def me(
 
 @router.get("/users")
 async def list_users(
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """List all org users (admin only)."""
@@ -193,7 +193,7 @@ async def list_users(
 async def add_user(
     request: Request,
     body: AddUserRequest,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Add a new team member (admin only)."""
@@ -218,7 +218,7 @@ async def update_user(
     user_id: int,
     request: Request,
     body: UpdateUserRequest,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Update user role, department, or active status (admin only)."""

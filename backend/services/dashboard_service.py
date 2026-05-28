@@ -27,11 +27,11 @@ class DashboardService:
         app_filter = "org_id=$1"
         params = [org_id]
 
-        if role == "hiring_manager" and department_id:
+        if role == "team_lead" and department_id:
             pos_filter += " AND department_id=$2"
             app_filter += " AND position_id IN (SELECT id FROM positions WHERE department_id=$2)"
             params.append(department_id)
-        elif role == "recruiter":
+        elif role == "hr":
             pos_filter += " AND assigned_to=$2"
             app_filter += " AND position_id IN (SELECT id FROM positions WHERE assigned_to=$2)"
             params.append(user_id)
@@ -86,10 +86,10 @@ class DashboardService:
         pos_filter = "p.org_id = $1"
         params = [org_id]
 
-        if role == "hiring_manager" and department_id:
+        if role == "team_lead" and department_id:
             pos_filter += " AND p.department_id=$2"
             params.append(department_id)
-        elif role == "recruiter":
+        elif role == "hr":
             pos_filter += " AND p.assigned_to=$2"
             params.append(user_id)
 

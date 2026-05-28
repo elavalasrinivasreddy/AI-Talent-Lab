@@ -133,7 +133,7 @@ class AuthService:
             email=email,
             password_hash=password_hash,
             name=name.strip(),
-            role="admin",
+            role="org_head",
         )
 
         await AuditLogRepository.create(
@@ -143,7 +143,7 @@ class AuthService:
             action="user_created",
             entity_type="user",
             entity_id=str(user["id"]),
-            details={"role": "admin", "method": "registration"},
+            details={"role": "org_head", "method": "registration"},
             ip_address=ip_address,
         )
 
@@ -155,7 +155,7 @@ class AuthService:
         token = create_access_token(
             user_id=user["id"],
             org_id=org["id"],
-            role="admin",
+            role="org_head",
         )
 
         return {"token": token, "user": user, "org": org}
@@ -374,8 +374,8 @@ class AuthService:
         org_id: int,
         email: str,
         name: str,
-        password: str,
-        role: str = "recruiter",
+        password: Optional[str] = None,
+        role: str = "hr",
         department_id: Optional[int] = None,
         admin_user_id: Optional[int] = None,
         ip_address: Optional[str] = None,

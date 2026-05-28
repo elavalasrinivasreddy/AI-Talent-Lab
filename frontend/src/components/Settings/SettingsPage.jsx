@@ -75,7 +75,7 @@ export default function SettingsPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const activeTab = tab || 'profile'
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'org_head' || user?.role === 'dept_admin'
 
   const ActiveComponent = TAB_COMPONENTS[activeTab] || ProfileTab
 
