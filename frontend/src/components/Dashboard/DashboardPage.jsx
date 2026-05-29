@@ -43,7 +43,7 @@ export default function DashboardPage() {
 
   const loadHireRequests = async () => {
     try {
-      const data = await positionsApi.listRequests()
+      const data = await hireRequestsApi.list()
       setHireRequests(data?.requests || [])
     } catch {
       // non-critical
@@ -385,7 +385,7 @@ function HireRequestsQueue({ requests, navigate, onAccepted }) {
   const handlePickUp = async (req) => {
     setAccepting(req.id)
     try {
-      await positionsApi.acceptRequest(req.id)
+      await hireRequestsApi.accept(req.id)
       onAccepted()
       navigate('/chat', {
         state: {

@@ -29,7 +29,7 @@ export default function SetPasswordPage() {
       return false
     }
     if (password !== confirm) {
-      setErrorMsg('Passwords don't match.')
+      setErrorMsg("Passwords don't match.")
       return false
     }
     return true
