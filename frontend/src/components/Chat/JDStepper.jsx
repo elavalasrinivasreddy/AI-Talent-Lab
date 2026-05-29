@@ -8,7 +8,7 @@ import { IconCheck, IconX, IconLoader } from './icons';
  *   - stage label
  *   - HARD STOP or SOFT SKIP retry behavior tag
  *
- * Spec: docs/redesign/05_jd_chat.md §4.
+ * Spec: docs/design/pages/05_jd_chat.md §4.
  *
  * Stage list is fixed and matches `backend/agents/orchestrator.py` plus the
  * 'complete' terminal state. Benchmarking is merged into market_research's

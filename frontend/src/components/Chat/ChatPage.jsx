@@ -14,7 +14,7 @@ import '../../styles/chat.css';
  * Top: title bar + 8-stage stepper.
  * Body: JDCanvas (~65%) on the left, JDRail (320px) on the right.
  *
- * Per docs/redesign/05_jd_chat.md.
+ * Per docs/design/pages/05_jd_chat.md.
  */
 const ChatPage = () => {
     const { sessionId } = useParams();

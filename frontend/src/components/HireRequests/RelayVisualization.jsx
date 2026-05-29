@@ -2,7 +2,7 @@ import { RELAY_STAGES, computeRelayStates } from './helpers'
 import { CheckIcon } from './icons'
 
 /**
- * Five-step relay viz per docs/redesign/09_hire_request.md §4.
+ * Five-step relay viz per docs/design/pages/09_hire_request.md §4.
  * Each stage is a numbered ring; line segments between them indicate
  * whether the handoff has occurred.
  *

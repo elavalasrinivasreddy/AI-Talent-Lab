@@ -1,5 +1,5 @@
 /**
- * CandidateDetailPage.jsx – Full candidate profile per docs/pages/05_candidate_detail.md
+ * CandidateDetailPage.jsx – Full candidate profile per docs/design/pages/04_candidate_detail.md
  * Tabs: Overview, Skills Match, Timeline, Resume, Interviews
  */
 import { useState, useEffect, useCallback } from 'react'

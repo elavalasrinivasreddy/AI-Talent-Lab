@@ -1,7 +1,7 @@
 """
 celery_app.py – Celery + Redis configuration.
 Background task worker with beat schedule for periodic tasks.
-See docs/BACKEND_PLAN.md §16.
+See docs/architecture/03_backend.md §16.
 """
 from celery import Celery
 from backend.config import settings

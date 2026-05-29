@@ -1,7 +1,7 @@
 /**
  * TalentPoolPage.jsx – Org-wide talent pool with bulk upload and AI suggestions
  * Route: /talent-pool
- * Per docs/pages/08_talent_pool.md
+ * Per docs/design/pages/08_talent_pool.md
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'

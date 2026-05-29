@@ -2,7 +2,7 @@
 utils/security.py – Authentication utilities.
 bcrypt password hashing (12 rounds), JWT encode/decode,
 magic link token generation/verification (single-use enforced via DB jti).
-See docs/BACKEND_PLAN.md §9.
+See docs/architecture/03_backend.md §9.
 """
 import bcrypt
 import jwt

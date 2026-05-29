@@ -1,6 +1,6 @@
 /**
  * components/common/ScoreCircle.jsx
- * Arc-style ATS score display per docs/FRONTEND_PLAN.md §11.4
+ * Arc-style ATS score display per docs/architecture/05_frontend.md §11.4
  */
 import { getScoreStyle } from '../../utils/constants'
 

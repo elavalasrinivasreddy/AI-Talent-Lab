@@ -1336,7 +1336,7 @@
 /* ===========================================================
    v3 redesign — document-first canvas + supplementary rail
    Layout flips: canvas (left, ~65%) is primary; chat is a rail.
-   Per docs/redesign/05_jd_chat.md.
+   Per docs/design/pages/05_jd_chat.md.
    =========================================================== */
 
 .chat-page--v3 {

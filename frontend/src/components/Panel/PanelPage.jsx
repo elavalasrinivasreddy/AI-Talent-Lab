@@ -1,7 +1,7 @@
 /**
  * PanelPage.jsx – Panel member feedback submission via magic link
  * Route: /panel/:token (public, no auth)
- * Per docs/pages/11_panel_feedback.md — mobile-first form
+ * Per docs/design/pages/11_panel_feedback.md — mobile-first form
  */
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'

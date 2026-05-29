@@ -1,6 +1,6 @@
 /**
  * ScheduleInterviewModal.jsx – Create/edit interview round
- * Per docs/pages/10_interview_scheduling.md §2
+ * Per docs/design/pages/15_interview_scheduling.md §2
  * Triggered from: KanbanCard menu, CandidateDetail Interviews tab
  */
 import { useState, useEffect } from 'react'

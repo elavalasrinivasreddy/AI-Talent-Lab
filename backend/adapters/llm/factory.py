@@ -2,7 +2,7 @@
 adapters/llm/factory.py – LLM factory with per-agent temperature tuning.
 Returns the correct LLM based on LLM_PROVIDER env var.
 Supports: groq, openai, gemini.
-See docs/BACKEND_PLAN.md §6, §15.
+See docs/architecture/03_backend.md §6, §15.
 """
 import logging
 from typing import Optional

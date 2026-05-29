@@ -1,6 +1,6 @@
 """
 agents/streaming.py – Manages Server-Sent Events (SSE) formatting for the frontend chat.
-Follows the exact event types specified in docs/BACKEND_PLAN.md §6.
+Follows the exact event types specified in docs/architecture/03_backend.md §6.
 """
 import json
 import logging

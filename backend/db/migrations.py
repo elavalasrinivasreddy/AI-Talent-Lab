@@ -1,6 +1,6 @@
 """
 db/migrations.py – ALL CREATE TABLE statements.
-Implements every table from docs/BACKEND_PLAN.md §4 (sections 4.1–4.5).
+Implements every table from docs/architecture/03_backend.md §4 (sections 4.1–4.5).
 Includes schema additions from §12 (followup) and §15 (embeddings).
 Uses IF NOT EXISTS — safe to run on every app startup.
 After tables, enables PostgreSQL Row-Level Security on tenant-scoped tables.

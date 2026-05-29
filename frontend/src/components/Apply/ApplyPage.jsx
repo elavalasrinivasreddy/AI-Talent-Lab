@@ -1,7 +1,7 @@
 /**
  * ApplyPage.jsx – Candidate magic-link chat application page
  * Route: /apply/:token (public, no auth)
- * Per docs/pages/07_apply.md — mobile-first, chat interface
+ * Per docs/design/pages/10_apply_chat.md — mobile-first, chat interface
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'

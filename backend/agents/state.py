@@ -1,6 +1,6 @@
 """
 agents/state.py – AgentState TypedDict for LangGraph state machine.
-Exactly as documented in docs/BACKEND_PLAN.md §6 and §14.
+Exactly as documented in docs/architecture/03_backend.md §6 and §14.
 This is the single source of truth for all state flowing through the pipeline.
 """
 from typing import Optional, TypedDict

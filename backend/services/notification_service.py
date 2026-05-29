@@ -6,7 +6,7 @@ Per project rules:
 - All queries filter by org_id for tenant isolation
 - All mutations logged to audit_log
 
-Notification types (from docs/BACKEND_PLAN.md §3):
+Notification types (from docs/architecture/03_backend.md §3):
   application_received, candidate_applied, interview_scheduled,
   feedback_submitted, position_filled, sourcing_complete,
   magic_link_clicked, candidate_rejected, system_alert

@@ -12,7 +12,7 @@ import FinalizeCTA from './FinalizeCTA';
  *   B — RailConversation    (supplementary chat feed)
  *   C — MessageInput + FinalizeCTA
  *
- * Spec: docs/redesign/05_jd_chat.md §6.
+ * Spec: docs/design/pages/05_jd_chat.md §6.
  */
 export default function JDRail() {
   return (

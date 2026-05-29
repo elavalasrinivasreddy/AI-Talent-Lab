@@ -34,7 +34,7 @@ function saveSession(token, user, org) {
 /**
  * Default landing route per role.
  * platform_admin lives outside the org sidebar; everyone else hits the
- * universal dashboard. Per docs/redesign/14_auth.md.
+ * universal dashboard. Per docs/design/pages/14_auth.md.
  */
 export function defaultRouteForRole(role) {
   if (role === 'platform_admin') return '/platform'

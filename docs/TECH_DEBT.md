@@ -2,7 +2,7 @@
 
 > **Purpose:** Items that are *not* roadmap features but *are* needed for a fully production-ready system. Things like rate limiting, pagination, test coverage, performance budgets, and pre-existing bugs surfaced during audits.
 >
-> Different from `docs/PRODUCT_PLAN.md §13` (Phase 2 user-facing features) and `docs/PRODUCT_IMPROVEMENTS.md §5` (Phase 2 roadmap). Items here ship silently — users don't notice them landing, but a production deploy without them is risky.
+> Different from [`product/03_roadmap.md`](product/03_roadmap.md) (Phase 2/3 user-facing features). Items here ship silently — users don't notice them landing, but a production deploy without them is risky.
 >
 > **Last updated:** 2026-05-19
 
@@ -77,4 +77,4 @@ These predate the redesign work — fix opportunistically during related page wo
 - **When shipping a feature**, add any hardening items that didn't make the Phase 1 cut here, with severity + notes
 - **When auditing a page before redesign**, log any pre-existing bugs you spot here (don't fix them inline unless they block the redesign)
 - **At sprint planning**, pull all 🔴 + 🟠 items and triage; 🟡 / 🟢 schedule opportunistically
-- Items in this doc do **not** appear in `PRODUCT_PLAN.md` because they're not customer-facing features — they're "operational excellence" work
+- Items in this doc do **not** appear in `product/02_features.md` because they're not customer-facing features — they're "operational excellence" work

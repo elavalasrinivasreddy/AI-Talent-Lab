@@ -1,7 +1,7 @@
 /**
  * components/Positions/PositionDetailPage.jsx
  * Full position detail with 6 tabs: Pipeline, Candidates, JD, Interview Kit, Activity, Settings
- * Per docs/pages/04_position_detail.md
+ * Per docs/design/pages/03_position_detail.md
  */
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'

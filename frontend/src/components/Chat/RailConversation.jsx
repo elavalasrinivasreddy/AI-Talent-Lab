@@ -10,7 +10,7 @@ import { useChat } from '../../context/ChatContext';
  *   - Asking for variant refinement or section rewrites
  *   - Trigger phrases like "check for bias"
  *
- * Spec: docs/redesign/05_jd_chat.md §6.B.
+ * Spec: docs/design/pages/05_jd_chat.md §6.B.
  */
 export default function RailConversation() {
   const { messages, isStreaming, workflowStage, finalJdMarkdown } = useChat();

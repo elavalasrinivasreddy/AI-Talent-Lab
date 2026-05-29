@@ -16,7 +16,7 @@ import { IconFileText, IconSparkles } from './icons';
  * vertical doc — that's the entire point of the redesign: the JD IS the
  * canvas, chat is a side rail.
  *
- * Per docs/redesign/05_jd_chat.md §5.
+ * Per docs/design/pages/05_jd_chat.md §5.
  */
 export default function JDCanvas() {
   const {

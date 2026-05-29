@@ -1,7 +1,7 @@
 """
 routers/auth.py – /api/v1/auth/* endpoints.
 Thin HTTP layer — validates input via Pydantic, calls AuthService.
-See docs/BACKEND_PLAN.md §5 Auth section.
+See docs/architecture/03_backend.md §5 Auth section.
 """
 from fastapi import APIRouter, Depends, Request
 

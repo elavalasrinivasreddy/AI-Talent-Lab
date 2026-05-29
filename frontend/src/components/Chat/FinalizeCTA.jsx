@@ -10,7 +10,7 @@ import { IconCheck, IconArrowRight } from './icons';
  * `PositionSetupModal` which collects department / headcount / priority /
  * ATS threshold and calls `POST /chat/sessions/{id}/save-position`.
  *
- * Spec: docs/redesign/05_jd_chat.md §6.C.
+ * Spec: docs/design/pages/05_jd_chat.md §6.C.
  */
 export default function FinalizeCTA() {
   const { workflowStage, finalJdMarkdown } = useChat();

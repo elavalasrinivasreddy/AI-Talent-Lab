@@ -1,7 +1,7 @@
 /**
  * PositionsListPage.jsx — View all open positions across the org
  * Route: /positions
- * Per docs/pages/04_position_detail.md and FRONTEND_PLAN.md
+ * Per docs/design/pages/03_position_detail.md and docs/architecture/05_frontend.md
  */
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'

@@ -1,7 +1,7 @@
 /**
  * components/common/StatusBadge.jsx
  * ONLY place pipeline status color logic lives. Never define status colors elsewhere.
- * Per docs/FRONTEND_PLAN.md §10 rule.
+ * Per docs/architecture/05_frontend.md §10 rule.
  */
 import { PIPELINE_STAGES, POSITION_STATUSES } from '../../utils/constants'
 

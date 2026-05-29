@@ -1,6 +1,6 @@
 """
 agents/candidate_chat.py – Linear candidate application chat controller.
-Per docs/pages/12_chat_flows.md Part 2 — 8-step flow:
+Per docs/design/pages/05_jd_chat.md Part 2 — 8-step flow:
   greeting → interest → current_role → experience → compensation →
   notice_period → resume_upload → screening_questions → completion
 """
