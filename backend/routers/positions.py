@@ -7,7 +7,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from backend.dependencies import get_current_user
+import asyncpg
+
+from backend.dependencies import get_current_user, get_db
 from backend.services.position_service import PositionService
 from backend.db.connection import get_connection
 
@@ -247,27 +249,27 @@ async def get_applicants_daily(
     position_id: int,
     days: int = 30,
     current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Return daily applicant counts for the last N days (sparkline data)."""
-    from backend.db.connection import get_connection
-    async with get_connection() as conn:
-        pos = await conn.fetchrow(
-            "SELECT id FROM positions WHERE id = $1 AND org_id = $2",
-            position_id, current_user["org_id"],
-        )
-        if not pos:
-            raise HTTPException(status_code=404, detail="Position not found")
-        rows = await conn.fetch(
-            """
-            SELECT DATE(created_at) AS date, COUNT(*) AS count
-            FROM candidate_applications
-            WHERE position_id = $1 AND org_id = $2
-              AND created_at >= NOW() - ($3 || ' days')::INTERVAL
-            GROUP BY DATE(created_at)
-            ORDER BY date ASC
-            """,
-            position_id, current_user["org_id"], str(days),
-        )
+    days = min(max(days, 1), 365)
+    pos = await db.fetchrow(
+        "SELECT id FROM positions WHERE id = $1 AND org_id = $2",
+        position_id, current_user["org_id"],
+    )
+    if not pos:
+        raise HTTPException(status_code=404, detail="Position not found")
+    rows = await db.fetch(
+        """
+        SELECT DATE(created_at) AS date, COUNT(*) AS count
+        FROM candidate_applications
+        WHERE position_id = $1 AND org_id = $2
+          AND created_at >= NOW() - ($3 || ' days')::INTERVAL
+        GROUP BY DATE(created_at)
+        ORDER BY date ASC
+        """,
+        position_id, current_user["org_id"], str(days),
+    )
     return [{"date": str(r["date"]), "count": r["count"]} for r in rows]
 
 
@@ -275,17 +277,16 @@ async def get_applicants_daily(
 async def get_stage_counts(
     position_id: int,
     current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Return candidate counts per pipeline stage for this position."""
-    from backend.db.connection import get_connection
-    async with get_connection() as conn:
-        pos = await conn.fetchrow(
-            "SELECT id FROM positions WHERE id = $1 AND org_id = $2",
-            position_id, current_user["org_id"],
-        )
-        if not pos:
-            raise HTTPException(status_code=404, detail="Position not found")
-        counts = await CandidateRepository.count_for_position(conn, position_id, current_user["org_id"])
+    pos = await db.fetchrow(
+        "SELECT id FROM positions WHERE id = $1 AND org_id = $2",
+        position_id, current_user["org_id"],
+    )
+    if not pos:
+        raise HTTPException(status_code=404, detail="Position not found")
+    counts = await CandidateRepository.count_for_position(db, position_id, current_user["org_id"])
     return counts
 
 
@@ -429,6 +430,14 @@ from backend.services.hire_request_service import HireRequestService
 from backend.dependencies import get_db
 
 
+def _to_int_or_none(v):
+    """Coerce raw dict values to int for the legacy untyped-body shim."""
+    try:
+        return int(v) if v is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
 def _client_ip(request) -> str:
     forwarded = request.headers.get("X-Forwarded-For") if request else None
     if forwarded:
@@ -454,12 +463,12 @@ async def submit_hire_request(
         department_id=body.get("department_id"),
         headcount=int(body.get("headcount") or 1),
         work_type=body.get("work_type") or "onsite",
-        experience_min=body.get("experience_min"),
-        experience_max=body.get("experience_max"),
+        experience_min=_to_int_or_none(body.get("experience_min")),
+        experience_max=_to_int_or_none(body.get("experience_max")),
         target_start=body.get("target_start"),
         requirements=body.get("requirements"),
-        comp_min=body.get("comp_min"),
-        comp_max=body.get("comp_max"),
+        comp_min=_to_int_or_none(body.get("comp_min")),
+        comp_max=_to_int_or_none(body.get("comp_max")),
         location=body.get("location"),
     )
     return created

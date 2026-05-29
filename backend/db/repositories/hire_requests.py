@@ -272,6 +272,7 @@ class HireRequestRepository:
             UPDATE hire_requests
                SET status = 'cancelled', updated_at = NOW()
              WHERE id = $1 AND org_id = $2
+               AND status IN ('pending', 'approved')
             """,
             request_id, org_id,
         )

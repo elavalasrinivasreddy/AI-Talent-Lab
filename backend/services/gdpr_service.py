@@ -307,7 +307,20 @@ class GDPRService:
             )
             deleted_summary["consent_records"] = result.split()[-1] if result else "0"
 
-            # 2. Delete candidate session data (chat logs)
+            # 2. Delete candidate session messages before sessions (FK order)
+            result = await conn.execute(
+                """
+                DELETE FROM candidate_session_messages
+                WHERE session_id IN (
+                    SELECT id FROM candidate_sessions
+                    WHERE candidate_id=$1 AND org_id=$2
+                )
+                """,
+                candidate_id, org_id,
+            )
+            deleted_summary["candidate_session_messages"] = result.split()[-1] if result else "0"
+
+            # 2b. Delete candidate session data (chat logs)
             result = await conn.execute(
                 """
                 DELETE FROM candidate_sessions
@@ -333,6 +346,13 @@ class GDPRService:
                 candidate_id, org_id,
             )
             deleted_summary["candidate_tags"] = result.split()[-1] if result else "0"
+
+            # 4b. Delete hiring notes (recruiter free-text — contains PII)
+            result = await conn.execute(
+                "DELETE FROM hiring_notes WHERE candidate_id=$1 AND org_id=$2",
+                candidate_id, org_id,
+            )
+            deleted_summary["hiring_notes"] = result.split()[-1] if result else "0"
 
             # 5. Anonymize pipeline events (keep for metrics, remove PII)
             await conn.execute(

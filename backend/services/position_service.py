@@ -262,11 +262,16 @@ class PositionService:
 
         async with get_connection() as conn:
             pos_row = await conn.fetchrow(
-                "SELECT role_name, created_by, department_id FROM positions WHERE id=$1 AND org_id=$2",
+                "SELECT role_name, created_by, department_id, approval_status FROM positions WHERE id=$1 AND org_id=$2",
                 position_id, org_id,
             )
             if not pos_row:
                 raise ValueError(f"Position {position_id} not found")
+
+            # Idempotency: prevent double-fire of Celery sourcing on concurrent approvals.
+            target_status = "approved" if decision == "approved" else "changes_requested"
+            if pos_row["approval_status"] == target_status:
+                return
 
             approver_row = await conn.fetchrow(
                 "SELECT name FROM users WHERE id=$1 AND org_id=$2",
