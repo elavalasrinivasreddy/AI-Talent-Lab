@@ -1,5 +1,17 @@
+/**
+ * Settings/SettingsPage.jsx — v3 AI Behavior Console
+ * Per docs/design/pages/07_settings.md
+ * Redesigned 2026-05-29.
+ *
+ * 3-column: purpose-grouped left rail → middle form → right live preview
+ */
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import Icon from '../common/Icon'
+import Chip from '../common/Chip'
+import SettingsLivePreview from './SettingsLivePreview'
+
 import ProfileTab from './tabs/ProfileTab'
 import OrganizationTab from './tabs/OrganizationTab'
 import TeamTab from './tabs/TeamTab'
@@ -14,93 +26,162 @@ import SecurityTab from './tabs/SecurityTab'
 import PrivacyTab from './tabs/PrivacyTab'
 import '../../styles/settings.css'
 
-// Inline Lucide-style SVG icons (no external deps)
-const Svg = (paths) => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths}</svg>
-)
-const SettingsIcons = {
-  profile:      Svg(<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>),
-  organization: Svg(<><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M9 8h6M9 12h6M9 16h6" /></>),
-  team:         Svg(<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>),
-  departments:  Svg(<><path d="M3 21V8l9-5 9 5v13" /><path d="M9 21V12h6v9" /></>),
-  competitors:  Svg(<><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></>),
-  screening:    Svg(<><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></>),
-  templates:    Svg(<><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></>),
-  scorecards:   Svg(<><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></>),
-  integrations: Svg(<><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></>),
-  appearance:   Svg(<><circle cx="13.5" cy="6.5" r=".5" /><circle cx="17.5" cy="10.5" r=".5" /><circle cx="8.5" cy="7.5" r=".5" /><circle cx="6.5" cy="12.5" r=".5" /><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" /></>),
-  security:     Svg(<><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>),
-  privacy:      Svg(<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></>),
-  cog:          Svg(<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></>),
-}
-
-const TABS = [
-  { group: 'GENERAL', items: [
-    { key: 'profile',      icon: SettingsIcons.profile,      label: 'My Profile' },
-    { key: 'organization', icon: SettingsIcons.organization, label: 'Organization' },
-    { key: 'team',         icon: SettingsIcons.team,         label: 'Team Members', adminOnly: true },
-    { key: 'departments',  icon: SettingsIcons.departments,  label: 'Departments',  adminOnly: true },
-  ]},
-  { group: 'HIRING & ATS', items: [
-    { key: 'competitors', icon: SettingsIcons.competitors, label: 'Competitor Intel' },
-    { key: 'screening',   icon: SettingsIcons.screening,   label: 'Screening Qs',    adminOnly: true },
-    { key: 'templates',   icon: SettingsIcons.templates,   label: 'Msg Templates',   adminOnly: true },
-    { key: 'scorecards',  icon: SettingsIcons.scorecards,  label: 'Interview Tmpls', adminOnly: true },
-  ]},
-  { group: 'WORKSPACE', items: [
-    { key: 'integrations', icon: SettingsIcons.integrations, label: 'Integrations', adminOnly: true },
-    { key: 'appearance',   icon: SettingsIcons.appearance,   label: 'Appearance' },
-    { key: 'security',     icon: SettingsIcons.security,     label: 'Security',     adminOnly: true },
-    { key: 'privacy',      icon: SettingsIcons.privacy,      label: 'Privacy & GDPR', adminOnly: true },
-  ]},
+const RAIL_GROUPS = [
+  {
+    key: 'ai',
+    label: 'How the AI thinks',
+    icon: 'cpu',
+    color: 'var(--color-primary)',
+    items: [
+      { key: 'ats-rules',   icon: 'bar-chart',      label: 'ATS scoring rules', adminOnly: true },
+      { key: 'sourcing',    icon: 'search',          label: 'Sourcing schedule', adminOnly: true },
+      { key: 'screening',   icon: 'help-circle',     label: 'Screening questions', adminOnly: true },
+      { key: 'scorecards',  icon: 'target',          label: 'Scorecard rubric', adminOnly: true },
+      { key: 'bias',        icon: 'shield',          label: 'JD bias detection', adminOnly: true, phase: 2 },
+      { key: 'llm',         icon: 'settings',        label: 'LLM provider', adminOnly: true, phase: 2 },
+    ],
+  },
+  {
+    key: 'team',
+    label: 'How your team works',
+    icon: 'users',
+    color: '#8B5CF6',
+    items: [
+      { key: 'departments',  icon: 'home',     label: 'Departments', adminOnly: true },
+      { key: 'team',         icon: 'users',    label: 'Team members', adminOnly: true },
+      { key: 'approval',     icon: 'check',    label: 'Approval rules', adminOnly: true, phase: 2 },
+      { key: 'notifications',icon: 'bell',     label: 'Notifications' },
+    ],
+  },
+  {
+    key: 'candidates',
+    label: 'How candidates see you',
+    icon: 'user',
+    color: '#06B6D4',
+    items: [
+      { key: 'organization', icon: 'briefcase', label: 'Organization profile' },
+      { key: 'competitors',  icon: 'trending-up', label: 'Competitor intel' },
+      { key: 'templates',    icon: 'mail',      label: 'Email templates', adminOnly: true },
+      { key: 'appearance',   icon: 'palette',   label: 'Appearance' },
+      { key: 'career-brand', icon: 'home',      label: 'Career page brand', adminOnly: true, phase: 2 },
+    ],
+  },
+  {
+    key: 'compliance',
+    label: 'Compliance & data',
+    icon: 'lock',
+    color: 'var(--color-text-muted)',
+    items: [
+      { key: 'privacy',      icon: 'shield',   label: 'GDPR / DPDP', adminOnly: true },
+      { key: 'security',     icon: 'lock',     label: 'Security', adminOnly: true },
+      { key: 'integrations', icon: 'link',     label: 'Integrations', adminOnly: true },
+      { key: 'audit',        icon: 'clock',    label: 'Audit log', adminOnly: true, phase: 2 },
+      { key: 'export',       icon: 'download', label: 'Data export', adminOnly: true, phase: 2 },
+    ],
+  },
 ]
 
-const TAB_COMPONENTS = {
-  profile: ProfileTab,
-  organization: OrganizationTab,
-  team: TeamTab,
-  departments: DepartmentsTab,
-  competitors: CompetitorsTab,
-  screening: ScreeningQuestionsTab,
-  templates: MessageTemplatesTab,
-  scorecards: InterviewTemplatesTab,
-  integrations: IntegrationsTab,
-  appearance: AppearanceTab,
-  security: SecurityTab,
-  privacy: PrivacyTab,
+const SECTION_COMPONENTS = {
+  'profile': ProfileTab,
+  'ats-rules': ScreeningQuestionsTab, // Reuse screening as ATS placeholder
+  'sourcing': () => <PlaceholderSection title="Sourcing Schedule" desc="Configure AI sourcing frequency, daily caps, and talent-pool-first settings." icon="search" />,
+  'screening': ScreeningQuestionsTab,
+  'scorecards': InterviewTemplatesTab,
+  'bias': () => <PlaceholderSection title="JD Bias Detection" desc="Configure bias sensitivity level and language model for JD analysis." icon="shield" phase={2} />,
+  'llm': () => <PlaceholderSection title="LLM Provider" desc="Switch between Groq, OpenAI, and Gemini. Configure model, max tokens, and temperature." icon="settings" phase={2} />,
+  'departments': DepartmentsTab,
+  'team': TeamTab,
+  'approval': () => <PlaceholderSection title="Approval Rules" desc="Configure multi-step hire approval workflows and who approves what." icon="check" phase={2} />,
+  'notifications': () => <PlaceholderSection title="Notifications" desc="Configure email and in-app notification preferences per event type." icon="bell" />,
+  'organization': OrganizationTab,
+  'competitors': CompetitorsTab,
+  'templates': MessageTemplatesTab,
+  'appearance': AppearanceTab,
+  'career-brand': () => <PlaceholderSection title="Career Page Brand" desc="Configure primary color, banner image, tagline, and hero copy for your public career page." icon="home" phase={2} />,
+  'privacy': PrivacyTab,
+  'security': SecurityTab,
+  'integrations': IntegrationsTab,
+  'audit': () => <PlaceholderSection title="Audit Log" desc="View all organization actions with filters and export." icon="clock" phase={2} />,
+  'export': () => <PlaceholderSection title="Data Export" desc="GDPR Article 20 data portability — export candidate and org data." icon="download" phase={2} />,
 }
 
 export default function SettingsPage() {
   const { tab } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const activeTab = tab || 'profile'
   const isAdmin = user?.role === 'org_head' || user?.role === 'dept_admin'
 
-  const ActiveComponent = TAB_COMPONENTS[activeTab] || ProfileTab
+  // If a non-admin lands on an admin-only section via direct URL, fall back to profile.
+  const allAdminKeys = RAIL_GROUPS.flatMap(g => g.items.filter(i => i.adminOnly).map(i => i.key))
+  const resolvedTab = (!isAdmin && allAdminKeys.includes(tab)) ? 'profile' : (tab || 'profile')
+  const [activeSection, setActiveSection] = useState(resolvedTab)
+
+  const switchSection = (key) => {
+    setActiveSection(key)
+    navigate(`/settings/${key}`, { replace: true })
+  }
+
+  const ActiveComponent = SECTION_COMPONENTS[activeSection] || ProfileTab
+
+  // Find active group color
+  const activeGroup = RAIL_GROUPS.find(g => g.items.some(i => i.key === activeSection))
+  const groupColor = activeGroup?.color || 'var(--color-primary)'
 
   return (
-    <div className="settings-page">
-      <div className="settings-header">
-        <h1><span className="settings-header-icon">{SettingsIcons.cog}</span>Settings</h1>
-        <p>Manage your account and organization</p>
+    <div className="st-page">
+      {/* Header */}
+      <div className="st-header">
+        <div className="st-header-left">
+          <div className="st-header-icon" style={{ background: `${groupColor}1a`, color: groupColor }}>
+            <Icon name="settings" size={18} />
+          </div>
+          <div>
+            <h1 className="st-header-title">AI Behavior Console</h1>
+            <p className="st-header-sub">Configure how AI agents work on your behalf</p>
+          </div>
+        </div>
+        <div className="st-header-actions">
+          <button className="st-btn st-btn-ghost" onClick={() => {}}>
+            <Icon name="rotate-ccw" size={13} /> Reset section
+          </button>
+          <button className="st-btn st-btn-primary">
+            <Icon name="check" size={13} /> Save changes
+          </button>
+        </div>
       </div>
 
-      <div className="settings-layout">
-        <nav className="settings-tabs">
-          {TABS.map(group => (
-            <div key={group.group}>
-              <div className="settings-tab-group-label">{group.group}</div>
-              {group.items.map(item => {
-                if (item.adminOnly && !isAdmin) return null
+      {/* 3-column layout */}
+      <div className="st-layout">
+        {/* Left Rail */}
+        <nav className="st-rail">
+          {/* Profile shortcut */}
+          <button
+            className={`st-rail-item ${activeSection === 'profile' ? 'active' : ''}`}
+            onClick={() => switchSection('profile')}
+          >
+            <Icon name="user" size={14} />
+            <span>My Profile</span>
+          </button>
+          <div className="st-rail-divider" />
+
+          {RAIL_GROUPS.map(group => (
+            <div key={group.key} className="st-rail-group">
+              <div className="st-rail-group-label" style={{ color: group.color }}>
+                <Icon name={group.icon} size={13} />
+                {group.label}
+              </div>
+              {group.items.filter(item => !item.adminOnly || isAdmin).map(item => {
                 return (
                   <button
                     key={item.key}
-                    className={`settings-tab ${activeTab === item.key ? 'active' : ''}`}
-                    onClick={() => navigate(`/settings/${item.key}`)}
+                    className={`st-rail-item ${activeSection === item.key ? 'active' : ''}`}
+                    onClick={() => switchSection(item.key)}
+                    style={activeSection === item.key ? { '--rail-accent': group.color } : {}}
                   >
-                    <span className="settings-tab-icon">{item.icon}</span>
-                    {item.label}
+                    <Icon name={item.icon} size={13} />
+                    <span>{item.label}</span>
+                    {item.phase && <Chip variant="neutral" size="xs">P{item.phase}</Chip>}
+                    {disabled && <span className="st-rail-lock"><Icon name="lock" size={10} /></span>}
                   </button>
                 )
               })}
@@ -108,10 +189,25 @@ export default function SettingsPage() {
           ))}
         </nav>
 
-        <div className="settings-content">
+        {/* Middle Form */}
+        <div className="st-form-area">
           <ActiveComponent />
         </div>
+
+        {/* Right Preview */}
+        <SettingsLivePreview activeSection={activeSection} />
       </div>
+    </div>
+  )
+}
+
+function PlaceholderSection({ title, desc, icon, phase }) {
+  return (
+    <div className="placeholder-section">
+      <Icon name={icon} size={40} style={{ opacity: 0.2 }} />
+      <h3>{title}</h3>
+      <p>{desc}</p>
+      {phase && <Chip variant="warning" size="sm">Phase {phase} — Coming Soon</Chip>}
     </div>
   )
 }

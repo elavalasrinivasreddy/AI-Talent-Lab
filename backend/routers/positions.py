@@ -197,7 +197,7 @@ async def submit_for_approval(position_id: int, current_user=Depends(get_current
                    (SELECT role_name FROM positions WHERE id=$2) || ' is pending your approval',
                    '/positions/' || $2
             FROM users u
-            WHERE u.org_id=$1 AND u.role IN ('admin', 'hiring_manager')
+            WHERE u.org_id=$1 AND u.role IN ('org_head', 'team_lead', 'dept_admin')
             """,
             current_user["org_id"], position_id,
         )
@@ -287,6 +287,138 @@ async def get_stage_counts(
             raise HTTPException(status_code=404, detail="Position not found")
         counts = await CandidateRepository.count_for_position(conn, position_id, current_user["org_id"])
     return counts
+
+
+@router.get("/{position_id}/pipeline-summary")
+async def get_pipeline_summary(
+    position_id: int,
+    current_user=Depends(get_current_user),
+):
+    """
+    Rich pipeline summary for Position Detail v3 Stage Health header.
+    Returns per-stage counts + delta_today, avg time in stage, AI confidence,
+    pass-through rate, and saturation.
+    """
+    from backend.db.connection import get_connection
+    async with get_connection() as conn:
+        pos = await conn.fetchrow(
+            "SELECT id, headcount FROM positions WHERE id = $1 AND org_id = $2",
+            position_id, current_user["org_id"],
+        )
+        if not pos:
+            raise HTTPException(status_code=404, detail={
+                "error": {"code": "POSITION_NOT_FOUND", "message": "Position not found", "details": None}
+            })
+
+        headcount = pos["headcount"] or 1
+
+        # Count + delta_today per stage
+        stage_rows = await conn.fetch(
+            """
+            SELECT
+                status,
+                COUNT(*) AS count,
+                COUNT(*) FILTER (WHERE DATE(created_at) = CURRENT_DATE) AS delta_today
+            FROM candidate_applications
+            WHERE position_id = $1 AND org_id = $2
+            GROUP BY status
+            """,
+            position_id, current_user["org_id"],
+        )
+        stage_map = {r["status"]: {"count": r["count"], "delta_today": r["delta_today"]} for r in stage_rows}
+
+        # Avg time in stage (only for candidates currently in each stage)
+        time_rows = await conn.fetch(
+            """
+            SELECT status,
+                   EXTRACT(EPOCH FROM AVG(NOW() - updated_at)) / 86400.0 AS avg_days
+            FROM candidate_applications
+            WHERE position_id = $1 AND org_id = $2
+            GROUP BY status
+            """,
+            position_id, current_user["org_id"],
+        )
+        time_map = {r["status"]: round(float(r["avg_days"]), 1) for r in time_rows}
+
+        # AI confidence per stage (mean of skill_match_score / 100)
+        conf_rows = await conn.fetch(
+            """
+            SELECT status,
+                   AVG(skill_match_score) / 100.0 AS confidence
+            FROM candidate_applications
+            WHERE position_id = $1 AND org_id = $2 AND skill_match_score IS NOT NULL
+            GROUP BY status
+            """,
+            position_id, current_user["org_id"],
+        )
+        conf_map = {r["status"]: round(float(r["confidence"]), 2) for r in conf_rows}
+
+        # Pass-through rate: candidates moved OUT of a stage in last 30d / entered
+        # We approximate via pipeline_events
+        pass_rows = await conn.fetch(
+            """
+            SELECT event_data->>'from_status' AS from_status,
+                   COUNT(*) AS moved_count
+            FROM pipeline_events
+            WHERE position_id = $1 AND org_id = $2
+              AND event_type = 'status_changed'
+              AND created_at >= NOW() - INTERVAL '30 days'
+              AND event_data->>'from_status' IS NOT NULL
+            GROUP BY event_data->>'from_status'
+            """,
+            position_id, current_user["org_id"],
+        )
+        pass_map = {r["from_status"]: r["moved_count"] for r in pass_rows}
+
+        enter_rows = await conn.fetch(
+            """
+            SELECT event_data->>'to_status' AS to_status,
+                   COUNT(*) AS entered_count
+            FROM pipeline_events
+            WHERE position_id = $1 AND org_id = $2
+              AND event_type = 'status_changed'
+              AND created_at >= NOW() - INTERVAL '30 days'
+              AND event_data->>'to_status' IS NOT NULL
+            GROUP BY event_data->>'to_status'
+            """,
+            position_id, current_user["org_id"],
+        )
+        enter_map = {r["to_status"]: r["entered_count"] for r in enter_rows}
+
+        # Target times per stage (defaults)
+        target_times = {
+            "sourced": 3, "emailed": 5, "applied": 2, "screening": 2,
+            "interview": 5, "selected": 3, "rejected": 1,
+        }
+
+        # Saturation multipliers (rough funnel)
+        sat_multipliers = {
+            "sourced": 10, "emailed": 8, "applied": 5, "screening": 3,
+            "interview": 2, "selected": 1, "rejected": 0,
+        }
+
+        stages = {}
+        all_stages = ["sourced", "emailed", "applied", "screening", "interview", "selected", "rejected"]
+        for s in all_stages:
+            base = stage_map.get(s, {"count": 0, "delta_today": 0})
+            entered = enter_map.get(s, 0)
+            passed = pass_map.get(s, 0)
+            pass_rate = round(passed / entered, 2) if entered > 0 else None
+
+            target = headcount * sat_multipliers.get(s, 1)
+            saturation = round(base["count"] / target, 2) if target > 0 else 0
+
+            stages[s] = {
+                "count": base["count"],
+                "delta_today": base["delta_today"],
+                "avg_time_in_stage_days": time_map.get(s),
+                "target_time_in_stage_days": target_times.get(s),
+                "ai_confidence_mean": conf_map.get(s),
+                "pass_through_30d": pass_rate,
+                "saturation": min(saturation, 1.0),
+            }
+
+        return {"stages": stages}
 
 
 # ── Hire Requests (legacy shims — see routers/hire_requests.py for the real impl) ───

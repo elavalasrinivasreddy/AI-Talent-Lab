@@ -7,8 +7,14 @@
 const BASE = '/api/v1'
 
 // Token getter — wired by AuthContext on mount so the API always has the latest token.
-// Default returns null (no token) — AuthContext is the source of truth.
-let _tokenGetter = () => null
+// Falls back to sessionStorage so pre-mount requests (before the effect fires) still
+// include the Bearer token from an existing session.
+let _tokenGetter = () => {
+  try {
+    const raw = sessionStorage.getItem('atl_session')
+    return raw ? (JSON.parse(raw)?.token ?? null) : null
+  } catch { return null }
+}
 
 export function setTokenGetter(getter) {
   _tokenGetter = getter
@@ -103,6 +109,7 @@ export const positionsApi = {
   linkViaSession: (requestId, sessionId) => _patch(`/positions/requests/${requestId}/link-session`, { session_id: sessionId }),
   applicantsDaily: (id, days = 30) => _get(`/positions/${id}/applicants-daily?days=${days}`),
   stageCounts: (id) => _get(`/positions/${id}/stage-counts`),
+  pipelineSummary: (id) => _get(`/positions/${id}/pipeline-summary`),
 }
 
 // ── Candidates ────────────────────────────────────────────────────────────────

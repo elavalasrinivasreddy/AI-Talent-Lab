@@ -73,12 +73,18 @@ export function AuthProvider({ children }) {
         setUser(data.user)
         setOrg(data.org)
         saveSession(initial.token, data.user, data.org)
-      } catch {
+      } catch (e) {
         if (cancelled) return
-        setUser(null)
-        setOrg(null)
-        setToken(null)
-        saveSession(null, null, null)
+        // Only clear session on definitive auth rejection (401/403).
+        // Transient errors (5xx, network) leave state intact so a brief
+        // backend hiccup doesn't log the user out.
+        const status = e?.status ?? e?.response?.status
+        if (status === 401 || status === 403) {
+          setUser(null)
+          setOrg(null)
+          setToken(null)
+          saveSession(null, null, null)
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }

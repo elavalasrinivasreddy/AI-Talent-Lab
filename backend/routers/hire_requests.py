@@ -139,7 +139,7 @@ async def approve_hire_request(
         db, request_id, current_user["org_id"],
         user_id=current_user["user_id"],
         role=current_user["role"],
-        dept_id=current_user.get("department_id"),
+        dept_id=current_user.get("dept_id"),
         ip_address=_get_ip(request),
     )
     return {"request": updated}
@@ -160,7 +160,7 @@ async def reject_hire_request(
         db, request_id, current_user["org_id"],
         user_id=current_user["user_id"],
         role=current_user["role"],
-        dept_id=current_user.get("department_id"),
+        dept_id=current_user.get("dept_id"),
         reason=body.reason,
         ip_address=_get_ip(request),
     )

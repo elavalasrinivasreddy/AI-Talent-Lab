@@ -47,6 +47,15 @@ function PublicGuard() {
   return <Outlet />
 }
 
+// ── Role Guard (role allowlist within authenticated zone) ────────────────────
+
+function RoleGuard({ roles }) {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (!roles.includes(user?.role)) return <Navigate to="/dashboard" replace />
+  return <Outlet />
+}
+
 // ── Dev Guard (platform_admin only) ─────────────────────────────────────────
 
 function DevGuard() {
@@ -105,9 +114,22 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          // Chat
-          { path: '/chat', element: <ChatPage /> },
-          { path: '/chat/:sessionId', element: <ChatPage /> },
+          // Chat — hr and org_head only; team_lead enters via /hire-requests/new
+          {
+            element: <RoleGuard roles={['hr', 'org_head']} />,
+            children: [
+              { path: '/chat', element: <ChatPage /> },
+              { path: '/chat/:sessionId', element: <ChatPage /> },
+            ],
+          },
+
+          // Analytics — admin tiers only; recruiters/team leads see no per-recruiter data
+          {
+            element: <RoleGuard roles={['org_head', 'dept_admin', 'platform_admin']} />,
+            children: [
+              { path: '/analytics', element: <AnalyticsPage /> },
+            ],
+          },
 
           // Positions
           { path: '/positions', element: <PositionsListPage /> },
@@ -123,7 +145,6 @@ export const router = createBrowserRouter([
           { path: '/interviews', element: <InterviewsListPage /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/:tab', element: <SettingsPage /> },
-          { path: '/analytics', element: <AnalyticsPage /> },
 
           // Hire requests
           { path: '/hire-requests', element: <HireRequestListPage /> },
