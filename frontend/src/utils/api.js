@@ -101,6 +101,8 @@ export const positionsApi = {
   acceptRequest: (id) => _patch(`/positions/requests/${id}/accept`, {}),
   cancelRequest: (id) => _patch(`/positions/requests/${id}/cancel`, {}),
   linkViaSession: (requestId, sessionId) => _patch(`/positions/requests/${requestId}/link-session`, { session_id: sessionId }),
+  applicantsDaily: (id, days = 30) => _get(`/positions/${id}/applicants-daily?days=${days}`),
+  stageCounts: (id) => _get(`/positions/${id}/stage-counts`),
 }
 
 // ── Candidates ────────────────────────────────────────────────────────────────

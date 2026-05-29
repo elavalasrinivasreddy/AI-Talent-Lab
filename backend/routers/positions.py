@@ -237,6 +237,58 @@ async def approval_decision(
     return {"ok": True, "approval_status": decision}
 
 
+# ── Sparkline + stage counts for Pipeline Garden cards ────────────────────────
+
+from backend.db.repositories.candidates import CandidateRepository
+
+
+@router.get("/{position_id}/applicants-daily")
+async def get_applicants_daily(
+    position_id: int,
+    days: int = 30,
+    current_user=Depends(get_current_user),
+):
+    """Return daily applicant counts for the last N days (sparkline data)."""
+    from backend.db.connection import get_connection
+    async with get_connection() as conn:
+        pos = await conn.fetchrow(
+            "SELECT id FROM positions WHERE id = $1 AND org_id = $2",
+            position_id, current_user["org_id"],
+        )
+        if not pos:
+            raise HTTPException(status_code=404, detail="Position not found")
+        rows = await conn.fetch(
+            """
+            SELECT DATE(created_at) AS date, COUNT(*) AS count
+            FROM candidate_applications
+            WHERE position_id = $1 AND org_id = $2
+              AND created_at >= NOW() - ($3 || ' days')::INTERVAL
+            GROUP BY DATE(created_at)
+            ORDER BY date ASC
+            """,
+            position_id, current_user["org_id"], str(days),
+        )
+    return [{"date": str(r["date"]), "count": r["count"]} for r in rows]
+
+
+@router.get("/{position_id}/stage-counts")
+async def get_stage_counts(
+    position_id: int,
+    current_user=Depends(get_current_user),
+):
+    """Return candidate counts per pipeline stage for this position."""
+    from backend.db.connection import get_connection
+    async with get_connection() as conn:
+        pos = await conn.fetchrow(
+            "SELECT id FROM positions WHERE id = $1 AND org_id = $2",
+            position_id, current_user["org_id"],
+        )
+        if not pos:
+            raise HTTPException(status_code=404, detail="Position not found")
+        counts = await CandidateRepository.count_for_position(conn, position_id, current_user["org_id"])
+    return counts
+
+
 # ── Hire Requests (legacy shims — see routers/hire_requests.py for the real impl) ───
 # Kept so the existing Dashboard widgets that call /api/v1/positions/requests/*
 # keep working. New clients should hit /api/v1/hire-requests/* directly.

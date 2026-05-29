@@ -37,7 +37,7 @@ still render the pre-redesign UI.
 | # | Surface | Feature | v3 redesign | Notes |
 |---|---|---|---|---|
 | 01 | Dashboard | Live | ✅ | NOW/NEXT/PULSE lanes live; lanes derived client-side from copilot+activity+stats. Legacy behind `?legacy_dashboard=1`. DeptChipBar non-functional (no backend dept param) — tracked. |
-| 02 | Positions List | Live | ❌ | Pipeline Garden cards not built |
+| 02 | Positions List | Live | ✅ | Pipeline Garden cards live; sparkline + stage strip per card. |
 | 03 | Position Detail | Live | ❌ | Stack-ranked list (variant B) not built |
 | 04 | Candidate Detail | Live | ❌ | Compare-to-ideal overlay not built |
 | 05 | **JD Chat** | Live | ✅ | Document-first canvas, 8-stage stepper, inline blocks, interactive refinement shipped |
