@@ -10,6 +10,7 @@ caches the adapter instance, and exposes templated send helpers:
 Every helper goes through the same `_send()` path so logging, error handling and
 the from-address default are consistent.
 """
+import html
 import logging
 from typing import Optional
 
@@ -95,12 +96,14 @@ def _wrap_html(content_html: str) -> str:
 
 
 def _button(label: str, url: str) -> str:
+    _url = html.escape(url, quote=True)
+    _label = html.escape(label)
     return f"""\
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
   <tr>
     <td style="background:{_BRAND_TEAL};border-radius:8px;">
-      <a href="{url}" style="display:inline-block;padding:12px 24px;color:#FFFFFF;font-weight:600;font-size:15px;text-decoration:none;">
-        {label}
+      <a href="{_url}" style="display:inline-block;padding:12px 24px;color:#FFFFFF;font-weight:600;font-size:15px;text-decoration:none;">
+        {_label}
       </a>
     </td>
   </tr>
@@ -141,10 +144,13 @@ class EmailService:
         org_name: Optional[str] = None,
         expires_minutes: int = 15,
     ) -> bool:
-        greeting = f"Hi {user_name}," if user_name else "Hi,"
+        _user_name = html.escape(user_name) if user_name else None
+        _org_name = html.escape(org_name) if org_name else None
+        _magic_link_url = html.escape(magic_link_url, quote=True)
+        greeting = f"Hi {_user_name}," if _user_name else "Hi,"
         org_line = (
-            f"You're signing in to <strong>{org_name}</strong> on AI Talent Lab."
-            if org_name
+            f"You're signing in to <strong>{_org_name}</strong> on AI Talent Lab."
+            if _org_name
             else "You're signing in to AI Talent Lab."
         )
         content_html = f"""\
@@ -155,7 +161,7 @@ class EmailService:
   Or paste this link into your browser:
 </p>
 <p style="margin:0 0 16px;font-size:12px;color:#0D9488;word-break:break-all;">
-  <a href="{magic_link_url}" style="color:#0D9488;text-decoration:none;">{magic_link_url}</a>
+  <a href="{_magic_link_url}" style="color:#0D9488;text-decoration:none;">{_magic_link_url}</a>
 </p>
 <p style="margin:0;font-size:13px;color:#64748B;">
   This link expires in {expires_minutes} minutes and can only be used once.
@@ -181,7 +187,9 @@ class EmailService:
         user_name: Optional[str] = None,
         expires_hours: int = 24,
     ) -> bool:
-        greeting = f"Hi {user_name}," if user_name else "Hi,"
+        _user_name = html.escape(user_name) if user_name else None
+        _reset_url = html.escape(reset_url, quote=True)
+        greeting = f"Hi {_user_name}," if _user_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
@@ -192,7 +200,7 @@ class EmailService:
   Or paste this link into your browser:
 </p>
 <p style="margin:0 0 16px;font-size:12px;color:#0D9488;word-break:break-all;">
-  <a href="{reset_url}" style="color:#0D9488;text-decoration:none;">{reset_url}</a>
+  <a href="{_reset_url}" style="color:#0D9488;text-decoration:none;">{_reset_url}</a>
 </p>
 <p style="margin:0;font-size:13px;color:#64748B;">
   This link expires in {expires_hours} hours and can only be used once.
@@ -224,12 +232,17 @@ class EmailService:
         Send an invite email to a new team member so they can set their own
         password and activate their account.
         """
-        greeting = f"Hi {invitee_name},"
+        _invitee_name = html.escape(invitee_name)
+        _inviter_name = html.escape(inviter_name)
+        _org_name = html.escape(org_name)
+        _role_label = html.escape(role_label)
+        _set_password_url = html.escape(set_password_url, quote=True)
+        greeting = f"Hi {_invitee_name},"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
-  <strong>{inviter_name}</strong> has invited you to join
-  <strong>{org_name}</strong> on AI Talent Lab as <strong>{role_label}</strong>.
+  <strong>{_inviter_name}</strong> has invited you to join
+  <strong>{_org_name}</strong> on AI Talent Lab as <strong>{_role_label}</strong>.
 </p>
 <p style="margin:0 0 16px;">
   Click the button below to set your password and activate your account.
@@ -240,7 +253,7 @@ class EmailService:
   Or paste this link into your browser:
 </p>
 <p style="margin:0 0 16px;font-size:12px;color:#0D9488;word-break:break-all;">
-  <a href="{set_password_url}" style="color:#0D9488;text-decoration:none;">{set_password_url}</a>
+  <a href="{_set_password_url}" style="color:#0D9488;text-decoration:none;">{_set_password_url}</a>
 </p>
 <p style="margin:0;font-size:13px;color:#64748B;">
   If you weren't expecting this invite, you can safely ignore this email.
@@ -275,12 +288,16 @@ class EmailService:
         org_name: str,
         apply_url: str,
     ) -> bool:
-        greeting = f"Hi {candidate_name}," if candidate_name else "Hi,"
+        _candidate_name = html.escape(candidate_name) if candidate_name else None
+        _role_name = html.escape(role_name)
+        _org_name = html.escape(org_name)
+        _apply_url = html.escape(apply_url, quote=True)
+        greeting = f"Hi {_candidate_name}," if _candidate_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
   We found your profile and think you'd be a great fit for the
-  <strong>{role_name}</strong> position at <strong>{org_name}</strong>.
+  <strong>{_role_name}</strong> position at <strong>{_org_name}</strong>.
 </p>
 <p style="margin:0 0 16px;">
   We've prepared a quick, chat-based application — it takes less than 5 minutes.
@@ -312,12 +329,16 @@ class EmailService:
         org_name: str,
         apply_url: str,
     ) -> bool:
-        greeting = f"Hi {candidate_name}," if candidate_name else "Hi,"
+        _candidate_name = html.escape(candidate_name) if candidate_name else None
+        _role_name = html.escape(role_name)
+        _org_name = html.escape(org_name)
+        _apply_url = html.escape(apply_url, quote=True)
+        greeting = f"Hi {_candidate_name}," if _candidate_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
   Just a friendly reminder — we'd love to hear from you about the
-  <strong>{role_name}</strong> role at <strong>{org_name}</strong>.
+  <strong>{_role_name}</strong> role at <strong>{_org_name}</strong>.
 </p>
 <p style="margin:0 0 16px;">
   The application is quick and chat-based. Click below to get started:
@@ -351,7 +372,11 @@ class EmailService:
         meeting_link: Optional[str] = None,
     ) -> bool:
         from datetime import datetime as dt
-        greeting = f"Hi {candidate_name}," if candidate_name else "Hi,"
+        _candidate_name = html.escape(candidate_name) if candidate_name else None
+        _role_name = html.escape(role_name)
+        _org_name = html.escape(org_name)
+        _round_name = html.escape(round_name)
+        greeting = f"Hi {_candidate_name}," if _candidate_name else "Hi,"
         when = ""
         if scheduled_at:
             if isinstance(scheduled_at, str):
@@ -360,22 +385,23 @@ class EmailService:
 
         meet_section = ""
         if meeting_link:
+            _meeting_link = html.escape(meeting_link, quote=True)
             meet_section = f"""
 <p style="margin:16px 0 8px;font-size:13px;color:#64748B;">Meeting link:</p>
 <p style="margin:0 0 16px;">
-  <a href="{meeting_link}" style="color:{_BRAND_TEAL};font-weight:600;text-decoration:none;">{meeting_link}</a>
+  <a href="{_meeting_link}" style="color:{_BRAND_TEAL};font-weight:600;text-decoration:none;">{_meeting_link}</a>
 </p>"""
 
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
   Great news! You've been selected for the next step in the interview process
-  for <strong>{role_name}</strong> at <strong>{org_name}</strong>.
+  for <strong>{_role_name}</strong> at <strong>{_org_name}</strong>.
 </p>
 <table style="margin:16px 0;width:100%;border-collapse:collapse;">
   <tr>
     <td style="padding:8px 0;font-size:13px;color:#64748B;">Round</td>
-    <td style="padding:8px 0;font-weight:600;">{round_name}</td>
+    <td style="padding:8px 0;font-weight:600;">{_round_name}</td>
   </tr>
   <tr>
     <td style="padding:8px 0;font-size:13px;color:#64748B;">When</td>
@@ -414,12 +440,17 @@ class EmailService:
         round_name: str,
         feedback_url: str,
     ) -> bool:
-        greeting = f"Hi {panelist_name}," if panelist_name else "Hi,"
+        _panelist_name = html.escape(panelist_name) if panelist_name else None
+        _candidate_name = html.escape(candidate_name)
+        _role_name = html.escape(role_name)
+        _org_name = html.escape(org_name)
+        _round_name = html.escape(round_name)
+        greeting = f"Hi {_panelist_name}," if _panelist_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
-  You've been assigned as an interviewer for <strong>{candidate_name}</strong>
-  applying for <strong>{role_name}</strong> at <strong>{org_name}</strong>.
+  You've been assigned as an interviewer for <strong>{_candidate_name}</strong>
+  applying for <strong>{_role_name}</strong> at <strong>{_org_name}</strong>.
 </p>
 <p style="margin:0 0 16px;">
   Please submit your feedback using the secure link below. No login required —
@@ -427,7 +458,7 @@ class EmailService:
 </p>
 {_button("Submit Feedback", feedback_url)}
 <p style="margin:16px 0 0;font-size:13px;color:#64748B;">
-  <strong>Round:</strong> {round_name}<br>
+  <strong>Round:</strong> {_round_name}<br>
   This link expires in 7 days and can only be submitted once.
 </p>"""
         body_text = (
@@ -453,11 +484,14 @@ class EmailService:
         review_url: str,
     ) -> bool:
         """Notify team_lead that an HR-authored JD is waiting for their approval."""
+        _team_lead_name = html.escape(team_lead_name)
+        _hr_name = html.escape(hr_name)
+        _role_name = html.escape(role_name)
         content_html = f"""\
-<p style="margin:0 0 16px;">Hi {team_lead_name},</p>
+<p style="margin:0 0 16px;">Hi {_team_lead_name},</p>
 <p style="margin:0 0 16px;">
-  <strong>{hr_name}</strong> has finished the job description for
-  <strong>{role_name}</strong> and submitted it for your approval.
+  <strong>{_hr_name}</strong> has finished the job description for
+  <strong>{_role_name}</strong> and submitted it for your approval.
 </p>
 <p style="margin:0 0 16px;">
   Candidate sourcing is paused until you review and approve the JD.
@@ -491,11 +525,14 @@ class EmailService:
         position_url: str,
     ) -> bool:
         """Notify HR that the team_lead approved the JD and sourcing has started."""
+        _hr_name = html.escape(hr_name)
+        _team_lead_name = html.escape(team_lead_name)
+        _role_name = html.escape(role_name)
         content_html = f"""\
-<p style="margin:0 0 16px;">Hi {hr_name},</p>
+<p style="margin:0 0 16px;">Hi {_hr_name},</p>
 <p style="margin:0 0 16px;">
-  Great news — <strong>{team_lead_name}</strong> has approved the JD for
-  <strong>{role_name}</strong>.
+  Great news — <strong>{_team_lead_name}</strong> has approved the JD for
+  <strong>{_role_name}</strong>.
 </p>
 <p style="margin:0 0 16px;">
   Candidate sourcing has started automatically. Candidates will begin appearing
@@ -526,18 +563,22 @@ class EmailService:
         position_url: str,
     ) -> bool:
         """Notify HR that the team_lead requested changes to the JD."""
+        _hr_name = html.escape(hr_name)
+        _team_lead_name = html.escape(team_lead_name)
+        _role_name = html.escape(role_name)
         reason_section = ""
         if reason:
+            _reason = html.escape(reason)
             reason_section = f"""\
-<p style="margin:16px 0 8px;font-size:13px;color:#64748B;">Feedback from {team_lead_name}:</p>
+<p style="margin:16px 0 8px;font-size:13px;color:#64748B;">Feedback from {_team_lead_name}:</p>
 <p style="margin:0 0 16px;padding:12px 16px;background:#FEF2F2;border-left:3px solid #EF4444;border-radius:4px;font-size:14px;color:#334155;">
-  {reason}
+  {_reason}
 </p>"""
         content_html = f"""\
-<p style="margin:0 0 16px;">Hi {hr_name},</p>
+<p style="margin:0 0 16px;">Hi {_hr_name},</p>
 <p style="margin:0 0 16px;">
-  <strong>{team_lead_name}</strong> has reviewed the JD for
-  <strong>{role_name}</strong> and requested some changes before approval.
+  <strong>{_team_lead_name}</strong> has reviewed the JD for
+  <strong>{_role_name}</strong> and requested some changes before approval.
 </p>
 {reason_section}
 <p style="margin:0 0 16px;">
@@ -570,24 +611,28 @@ class EmailService:
         request_url: str,
     ) -> bool:
         """Notify dept_admin (or org_head) that a new hire request needs approval."""
-        greeting = f"Hi {dept_admin_name}," if dept_admin_name else "Hi,"
+        _dept_admin_name = html.escape(dept_admin_name) if dept_admin_name else None
+        _raiser_name = html.escape(raiser_name)
+        _role_name = html.escape(role_name)
+        _dept_name = html.escape(dept_name)
+        greeting = f"Hi {_dept_admin_name}," if _dept_admin_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
-  <strong>{raiser_name}</strong> has submitted a new hire request that needs your approval.
+  <strong>{_raiser_name}</strong> has submitted a new hire request that needs your approval.
 </p>
 <table style="margin:16px 0;width:100%;border-collapse:collapse;">
   <tr>
     <td style="padding:8px 0;font-size:13px;color:#64748B;">Role</td>
-    <td style="padding:8px 0;font-weight:600;">{role_name}</td>
+    <td style="padding:8px 0;font-weight:600;">{_role_name}</td>
   </tr>
   <tr>
     <td style="padding:8px 0;font-size:13px;color:#64748B;">Department</td>
-    <td style="padding:8px 0;font-weight:600;">{dept_name}</td>
+    <td style="padding:8px 0;font-weight:600;">{_dept_name}</td>
   </tr>
   <tr>
     <td style="padding:8px 0;font-size:13px;color:#64748B;">Requested by</td>
-    <td style="padding:8px 0;font-weight:600;">{raiser_name}</td>
+    <td style="padding:8px 0;font-weight:600;">{_raiser_name}</td>
   </tr>
 </table>
 <p style="margin:0 0 16px;">
@@ -620,14 +665,18 @@ class EmailService:
         request_url: str,
     ) -> bool:
         """Notify raiser (and HR users) that the request has been approved."""
-        greeting = f"Hi {recipient_name}," if recipient_name else "Hi,"
+        _recipient_name = html.escape(recipient_name) if recipient_name else None
+        _role_name = html.escape(role_name)
+        _dept_name = html.escape(dept_name)
+        _approver_name = html.escape(approver_name)
+        greeting = f"Hi {_recipient_name}," if _recipient_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
-  Great news — the hire request for <strong>{role_name}</strong> in
-  <strong>{dept_name}</strong> has been
+  Great news — the hire request for <strong>{_role_name}</strong> in
+  <strong>{_dept_name}</strong> has been
   <span style="color:{_BRAND_TEAL};font-weight:600;">approved</span>
-  by <strong>{approver_name}</strong>.
+  by <strong>{_approver_name}</strong>.
 </p>
 <p style="margin:0 0 16px;">
   The request is now in the HR queue and will be picked up shortly to begin the
@@ -659,21 +708,25 @@ class EmailService:
         approver_name: str,
     ) -> bool:
         """Notify raiser that their hire request was rejected, with reason."""
-        greeting = f"Hi {raiser_name}," if raiser_name else "Hi,"
+        _raiser_name = html.escape(raiser_name) if raiser_name else None
+        _role_name = html.escape(role_name)
+        _approver_name = html.escape(approver_name)
+        _reason = html.escape(reason) if reason else ""
+        greeting = f"Hi {_raiser_name}," if _raiser_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
-  Your hire request for <strong>{role_name}</strong> was reviewed by
-  <strong>{approver_name}</strong> and was
+  Your hire request for <strong>{_role_name}</strong> was reviewed by
+  <strong>{_approver_name}</strong> and was
   <span style="color:#EF4444;font-weight:600;">not approved</span>.
 </p>
 <p style="margin:0 0 8px;font-size:14px;font-weight:600;">Reason provided:</p>
 <p style="margin:0 0 16px;padding:12px 16px;background:#FEF2F2;border-left:3px solid #EF4444;border-radius:4px;font-size:14px;color:#991B1B;">
-  {reason}
+  {_reason}
 </p>
 <p style="margin:0 0 16px;">
   If you believe this decision should be revisited, please reach out to
-  <strong>{approver_name}</strong> directly or raise a new request with updated details.
+  <strong>{_approver_name}</strong> directly or raise a new request with updated details.
 </p>
 <p style="margin:0;font-size:13px;color:#64748B;">
   Thank you for using AI Talent Lab.
@@ -701,12 +754,15 @@ class EmailService:
         request_url: str,
     ) -> bool:
         """Notify raiser that HR has picked up their approved request."""
-        greeting = f"Hi {raiser_name}," if raiser_name else "Hi,"
+        _raiser_name = html.escape(raiser_name) if raiser_name else None
+        _hr_name = html.escape(hr_name)
+        _role_name = html.escape(role_name)
+        greeting = f"Hi {_raiser_name}," if _raiser_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
-  <strong>{hr_name}</strong> from HR has picked up your hire request for
-  <strong>{role_name}</strong> and is now drafting the job description.
+  <strong>{_hr_name}</strong> from HR has picked up your hire request for
+  <strong>{_role_name}</strong> and is now drafting the job description.
 </p>
 <p style="margin:0 0 16px;">
   You'll be notified when the JD is ready for your review and approval. In the
@@ -715,7 +771,7 @@ class EmailService:
 {_button("Track Request", request_url)}
 <p style="margin:0;font-size:13px;color:#64748B;">
   If you have additional context that would help with the JD, reach out to
-  <strong>{hr_name}</strong> directly.
+  <strong>{_hr_name}</strong> directly.
 </p>"""
         body_text = (
             f"{greeting}\n\n{hr_name} has picked up your hire request for {role_name} "
@@ -738,16 +794,20 @@ class EmailService:
         org_name: str,
         rejection_message: Optional[str] = None,
     ) -> bool:
-        greeting = f"Dear {candidate_name}," if candidate_name else "Dear Applicant,"
+        _candidate_name = html.escape(candidate_name) if candidate_name else None
+        _role_name = html.escape(role_name)
+        _org_name = html.escape(org_name)
+        greeting = f"Dear {_candidate_name}," if _candidate_name else "Dear Applicant,"
         custom_msg = ""
         if rejection_message:
-            custom_msg = f'<p style="margin:16px 0;padding:12px 16px;background:#F8FAFC;border-left:3px solid #E2E8F0;border-radius:4px;font-size:14px;color:#334155;">{rejection_message}</p>'
+            _rejection_message = html.escape(rejection_message)
+            custom_msg = f'<p style="margin:16px 0;padding:12px 16px;background:#F8FAFC;border-left:3px solid #E2E8F0;border-radius:4px;font-size:14px;color:#334155;">{_rejection_message}</p>'
 
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
-  Thank you for your interest in the <strong>{role_name}</strong> position
-  at <strong>{org_name}</strong> and for taking the time to apply.
+  Thank you for your interest in the <strong>{_role_name}</strong> position
+  at <strong>{_org_name}</strong> and for taking the time to apply.
 </p>
 <p style="margin:0 0 16px;">
   After careful consideration, we've decided to move forward with other

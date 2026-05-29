@@ -326,9 +326,14 @@ class HireRequestService:
 
         existing = await HireRequestService.get(conn, request_id, org_id)
 
-        # dept_admin can only approve requests in their own department
+        # dept_admin can only approve requests scoped to their own department.
+        # Org-level requests (department_id is NULL) must be approved by org_head.
         if role == "dept_admin":
-            if existing.get("department_id") and dept_id != existing["department_id"]:
+            if not existing.get("department_id"):
+                raise InsufficientPermissionsError(
+                    "Org-level hire requests can only be approved by org_head."
+                )
+            if dept_id != existing["department_id"]:
                 raise InsufficientPermissionsError(
                     "You can only approve hire requests for your own department."
                 )
@@ -463,8 +468,13 @@ class HireRequestService:
 
         existing = await HireRequestService.get(conn, request_id, org_id)
 
+        # Same scoping as approve_request — dept_admin cannot act on deptless requests.
         if role == "dept_admin":
-            if existing.get("department_id") and dept_id != existing["department_id"]:
+            if not existing.get("department_id"):
+                raise InsufficientPermissionsError(
+                    "Org-level hire requests can only be rejected by org_head."
+                )
+            if dept_id != existing["department_id"]:
                 raise InsufficientPermissionsError(
                     "You can only reject hire requests for your own department."
                 )
