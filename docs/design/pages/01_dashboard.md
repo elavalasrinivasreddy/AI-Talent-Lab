@@ -1,4 +1,4 @@
-> **Build status:** ❌ Not redesigned — old DashboardPage live (NOW/NEXT/PULSE lanes not built)
+> **Build status:** ✅ Redesigned (2026-05-29) — NOW/NEXT/PULSE lanes live. Lanes derived client-side from `/copilot/suggestions` (NOW+NEXT) + `/dashboard/activity` (PULSE) + `/dashboard/stats` (admin health); no backend changes. Legacy dashboard preserved behind `?legacy_dashboard=1`. **Known limitation:** admin `DeptChipBar` renders but does not filter lane data — existing endpoints take no `department_id` param; needs a backend iteration.
 > Consolidated docs index: [../../README.md](../../README.md) · Status tracker: [../../STATUS.md](../../STATUS.md) · Design system: [../00_design_system.md](../00_design_system.md)
 > This page merges the v3 redesign spec with the pre-v3 behavioral spec (appendix below, where one existed).
 

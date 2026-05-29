@@ -23,8 +23,8 @@
 - [x] **Security: HTML escape in emails** — `email_service.py`, all 16 templates (commit `9c45684`)
 - [x] **Security: dept_admin hire-request scoping** — `hire_request_service.py` (commit `9c45684`)
 - [x] **Phase B shared atoms** — `Icon.jsx`, `Chip.jsx`, `Stat.jsx`, `RoleGate.jsx` in `components/common/` (2026-05-29). Reference `--color-*` tokens w/ hex fallbacks.
-- [ ] **Dashboard redesign** — `docs/design/pages/01_dashboard.md` (NOW/NEXT/PULSE lanes). Highest visible win. START HERE next session. Use the new atoms + `<RoleGate>` for the role-adaptive hero.
-- [ ] **Positions List (02)** then **Position Detail (03)** — daily work surfaces
+- [x] **Dashboard redesign** — NOW/NEXT/PULSE lanes (2026-05-29). Lanes derived client-side from copilot+activity+stats; no backend change. Legacy behind `?legacy_dashboard=1`. Follow-up: DeptChipBar needs a backend `department_id` param to actually filter.
+- [ ] **Positions List (02)** then **Position Detail (03)** — daily work surfaces. START HERE next session.
 - [ ] **Candidate Detail (04)** — compare-to-ideal grid (ATS reasoning)
 - [ ] **Settings (07), Analytics (06), Talent Pool (08)**
 - [ ] **Public: Apply (10), Panel (11), Career (12), Status (13)**
@@ -44,5 +44,6 @@ use the Phase B atoms + design tokens, then flip its banner to ✅ and update `S
 
 ## Log (newest first, one line each)
 
+- 2026-05-29 — Dashboard (01) redesigned to v3 (NOW/NEXT/PULSE). Built by Sonnet subagent, reviewed on Opus. Next: Positions List (02).
 - 2026-05-29 — Phase B atoms built (Icon/Chip/Stat/RoleGate). Next: Dashboard redesign (01).
 - 2026-05-29 — Consolidated docs (40→31 files), commit `483dba6`. Security: email escape + dept scoping, commit `9c45684`.

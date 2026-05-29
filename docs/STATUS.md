@@ -12,13 +12,13 @@ Two axes per surface:
 
 ## Headline
 
-**3 of 19 surfaces redesigned to v3.** 16 pending. Most pages are functionally live but
+**4 of 19 surfaces redesigned to v3.** 15 pending. Most pages are functionally live but
 still render the pre-redesign UI.
 
 | | Count |
 |---|---|
-| ✅ Redesigned (v3) | 3 — Auth, JD Chat, Hire Request |
-| ❌ Pending redesign | 16 |
+| ✅ Redesigned (v3) | 4 — Auth, JD Chat, Hire Request, Dashboard |
+| ❌ Pending redesign | 15 |
 
 ---
 
@@ -36,7 +36,7 @@ still render the pre-redesign UI.
 
 | # | Surface | Feature | v3 redesign | Notes |
 |---|---|---|---|---|
-| 01 | Dashboard | Live | ❌ | Old `DashboardPage`; NOW/NEXT/PULSE lanes not built. Approval/Drafts widgets bolted onto old layout. |
+| 01 | Dashboard | Live | ✅ | NOW/NEXT/PULSE lanes live; lanes derived client-side from copilot+activity+stats. Legacy behind `?legacy_dashboard=1`. DeptChipBar non-functional (no backend dept param) — tracked. |
 | 02 | Positions List | Live | ❌ | Pipeline Garden cards not built |
 | 03 | Position Detail | Live | ❌ | Stack-ranked list (variant B) not built |
 | 04 | Candidate Detail | Live | ❌ | Compare-to-ideal overlay not built |
