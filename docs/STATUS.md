@@ -27,7 +27,7 @@ still render the pre-redesign UI.
 | Item | Status | Notes |
 |---|---|---|
 | Phase A — design tokens (`globals.css`) | 🟡 Partial | Teal + Plus Jakarta tokens exist; only `auth.css` + `chat.css` consume them. Other pages still old styling. |
-| Phase B — shared atoms `Icon` / `Chip` / `Stat` / `RoleGate` | ❌ Not built | `common/` has Badge, StatusBadge, ScoreCircle, EmptyState, SkeletonCard, NotificationBell only |
+| Phase B — shared atoms `Icon` / `Chip` / `Stat` / `RoleGate` | ✅ Built (2026-05-29) | In `components/common/`. Reference real `--color-*` tokens w/ hex fallbacks. Not yet adopted across pages. |
 | `StatusBadge` remap to v3 palette | 🟡 | Component exists; `constants.js` palette vs design-system palette not reconciled |
 
 ---

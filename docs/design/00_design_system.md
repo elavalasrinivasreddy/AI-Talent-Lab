@@ -167,8 +167,16 @@ Light-mode shadows are softer. Default cards are border + bg, no shadow.
 ## 5. Primitive components to build
 
 Shared atoms — build once, use everywhere. **Status:** `StatusBadge`, `Badge`,
-`ScoreCircle`, `EmptyState`, `SkeletonCard`, `NotificationBell` exist;
-`Icon` / `Chip` / `Stat` / `RoleGate` are **not yet built** (see [`../STATUS.md`](../STATUS.md)).
+`ScoreCircle`, `EmptyState`, `SkeletonCard`, `NotificationBell`, **and now
+`Icon` / `Chip` / `Stat` / `RoleGate`** all exist in `components/common/` (Phase B
+landed 2026-05-29).
+
+> **Token reconciliation (important for page work):** `globals.css` currently defines
+> the v2.2 names (`--color-primary`, `--color-bg-card`, `--color-text-*`, `--space-*`,
+> `--radius-*`), NOT the short v3 names in this doc (`--p`, `--bg-2`, `--tx-0`). The new
+> atoms reference the real `--color-*` tokens with hex fallbacks. When you do a full
+> token pass, either add the short aliases to `globals.css` or update this doc to the
+> `--color-*` names — don't write components against `--p` until it exists.
 
 - `<Icon name size />` — inline-SVG set (Lucide names). Replaces emoji icons in Sidebar,
   AnalyticsPage KPIStrip, SettingsPage tabs. File: `components/common/Icon.jsx`.
