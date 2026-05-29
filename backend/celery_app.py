@@ -40,11 +40,11 @@ celery_app.conf.beat_schedule = {
         "schedule": 3600.0,  # every hour
     },
     "gdpr-retention-cleanup": {
-        "task": "tasks.gdpr_cleanup.cleanup_expired_data",
+        "task": "backend.tasks.gdpr_cleanup.cleanup_expired_data",
         "schedule": 604800.0,  # every 7 days (weekly)
     },
     "gdpr-process-deletions": {
-        "task": "tasks.gdpr_cleanup.process_verified_deletions",
+        "task": "backend.tasks.gdpr_cleanup.process_verified_deletions",
         "schedule": 3600.0,  # every hour
     },
     "copilot-suggestions": {

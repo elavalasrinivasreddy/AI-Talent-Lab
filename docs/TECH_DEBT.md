@@ -43,9 +43,9 @@ Phase 1 of the redesign shipped 2026-05-20. Backend SSE emission was tightened; 
 
 | Severity | Item | Notes |
 |---|---|---|
-| 🟡 Medium | **Fake LLM token streaming** | `services/chat_service.py:166-171` splits the finished JD into words with 12ms sleep. Real LLM streaming needs `astream_tokens` plumbing in the LLM adapter layer. See redesign §13 F1 |
-| 🟡 Medium | **`emit_token` misnamed** | Same root cause — sends complete messages as one chunk, not real per-token streaming. Bundle with the LLM-streaming fix |
-| 🟡 Medium | **Greeting drift risk** | `chat_service.GREETING_MESSAGE` and `ChatContext.resetChat` both hardcode the same welcome text. Will drift on edit. Extract to a single source (config endpoint or shared constant) |
+| ~~🟡 Medium~~ | ~~**Fake LLM token streaming**~~ | ~~`services/chat_service.py:166-171` splits the finished JD into words with 12ms sleep. Real LLM streaming needs `astream_tokens` plumbing in the LLM adapter layer.~~ Resolved — Phase 2 Bucket A (2026-05-29) |
+| ~~🟡 Medium~~ | ~~**`emit_token` misnamed**~~ | ~~Same root cause — sends complete messages as one chunk, not real per-token streaming. Bundle with the LLM-streaming fix.~~ Resolved (2026-05-29) |
+| ~~🟡 Medium~~ | ~~**Greeting drift risk**~~ | ~~`chat_service.GREETING_MESSAGE` and `ChatContext.resetChat` both hardcode the same welcome text. Will drift on edit. Extract to a single source (config endpoint or shared constant).~~ Resolved — Bucket D2 (2026-05-29) |
 | ~~🟡 Medium~~ | ~~**Stage skip not emitted for `intake` / `final_jd` / `complete`**~~ | Resolved by design 2026-05-28 — HARD-STOP stages (intake, jd_variants, final_jd) cannot soft-skip; the orchestrator only emits `stage_skipped` for soft-skippable stages (internal_check, market_research, bias_check). Documented in `agents/orchestrator.py:_record_skip`. |
 | 🟢 Low | **Type-checker warnings in `agents/orchestrator.py`** | `state: dict` parameter vs `AgentState` TypedDict expected by nodes; `action_data` Optional[dict] hits `.get(...)` without a None guard. Runtime safe (Python doesn't enforce TypedDict); fix during a static-analysis sweep |
 | 🟢 Low | **Unused `AgentState` import** in `orchestrator.py` line 11 | Pre-existing — left alone in this PR to keep the diff focused |

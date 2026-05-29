@@ -89,7 +89,7 @@ const ChatPage = () => {
         const req = location.state?.hireRequest;
         if (!req || !currentSessionId || workflowStage !== 'complete' || linkSentRef.current) return;
         linkSentRef.current = true;
-        hireRequestsApi.linkSession(req.id, currentSessionId).catch(() => {});
+        hireRequestsApi.linkSession(req.id, currentSessionId).catch(err => console.error('linkSession failed:', err));
     }, [location.state, workflowStage, currentSessionId]);
 
     return (
