@@ -29,12 +29,16 @@ export default function DashboardPage() {
   const [hireRequests, setHireRequests] = useState([])
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [pendingApprovals, setPendingApprovals] = useState([])
+  const [drafts, setDrafts] = useState([])
 
   useEffect(() => { loadAll() }, [period])
   useEffect(() => { loadSuggestions() }, [])
   useEffect(() => { loadHireRequests() }, [role])
   useEffect(() => {
     if (role === 'dept_admin' || role === 'org_head') loadPendingApprovals()
+  }, [role])
+  useEffect(() => {
+    if (role === 'hr' || role === 'dept_admin' || role === 'org_head') loadDrafts()
   }, [role])
 
   const loadHireRequests = async () => {
@@ -50,6 +54,15 @@ export default function DashboardPage() {
     try {
       const data = await hireRequestsApi.list({ status: 'pending' })
       setPendingApprovals(data?.requests || [])
+    } catch {
+      // non-critical
+    }
+  }
+
+  const loadDrafts = async () => {
+    try {
+      const data = await positionsApi.list({ status: 'draft' })
+      setDrafts(Array.isArray(data) ? data : data?.positions || [])
     } catch {
       // non-critical
     }
@@ -191,6 +204,11 @@ export default function DashboardPage() {
 
           {/* HR Quick Actions */}
           {role === 'hr' && <QuickActions navigate={navigate} />}
+
+          {/* Draft Positions (hr / dept_admin / org_head) */}
+          {(role === 'hr' || role === 'dept_admin' || role === 'org_head') && (
+            <DraftsSection drafts={drafts} navigate={navigate} />
+          )}
 
           {/* Pending Approvals (dept_admin / org_head) */}
           {(role === 'dept_admin' || role === 'org_head') && (
@@ -682,6 +700,58 @@ function HireRequestModal({ onClose, onSubmitted }) {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Draft Positions ──────────────────────────────────────────────────────────
+
+function DraftsSection({ drafts, navigate }) {
+  if (drafts.length === 0) return (
+    <div className="dash-card dash-card--compact">
+      <div className="dash-card-head">
+        <h3 className="dash-card-title">Drafts</h3>
+      </div>
+      <div className="dash-empty" style={{ padding: 'var(--space-4)' }}>
+        <span className="dash-empty-icon">📝</span>
+        <p className="dash-empty-title">No drafts yet.</p>
+        <p className="dash-empty-desc">Save a JD as draft from the chat to resume it here.</p>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="dash-card dash-card--compact">
+      <div className="dash-card-head">
+        <h3 className="dash-card-title">Drafts</h3>
+        <span className="dash-card-badge">{drafts.length}</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {drafts.map(p => (
+          <div
+            key={p.id}
+            style={{
+              padding: '10px 12px', borderRadius: 8,
+              background: 'var(--color-bg-secondary)',
+              border: '1px solid var(--color-border)',
+              display: 'flex', alignItems: 'center', gap: 10,
+              cursor: 'pointer',
+            }}
+            onClick={() => p.session_id ? navigate(`/chat/${p.session_id}`) : navigate('/positions')}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {p.role_name || 'Untitled position'}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                {p.department_name || (p.department_id ? `Dept #${p.department_id}` : 'No dept')}
+                {p.updated_at && ` · edited ${timeAgo(p.updated_at)}`}
+              </div>
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--color-primary)', flexShrink: 0 }}>Resume →</span>
+          </div>
+        ))}
       </div>
     </div>
   )

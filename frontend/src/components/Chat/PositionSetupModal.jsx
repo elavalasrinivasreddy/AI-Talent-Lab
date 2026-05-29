@@ -23,13 +23,16 @@ const PositionSetupModal = ({ show, onClose }) => {
         search_interval_hours: 24,
     });
     const [isLoading, setIsLoading] = useState(false);
+    const [isDraftLoading, setIsDraftLoading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
+    const [draftSuccess, setDraftSuccess] = useState(false);
 
     useEffect(() => {
         if (!show) return;
         setError(null);
         setSuccess(false);
+        setDraftSuccess(false);
         const fetchDeps = async () => {
             try {
                 const res = await fetch('/api/v1/settings/departments', {
@@ -49,14 +52,14 @@ const PositionSetupModal = ({ show, onClose }) => {
         fetchDeps();
     }, [show, token]);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const _savePosition = async (asDraft) => {
         if (!formData.department_id) {
             setError('Please select a department.');
             return;
         }
 
-        setIsLoading(true);
+        if (asDraft) setIsDraftLoading(true);
+        else setIsLoading(true);
         setError(null);
 
         try {
@@ -72,27 +75,47 @@ const PositionSetupModal = ({ show, onClose }) => {
                     priority: formData.priority,
                     ats_threshold: parseFloat(formData.ats_threshold),
                     search_interval_hours: parseInt(formData.search_interval_hours),
+                    as_draft: asDraft,
                 }),
             });
 
             if (res.ok) {
-                const data = await res.json();
-                setSuccess(true);
                 fetchSessions();
-                setTimeout(() => {
-                    onClose();
-                    navigate(data.position_id ? `/positions/${data.position_id}` : '/positions');
-                }, 1200);
+                if (asDraft) {
+                    setDraftSuccess(true);
+                    setTimeout(() => {
+                        onClose();
+                        navigate('/dashboard');
+                    }, 1800);
+                } else {
+                    const data = await res.json();
+                    setSuccess(true);
+                    setTimeout(() => {
+                        onClose();
+                        navigate(data.position_id ? `/positions/${data.position_id}` : '/positions');
+                    }, 1200);
+                }
             } else {
                 const errData = await res.json();
-                setError(errData?.error?.message || errData?.detail || 'Failed to create position.');
+                setError(errData?.error?.message || errData?.detail || 'Failed to save position.');
             }
         } catch (err) {
             setError('Network error. Please try again.');
             console.error(err);
         } finally {
-            setIsLoading(false);
+            if (asDraft) setIsDraftLoading(false);
+            else setIsLoading(false);
         }
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        _savePosition(false);
+    };
+
+    const handleSaveAsDraft = (e) => {
+        e.preventDefault();
+        _savePosition(true);
     };
 
     if (!show) return null;
@@ -101,11 +124,22 @@ const PositionSetupModal = ({ show, onClose }) => {
         <div
             className="pmodal-overlay"
             onClick={(e) => {
-                if (e.target === e.currentTarget && !success) onClose();
+                if (e.target === e.currentTarget && !success && !draftSuccess) onClose();
             }}
         >
             <div className="pmodal" role="dialog" aria-modal="true" aria-labelledby="pmodal-title">
-                {success ? (
+                {draftSuccess ? (
+                    <div className="pmodal-success">
+                        <div className="pmodal-success-mark">
+                            <IconCheck size={22} />
+                        </div>
+                        <h2 className="pmodal-success-title">Saved as draft.</h2>
+                        <p className="pmodal-success-sub">
+                            Resume this position from your dashboard whenever you're ready.
+                        </p>
+                        <div className="pmodal-success-bar" aria-hidden="true" />
+                    </div>
+                ) : success ? (
                     <div className="pmodal-success">
                         <div className="pmodal-success-mark">
                             <IconCheck size={22} />
@@ -211,9 +245,17 @@ const PositionSetupModal = ({ show, onClose }) => {
                         <div className="pmodal-foot">
                             <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
                             <button
+                                type="button"
+                                className="btn-ghost"
+                                disabled={isDraftLoading || isLoading || !formData.department_id}
+                                onClick={handleSaveAsDraft}
+                            >
+                                {isDraftLoading ? 'Saving…' : 'Save as draft'}
+                            </button>
+                            <button
                                 type="submit"
                                 className="btn-primary"
-                                disabled={isLoading || !formData.department_id}
+                                disabled={isLoading || isDraftLoading || !formData.department_id}
                             >
                                 {isLoading ? 'Submitting…' : (
                                     <>Submit for approval <IconArrowRight size={14} /></>

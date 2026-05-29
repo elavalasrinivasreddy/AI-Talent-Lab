@@ -246,7 +246,8 @@ class ChatService:
         session_id: str,
         org_id: int,
         user_id: int,
-        setup_data: dict
+        setup_data: dict,
+        as_draft: bool = False
     ) -> dict[str, Any]:
         """
         Takes the final JD and variants from the session, creates a Position,
@@ -346,16 +347,20 @@ class ChatService:
 
         # ── Auto-submit for team_lead approval ────────────────────────────────
         # Candidate sourcing is NOT started here — it fires only after approval.
-        try:
-            from backend.services.position_service import PositionService
-            await PositionService.submit_for_approval(
-                position_id=position_id,
-                org_id=org_id,
-                submitted_by_user_id=user_id,
-            )
-            logger.info(f"Position {position_id} auto-submitted for team_lead approval")
-        except Exception as e:
-            logger.warning(f"Auto-submit for approval failed (non-blocking): {e}")
+        # Skip auto-submit when saving as a draft — HR resumes from dashboard.
+        if not as_draft:
+            try:
+                from backend.services.position_service import PositionService
+                await PositionService.submit_for_approval(
+                    position_id=position_id,
+                    org_id=org_id,
+                    submitted_by_user_id=user_id,
+                )
+                logger.info(f"Position {position_id} auto-submitted for team_lead approval")
+            except Exception as e:
+                logger.warning(f"Auto-submit for approval failed (non-blocking): {e}")
+        else:
+            logger.info(f"Position {position_id} saved as draft — approval skipped")
 
         return position
 
