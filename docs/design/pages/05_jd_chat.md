@@ -328,7 +328,7 @@ variant follow-up refinement) are explicitly Phase 2.
 | Backend | Orchestrator records each stage transition + soft-skip in transient `_run_meta`; `chat_service` emits one `stage_change` per transition and one `stage_skipped` per soft-skip (was previously only emitting one event per turn) |
 | ChatContext | Mirrors backend `graph_state_parsed` into `graphState`; refreshes on every SSE `done`; tracks `stageSkipped[]` so the stepper renders skipped pills correctly across resumes |
 | Hire-request handoff | Switched from legacy `positionsApi.linkViaSession` to new `hireRequestsApi.linkSession`. Auto-seed message now includes location + comp band fields |
-| UX Refinements (Validation) | Added `isRailOpen` toggle to `ChatTopBar` to expand canvas space on 13-inch screens. Implemented `scroll-behavior: smooth` and `overflow-anchor: auto` to mitigate Layout Shift during LLM streaming. Added `@keyframes biasFlash` to prepare for in-place text patching visibility. |
+| UX Refinements (Validation) | Added `isRailOpen` toggle and a draggable split-pane resizer (`.rail-resizer`) so users can widen the chat window up to 800px on demand. Implemented `scroll-behavior: smooth` and `overflow-anchor: auto` to mitigate Layout Shift during LLM streaming. Added `@keyframes biasFlash` to prepare for in-place text patching visibility. |
 
 ### ❌ Phase 2 — deferred
 

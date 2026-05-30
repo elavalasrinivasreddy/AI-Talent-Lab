@@ -597,9 +597,10 @@ During a UI/UX design validation of the v3 JD Chat (Document-first Canvas) inter
 3. The Bias Check functionality lacked a clear visual indicator for when a text patch is applied to the document.
 
 **Idea / Solution:**
-1. Introduced a collapsable toggle state (`isRailOpen`) in `ChatPage.jsx` and added an intuitive icon button to `ChatTopBar`. When toggled, the CSS grid smoothly transitions the right rail width to `0px`, allowing the JD Canvas to take up the full screen width.
-2. Added `scroll-behavior: smooth` and `overflow-anchor: auto` to `.chat-body-canvas` in `chat.css` to mitigate layout shifting and preserve reading context during token streaming.
-3. Prepared `@keyframes biasFlash` animation in `chat.css` to provide a subtle green flash highlighting exactly where the text was patched during Bias Check replacement.
+1. Introduced a collapsable toggle state (`isRailOpen`) in `ChatPage.jsx` and added an intuitive icon button to `ChatTopBar`. 
+2. Implemented a draggable split-pane resizer (`.rail-resizer`) between the canvas and the rail. Users can now click and drag the divider to widen or narrow the chat window (rail) between 320px and 800px, giving them total control over the real estate while keeping the toggle functionality. The CSS grid dynamically updates `grid-template-columns: minmax(0, 1fr) 4px ${railWidth}px`.
+3. Added `scroll-behavior: smooth` and `overflow-anchor: auto` to `.chat-body-canvas` in `chat.css` to mitigate layout shifting and preserve reading context during token streaming.
+4. Prepared `@keyframes biasFlash` animation in `chat.css` to provide a subtle green flash highlighting exactly where the text was patched during Bias Check replacement.
 
 **Files Modified:**
 - `frontend/src/components/Chat/ChatPage.jsx`

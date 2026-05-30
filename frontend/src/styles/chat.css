@@ -1349,7 +1349,6 @@
 
 .chat-page--v3 .chat-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
@@ -1357,11 +1356,28 @@
 }
 
 .chat-page--v3 .chat-body.rail-closed {
-  grid-template-columns: minmax(0, 1fr) 0px;
+  /* Let inline styles dictate the closed state, but fallback to 0 */
 }
 
 .chat-page--v3 .chat-body.rail-closed .jd-rail {
   opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.rail-resizer {
+  width: 100%;
+  cursor: col-resize;
+  background-color: transparent;
+  transition: background-color 150ms ease;
+  z-index: 10;
+}
+
+.rail-resizer:hover, .rail-resizer:active {
+  background-color: var(--color-primary);
+}
+
+.chat-page--v3 .chat-body.rail-closed .rail-resizer {
   visibility: hidden;
   pointer-events: none;
 }
@@ -1873,7 +1889,7 @@
   min-height: 0;
   border-left: 1px solid var(--color-border);
   background: var(--color-bg-secondary);
-  width: 360px;
+  width: 100%;
   overflow: hidden;
   transition: opacity 250ms ease, visibility 250ms ease;
 }

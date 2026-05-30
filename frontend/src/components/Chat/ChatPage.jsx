@@ -33,6 +33,35 @@ const ChatPage = () => {
     const hireRequestSentRef = useRef(false);
     const linkSentRef = useRef(false);
     const [isRailOpen, setIsRailOpen] = useState(true);
+    const [railWidth, setRailWidth] = useState(360);
+    const isResizing = useRef(false);
+
+    const startResizing = React.useCallback((e) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = railWidth;
+        
+        const handleMouseMove = (moveEvent) => {
+            const deltaX = moveEvent.clientX - startX;
+            // moving left (negative deltaX) increases rail width
+            const newWidth = Math.max(320, Math.min(800, startWidth - deltaX));
+            setRailWidth(newWidth);
+        };
+        
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            isResizing.current = false;
+        };
+        
+        isResizing.current = true;
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    }, [railWidth]);
 
     useEffect(() => {
         fetchSessions();
@@ -97,10 +126,18 @@ const ChatPage = () => {
         <div className="chat-page chat-page--v3">
             <ChatTopBar isRailOpen={isRailOpen} onToggleRail={() => setIsRailOpen(!isRailOpen)} />
             <JDStepper />
-            <div className={`chat-body ${!isRailOpen ? 'rail-closed' : ''}`}>
+            <div 
+                className={`chat-body ${!isRailOpen ? 'rail-closed' : ''}`}
+                style={{ gridTemplateColumns: isRailOpen ? `minmax(0, 1fr) 4px ${railWidth}px` : `minmax(0, 1fr) 0px 0px` }}
+            >
                 <section className="chat-body-canvas" aria-label="JD canvas">
                     <JDCanvas />
                 </section>
+                <div 
+                    className="rail-resizer"
+                    onMouseDown={startResizing}
+                    aria-hidden="true"
+                />
                 <JDRail />
             </div>
         </div>
