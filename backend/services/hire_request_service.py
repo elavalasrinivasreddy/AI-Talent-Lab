@@ -152,7 +152,17 @@ class HireRequestService:
                 cursor_created_at=cursor_created_at, cursor_id=cursor_id,
                 limit=limit,
             )
-        # hr / org_head — default to the approved work queue (ready for pickup)
+        if role == "hr":
+            # hr sees approved requests for their dept; if they have no dept they see nothing
+            from backend.db.repositories.users import UserRepository
+            user = await UserRepository.get_by_id(conn, user_id, org_id)
+            return await HireRequestRepository.list_for_org(
+                conn, org_id, status=eff_status or "approved",
+                department_id=(user or {}).get("department_id"),
+                cursor_created_at=cursor_created_at, cursor_id=cursor_id,
+                limit=limit,
+            )
+        # org_head — default to the approved work queue (ready for pickup) across the org
         return await HireRequestRepository.list_for_org(
             conn, org_id, status=eff_status or "approved",
             cursor_created_at=cursor_created_at, cursor_id=cursor_id,

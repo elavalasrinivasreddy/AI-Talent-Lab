@@ -37,7 +37,7 @@ export default function HireRequestForm({ mode }) {
   const { user } = useAuth()
   const isEdit = mode === 'edit'
 
-  const [form, setForm] = useState({ ...BLANK, department_id: user?.dept_id ?? '' })
+  const [form, setForm] = useState({ ...BLANK, department_id: user?.department_id ?? user?.dept_id ?? '' })
   const [existing, setExisting] = useState(null)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
@@ -183,19 +183,21 @@ export default function HireRequestForm({ mode }) {
               />
             </div>
 
-            <div className="hr-field">
-              <label htmlFor="hr-dept">Department</label>
-              <select
-                id="hr-dept"
-                value={form.department_id}
-                onChange={e => set('department_id', e.target.value)}
-              >
-                <option value="">— None —</option>
-                {depts.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-            </div>
+            {user?.role === 'org_head' && (
+              <div className="hr-field">
+                <label htmlFor="hr-dept">Department</label>
+                <select
+                  id="hr-dept"
+                  value={form.department_id}
+                  onChange={e => set('department_id', e.target.value)}
+                >
+                  <option value="">— None —</option>
+                  {depts.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </section>
 
           <section className="hr-form-section">

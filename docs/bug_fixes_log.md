@@ -212,3 +212,19 @@ The `ApprovalRulesTab.jsx` had a redundant top title/description, overly verbose
 **Files Modified:**
 - `frontend/src/styles/settings.css`
 - `frontend/src/components/Settings/tabs/ApprovalRulesTab.jsx`
+
+---
+
+## 15. HR / Team Lead Department Scoping in Hire Requests
+
+**Problem Statement:**
+When HR members viewed the Hire Requests list, they saw requests across the entire organization instead of just their assigned department. Similarly, when a Team Lead submitted a new Hire Request, they were presented with a department dropdown allowing them to improperly submit requests for departments other than their own.
+
+**Idea / Solution:**
+1. Modified `list_for_user` in `backend/services/hire_request_service.py` to ensure that when `role == "hr"`, the list is automatically filtered by the HR user's `department_id`.
+2. Wrapped the Department select input in `HireRequestForm.jsx` with a check for `user?.role === 'org_head'`, ensuring that Team Leads (and other non-org-head roles) cannot change the department.
+3. Updated the default state for `department_id` in `HireRequestForm.jsx` to parse `user?.department_id ?? user?.dept_id` to guarantee it safely populates in the background during submission.
+
+**Files Modified:**
+- `backend/services/hire_request_service.py`
+- `frontend/src/components/HireRequests/HireRequestForm.jsx`
