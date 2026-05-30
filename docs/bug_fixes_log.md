@@ -262,3 +262,19 @@ While the settings UI and database schema supported toggling `auto_approve_hire_
 - `backend/services/position_service.py`
 
 ---
+
+## 18. Fix Linter Warnings and Vite API Import Path
+
+**Problem Statement:**
+The static analyzer flagged `is_auto_approved` and `created` as possibly unbound in `hire_request_service.py`, and `is_auto_approved`, `auto_approve_user_id`, etc., as possibly unbound in `position_service.py` due to being initialized inside `async with` blocks. Additionally, a Vite import error broke `ApprovalRulesTab.jsx` because it imported the `api` instance from `services/api` instead of `utils/api`.
+
+**Idea / Solution:**
+1. Initialized all required variables to default states (`False`, `None`) before entering the `async with` connection/transaction blocks in both backend service files to satisfy strict Python type checking.
+2. Corrected the relative import path in `ApprovalRulesTab.jsx` from `../../../services/api` to `../../../utils/api`.
+
+**Files Modified:**
+- `backend/services/hire_request_service.py`
+- `backend/services/position_service.py`
+- `frontend/src/components/Settings/tabs/ApprovalRulesTab.jsx`
+
+---

@@ -168,6 +168,12 @@ class PositionService:
         from backend.services.email_service import EmailService
         from backend.config import settings
 
+        is_auto_approved = False
+        auto_approve_user_id = None
+        role_name = None
+        dept_id = None
+        hr_name = "HR"
+
         async with get_connection() as conn:
             # Fetch the position + submitting user
             pos_row = await conn.fetchrow(
@@ -185,8 +191,6 @@ class PositionService:
                 "SELECT requested_by FROM hire_requests WHERE position_id=$1 AND org_id=$2",
                 position_id, org_id
             )
-            is_auto_approved = False
-            auto_approve_user_id = None
             if hr_row and hr_row["requested_by"]:
                 user_row = await conn.fetchrow(
                     "SELECT id, auto_approve_jds FROM users WHERE id=$1 AND org_id=$2",

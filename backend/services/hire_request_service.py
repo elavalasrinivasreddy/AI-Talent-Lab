@@ -218,6 +218,9 @@ class HireRequestService:
             comp_max=comp_max,
         )
 
+        is_auto_approved = False
+        created = None
+        
         async with conn.transaction():
             created = await HireRequestRepository.create(
                 conn,
@@ -236,7 +239,6 @@ class HireRequestService:
                 location=location,
             )
 
-            is_auto_approved = False
             if department_id:
                 from backend.db.repositories.departments import DeptRepository
                 dept = await DeptRepository.get_by_id(conn, department_id, org_id)

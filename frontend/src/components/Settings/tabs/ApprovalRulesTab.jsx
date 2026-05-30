@@ -1,20 +1,75 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import Icon from '../../common/Icon'
+import api from '../../../utils/api'
+import { toast } from 'react-hot-toast'
 
 export default function ApprovalRulesTab() {
-  const { user } = useAuth()
-  const isAdmin = user?.role === 'org_head' || user?.role === 'dept_admin'
+  const { user, login } = useAuth() // Assuming login or updateUser can be used, but let's just trigger a re-fetch or rely on local state
+  // We can just rely on local state and the user context
+  
+  const isDeptAdmin = user?.role === 'dept_admin'
   const isHM = user?.role === 'team_lead'
 
   const [hrAutoApprove, setHrAutoApprove] = useState(false)
-  const [jdAutoApprove, setJdAutoApprove] = useState(false)
+  const [jdAutoApprove, setJdAutoApprove] = useState(user?.auto_approve_jds || false)
+  const [loading, setLoading] = useState(true)
+  const [deptId, setDeptId] = useState(user?.department_id)
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        if (isDeptAdmin && user?.department_id) {
+          const res = await api.get('/settings/departments')
+          const myDept = res.departments.find(d => d.id === user.department_id)
+          if (myDept) {
+            setHrAutoApprove(myDept.auto_approve_hire_requests || false)
+            setDeptId(myDept.id)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load department settings', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [isDeptAdmin, user?.department_id])
+
+  const handleHrToggle = async (checked) => {
+    setHrAutoApprove(checked)
+    if (!deptId) return
+    try {
+      await api.patch(`/settings/departments/${deptId}`, {
+        auto_approve_hire_requests: checked
+      })
+      toast.success('Hire request approval rule updated')
+    } catch (err) {
+      toast.error('Failed to update rule')
+      setHrAutoApprove(!checked)
+    }
+  }
+
+  const handleJdToggle = async (checked) => {
+    setJdAutoApprove(checked)
+    try {
+      await api.patch('/auth/profile', {
+        auto_approve_jds: checked
+      })
+      toast.success('JD approval rule updated')
+    } catch (err) {
+      toast.error('Failed to update rule')
+      setJdAutoApprove(!checked)
+    }
+  }
+
+  if (loading) return <div className="p-6">Loading...</div>
 
   return (
     <div className="settings-form">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
-        {isAdmin && (
+        {isDeptAdmin && (
           <div className="settings-card" style={{ 
             display: 'flex', 
             alignItems: 'flex-start', 
@@ -50,13 +105,13 @@ export default function ApprovalRulesTab() {
               </div>
             </div>
             <label className="st-toggle" style={{ marginTop: '10px' }}>
-              <input type="checkbox" checked={hrAutoApprove} onChange={e => setHrAutoApprove(e.target.checked)} />
+              <input type="checkbox" checked={hrAutoApprove} onChange={e => handleHrToggle(e.target.checked)} />
               <span className="st-slider"></span>
             </label>
           </div>
         )}
 
-        {(isHM || isAdmin) && (
+        {(isHM || isDeptAdmin) && (
           <div className="settings-card" style={{ 
             display: 'flex', 
             alignItems: 'flex-start', 
@@ -92,7 +147,7 @@ export default function ApprovalRulesTab() {
               </div>
             </div>
             <label className="st-toggle" style={{ marginTop: '10px' }}>
-              <input type="checkbox" checked={jdAutoApprove} onChange={e => setJdAutoApprove(e.target.checked)} />
+              <input type="checkbox" checked={jdAutoApprove} onChange={e => handleJdToggle(e.target.checked)} />
               <span className="st-slider"></span>
             </label>
           </div>
