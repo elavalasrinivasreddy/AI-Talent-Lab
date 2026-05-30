@@ -310,3 +310,15 @@ The static analyzer flagged `is_auto_approved` and `created` as possibly unbound
 - Implemented automated cross-role notifications (Dept Admin adds competitor -> Org Head notified, and vice versa).
 - Redesigned `CompetitorsTab.jsx` frontend: Org Heads now see competitors grouped by department (with a dropdown to add), while Dept Admins only see and manage competitors strictly within their assigned department.
 
+---
+### 24. Fixed Approval Rules Toggle Error for Dept Admins
+**Symptom:** Department Admins received a "Failed to update rule" popup when attempting to toggle the "Auto-Approve Hire Requests" setting.
+**Root Cause:** The `PATCH /api/v1/settings/departments/{id}` endpoint relied on the `DepartmentUpdate` Pydantic model, which was missing the `auto_approve_hire_requests` field, causing the API to reject the payload.
+**Fix:** Added `auto_approve_hire_requests: Optional[bool] = None` to the `DepartmentUpdate` schema in `backend/models/settings.py`.
+
+---
+### 25. Redesigned Culture Keywords Chip UI
+**Symptom:** The "Culture Keywords" input in the Organization Profile page used a basic text design, leading to a subpar user experience.
+**Root Cause:** The `.tag-input-container` and `.tag` classes were unstyled placeholders.
+**Fix:** Refactored the UI in `OrganizationTab.jsx` to use a premium chip design system. Applied inline styles utilizing standard CSS variables (`var(--color-primary-bg)`, `var(--radius-md)`, etc.) to present keywords as distinct, rounded tags with hover-enabled delete buttons and seamless input integration.
+

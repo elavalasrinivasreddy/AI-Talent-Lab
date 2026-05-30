@@ -119,18 +119,68 @@ export default function OrganizationTab() {
           <div className="form-group full-width">
             <label>Culture Keywords</label>
             <div className="form-hint">Feeds into JD generation — AI interview kit</div>
-            <div className="tag-input-container">
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '8px',
+              padding: '12px',
+              background: 'var(--color-bg-elevated)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-md)',
+              minHeight: '48px',
+              alignItems: 'center'
+            }}>
               {keywords.map((tag, i) => (
-                <span key={i} className="tag">
+                <span key={i} style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 10px',
+                  background: 'var(--color-primary-bg)',
+                  color: 'var(--color-primary)',
+                  borderRadius: '16px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  border: '1px solid var(--color-primary-light)'
+                }}>
                   {tag}
-                  {isAdmin && <button onClick={() => removeTag(i)}>×</button>}
+                  {isAdmin && (
+                    <button 
+                      onClick={() => removeTag(i)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'inherit',
+                        cursor: 'pointer',
+                        padding: '0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0.7,
+                        fontSize: '14px'
+                      }}
+                      onMouseOver={e => e.currentTarget.style.opacity = 1}
+                      onMouseOut={e => e.currentTarget.style.opacity = 0.7}
+                    >×</button>
+                  )}
                 </span>
               ))}
               {isAdmin && (
-                <input className="tag-input-field" value={tagInput}
-                       onChange={e => setTagInput(e.target.value)}
-                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
-                       placeholder="Type keyword + Enter" />
+                <input 
+                  value={tagInput}
+                  onChange={e => setTagInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag() } }}
+                  placeholder={keywords.length === 0 ? "Type keyword + Enter" : "Add another..."}
+                  style={{
+                    flex: 1,
+                    minWidth: '150px',
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    fontSize: '14px',
+                    color: 'var(--color-text-primary)'
+                  }}
+                />
               )}
             </div>
           </div>
