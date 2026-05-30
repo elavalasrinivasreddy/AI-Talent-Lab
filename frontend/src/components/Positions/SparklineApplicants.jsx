@@ -32,7 +32,7 @@ export default function SparklineApplicants({ data = [], width = 300, height = 3
   const last7avg = points.slice(-7).reduce((a, b) => a + b, 0) / 7
   const first7avg = points.slice(0, 7).reduce((a, b) => a + b, 0) / 7
   const trend = last7avg > first7avg * 1.2 ? 'trending up' : last7avg < first7avg * 0.8 ? 'declining' : 'stable'
-  const trendLabel = trend === 'trending up' ? 'trending up' : trend === 'declining' ? 'declining' : 'stable'
+  const trendLabel = trend === 'trending up' ? '↑ trending' : trend === 'declining' ? '↓ declining' : '→ stable'
 
   return (
     <div style={{ position: 'relative' }}>
