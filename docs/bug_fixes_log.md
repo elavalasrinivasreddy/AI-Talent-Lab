@@ -447,3 +447,24 @@ Updated the `/pending-count` backend endpoint to be fully role and department aw
 - `backend/db/repositories/hire_requests.py`
 - `backend/services/hire_request_service.py`
 - `backend/routers/hire_requests.py`
+
+---
+
+## 35. Timezone Issue Showing Incorrect "Time Ago" (e.g., "5h ago")
+
+**Problem Statement:**
+Whenever the application displayed a relative time using a `timeAgo` function (such as in Hire Request cards, notifications, the legacy dashboard, etc.), the time displayed was incorrect (e.g., showing "5h ago" instead of "just now"). This occurred because the backend outputs naive UTC timestamp strings (e.g., `2026-05-30T13:52:23`), which the frontend browser interpreted as the user's *local* timezone, leading to a massive offset. Additionally, there were 6 separate duplicated implementations of `timeAgo` scattered across different components.
+
+**Idea / Solution:**
+1. Created a shared `date.js` utility in `frontend/src/utils/` containing a robust `timeAgo` function. This function automatically detects naive timestamp strings and appends a `'Z'` to force the browser's `new Date()` to parse them as UTC.
+2. Refactored all duplicate `timeAgo` instances across the app to import and use the new shared utility.
+3. Updated `daysOpen` in `PositionCard.jsx` to apply the same `'Z'` appending logic.
+
+**Files Modified:**
+- `frontend/src/utils/date.js` (created)
+- `frontend/src/components/HireRequests/helpers.js`
+- `frontend/src/components/Dashboard/legacy/LegacyDashboard.jsx`
+- `frontend/src/components/Dashboard/BriefingRow.jsx`
+- `frontend/src/components/Platform/PlatformPage.jsx`
+- `frontend/src/components/common/NotificationBell.jsx`
+- `frontend/src/components/Positions/PositionCard.jsx`

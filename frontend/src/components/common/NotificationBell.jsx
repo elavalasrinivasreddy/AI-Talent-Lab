@@ -8,6 +8,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { notificationsApi } from '../../utils/api'
+import { timeAgo } from '../../utils/date'
 import Icon from './Icon'
 import './NotificationBell.css'
 
@@ -85,19 +86,6 @@ export default function NotificationBell() {
     if (!grouped[type]) grouped[type] = []
     grouped[type].push(n)
   })
-
-  const timeAgo = (dateStr) => {
-    if (!dateStr) return ''
-    // Ensure naive datetime strings from backend are treated as UTC
-    const utcDateStr = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : `${dateStr}Z`
-    const diff = Date.now() - new Date(utcDateStr).getTime()
-    const mins = Math.floor(diff / 60000)
-    if (mins < 1) return 'now'
-    if (mins < 60) return `${mins}m`
-    const hrs = Math.floor(mins / 60)
-    if (hrs < 24) return `${hrs}h`
-    return `${Math.floor(hrs / 24)}d`
-  }
 
   return (
     <>

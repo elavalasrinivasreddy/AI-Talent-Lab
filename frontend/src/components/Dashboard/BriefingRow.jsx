@@ -11,6 +11,7 @@
  */
 import { useNavigate } from 'react-router-dom'
 import Icon from '../common/Icon'
+import { timeAgo } from '../../utils/date'
 
 const KIND_COLORS = {
   bad:  'var(--color-danger, #EF4444)',
@@ -18,17 +19,6 @@ const KIND_COLORS = {
   ok:   'var(--color-primary, #0D9488)',
 }
 
-function timeAgo(dateStr) {
-  if (!dateStr) return ''
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  return `${days}d ago`
-}
 
 export default function BriefingRow({ row, kind, onAction }) {
   const navigate = useNavigate()

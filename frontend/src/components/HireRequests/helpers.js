@@ -3,6 +3,8 @@
  * and the small bits of formatting that appear in both list and detail views.
  */
 
+import { timeAgo } from '../../utils/date'
+
 // 4-step relay: filed → dept → hr → position
 // (Finance step dropped — still Phase 2 placeholder, not wired to backend)
 // dept step is now REAL: backed by dept_admin approval workflow.
@@ -98,19 +100,7 @@ export function statusTone(req) {
   return 'neutral'
 }
 
-export function timeAgo(dateStr) {
-  if (!dateStr) return ''
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60_000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days < 30) return `${days}d ago`
-  const months = Math.floor(days / 30)
-  return `${months}mo ago`
-}
+export { timeAgo }
 
 export function formatCompBand(req) {
   if (req.comp_min == null && req.comp_max == null) return null
