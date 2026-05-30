@@ -28,3 +28,17 @@ Updated the FastAPI `Query` parameter syntax in the dashboard router to use the 
 
 **Files Modified:**
 - `backend/routers/dashboard.py` (Lines 42 & 108)
+
+---
+
+## 3. Dev Console: Org Dropdown Not Refreshing After Global Reset
+
+**Problem Statement:**
+After executing a true global wipe from the Dev Console, the database successfully cleared all tables. However, the organization dropdown at the top right of the Dev Console still displayed the list of old companies.
+
+**Idea / Solution:**
+The frontend was only fetching the updated row counts (`loadStats()`) after a reset but was failing to refetch the organizations (`loadOrgs()`). Updated `handleReset` in the React component to await a fresh fetch of organizations immediately after a reset, keeping the frontend state perfectly synced with the wiped database.
+
+**Files Modified:**
+- `frontend/src/components/DevAdmin/DevAdminPage.jsx` (Line 106)
+

@@ -103,6 +103,7 @@ export default function DevAdminPage() {
       await apiFetch(`/reset/${type}${params}`, { method: 'DELETE' })
       addLog(`✅ ${label} reset ${scopeLabel}`, 'success')
       await loadStats()
+      await loadOrgs() // Refresh org dropdown list since orgs might have been deleted
     } catch (e) {
       addLog(`❌ Reset failed: ${e.message}`, 'error')
     } finally {
