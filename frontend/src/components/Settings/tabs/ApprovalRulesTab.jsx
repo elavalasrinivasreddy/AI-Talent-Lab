@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import Icon from '../../common/Icon'
 import api from '../../../utils/api'
-import { toast } from 'react-hot-toast'
 
 export default function ApprovalRulesTab() {
   const { user, login } = useAuth() // Assuming login or updateUser can be used, but let's just trigger a re-fetch or rely on local state
@@ -43,9 +42,8 @@ export default function ApprovalRulesTab() {
       await api.patch(`/settings/departments/${deptId}`, {
         auto_approve_hire_requests: checked
       })
-      toast.success('Hire request approval rule updated')
     } catch (err) {
-      toast.error('Failed to update rule')
+      alert('Failed to update rule')
       setHrAutoApprove(!checked)
     }
   }
@@ -56,9 +54,8 @@ export default function ApprovalRulesTab() {
       await api.patch('/auth/profile', {
         auto_approve_jds: checked
       })
-      toast.success('JD approval rule updated')
     } catch (err) {
-      toast.error('Failed to update rule')
+      alert('Failed to update rule')
       setJdAutoApprove(!checked)
     }
   }
