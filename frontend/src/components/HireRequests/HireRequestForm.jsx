@@ -161,128 +161,146 @@ export default function HireRequestForm({ mode }) {
       )}
 
       <form className="hr-form" onSubmit={submit} noValidate>
-        <section className="hr-form-section">
-          <h2 className="hr-form-section-title">The role</h2>
+        <div className="hr-form-grid" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          
+          <section className="hr-form-section">
+            <h2 className="hr-form-section-title">Role Basics</h2>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', margin: '-10px 0 16px' }}>
+              Define the core position details. The AI recruiter will use this as the foundation.
+            </p>
 
-          <div className="hr-field">
-            <label htmlFor="hr-role">Role title *</label>
-            <input
-              id="hr-role"
-              type="text"
-              value={form.role_name}
-              onChange={e => set('role_name', e.target.value)}
-              placeholder="e.g. Senior Backend Engineer (Go)"
-              autoFocus
-              maxLength={200}
-              required
-            />
-          </div>
-
-          <div className="hr-field">
-            <label htmlFor="hr-dept">Department</label>
-            <select
-              id="hr-dept"
-              value={form.department_id}
-              onChange={e => set('department_id', e.target.value)}
-            >
-              <option value="">— None —</option>
-              {depts.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="hr-field-row">
-            <div className="hr-field">
-              <label htmlFor="hr-headcount">Headcount</label>
+            <div className="hr-field" style={{ marginBottom: '16px' }}>
+              <label htmlFor="hr-role">Role title <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <input
-                id="hr-headcount"
-                type="number" min={1} max={100}
-                value={form.headcount}
-                onChange={e => set('headcount', e.target.value)}
+                id="hr-role"
+                type="text"
+                value={form.role_name}
+                onChange={e => set('role_name', e.target.value)}
+                placeholder="e.g. Senior Backend Engineer (Go)"
+                autoFocus
+                maxLength={200}
+                required
               />
             </div>
+
             <div className="hr-field">
-              <label htmlFor="hr-worktype">Work type</label>
-              <select id="hr-worktype" value={form.work_type} onChange={e => set('work_type', e.target.value)}>
-                <option value="onsite">Onsite</option>
-                <option value="hybrid">Hybrid</option>
-                <option value="remote">Remote</option>
+              <label htmlFor="hr-dept">Department</label>
+              <select
+                id="hr-dept"
+                value={form.department_id}
+                onChange={e => set('department_id', e.target.value)}
+              >
+                <option value="">— None —</option>
+                {depts.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
               </select>
             </div>
-            <div className="hr-field">
-              <label htmlFor="hr-start">Target start</label>
-              <input
-                id="hr-start" type="date"
-                value={form.target_start}
-                onChange={e => set('target_start', e.target.value)}
-              />
-            </div>
-          </div>
+          </section>
 
-          <div className="hr-field">
-            <label htmlFor="hr-loc">Location</label>
-            <input
-              id="hr-loc" type="text"
-              value={form.location}
-              onChange={e => set('location', e.target.value)}
-              placeholder="Bangalore, India"
-            />
-          </div>
+          <section className="hr-form-section">
+            <h2 className="hr-form-section-title">Logistics & Compensation</h2>
+            
+            <div className="hr-field-row" style={{ marginBottom: '16px' }}>
+              <div className="hr-field">
+                <label htmlFor="hr-headcount">Headcount</label>
+                <input
+                  id="hr-headcount"
+                  type="number" min={1} max={100}
+                  value={form.headcount}
+                  onChange={e => set('headcount', e.target.value)}
+                />
+              </div>
+              <div className="hr-field">
+                <label htmlFor="hr-worktype">Work type</label>
+                <select id="hr-worktype" value={form.work_type} onChange={e => set('work_type', e.target.value)}>
+                  <option value="onsite">Onsite</option>
+                  <option value="hybrid">Hybrid</option>
+                  <option value="remote">Remote</option>
+                </select>
+              </div>
+            </div>
 
-          <div className="hr-field-row">
-            <div className="hr-field">
-              <label htmlFor="hr-emin">Min experience (years)</label>
-              <input
-                id="hr-emin" type="number" min={0} max={50}
-                value={form.experience_min}
-                onChange={e => set('experience_min', e.target.value)}
-                placeholder="3"
-              />
+            <div className="hr-field-row" style={{ marginBottom: '16px' }}>
+              <div className="hr-field">
+                <label htmlFor="hr-start">Target start</label>
+                <input
+                  id="hr-start" type="date"
+                  value={form.target_start}
+                  onChange={e => set('target_start', e.target.value)}
+                />
+              </div>
+              <div className="hr-field">
+                <label htmlFor="hr-loc">Location</label>
+                <input
+                  id="hr-loc" type="text"
+                  value={form.location}
+                  onChange={e => set('location', e.target.value)}
+                  placeholder="Bangalore, India"
+                />
+              </div>
             </div>
-            <div className="hr-field">
-              <label htmlFor="hr-emax">Max experience (years)</label>
-              <input
-                id="hr-emax" type="number" min={0} max={50}
-                value={form.experience_max}
-                onChange={e => set('experience_max', e.target.value)}
-                placeholder="8"
-              />
-            </div>
-          </div>
 
-          <div className="hr-field-row">
-            <div className="hr-field">
-              <label htmlFor="hr-cmin">Comp min (LPA)</label>
-              <input
-                id="hr-cmin" type="number" min={0}
-                value={form.comp_min}
-                onChange={e => set('comp_min', e.target.value)}
-                placeholder="30"
-              />
+            <div className="hr-field-row" style={{ marginBottom: '16px' }}>
+              <div className="hr-field">
+                <label htmlFor="hr-emin">Min experience (years)</label>
+                <input
+                  id="hr-emin" type="number" min={0} max={50}
+                  value={form.experience_min}
+                  onChange={e => set('experience_min', e.target.value)}
+                  placeholder="3"
+                />
+              </div>
+              <div className="hr-field">
+                <label htmlFor="hr-emax">Max experience (years)</label>
+                <input
+                  id="hr-emax" type="number" min={0} max={50}
+                  value={form.experience_max}
+                  onChange={e => set('experience_max', e.target.value)}
+                  placeholder="8"
+                />
+              </div>
             </div>
-            <div className="hr-field">
-              <label htmlFor="hr-cmax">Comp max (LPA)</label>
-              <input
-                id="hr-cmax" type="number" min={0}
-                value={form.comp_max}
-                onChange={e => set('comp_max', e.target.value)}
-                placeholder="55"
-              />
-            </div>
-          </div>
 
-          <div className="hr-field">
-            <label htmlFor="hr-req">Key requirements</label>
-            <textarea
-              id="hr-req"
-              rows={5}
-              value={form.requirements}
-              onChange={e => set('requirements', e.target.value)}
-              placeholder="Skills, constraints, must-haves. The AI will turn this into a JD — be concrete."
-            />
-          </div>
-        </section>
+            <div className="hr-field-row">
+              <div className="hr-field">
+                <label htmlFor="hr-cmin">Comp min (LPA)</label>
+                <input
+                  id="hr-cmin" type="number" min={0}
+                  value={form.comp_min}
+                  onChange={e => set('comp_min', e.target.value)}
+                  placeholder="30"
+                />
+              </div>
+              <div className="hr-field">
+                <label htmlFor="hr-cmax">Comp max (LPA)</label>
+                <input
+                  id="hr-cmax" type="number" min={0}
+                  value={form.comp_max}
+                  onChange={e => set('comp_max', e.target.value)}
+                  placeholder="55"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="hr-form-section">
+            <h2 className="hr-form-section-title">Requirements & Scope</h2>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', margin: '-10px 0 16px' }}>
+              Tell the AI exactly what you're looking for. Be concrete about must-haves, constraints, and daily responsibilities.
+            </p>
+            <div className="hr-field">
+              <label htmlFor="hr-req">Context for the AI</label>
+              <textarea
+                id="hr-req"
+                rows={6}
+                value={form.requirements}
+                onChange={e => set('requirements', e.target.value)}
+                placeholder="We need someone who has scaled Postgres in a fast-paced environment. Must have experience with event-driven architectures..."
+              />
+            </div>
+          </section>
+        </div>
 
         <div className="hr-form-actions">
           <Link to="/hire-requests" className="hr-btn hr-btn-ghost">Cancel</Link>

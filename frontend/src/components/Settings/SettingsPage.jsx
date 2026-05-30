@@ -20,6 +20,7 @@ import DepartmentsTab from './tabs/DepartmentsTab'
 import CompetitorsTab from './tabs/CompetitorsTab'
 import ScreeningQuestionsTab from './tabs/ScreeningQuestionsTab'
 import MessageTemplatesTab from './tabs/MessageTemplatesTab'
+import ApprovalRulesTab from './tabs/ApprovalRulesTab'
 import InterviewTemplatesTab from './tabs/InterviewTemplatesTab'
 import IntegrationsTab from './tabs/IntegrationsTab'
 import AppearanceTab from './tabs/AppearanceTab'
@@ -50,7 +51,7 @@ const RAIL_GROUPS = [
     items: [
       { key: 'departments', icon: 'home', label: 'Departments', orgHeadOnly: true },
       { key: 'team', icon: 'users', label: 'Team members', adminOnly: true },
-      { key: 'approval', icon: 'check', label: 'Approval rules', adminOnly: true, phase: 2 },
+      { key: 'approval', icon: 'check', label: 'Approval rules' }, // accessible to HM and Admins
       { key: 'notifications', icon: 'bell', label: 'Notifications' },
     ],
   },
@@ -60,8 +61,8 @@ const RAIL_GROUPS = [
     icon: 'user',
     color: '#06B6D4',
     items: [
-      { key: 'organization', icon: 'briefcase', label: 'Organization profile' },
-      { key: 'competitors', icon: 'trending-up', label: 'Competitor intel' },
+      { key: 'organization', icon: 'briefcase', label: 'Organization profile', adminOnly: true },
+      { key: 'competitors', icon: 'trending-up', label: 'Competitor intel', adminOnly: true },
       { key: 'templates', icon: 'mail', label: 'Email templates', adminOnly: true },
       { key: 'appearance', icon: 'palette', label: 'Appearance' },
       { key: 'career-brand', icon: 'home', label: 'Career page brand', adminOnly: true, phase: 2 },
@@ -92,7 +93,7 @@ const SECTION_COMPONENTS = {
   'llm': () => <PlaceholderSection title="LLM Provider" desc="Switch between Groq, OpenAI, and Gemini. Configure model, max tokens, and temperature." icon="settings" phase={2} />,
   'departments': DepartmentsTab,
   'team': TeamTab,
-  'approval': () => <PlaceholderSection title="Approval Rules" desc="Configure multi-step hire approval workflows and who approves what." icon="check" phase={2} />,
+  'approval': ApprovalRulesTab,
   'notifications': () => <PlaceholderSection title="Notifications" desc="Configure email and in-app notification preferences per event type." icon="bell" />,
   'organization': OrganizationTab,
   'competitors': CompetitorsTab,
@@ -228,6 +229,7 @@ export default function SettingsPage() {
               {group.items.filter(item => {
                 if (item.orgHeadOnly && user?.role !== 'org_head') return false;
                 if (item.adminOnly && !isAdmin) return false;
+                if (item.key === 'approval' && user?.role === 'hr') return false; // HR doesn't manage approvals
                 return true;
               }).map(item => {
                 return (

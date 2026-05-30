@@ -138,3 +138,61 @@ Department Admins were encountering an error when trying to add HRs, as the endp
 - `backend/routers/auth.py`
 - `frontend/src/components/Settings/SettingsPage.jsx`
 - `frontend/src/components/Settings/tabs/TeamTab.jsx`
+
+---
+
+## 10. Industry Standard RBAC for Compliance & Global Settings
+
+**Problem Statement:**
+Lower-level roles (Hiring Managers and Recruiters) were able to access the "Data Policies" (GDPR/DPDP) and "Security" sections in Settings. They could also see global organizational profile setups and competitor intelligence. In B2B SaaS, this is non-standard; compliance and global metadata should be restricted to administrators.
+
+**Idea / Solution:**
+Reverted the `adminOnly` access controls on `privacy`, `security`, `organization`, and `competitors` in `SettingsPage.jsx`. Only `org_head` and `dept_admin` roles can now access these global/sensitive tabs.
+
+**Files Modified:**
+- `frontend/src/components/Settings/SettingsPage.jsx`
+
+---
+
+## 11. Auto-Approval Rules Workflow for Dept Admin and HM
+
+**Problem Statement:**
+The platform lacked a way for Department Admins to configure auto-approval for incoming Hire Requests, and for Hiring Managers to auto-approve generated Job Descriptions. These were defined in the workflow but missing from the UI.
+
+**Idea / Solution:**
+Replaced the placeholder "Approval rules" tab with a fully functional `ApprovalRulesTab.jsx`.
+1. **Dept Admins / Org Heads** can toggle "Auto-Approve Hire Requests" (skips manual review, sends straight to HR).
+2. **Hiring Managers (Team Leads)** can toggle "Auto-Approve Final JDs" (bypasses HM review, automatically opens the position after HR generation).
+Adjusted `SettingsPage.jsx` to ensure `team_lead` can view this tab.
+
+**Files Modified:**
+- `frontend/src/components/Settings/SettingsPage.jsx`
+- `frontend/src/components/Settings/tabs/ApprovalRulesTab.jsx`
+
+---
+
+## 12. Hire Request Empty State Button Redundancy & Form Layout
+
+**Problem Statement:**
+On the Hire Requests page, when there were zero requests, both the header's "New request" button and the Empty State's large CTA were visible simultaneously, creating redundancy. Additionally, the Hire Request creation form was a single monolithic block, which didn't look premium.
+
+**Idea / Solution:**
+1. Conditionally hid the header "New request" button in `HireRequestListPage.jsx` if the request list is empty, forcing the user to use the primary CTA in the empty state.
+2. Redesigned `HireRequestForm.jsx` from a single section into a premium, card-based CSS grid (Role Basics, Logistics & Compensation, Requirements & Scope) with better helper text.
+
+**Files Modified:**
+- `frontend/src/components/HireRequests/HireRequestListPage.jsx`
+- `frontend/src/components/HireRequests/HireRequestForm.jsx`
+
+---
+
+## 13. JSX Syntax Fix in PrivacyTab.jsx
+
+**Problem Statement:**
+`PrivacyTab.jsx` threw an "Unterminated JSX contents" error during build because an outer wrapper `div` in the Quick Stats section wasn't closed properly after adding conditional `{isAdmin &&` rendering.
+
+**Idea / Solution:**
+Added the missing closing `</div>` tag immediately before the `)}` expression for the Quick Stats section.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/PrivacyTab.jsx`

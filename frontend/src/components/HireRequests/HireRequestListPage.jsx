@@ -66,7 +66,7 @@ export default function HireRequestListPage() {
               : 'Requests filed across the org — pick one up to start the JD.'}
           </p>
         </div>
-        {canFile && (
+        {canFile && (requests.length > 0 || loading) && (
           <Link to="/hire-requests/new" className="hr-btn hr-btn-primary">
             <PlusIcon /> New request
           </Link>

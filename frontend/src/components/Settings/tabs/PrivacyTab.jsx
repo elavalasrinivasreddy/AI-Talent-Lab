@@ -4,8 +4,12 @@
  */
 import React, { useState, useEffect, useCallback } from 'react'
 import { gdprApi } from '../../../utils/api'
+import { useAuth } from '../../../context/AuthContext'
 
 export default function PrivacyTab() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'org_head' || user?.role === 'dept_admin'
+
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(null)
@@ -64,8 +68,9 @@ export default function PrivacyTab() {
         </p>
       </div>
 
-      {/* Quick stats */}
-      <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+      {/* Quick stats (Admin Only) */}
+      {isAdmin && (
+        <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
         <div className="settings-card" style={{ flex: 1, minWidth: 160 }}>
           <h4>📋 Total Requests</h4>
           <p style={{ fontSize: '28px', fontWeight: 800, color: 'var(--color-text-primary)', margin: '4px 0 0' }}>
@@ -84,11 +89,13 @@ export default function PrivacyTab() {
             {requests.filter(r => r.status === 'completed').length}
           </p>
         </div>
-      </div>
+        </div>
+      )}
 
-      {/* Deletion Requests Table */}
-      <div className="settings-form-section">
-        <div className="section-header">
+      {/* Deletion Requests Table (Admin Only) */}
+      {isAdmin && (
+        <div className="settings-form-section">
+          <div className="section-header">
           <h3>Data Deletion Requests</h3>
           <button className="btn btn-secondary btn-sm" onClick={loadRequests}>↻ Refresh</button>
         </div>
@@ -160,6 +167,7 @@ export default function PrivacyTab() {
           </table>
         )}
       </div>
+      )}
 
       {/* Data Retention Policy */}
       <div className="settings-form-section">
