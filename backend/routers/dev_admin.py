@@ -227,54 +227,71 @@ async def generate_user_token(user_id: int):
 # ── Reset Operations ──────────────────────────────────────────────────────────
 
 @router.delete("/reset/chat-sessions")
-async def reset_chat_sessions(org_id: int = Query(..., description="Org to reset")):
-    """Hard-delete ALL chat sessions + messages for an org."""
+async def reset_chat_sessions(org_id: Optional[int] = Query(None, description="Org to reset, or None for all")):
+    """Hard-delete ALL chat sessions + messages for an org or globally."""
     _require_dev_mode()
     async with get_connection() as conn:
-        result = await conn.execute(
-            "DELETE FROM chat_sessions WHERE org_id = $1", org_id
-        )
+        if org_id:
+            result = await conn.execute("DELETE FROM chat_sessions WHERE org_id = $1", org_id)
+        else:
+            result = await conn.execute("DELETE FROM chat_sessions")
     rows_deleted = int(result.split()[-1]) if result else 0
-    logger.warning(f"[DEV] Reset chat_sessions for org {org_id} — {rows_deleted} deleted")
+    logger.warning(f"[DEV] Reset chat_sessions (org {org_id or 'ALL'}) — {rows_deleted} deleted")
     return {"ok": True, "deleted": rows_deleted}
 
 
 @router.delete("/reset/positions")
-async def reset_positions(org_id: int = Query(...)):
-    """Hard-delete ALL positions (cascade: applications, pipeline events) for an org."""
+async def reset_positions(org_id: Optional[int] = Query(None)):
+    """Hard-delete ALL positions (cascade: applications, pipeline events) for an org or globally."""
     _require_dev_mode()
     async with get_connection() as conn:
-        await conn.execute("DELETE FROM candidate_applications WHERE org_id = $1", org_id)
-        await conn.execute("DELETE FROM pipeline_events WHERE org_id = $1", org_id)
-        await conn.execute("DELETE FROM positions WHERE org_id = $1", org_id)
-    logger.warning(f"[DEV] Reset positions for org {org_id}")
+        if org_id:
+            await conn.execute("DELETE FROM candidate_applications WHERE org_id = $1", org_id)
+            await conn.execute("DELETE FROM pipeline_events WHERE org_id = $1", org_id)
+            await conn.execute("DELETE FROM positions WHERE org_id = $1", org_id)
+        else:
+            await conn.execute("DELETE FROM candidate_applications")
+            await conn.execute("DELETE FROM pipeline_events")
+            await conn.execute("DELETE FROM positions")
+    logger.warning(f"[DEV] Reset positions for org {org_id or 'ALL'}")
     return {"ok": True}
 
 
 @router.delete("/reset/notifications")
-async def reset_notifications(org_id: int = Query(...)):
-    """Clear all notifications for an org."""
+async def reset_notifications(org_id: Optional[int] = Query(None)):
+    """Clear all notifications for an org or globally."""
     _require_dev_mode()
     async with get_connection() as conn:
-        await conn.execute("DELETE FROM notifications WHERE org_id = $1", org_id)
+        if org_id:
+            await conn.execute("DELETE FROM notifications WHERE org_id = $1", org_id)
+        else:
+            await conn.execute("DELETE FROM notifications")
     return {"ok": True}
 
 
 @router.delete("/reset/all")
-async def reset_all_org_data(org_id: int = Query(...)):
+async def reset_all_org_data(org_id: Optional[int] = Query(None)):
     """
-    Nuclear: delete ALL business data for an org.
+    Nuclear: delete ALL business data for an org or globally.
     Keeps: org, users, departments. Deletes everything else.
     """
     _require_dev_mode()
     async with get_connection() as conn:
-        await conn.execute("DELETE FROM notifications WHERE org_id = $1", org_id)
-        await conn.execute("DELETE FROM pipeline_events WHERE org_id = $1", org_id)
-        await conn.execute("DELETE FROM candidate_applications WHERE org_id = $1", org_id)
-        await conn.execute("DELETE FROM candidates WHERE org_id = $1", org_id)
-        await conn.execute("DELETE FROM positions WHERE org_id = $1", org_id)
-        await conn.execute("DELETE FROM chat_sessions WHERE org_id = $1", org_id)
-    logger.warning(f"[DEV] Full reset for org {org_id}")
+        if org_id:
+            await conn.execute("DELETE FROM notifications WHERE org_id = $1", org_id)
+            await conn.execute("DELETE FROM pipeline_events WHERE org_id = $1", org_id)
+            await conn.execute("DELETE FROM candidate_applications WHERE org_id = $1", org_id)
+            await conn.execute("DELETE FROM candidates WHERE org_id = $1", org_id)
+            await conn.execute("DELETE FROM positions WHERE org_id = $1", org_id)
+            await conn.execute("DELETE FROM chat_sessions WHERE org_id = $1", org_id)
+        else:
+            await conn.execute("DELETE FROM notifications")
+            await conn.execute("DELETE FROM pipeline_events")
+            await conn.execute("DELETE FROM candidate_applications")
+            await conn.execute("DELETE FROM candidates")
+            await conn.execute("DELETE FROM positions")
+            await conn.execute("DELETE FROM chat_sessions")
+    logger.warning(f"[DEV] Full reset for org {org_id or 'ALL'}")
     return {"ok": True, "message": "All org data cleared. Org, users, and departments preserved."}
 
 

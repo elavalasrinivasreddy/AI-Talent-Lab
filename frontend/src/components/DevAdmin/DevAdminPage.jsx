@@ -95,12 +95,13 @@ export default function DevAdminPage() {
   const handleTabChange = (tab) => setActiveTab(tab)
 
   const handleReset = async (type, label) => {
-    if (!selectedOrgId) return addLog('Select an org first', 'error')
-    if (!window.confirm(`⚠️ This will permanently delete ${label}. Are you sure?`)) return
+    const scopeLabel = selectedOrgId ? `for org ${selectedOrgId}` : `GLOBALLY for ALL ORGS`;
+    if (!window.confirm(`⚠️ This will permanently delete ${label} ${scopeLabel}. Are you sure?`)) return
     setLoading(true)
     try {
-      await apiFetch(`/reset/${type}?org_id=${selectedOrgId}`, { method: 'DELETE' })
-      addLog(`✅ ${label} reset for org ${selectedOrgId}`, 'success')
+      const params = selectedOrgId ? `?org_id=${selectedOrgId}` : ''
+      await apiFetch(`/reset/${type}${params}`, { method: 'DELETE' })
+      addLog(`✅ ${label} reset ${scopeLabel}`, 'success')
       await loadStats()
     } catch (e) {
       addLog(`❌ Reset failed: ${e.message}`, 'error')
@@ -294,7 +295,7 @@ export default function DevAdminPage() {
           <div>
             {!selectedOrgId && (
               <div className="dev-warning-banner">
-                ⚠️ Select an org from the dropdown above before resetting data.
+                ⚠️ GLOBAL MODE: No org selected. Resetting here will delete data for ALL organizations.
               </div>
             )}
             <div className="dev-section-header">
@@ -305,25 +306,25 @@ export default function DevAdminPage() {
                 title="Chat Sessions" icon="💬"
                 desc="Delete all JD chat sessions and messages."
                 onClick={() => handleReset('chat-sessions', 'all chat sessions')}
-                loading={loading} disabled={!selectedOrgId}
+                loading={loading} disabled={false}
               />
               <ResetCard
                 title="Positions" icon="💼"
                 desc="Delete all positions, applications, pipeline events."
                 onClick={() => handleReset('positions', 'all positions')}
-                loading={loading} disabled={!selectedOrgId}
+                loading={loading} disabled={false}
               />
               <ResetCard
                 title="Notifications" icon="🔔"
                 desc="Clear all in-app notifications."
                 onClick={() => handleReset('notifications', 'all notifications')}
-                loading={loading} disabled={!selectedOrgId}
+                loading={loading} disabled={false}
               />
               <ResetCard
                 title="Reset All" icon="☢️" danger
                 desc="Nuclear: deletes everything except org, users, and departments."
                 onClick={() => handleReset('all', 'ALL business data')}
-                loading={loading} disabled={!selectedOrgId}
+                loading={loading} disabled={false}
               />
             </div>
           </div>
