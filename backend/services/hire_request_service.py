@@ -180,7 +180,7 @@ class HireRequestService:
         row = await HireRequestRepository.get_by_id(conn, request_id, org_id)
         if not row:
             raise NotFoundError("Hire request not found")
-        return row
+        return dict(row)
 
     # ── Create ────────────────────────────────────────────────────────────
 
@@ -301,8 +301,9 @@ class HireRequestService:
 
         # Get raiser info from the request itself
         req = await HireRequestRepository.get_by_id(conn, request_id, org_id)
-        raiser_name = req.get("requested_by_name") or "A team member"
-        dept_name = req.get("department_name") or "General"
+        req_dict = dict(req) if req else {}
+        raiser_name = req_dict.get("requested_by_name") or "A team member"
+        dept_name = req_dict.get("department_name") or "General"
 
         if department_id:
             approvers = await conn.fetch(
@@ -819,9 +820,9 @@ class HireRequestService:
         comp_min: Optional[int],
         comp_max: Optional[int],
     ) -> None:
-        if not role_name or not str(role_name).strip():
+        if not role_name or not role_name.strip():
             raise ValidationError("Role name is required.")
-        if len(str(role_name).strip()) > 200:
+        if len(role_name.strip()) > 200:
             raise ValidationError("Role name is too long.")
         if headcount is not None and (headcount < 1 or headcount > 100):
             raise ValidationError("Headcount must be between 1 and 100.")

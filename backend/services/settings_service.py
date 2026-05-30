@@ -401,7 +401,15 @@ class SettingsService:
              "options": "Yes (3 days/week),Yes (5 days/week),No (Remote only)", "is_required": True, "sort_order": 5},
         ]
         for q in default_questions:
-            await ScreeningQuestionRepository.create(conn, org_id, **q)
+            await ScreeningQuestionRepository.create(
+                conn, org_id,
+                field_key=q["field_key"],
+                label=q["label"],
+                field_type=q.get("field_type", "text"),
+                options=q.get("options"),
+                is_required=q.get("is_required", False),
+                sort_order=q.get("sort_order", 0),
+            )
 
         # 3. Default message templates
         default_templates = [
@@ -442,7 +450,14 @@ class SettingsService:
             },
         ]
         for t in default_templates:
-            await MessageTemplateRepository.create(conn, org_id, **t)
+            await MessageTemplateRepository.create(
+                conn, org_id,
+                name=t["name"],
+                category=t["category"],
+                body=t["body"],
+                subject=t.get("subject"),
+                is_default=t.get("is_default", False),
+            )
 
         # 4. Default scorecard template
         default_dimensions = json.dumps([

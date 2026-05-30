@@ -228,3 +228,32 @@ When HR members viewed the Hire Requests list, they saw requests across the enti
 **Files Modified:**
 - `backend/services/hire_request_service.py`
 - `frontend/src/components/HireRequests/HireRequestForm.jsx`
+
+---
+
+## 16. Hire Request Service Record Attribute Error & HR Subtitle Text
+
+**Problem Statement:**
+An `AttributeError` ("'Record' object has no attribute 'get'") occurred in `hire_request_service.py` at lines 304 & 305 when trying to extract the raiser and department name from the asyncpg `Record` returned by the repository. Additionally, the subtitle in the HR Hire Requests page still incorrectly stated "Requests filed across the org" instead of reflecting the new department-scoped behavior.
+
+**Idea / Solution:**
+1. Fixed the `Record` unpacking by wrapping the result in `dict(req) if req else {}` inside `_notify_approvers_on_create`.
+2. Proactively applied `dict(row)` to the return value of `HireRequestService.get()` to ensure downstream callers can safely use standard `.get()` dictionary methods on the request object.
+3. Updated the subtitle in `HireRequestListPage.jsx` so that only `org_head` sees the "across the org" messaging; HR and Department Admins now see "Requests filed in your department".
+
+**Files Modified:**
+- `backend/services/hire_request_service.py`
+- `frontend/src/components/HireRequests/HireRequestListPage.jsx`
+
+---
+
+## 17. Settings Service Dictionary Unpacking Type Errors
+
+**Problem Statement:**
+Static type checkers / IDEs reported errors on lines 404 and 445 in `settings_service.py` because `**q` and `**t` were being used to unpack untyped dictionaries into repository `create` methods. Python static analysis cannot guarantee the dictionary keys match the method parameters.
+
+**Idea / Solution:**
+Replaced the `**` dictionary unpacking in `SettingsService.seed_defaults` with explicit keyword arguments (using `.get()` for optional fields) when calling `ScreeningQuestionRepository.create` and `MessageTemplateRepository.create`. This resolves the linter/type errors and makes the mapping explicit and type-safe.
+
+**Files Modified:**
+- `backend/services/settings_service.py`

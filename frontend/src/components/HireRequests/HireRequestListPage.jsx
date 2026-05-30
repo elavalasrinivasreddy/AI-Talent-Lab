@@ -63,7 +63,9 @@ export default function HireRequestListPage() {
           <p className="hr-page-sub">
             {role === 'team_lead'
               ? 'Your open requests and their status.'
-              : 'Requests filed across the org — pick one up to start the JD.'}
+              : role === 'org_head'
+                ? 'Requests filed across the org — pick one up to start the JD.'
+                : 'Requests filed in your department — pick one up to start the JD.'}
           </p>
         </div>
         {canFile && (requests.length > 0 || loading) && (
