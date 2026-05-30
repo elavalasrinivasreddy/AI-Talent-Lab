@@ -388,3 +388,17 @@ Redesigned the `NotificationBell.css` with a premium dark-glassmorphism aestheti
 **Files Modified:**
 - `frontend/src/components/common/NotificationBell.jsx`
 - `frontend/src/components/common/NotificationBell.css`
+
+---
+
+## 31. Notification Timestamp Timezone Issue
+
+**Problem Statement:**
+The "time ago" calculation for notifications in the UI was incorrect. For example, a notification created 2 minutes ago displayed as "5h ago" for a user in the IST (+05:30) timezone. This occurred because the backend API returns naive datetime strings representing UTC (e.g., `2026-05-30T13:52:23`), which the frontend's `new Date()` incorrectly parsed as local time.
+
+**Idea / Solution:**
+Updated the `timeAgo` function in `NotificationBell.jsx` to append a `Z` suffix to the timestamp string if it lacks explicit timezone information (e.g., `Z` or `+`). This forces the JavaScript Date parser to correctly interpret the backend's naive string as UTC, resulting in an accurate local time difference.
+
+**Files Modified:**
+- `frontend/src/components/common/NotificationBell.jsx`
+

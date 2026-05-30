@@ -86,7 +86,9 @@ export default function NotificationBell() {
 
   const timeAgo = (dateStr) => {
     if (!dateStr) return ''
-    const diff = Date.now() - new Date(dateStr).getTime()
+    // Ensure naive datetime strings from backend are treated as UTC
+    const utcDateStr = dateStr.endsWith('Z') || dateStr.includes('+') ? dateStr : `${dateStr}Z`
+    const diff = Date.now() - new Date(utcDateStr).getTime()
     const mins = Math.floor(diff / 60000)
     if (mins < 1) return 'now'
     if (mins < 60) return `${mins}m`
