@@ -40,13 +40,19 @@ Test the public onboarding flow to bootstrap the platform.
 ### Step 2: Configure Organization Profile & Departments
 1. As Sarah, navigate to **Settings > Organization Profile**.
 2. Fill out the company details exactly as follows:
-   - **Size**: `enterprise`
-   - **Segment**: `B2B SaaS`
-   - **Culture Keywords**: `fast-paced, remote-friendly, engineering-led`
-   - **Benefits**: `Unlimited PTO, Health Insurance, 401k Match`
+   - **Industry / Segment**: `B2B SaaS`
+   - **Company Size**: `enterprise`
+   - **Website**: `https://novatech.com`
+   - **Headquarters**: `San Francisco, CA`
+   - **About Us**: `NovaTech Solutions is a leading provider of innovative B2B SaaS software tailored for global enterprises.`
+   - **Culture Keywords**: Type `fast-paced` and press Enter, then `remote-friendly`, then `engineering-led`.
+   - **Benefits Template**: `Unlimited PTO, Comprehensive Health Insurance, 401k Match, Annual Learning Stipend.`
+   - **LinkedIn URL**: `https://linkedin.com/company/novatech`
+   - **Glassdoor URL**: `https://glassdoor.com/novatech`
    These are used later by AI workflows.
-3. Navigate to **Settings > Departments**.
-4. Create the two departments:
+3. Click **Save Organization**.
+4. Navigate to **Settings > Departments**.
+5. Create the two departments:
    - `Engineering`
    - `Marketing`
 
@@ -69,14 +75,23 @@ Test the department-scoped competitor grouping.
    - **Name**: `Tech Innovators`
    - **Website**: `https://techinnovators.com`
    - **Industry**: `Technology`
-3. Notice that Sarah sees competitors grouped by department. Wait for Marcus to add the next ones.
-4. Login as **Marcus Webb** (`elavalasrinivasreddy+eng_admin@gmail.com`), the Engineering Dept Admin.
-5. Navigate to **Settings > Competitor intel**. Marcus should only see the Engineering competitors and cannot select other departments when adding a new one. Add a second competitor:
+   - **Notes**: `Direct rival in cloud infrastructure.`
+3. Click **+ Add Competitor**, select the **Marketing** department, and add the following competitor:
+   - **Name**: `Creative Sync`
+   - **Website**: `https://creativesync.io`
+   - **Industry**: `Marketing Tech`
+   - **Notes**: `Competes for digital marketing talent.`
+4. Notice that Sarah sees competitors properly grouped by their respective departments.
+5. Login as **Marcus Webb** (`elavalasrinivasreddy+eng_admin@gmail.com`), the Engineering Dept Admin.
+6. Verify Marcus received an internal notification that Sarah added "Tech Innovators" to his department's competitors.
+7. Navigate to **Settings > Competitor intel**. Marcus should only see the Engineering competitors (he will not see "Creative Sync").
+8. As Marcus, click **+ Add Competitor**. Note that the department selection is locked/hidden. Add a second competitor:
    - **Name**: `CodeCrafters`
    - **Website**: `https://codecrafters.io`
    - **Industry**: `Technology`
-6. Verify that an internal notification is generated for these actions between the Dept Admin and Org Head.
-7. Note the hard limit: Attempting to add a 4th competitor to a single department should return an error.
+   - **Notes**: `High compensation packages.`
+9. When Sarah logs back in, she will have a notification that Marcus added "CodeCrafters" to the Engineering department.
+10. Note the hard limit: Attempting to add a 4th competitor to a single department should return an error.
 
 ---
 
