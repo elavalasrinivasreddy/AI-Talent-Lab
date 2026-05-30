@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useChat } from '../../context/ChatContext';
 import { hireRequestsApi } from '../../utils/api';
@@ -32,6 +32,7 @@ const ChatPage = () => {
     const loadedRef = useRef(null);
     const hireRequestSentRef = useRef(false);
     const linkSentRef = useRef(false);
+    const [isRailOpen, setIsRailOpen] = useState(true);
 
     useEffect(() => {
         fetchSessions();
@@ -94,9 +95,9 @@ const ChatPage = () => {
 
     return (
         <div className="chat-page chat-page--v3">
-            <ChatTopBar />
+            <ChatTopBar isRailOpen={isRailOpen} onToggleRail={() => setIsRailOpen(!isRailOpen)} />
             <JDStepper />
-            <div className="chat-body">
+            <div className={`chat-body ${!isRailOpen ? 'rail-closed' : ''}`}>
                 <section className="chat-body-canvas" aria-label="JD canvas">
                     <JDCanvas />
                 </section>

@@ -14,7 +14,7 @@ const STAGE_CONFIG = {
 
 const TOTAL_STAGES = 5;
 
-const ChatTopBar = () => {
+const ChatTopBar = ({ isRailOpen, onToggleRail }) => {
     const { sessionTitle, isTitleAnimating, workflowStage, isStreaming } = useChat();
     const stage = STAGE_CONFIG[workflowStage] || STAGE_CONFIG.intake;
     const isActive = isStreaming || (workflowStage !== 'complete' && workflowStage !== 'intake');
@@ -29,14 +29,35 @@ const ChatTopBar = () => {
                     {sessionTitle || 'New Hire'}
                 </span>
             </div>
-            <div className="stage-meta" aria-live="polite">
-                <span
-                    className={`stage-meta-dot ${isActive ? 'stage-meta-dot--pulse' : ''}`}
-                    aria-hidden="true"
-                />
-                <span>
-                    Stage {stage.index} / {TOTAL_STAGES} · {stage.label}
-                </span>
+            <div className="chat-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div className="stage-meta" aria-live="polite">
+                    <span
+                        className={`stage-meta-dot ${isActive ? 'stage-meta-dot--pulse' : ''}`}
+                        aria-hidden="true"
+                    />
+                    <span>
+                        Stage {stage.index} / {TOTAL_STAGES} · {stage.label}
+                    </span>
+                </div>
+                
+                <button 
+                    onClick={onToggleRail} 
+                    className="icon-btn" 
+                    title={isRailOpen ? "Hide Rail" : "Show Rail"}
+                    aria-label={isRailOpen ? "Hide Rail" : "Show Rail"}
+                >
+                    {isRailOpen ? (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="15" y1="3" x2="15" y2="21"></line>
+                        </svg>
+                    ) : (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="3" x2="9" y2="21"></line>
+                        </svg>
+                    )}
+                </button>
             </div>
         </header>
     );

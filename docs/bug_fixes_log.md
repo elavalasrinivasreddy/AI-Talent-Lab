@@ -585,3 +585,24 @@ The `positions` router contained several legacy endpoints for managing hire requ
 - `backend/routers/status.py`
 - `frontend/src/components/Dashboard/legacy/LegacyDashboard.jsx`
 - `frontend/src/utils/api.js`
+
+---
+
+## 44. JD Chat UX Validation & Responsive Layout Refinements
+
+**Problem Statement:**
+During a UI/UX design validation of the v3 JD Chat (Document-first Canvas) interface, we identified potential usability issues:
+1. The fixed 320px right rail could cause the primary document canvas to feel cramped on smaller screens (e.g., 13-inch laptops).
+2. Streaming the LLM output into the canvas could cause severe Cumulative Layout Shift (CLS), making it difficult to track the cursor.
+3. The Bias Check functionality lacked a clear visual indicator for when a text patch is applied to the document.
+
+**Idea / Solution:**
+1. Introduced a collapsable toggle state (`isRailOpen`) in `ChatPage.jsx` and added an intuitive icon button to `ChatTopBar`. When toggled, the CSS grid smoothly transitions the right rail width to `0px`, allowing the JD Canvas to take up the full screen width.
+2. Added `scroll-behavior: smooth` and `overflow-anchor: auto` to `.chat-body-canvas` in `chat.css` to mitigate layout shifting and preserve reading context during token streaming.
+3. Prepared `@keyframes biasFlash` animation in `chat.css` to provide a subtle green flash highlighting exactly where the text was patched during Bias Check replacement.
+
+**Files Modified:**
+- `frontend/src/components/Chat/ChatPage.jsx`
+- `frontend/src/components/Chat/ChatTopBar.jsx`
+- `frontend/src/styles/chat.css`
+- `docs/design/pages/05_jd_chat.md`

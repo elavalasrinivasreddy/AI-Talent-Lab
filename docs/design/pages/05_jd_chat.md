@@ -318,7 +318,7 @@ variant follow-up refinement) are explicitly Phase 2.
 
 | Area | Detail |
 |---|---|
-| Layout | `chat-page--v3` with `JDStepper` on top, `JDCanvas` (~65%) on left, `JDRail` (360px) on right |
+| Layout | `chat-page--v3` with `JDStepper` on top, `JDCanvas` (~65%) on left, `JDRail` (360px) on right. Includes toggle button to hide rail and maximize canvas area on smaller screens. |
 | Stepper | 8-stage pill row with HARD/SOFT badges and done/current/skipped/pending state dots |
 | Canvas | Inline doc with header (role + meta) + 5 inline agent blocks + JD body |
 | Agent blocks | `AgentBlockIntake` (new — renders captured fields as a grid), `AgentBlockInternal`, `AgentBlockMarket`, `AgentBlockVariants`, `AgentBlockBias` — all share `AgentBlockShell` for the frame |
@@ -328,6 +328,7 @@ variant follow-up refinement) are explicitly Phase 2.
 | Backend | Orchestrator records each stage transition + soft-skip in transient `_run_meta`; `chat_service` emits one `stage_change` per transition and one `stage_skipped` per soft-skip (was previously only emitting one event per turn) |
 | ChatContext | Mirrors backend `graph_state_parsed` into `graphState`; refreshes on every SSE `done`; tracks `stageSkipped[]` so the stepper renders skipped pills correctly across resumes |
 | Hire-request handoff | Switched from legacy `positionsApi.linkViaSession` to new `hireRequestsApi.linkSession`. Auto-seed message now includes location + comp band fields |
+| UX Refinements (Validation) | Added `isRailOpen` toggle to `ChatTopBar` to expand canvas space on 13-inch screens. Implemented `scroll-behavior: smooth` and `overflow-anchor: auto` to mitigate Layout Shift during LLM streaming. Added `@keyframes biasFlash` to prepare for in-place text patching visibility. |
 
 ### ❌ Phase 2 — deferred
 
