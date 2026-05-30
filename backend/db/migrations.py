@@ -1,6 +1,6 @@
 """
 db/migrations.py – ALL CREATE TABLE statements.
-Implements every table from docs/BACKEND_PLAN.md §4 (sections 4.1–4.5).
+Implements every table from docs/architecture/03_backend.md §4 (sections 4.1–4.5).
 Includes schema additions from §12 (followup) and §15 (embeddings).
 Uses IF NOT EXISTS — safe to run on every app startup.
 After tables, enables PostgreSQL Row-Level Security on tenant-scoped tables.
@@ -575,6 +575,14 @@ async def run_migrations(conn) -> None:
             ALTER TABLE positions ADD COLUMN assigned_to INTEGER REFERENCES users(id);
         END IF;
     END $$;
+
+    -- Role rename + dept_admin tier (2026-05-28)
+    -- Renames the legacy role names to the explicit org-hierarchy roles.
+    -- Idempotent: only updates rows that still hold the legacy value.
+    UPDATE users SET role = 'org_head'  WHERE role = 'admin';
+    UPDATE users SET role = 'hr'        WHERE role = 'recruiter';
+    UPDATE users SET role = 'team_lead' WHERE role = 'hiring_manager';
+    ALTER TABLE users ALTER COLUMN role SET DEFAULT 'hr';
     """
     await conn.execute(incremental_sql)
 
@@ -741,6 +749,98 @@ async def run_migrations(conn) -> None:
     UPDATE candidate_applications
     SET status_token = gen_random_uuid()::text
     WHERE status_token IS NULL;
+
+    -- organizations: career page branding
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='organizations' AND column_name='career_primary_color') THEN
+            ALTER TABLE organizations ADD COLUMN career_primary_color TEXT;
+            ALTER TABLE organizations ADD COLUMN career_banner_url TEXT;
+            ALTER TABLE organizations ADD COLUMN career_tagline TEXT;
+        END IF;
+    END $$;
+
+    -- chat_sessions: link to originating hire_request
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='chat_sessions' AND column_name='hire_request_id') THEN
+            ALTER TABLE chat_sessions ADD COLUMN hire_request_id INTEGER;
+        END IF;
+    END $$;
+
+    -- hire_requests: hiring manager submits a request for a new position
+    CREATE TABLE IF NOT EXISTS hire_requests (
+        id               SERIAL PRIMARY KEY,
+        org_id           INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        department_id    INTEGER REFERENCES departments(id),
+        requested_by     INTEGER NOT NULL REFERENCES users(id),
+        accepted_by      INTEGER REFERENCES users(id),
+        role_name        TEXT NOT NULL,
+        headcount        INTEGER DEFAULT 1,
+        work_type        TEXT DEFAULT 'onsite',
+        experience_min   INTEGER,
+        experience_max   INTEGER,
+        target_start     TEXT,
+        requirements     TEXT,
+        status           TEXT DEFAULT 'pending',
+        chat_session_id  TEXT REFERENCES chat_sessions(id),
+        created_at       TIMESTAMP DEFAULT NOW(),
+        updated_at       TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_hire_requests_org    ON hire_requests(org_id, status);
+    CREATE INDEX IF NOT EXISTS idx_hire_requests_by     ON hire_requests(requested_by);
+
+    -- hire_requests: link to the position created from this request
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='position_id') THEN
+            ALTER TABLE hire_requests ADD COLUMN position_id INTEGER REFERENCES positions(id);
+        END IF;
+    END $$;
+
+    -- hire_requests: comp band + location (used by the redesigned wizard / detail UI)
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='comp_min') THEN
+            ALTER TABLE hire_requests
+                ADD COLUMN comp_min INTEGER,
+                ADD COLUMN comp_max INTEGER,
+                ADD COLUMN location TEXT;
+        END IF;
+    END $$;
+
+    -- hire_requests: dept_admin approval workflow (2026-05-28)
+    -- New status values: pending → approved → accepted → fulfilled
+    --                    pending → rejected  (terminal, reason stored)
+    -- approved_by / approved_at: set when dept_admin or org_head approves.
+    -- rejection_reason: free-text, required on reject.
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='approved_by') THEN
+            ALTER TABLE hire_requests
+                ADD COLUMN approved_by INTEGER REFERENCES users(id),
+                ADD COLUMN approved_at TIMESTAMP,
+                ADD COLUMN rejection_reason TEXT;
+        END IF;
+    END $$;
+
+    -- consumed_magic_links: enforces single-use on magic-link JWTs (auth, password_reset, etc.)
+    -- jti is the unique JWT id minted at issue time; on verify we INSERT and rely on UNIQUE
+    -- to reject replays. Periodic cleanup removes rows older than 30 days.
+    CREATE TABLE IF NOT EXISTS consumed_magic_links (
+        jti              TEXT PRIMARY KEY,
+        token_type       TEXT NOT NULL,
+        entity_id        INTEGER,
+        consumed_at      TIMESTAMP DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_consumed_magic_links_consumed_at
+        ON consumed_magic_links(consumed_at);
     """
     await conn.execute(feature_sql)
     logger.info("  Feature schema additions (v2) applied.")

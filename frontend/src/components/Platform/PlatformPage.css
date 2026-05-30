@@ -1,0 +1,107 @@
+/* ── Platform Admin — v3 Control Tower ────────────────────── */
+
+.plat-page { min-height:100vh; background:var(--color-bg-primary, #0f172a); animation:fadeInUp 300ms ease both; }
+
+/* Header */
+.plat-header { display:flex; justify-content:space-between; align-items:center; padding:var(--space-4) var(--space-6); border-bottom:1px solid var(--color-border); background:var(--color-bg-card); }
+.plat-header-brand { display:flex; align-items:center; gap:var(--space-3); }
+.plat-logo-icon { width:36px; height:36px; color:var(--color-primary); }
+.plat-logo-icon svg { width:100%; height:100%; }
+.plat-brand-name { font-size:var(--font-size-lg); font-weight:800; }
+.plat-brand-sub { font-size:11px; color:var(--color-text-muted); }
+.plat-header-right { display:flex; align-items:center; gap:var(--space-3); }
+.plat-admin-pill { padding:3px 10px; border-radius:var(--radius-full); background:rgba(13,148,136,0.12); color:var(--color-primary); font-size:11px; font-weight:600; }
+.plat-logout-btn { background:transparent; border:1px solid var(--color-border); color:var(--color-text-secondary); padding:6px 14px; border-radius:var(--radius-md); font-size:var(--font-size-sm); font-family:inherit; cursor:pointer; transition:all 150ms; }
+.plat-logout-btn:hover { background:var(--color-bg-hover); color:var(--color-text-primary); }
+
+/* Body */
+.plat-body { max-width:1100px; margin:0 auto; padding:var(--space-4) var(--space-6); }
+
+/* Tabs */
+.plat-tabs { display:flex; gap:2px; background:var(--color-bg-secondary); border-radius:var(--radius-md); padding:3px; margin-bottom:var(--space-4); width:fit-content; }
+.plat-tab { padding:7px 16px; border:none; background:transparent; border-radius:var(--radius-sm); font-size:var(--font-size-sm); font-weight:500; color:var(--color-text-secondary); cursor:pointer; font-family:inherit; transition:all 150ms; }
+.plat-tab.active { background:var(--color-primary); color:#fff; box-shadow:0 2px 8px rgba(13,148,136,0.3); }
+.plat-tab:hover:not(.active) { color:var(--color-text-primary); }
+.plat-tab--link { text-decoration:none; }
+.plat-refresh-btn { margin-left:auto; padding:6px 12px; border:1px solid var(--color-border); background:transparent; color:var(--color-text-secondary); border-radius:var(--radius-md); font-size:12px; cursor:pointer; font-family:inherit; }
+.plat-refresh-btn:hover { background:var(--color-bg-hover); }
+.plat-refresh-btn:disabled { opacity:0.5; }
+
+/* Sections */
+.plat-section { }
+
+/* Stats Grid */
+.plat-stats-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--space-3); margin-bottom:var(--space-4); }
+.plat-stat-card { display:flex; align-items:center; gap:var(--space-3); padding:var(--space-4); background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:var(--radius-lg); }
+.plat-stat-icon { width:40px; height:40px; border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+.plat-stat-value { font-size:var(--font-size-xl); font-weight:800; }
+.plat-stat-label { font-size:12px; color:var(--color-text-muted); }
+
+/* Growth cards */
+.plat-growth-row { display:grid; grid-template-columns:repeat(4, 1fr); gap:var(--space-3); margin-bottom:var(--space-4); }
+.plat-growth-card { padding:var(--space-3); background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:var(--radius-lg); display:flex; align-items:center; gap:var(--space-2); }
+.plat-growth-icon { font-size:1.2rem; }
+.plat-growth-value { font-size:var(--font-size-lg); font-weight:700; }
+.plat-growth-label { font-size:11px; color:var(--color-text-muted); }
+
+/* Cards */
+.plat-card { background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:var(--space-4); }
+.plat-card-title { font-size:var(--font-size-base); font-weight:700; margin:0 0 var(--space-3); }
+
+/* Table */
+.plat-table { width:100%; border-collapse:collapse; }
+.plat-table th { padding:var(--space-2) var(--space-3); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; color:var(--color-text-muted); text-align:left; border-bottom:1px solid var(--color-border); }
+.plat-table td { padding:var(--space-3); font-size:var(--font-size-sm); border-bottom:1px solid var(--color-border); }
+.plat-table tr:last-child td { border-bottom:none; }
+.plat-table tr:hover td { background:var(--color-bg-hover); }
+.plat-org-name { font-weight:600; }
+.plat-org-slug { font-size:11px; color:var(--color-text-muted); }
+.plat-badge { display:inline-flex; align-items:center; justify-content:center; padding:2px 8px; border-radius:var(--radius-full); font-size:11px; font-weight:600; }
+.plat-badge.green { background:rgba(16,185,129,0.12); color:#10B981; }
+.plat-badge.dim { background:var(--color-bg-secondary); color:var(--color-text-muted); }
+
+/* Activity */
+.plat-activity-list { display:flex; flex-direction:column; }
+.plat-activity-row { display:flex; align-items:flex-start; gap:var(--space-2); padding:var(--space-2) 0; border-bottom:1px solid var(--color-border); }
+.plat-activity-row:last-child { border-bottom:none; }
+.plat-activity-dot { width:8px; height:8px; border-radius:50%; background:var(--color-primary); margin-top:6px; flex-shrink:0; }
+.plat-activity-body { flex:1; font-size:var(--font-size-sm); }
+.plat-activity-org { font-weight:600; }
+.plat-activity-text { color:var(--color-text-secondary); }
+.plat-activity-time { font-size:11px; color:var(--color-text-muted); flex-shrink:0; }
+
+/* Empty / Loading */
+.plat-empty { padding:var(--space-6); text-align:center; color:var(--color-text-muted); }
+.plat-loading { padding:var(--space-6); text-align:center; color:var(--color-text-muted); }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .plat-stats-grid { grid-template-columns:1fr 1fr; }
+  .plat-growth-row { grid-template-columns:1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .plat-header { flex-direction:column; align-items:flex-start; gap:var(--space-2); padding:var(--space-3); }
+  .plat-body { padding:var(--space-3); }
+  .plat-stats-grid { grid-template-columns:1fr; }
+  .plat-growth-row { grid-template-columns:1fr; }
+  .plat-tabs { flex-wrap:wrap; }
+}
+
+/* ── Skeleton Loading ── */
+.plat-skel { pointer-events:none; }
+.plat-skel-icon { width:40px; height:40px; border-radius:var(--radius-md); background:linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%); background-size:200% 100%; animation:platSkelShimmer 1.5s ease-in-out infinite; }
+.plat-skel-val { width:50px; height:20px; border-radius:var(--radius-sm); background:linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%); background-size:200% 100%; animation:platSkelShimmer 1.5s ease-in-out infinite; margin-bottom:4px; }
+.plat-skel-lbl { width:80px; height:12px; border-radius:var(--radius-sm); background:linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%); background-size:200% 100%; animation:platSkelShimmer 1.5s ease-in-out infinite; }
+@keyframes platSkelShimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
+
+/* ── System Health ── */
+.plat-health-card { margin-bottom:var(--space-4); }
+.plat-health-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:var(--space-3); }
+.plat-health-item { display:flex; align-items:center; gap:var(--space-2); }
+.plat-health-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.plat-health-label { font-size:var(--font-size-sm); color:var(--color-text-secondary); flex:1; }
+.plat-health-status { font-size:11px; font-weight:600; padding:2px 8px; border-radius:var(--radius-full); }
+
+@media (max-width: 600px) {
+  .plat-health-grid { grid-template-columns:1fr 1fr; }
+}

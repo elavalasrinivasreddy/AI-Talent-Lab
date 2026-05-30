@@ -1,6 +1,6 @@
 /**
  * InterviewsTab.jsx – Interview rounds + scorecards + debrief
- * Per docs/pages/10_interview_scheduling.md §3-4
+ * Per docs/design/pages/15_interview_scheduling.md §3-4
  * Used inside CandidateDetailPage
  */
 import React, { useState, useEffect } from 'react'

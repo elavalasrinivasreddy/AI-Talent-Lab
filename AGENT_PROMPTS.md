@@ -1,4 +1,13 @@
 # AI Talent Lab — Coding Agent Prompts
+
+> **⚠️ Historical build artifact.** These are the original step-by-step prompts used to
+> scaffold the project from zero. The build is done. They reference old doc paths
+> (`docs/BACKEND_PLAN.md §N`, `docs/FRONTEND_PLAN.md §N`, `docs/pages/*`) that have been
+> consolidated. For current docs start at **[`docs/README.md`](docs/README.md)**:
+> backend → `docs/architecture/03_backend.md`, frontend → `docs/architecture/05_frontend.md`,
+> agents → `docs/architecture/04_ai_agents.md`, per-page specs → `docs/design/pages/`.
+> Kept for historical reference only; do not treat the section numbers below as live links.
+
 > These prompts are designed for Claude Code or any agentic coding tool.
 > Use them in order. Do not skip steps. Each prompt assumes the previous step is complete and committed.
 

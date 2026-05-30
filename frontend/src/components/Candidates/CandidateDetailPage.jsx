@@ -1,23 +1,33 @@
 /**
- * CandidateDetailPage.jsx – Full candidate profile per docs/pages/05_candidate_detail.md
- * Tabs: Overview, Skills Match, Timeline, Resume, Interviews
+ * CandidateDetailPage.jsx — v3 Compare-to-Ideal redesign
+ * Per docs/design/pages/04_candidate_detail.md
+ * Redesigned 2026-05-29.
+ *
+ * Layout: breadcrumb → hero (score ring + actions) → tags row →
+ *         score breakdown band → compare-to-ideal grid →
+ *         3-card AI signals → tab rail → tab content
  */
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { candidatesApi, notesApi } from '../../utils/api'
-import { PIPELINE_STAGES, KANBAN_STAGE_ORDER, PIPELINE_EVENT_ICONS } from '../../utils/constants'
-import StatusBadge from '../common/StatusBadge'
-import ScoreCircle from '../common/ScoreCircle'
+import { PIPELINE_STAGES, PIPELINE_EVENT_ICONS } from '../../utils/constants'
+
+import CandidateHero from './CandidateHero'
+import TagsRow from './TagsRow'
+import ScoreBreakdownBand from './ScoreBreakdownBand'
+import CompareToIdealGrid from './CompareToIdealGrid'
 import InterviewsTab from './tabs/InterviewsTab'
+import Icon from '../common/Icon'
+import Chip from '../common/Chip'
 import './CandidateDetailPage.css'
 
 const TABS = [
-  { id: 'overview', label: '👤 Overview' },
-  { id: 'skills', label: '📊 Skills Match' },
-  { id: 'timeline', label: '📜 Timeline' },
-  { id: 'resume', label: '📄 Resume' },
-  { id: 'interviews', label: '🎙️ Interviews' },
-  { id: 'notes', label: '📝 Notes' },
+  { id: 'skills',     label: 'Skills Match',  icon: 'layers' },
+  { id: 'application',label: 'Application',   icon: 'file-text' },
+  { id: 'resume',     label: 'Resume',        icon: 'file' },
+  { id: 'interviews', label: 'Interviews',    icon: 'briefcase' },
+  { id: 'timeline',   label: 'Timeline',      icon: 'clock' },
+  { id: 'notes',      label: 'Notes',         icon: 'edit' },
 ]
 
 export default function CandidateDetailPage() {
@@ -29,8 +39,9 @@ export default function CandidateDetailPage() {
 
   const [candidate, setCandidate] = useState(null)
   const [timeline, setTimeline] = useState([])
+  const [tags, setTags] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('skills')
   const [movingStatus, setMovingStatus] = useState(false)
 
   const load = useCallback(async () => {
@@ -41,6 +52,12 @@ export default function CandidateDetailPage() {
       ])
       setCandidate(cand)
       setTimeline(tl.events || [])
+
+      // Load tags
+      try {
+        const tagData = await candidatesApi.getTags(id)
+        setTags(Array.isArray(tagData) ? tagData : tagData.tags || [])
+      } catch { setTags([]) }
     } catch (e) {
       console.error(e)
     } finally {
@@ -84,93 +101,101 @@ export default function CandidateDetailPage() {
   if (loading) return <CandidateSkeleton />
   if (!candidate) return (
     <div className="cd-error">
-      <span>⚠️</span>
+      <Icon name="alert-triangle" size={40} style={{ opacity: 0.3 }} />
       <p>Candidate not found</p>
-      {fromState.from && <Link to={fromState.from}>← {fromState.fromLabel || 'Back'}</Link>}
+      {fromState.from && <Link to={fromState.from} className="cd-error-link">← {fromState.fromLabel || 'Back'}</Link>}
     </div>
   )
 
-  const scoreData = candidate.skill_match_data || {}
+  const scoreData = candidate.skill_match_data
+    ? (typeof candidate.skill_match_data === 'string' ? JSON.parse(candidate.skill_match_data) : candidate.skill_match_data)
+    : null
   const score = candidate.skill_match_score
-  const initials = (candidate.name || '??').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+
+  // Timing
+  const stageEnteredAt = candidate.updated_at || candidate.sourced_at
+  const totalDays = candidate.created_at
+    ? Math.floor((Date.now() - new Date(candidate.created_at).getTime()) / 86400000)
+    : null
+
+  // AI signal cards
+  const summary = scoreData?.summary || null
+  const trajectory = scoreData?.career_trajectory || null
+  const redFlags = scoreData?.red_flags || null
 
   return (
     <div className="cd-page">
-      {/* Back link */}
-      {fromState.from && (
-        <Link
-          to={fromState.from}
-          className="cd-back-link"
-          onClick={e => { e.preventDefault(); navigate(fromState.from) }}
-        >
-          ← {fromState.fromLabel || 'Back'}
-        </Link>
-      )}
+      {/* Hero */}
+      <CandidateHero
+        candidate={candidate}
+        fromState={fromState}
+        positionId={positionId}
+        movingStatus={movingStatus}
+        onStatusChange={handleStatusChange}
+        onMarkSelected={handleMarkSelected}
+        onSchedule={() => {}} // TODO: schedule modal
+        onDraftRejection={() => {}} // TODO: rejection draft modal
+      />
 
-      {/* ── Header ── */}
-      <div className="cd-header">
-        <div className="cd-avatar-lg">{initials}</div>
-        <div className="cd-header-info">
-          <h1 className="cd-name">{candidate.name}</h1>
-          <div className="cd-subtitle">
-            {candidate.current_title && <span>{candidate.current_title}</span>}
-            {candidate.current_company && <><span className="cd-sep">·</span><span>@ {candidate.current_company}</span></>}
-            {candidate.experience_years != null && (
-              <><span className="cd-sep">·</span><span>{candidate.experience_years} years exp</span></>
+      {/* Tags + Status row */}
+      <TagsRow
+        candidateId={parseInt(id)}
+        tags={tags}
+        pipelineStatus={candidate.pipeline_status}
+        stageEnteredAt={stageEnteredAt}
+        totalDays={totalDays}
+        onTagsChange={setTags}
+        onStatusChange={handleStatusChange}
+        movingStatus={movingStatus}
+      />
+
+      {/* Score Breakdown Band */}
+      <ScoreBreakdownBand scoreData={scoreData} finalScore={score} />
+
+      {/* Compare-to-Ideal Grid — the radical part */}
+      <CompareToIdealGrid scoreData={scoreData} finalScore={score} />
+
+      {/* 3-card AI signal row */}
+      <div className="cd-signal-cards">
+        <div className="cd-signal-card">
+          <div className="cd-signal-header">
+            <Icon name="cpu" size={14} />
+            <span>AI Analysis</span>
+          </div>
+          <p className="cd-signal-body">
+            {summary || 'ATS analysis will populate once scoring completes.'}
+          </p>
+        </div>
+        <div className="cd-signal-card">
+          <div className="cd-signal-header">
+            <Icon name="trending-up" size={14} />
+            <span>Career Trajectory</span>
+          </div>
+          <p className="cd-signal-body">
+            {trajectory ? (
+              <Chip variant={trajectory === 'steady_growth' ? 'success' : trajectory === 'job_hopper' ? 'warning' : 'primary'} size="xs">
+                {trajectory.replace(/_/g, ' ')}
+              </Chip>
+            ) : (
+              'Not yet analyzed'
             )}
-          </div>
-          <div className="cd-contact">
-            {candidate.email && <span>📧 {candidate.email}</span>}
-            {candidate.phone && <span>📞 {candidate.phone}</span>}
-            {candidate.location && <span>📍 {candidate.location}</span>}
-          </div>
-          {candidate.pipeline_status && (
-            <div style={{ marginTop: 8 }}>
-              <StatusBadge status={candidate.pipeline_status} type="pipeline" size="md" />
-            </div>
-          )}
+          </p>
         </div>
-
-        {/* Score */}
-        <div className="cd-score-area">
-          <ScoreCircle score={score} size={96} />
-        </div>
-
-        {/* Actions */}
-        <div className="cd-actions">
-          {candidate.application_id && positionId && (
-            <>
-              <select
-                className="cd-status-select"
-                value={candidate.pipeline_status || 'sourced'}
-                onChange={e => handleStatusChange(e.target.value)}
-                disabled={movingStatus}
-              >
-                {KANBAN_STAGE_ORDER.map(s => (
-                  <option key={s} value={s}>{PIPELINE_STAGES[s]?.label || s}</option>
-                ))}
-              </select>
-              {candidate.pipeline_status !== 'selected' && (
-                <button className="cd-select-btn" onClick={handleMarkSelected}>
-                  ⭐ Mark Selected
-                </button>
-              )}
-            </>
-          )}
-          {candidate.source_profile_url && (
-            <a
-              href={candidate.source_profile_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="cd-profile-link"
-            >
-              🔗 View Profile
-            </a>
-          )}
+        <div className="cd-signal-card">
+          <div className="cd-signal-header">
+            <Icon name="alert-triangle" size={14} />
+            <span>Red Flags</span>
+          </div>
+          <p className="cd-signal-body">
+            {redFlags?.length > 0
+              ? redFlags.map((f, i) => <Chip key={i} variant="danger" size="xs">{typeof f === 'object' ? f.flag : f}</Chip>)
+              : <Chip variant="success" size="xs">None detected</Chip>
+            }
+          </p>
         </div>
       </div>
 
-      {/* ── Tab Bar ── */}
+      {/* Tab Rail */}
       <div className="cd-tab-bar">
         {TABS.map(t => (
           <button
@@ -178,16 +203,19 @@ export default function CandidateDetailPage() {
             className={`cd-tab-btn ${activeTab === t.id ? 'active' : ''}`}
             onClick={() => setActiveTab(t.id)}
           >
+            <Icon name={t.icon} size={14} />
             {t.label}
+            {t.id === 'interviews' && candidate.interview_count > 0 && (
+              <span className="cd-tab-count">({candidate.interview_count})</span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* ── Tab Content ── */}
+      {/* Tab Content */}
       <div className="cd-tab-content">
-        {activeTab === 'overview' && <OverviewTab candidate={candidate} />}
         {activeTab === 'skills' && <SkillsTab scoreData={scoreData} />}
-        {activeTab === 'timeline' && <TimelineTab events={timeline} />}
+        {activeTab === 'application' && <ApplicationTab candidate={candidate} />}
         {activeTab === 'resume' && <ResumeTab candidate={candidate} />}
         {activeTab === 'interviews' && (
           <InterviewsTab
@@ -197,6 +225,7 @@ export default function CandidateDetailPage() {
             applicationId={candidate.application_id}
           />
         )}
+        {activeTab === 'timeline' && <TimelineTab events={timeline} />}
         {activeTab === 'notes' && <NotesTab candidateId={parseInt(id)} />}
       </div>
     </div>
@@ -205,22 +234,83 @@ export default function CandidateDetailPage() {
 
 // ── Sub Tabs ───────────────────────────────────────────────────────────────────
 
-function OverviewTab({ candidate }) {
+function SkillsTab({ scoreData }) {
+  if (!scoreData) {
+    return <div className="cd-tab-empty"><Icon name="cpu" size={24} style={{opacity:0.3}}/><span>ATS analysis not yet available for this candidate.</span></div>
+  }
   return (
-    <div className="cd-section-grid">
+    <div className="cd-skills-tab">
+      {scoreData.summary && (
+        <div className="cd-ai-summary">
+          <span className="cd-ai-badge"><Icon name="cpu" size={12} /> AI Analysis</span>
+          <p>{scoreData.summary}</p>
+        </div>
+      )}
+      <div className="cd-skills-grid">
+        {scoreData.matched_skills?.length > 0 && (
+          <div className="cd-skills-group">
+            <h4 className="cd-skills-heading matched"><Icon name="check" size={13} /> Matched Skills ({scoreData.matched_skills.length})</h4>
+            <div className="cd-skill-pills">
+              {scoreData.matched_skills.map((s, i) => {
+                const label = typeof s === 'object' ? s.skill : s
+                return <span key={i} className="cd-skill-pill matched">{label}</span>
+              })}
+            </div>
+          </div>
+        )}
+        {scoreData.missing_skills?.length > 0 && (
+          <div className="cd-skills-group">
+            <h4 className="cd-skills-heading missing"><Icon name="x" size={13} /> Missing Skills ({scoreData.missing_skills.length})</h4>
+            <div className="cd-skill-pills">
+              {scoreData.missing_skills.map((s, i) => {
+                const label = typeof s === 'object' ? s.skill : s
+                return <span key={i} className="cd-skill-pill missing">{label}</span>
+              })}
+            </div>
+          </div>
+        )}
+        {scoreData.extra_skills?.length > 0 && (
+          <div className="cd-skills-group">
+            <h4 className="cd-skills-heading extra"><Icon name="plus" size={13} /> Bonus Skills ({scoreData.extra_skills.length})</h4>
+            <div className="cd-skill-pills">
+              {scoreData.extra_skills.map((s, i) => {
+                const label = typeof s === 'object' ? s.skill : s
+                return <span key={i} className="cd-skill-pill extra">{label}</span>
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ApplicationTab({ candidate }) {
+  if (!candidate.applied_at && !candidate.screening_responses) {
+    return <div className="cd-tab-empty"><Icon name="file-text" size={24} style={{opacity:0.3}}/><span>Candidate sourced/emailed but hasn't applied yet.</span></div>
+  }
+  const responses = candidate.screening_responses
+    ? (typeof candidate.screening_responses === 'string' ? JSON.parse(candidate.screening_responses) : candidate.screening_responses)
+    : null
+
+  return (
+    <div className="cd-application-tab">
       <div className="cd-section">
-        <h3 className="cd-section-title">Professional Info</h3>
-        <InfoRow label="Current Title" value={candidate.current_title} />
-        <InfoRow label="Current Company" value={candidate.current_company} />
-        <InfoRow label="Experience" value={candidate.experience_years ? `${candidate.experience_years} years` : null} />
+        <h3 className="cd-section-title">Application Details</h3>
+        <InfoRow label="Applied" value={candidate.applied_at ? new Date(candidate.applied_at).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : null} />
+        <InfoRow label="Current Role" value={candidate.current_title ? `${candidate.current_title} at ${candidate.current_company || '—'}` : null} />
+        <InfoRow label="Experience" value={candidate.experience_years != null ? `${candidate.experience_years} years` : null} />
         <InfoRow label="Location" value={candidate.location} />
         <InfoRow label="Source" value={candidate.source} />
       </div>
-      <div className="cd-section">
-        <h3 className="cd-section-title">Contact</h3>
-        <InfoRow label="Email" value={candidate.email} />
-        <InfoRow label="Phone" value={candidate.phone} />
-      </div>
+      {responses && (
+        <div className="cd-section" style={{marginTop: 16}}>
+          <h3 className="cd-section-title">Screening Responses</h3>
+          {Object.entries(responses).map(([q, a]) => (
+            <InfoRow key={q} label={q} value={String(a)} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -235,51 +325,32 @@ function InfoRow({ label, value }) {
   )
 }
 
-function SkillsTab({ scoreData }) {
+function ResumeTab({ candidate }) {
+  const resume = candidate.resume_text || ''
+  const videoUrl = candidate.video_intro_url
+
   return (
-    <div className="cd-skills-tab">
-      {scoreData.summary && (
-        <div className="cd-ai-summary">
-          <span className="cd-ai-badge">🤖 AI Analysis</span>
-          <p>{scoreData.summary}</p>
+    <div className="cd-resume">
+      {videoUrl && (
+        <div className="cd-video-intro">
+          <div className="cd-video-header">
+            <span className="cd-video-label"><Icon name="play" size={13} /> Video Introduction</span>
+            {candidate.video_intro_duration && (
+              <span className="cd-video-duration">
+                {Math.floor(candidate.video_intro_duration / 60)}:{String(candidate.video_intro_duration % 60).padStart(2, '0')}
+              </span>
+            )}
+          </div>
+          <video className="cd-video-player" src={videoUrl} controls preload="metadata" />
         </div>
       )}
-
-      <div className="cd-skills-grid">
-        {scoreData.matched_skills?.length > 0 && (
-          <div className="cd-skills-group">
-            <h4 className="cd-skills-heading matched">✅ Matched Skills</h4>
-            <div className="cd-skill-pills">
-              {scoreData.matched_skills.map(s => (
-                <span key={s} className="cd-skill-pill matched">{s}</span>
-              ))}
-            </div>
-          </div>
-        )}
-        {scoreData.missing_skills?.length > 0 && (
-          <div className="cd-skills-group">
-            <h4 className="cd-skills-heading missing">❌ Missing Skills</h4>
-            <div className="cd-skill-pills">
-              {scoreData.missing_skills.map(s => (
-                <span key={s} className="cd-skill-pill missing">{s}</span>
-              ))}
-            </div>
-          </div>
-        )}
-        {scoreData.extra_skills?.length > 0 && (
-          <div className="cd-skills-group">
-            <h4 className="cd-skills-heading extra">➕ Bonus Skills</h4>
-            <div className="cd-skill-pills">
-              {scoreData.extra_skills.map(s => (
-                <span key={s} className="cd-skill-pill extra">{s}</span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {!scoreData.matched_skills?.length && !scoreData.missing_skills?.length && (
-        <div className="cd-no-skills">ATS analysis not yet available for this candidate.</div>
+      {resume ? (
+        <pre className="cd-resume-text">{resume}</pre>
+      ) : (
+        <div className="cd-tab-empty">
+          <Icon name="file" size={24} style={{opacity:0.3}} />
+          <span>{videoUrl ? 'No resume text — candidate submitted video only.' : 'No resume uploaded. Candidate was sourced — upload one manually if available.'}</span>
+        </div>
       )}
     </div>
   )
@@ -287,8 +358,9 @@ function SkillsTab({ scoreData }) {
 
 function TimelineTab({ events }) {
   if (!events.length) {
-    return <div className="cd-no-skills">No events recorded yet.</div>
+    return <div className="cd-tab-empty"><Icon name="clock" size={24} style={{opacity:0.3}}/><span>No events recorded yet.</span></div>
   }
+
   return (
     <div className="cd-timeline">
       {events.map((evt, idx) => {
@@ -314,31 +386,6 @@ function TimelineTab({ events }) {
   )
 }
 
-function ResumeTab({ candidate }) {
-  const resume = candidate.resume_text || ''
-  return (
-    <div className="cd-resume">
-      {resume ? (
-        <pre className="cd-resume-text">{resume}</pre>
-      ) : (
-        <div className="cd-no-skills">No resume text available for this candidate.</div>
-      )}
-    </div>
-  )
-}
-
-function CandidateSkeleton() {
-  return (
-    <div className="cd-page">
-      <div className="skeleton-block" style={{ height: 180, borderRadius: 12, marginBottom: 16 }} />
-      <div className="skeleton-block" style={{ height: 44, borderRadius: 8, marginBottom: 16 }} />
-      <div className="skeleton-block" style={{ height: 400, borderRadius: 12 }} />
-    </div>
-  )
-}
-
-// ── Notes Tab ─────────────────────────────────────────────────────────────────
-
 function NotesTab({ candidateId }) {
   const [notes, setNotes] = useState([])
   const [draft, setDraft] = useState('')
@@ -347,9 +394,7 @@ function NotesTab({ candidateId }) {
   const [editContent, setEditContent] = useState('')
 
   useEffect(() => {
-    notesApi.list(candidateId)
-      .then(d => setNotes(d.notes || []))
-      .catch(() => {})
+    notesApi.list(candidateId).then(d => setNotes(d.notes || [])).catch(() => {})
   }, [candidateId])
 
   const handleSubmit = async () => {
@@ -359,53 +404,36 @@ function NotesTab({ candidateId }) {
       const res = await notesApi.create(candidateId, { content: draft.trim() })
       setNotes(prev => [{ ...res.note, author_name: res.author_name, author_role: res.author_role }, ...prev])
       setDraft('')
-    } catch (e) {
-      alert(`Failed to save note: ${e.message}`)
-    } finally {
-      setSubmitting(false)
-    }
+    } catch (e) { alert(`Failed to save note: ${e.message}`) }
+    finally { setSubmitting(false) }
   }
 
-  const handleUpdate = async (id) => {
+  const handleUpdate = async (nid) => {
     try {
-      const res = await notesApi.update(id, editContent)
-      setNotes(prev => prev.map(n => n.id === id ? { ...n, content: res.note.content, updated_at: res.note.updated_at } : n))
+      const res = await notesApi.update(nid, editContent)
+      setNotes(prev => prev.map(n => n.id === nid ? { ...n, content: res.note.content, updated_at: res.note.updated_at } : n))
       setEditingId(null)
-    } catch (e) {
-      alert(`Update failed: ${e.message}`)
-    }
+    } catch (e) { alert(`Update failed: ${e.message}`) }
   }
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (nid) => {
     if (!window.confirm('Delete this note?')) return
     try {
-      await notesApi.delete(id)
-      setNotes(prev => prev.filter(n => n.id !== id))
-    } catch (e) {
-      alert(`Delete failed: ${e.message}`)
-    }
+      await notesApi.delete(nid)
+      setNotes(prev => prev.filter(n => n.id !== nid))
+    } catch (e) { alert(`Delete failed: ${e.message}`) }
   }
 
   return (
     <div className="cd-notes-tab">
       <div className="cd-notes-compose">
-        <textarea
-          className="cd-notes-input"
-          placeholder="Add a note… (use @name to mention a teammate)"
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          rows={3}
-        />
+        <textarea className="cd-notes-input" placeholder="Add a note… (use @name to mention)" value={draft} onChange={e => setDraft(e.target.value)} rows={3} />
         <button className="cd-notes-submit" onClick={handleSubmit} disabled={submitting || !draft.trim()}>
           {submitting ? 'Saving…' : 'Add Note'}
         </button>
       </div>
-
       {notes.length === 0 ? (
-        <div className="cd-notes-empty">
-          <span>📝</span>
-          <p>No notes yet. Add the first one above.</p>
-        </div>
+        <div className="cd-tab-empty"><Icon name="edit" size={24} style={{opacity:0.3}}/><span>No notes yet. Add the first one above.</span></div>
       ) : (
         <div className="cd-notes-list">
           {notes.map(note => (
@@ -417,7 +445,7 @@ function NotesTab({ candidateId }) {
                   <span className="cd-note-role">{note.author_role}</span>
                 </div>
                 <div className="cd-note-meta">
-                  <span className="cd-note-time">{new Date(note.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  <span className="cd-note-time">{new Date(note.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}</span>
                   <button className="cd-note-action" onClick={() => { setEditingId(note.id); setEditContent(note.content) }}>Edit</button>
                   <button className="cd-note-action cd-note-delete" onClick={() => handleDelete(note.id)}>Delete</button>
                 </div>
@@ -437,6 +465,20 @@ function NotesTab({ candidateId }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function CandidateSkeleton() {
+  return (
+    <div className="cd-page">
+      <div className="skeleton-block" style={{ height: 180, borderRadius: 14 }} />
+      <div className="skeleton-block" style={{ height: 48, marginTop: 12, borderRadius: 10 }} />
+      <div className="skeleton-block" style={{ height: 36, marginTop: 12, borderRadius: 8 }} />
+      <div className="skeleton-block" style={{ height: 260, marginTop: 12, borderRadius: 14 }} />
+      <div className="skeleton-block" style={{ height: 100, marginTop: 12, borderRadius: 12 }} />
+      <div className="skeleton-block" style={{ height: 44, marginTop: 12, borderRadius: 10 }} />
+      <div className="skeleton-block" style={{ height: 300, marginTop: 12, borderRadius: 14 }} />
     </div>
   )
 }

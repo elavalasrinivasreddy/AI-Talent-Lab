@@ -46,6 +46,16 @@ class RegisterRequest(BaseModel):
         return v
 
 
+class MagicLinkRequest(BaseModel):
+    """Request a magic-link sign-in email."""
+    email: str
+
+
+class MagicLinkVerifyRequest(BaseModel):
+    """Exchange a magic-link token for a session JWT."""
+    token: str
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
@@ -67,18 +77,21 @@ class UpdateProfileRequest(BaseModel):
     timezone: Optional[str] = None
 
 
+VALID_ORG_ROLES = ("org_head", "dept_admin", "hr", "team_lead")
+
+
 class AddUserRequest(BaseModel):
     email: str
     name: str
-    role: str = "recruiter"
+    role: str = "hr"
     department_id: Optional[int] = None
-    password: str
+    password: Optional[str] = None  # optional — if absent, an invite email is sent
 
     @field_validator("role")
     @classmethod
     def valid_role(cls, v: str) -> str:
-        if v not in ("admin", "recruiter", "hiring_manager"):
-            raise ValueError("Role must be admin, recruiter, or hiring_manager")
+        if v not in VALID_ORG_ROLES:
+            raise ValueError(f"Role must be one of {VALID_ORG_ROLES}")
         return v
 
 
@@ -90,8 +103,8 @@ class UpdateUserRequest(BaseModel):
     @field_validator("role")
     @classmethod
     def valid_role(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v not in ("admin", "recruiter", "hiring_manager"):
-            raise ValueError("Role must be admin, recruiter, or hiring_manager")
+        if v is not None and v not in VALID_ORG_ROLES:
+            raise ValueError(f"Role must be one of {VALID_ORG_ROLES}")
         return v
 
 

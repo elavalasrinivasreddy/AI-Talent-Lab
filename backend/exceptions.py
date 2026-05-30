@@ -2,7 +2,7 @@
 exceptions.py – Custom exception classes and global FastAPI exception handler.
 All exceptions produce the standard error format:
 {"error": {"code": "SNAKE_CASE", "message": "...", "details": null}}
-See docs/BACKEND_PLAN.md §11.
+See docs/architecture/03_backend.md §11.
 """
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -137,14 +137,30 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-        errors = exc.errors()
+        # Pydantic v2 may include the raw ValueError inside `ctx`. Coerce
+        # anything non-serializable (Exception, set, etc.) into its str repr
+        # so the response can be encoded as JSON.
+        def _safe(value):
+            if isinstance(value, BaseException):
+                return str(value)
+            if isinstance(value, (list, tuple)):
+                return [_safe(v) for v in value]
+            if isinstance(value, dict):
+                return {k: _safe(v) for k, v in value.items()}
+            return value
+
+        errors = [_safe(e) for e in exc.errors()]
+        # Lift the first error's message so clients always have a human-readable summary.
+        first_msg = (
+            errors[0].get("msg") if errors and isinstance(errors[0], dict) else None
+        ) or "Request validation failed"
         logger.warning(f"Validation error on {request.method} {request.url}: {errors}")
         return JSONResponse(
             status_code=422,
             content={
                 "error": {
                     "code": "VALIDATION_ERROR",
-                    "message": "Request validation failed",
+                    "message": first_msg,
                     "details": errors,
                 }
             },

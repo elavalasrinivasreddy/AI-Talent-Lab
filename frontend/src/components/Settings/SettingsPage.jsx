@@ -1,5 +1,17 @@
+/**
+ * Settings/SettingsPage.jsx — v3 AI Behavior Console
+ * Per docs/design/pages/07_settings.md
+ * Redesigned 2026-05-29.
+ *
+ * 3-column: purpose-grouped left rail → middle form → right live preview
+ */
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import Icon from '../common/Icon'
+import Chip from '../common/Chip'
+import SettingsLivePreview from './SettingsLivePreview'
+
 import ProfileTab from './tabs/ProfileTab'
 import OrganizationTab from './tabs/OrganizationTab'
 import TeamTab from './tabs/TeamTab'
@@ -14,73 +26,162 @@ import SecurityTab from './tabs/SecurityTab'
 import PrivacyTab from './tabs/PrivacyTab'
 import '../../styles/settings.css'
 
-const TABS = [
-  { group: 'GENERAL', items: [
-    { key: 'profile', icon: '👤', label: 'My Profile' },
-    { key: 'organization', icon: '🏢', label: 'Organization' },
-    { key: 'team', icon: '👥', label: 'Team Members', adminOnly: true },
-    { key: 'departments', icon: '🏗', label: 'Departments', adminOnly: true },
-  ]},
-  { group: 'HIRING & ATS', items: [
-    { key: 'competitors', icon: '🏷', label: 'Competitor Intel' },
-    { key: 'screening', icon: '❓', label: 'Screening Qs', adminOnly: true },
-    { key: 'templates', icon: '📧', label: 'Msg Templates', adminOnly: true },
-    { key: 'scorecards', icon: '🎯', label: 'Interview Tmpls', adminOnly: true },
-  ]},
-  { group: 'WORKSPACE', items: [
-    { key: 'integrations', icon: '🔗', label: 'Integrations', adminOnly: true },
-    { key: 'appearance', icon: '🎨', label: 'Appearance' },
-    { key: 'security', icon: '🔐', label: 'Security', adminOnly: true },
-    { key: 'privacy', icon: '🛡', label: 'Privacy & GDPR', adminOnly: true },
-  ]},
+const RAIL_GROUPS = [
+  {
+    key: 'ai',
+    label: 'How the AI thinks',
+    icon: 'cpu',
+    color: 'var(--color-primary)',
+    items: [
+      { key: 'ats-rules',   icon: 'bar-chart',      label: 'ATS scoring rules', adminOnly: true },
+      { key: 'sourcing',    icon: 'search',          label: 'Sourcing schedule', adminOnly: true },
+      { key: 'screening',   icon: 'help-circle',     label: 'Screening questions', adminOnly: true },
+      { key: 'scorecards',  icon: 'target',          label: 'Scorecard rubric', adminOnly: true },
+      { key: 'bias',        icon: 'shield',          label: 'JD bias detection', adminOnly: true, phase: 2 },
+      { key: 'llm',         icon: 'settings',        label: 'LLM provider', adminOnly: true, phase: 2 },
+    ],
+  },
+  {
+    key: 'team',
+    label: 'How your team works',
+    icon: 'users',
+    color: '#8B5CF6',
+    items: [
+      { key: 'departments',  icon: 'home',     label: 'Departments', adminOnly: true },
+      { key: 'team',         icon: 'users',    label: 'Team members', adminOnly: true },
+      { key: 'approval',     icon: 'check',    label: 'Approval rules', adminOnly: true, phase: 2 },
+      { key: 'notifications',icon: 'bell',     label: 'Notifications' },
+    ],
+  },
+  {
+    key: 'candidates',
+    label: 'How candidates see you',
+    icon: 'user',
+    color: '#06B6D4',
+    items: [
+      { key: 'organization', icon: 'briefcase', label: 'Organization profile' },
+      { key: 'competitors',  icon: 'trending-up', label: 'Competitor intel' },
+      { key: 'templates',    icon: 'mail',      label: 'Email templates', adminOnly: true },
+      { key: 'appearance',   icon: 'palette',   label: 'Appearance' },
+      { key: 'career-brand', icon: 'home',      label: 'Career page brand', adminOnly: true, phase: 2 },
+    ],
+  },
+  {
+    key: 'compliance',
+    label: 'Compliance & data',
+    icon: 'lock',
+    color: 'var(--color-text-muted)',
+    items: [
+      { key: 'privacy',      icon: 'shield',   label: 'GDPR / DPDP', adminOnly: true },
+      { key: 'security',     icon: 'lock',     label: 'Security', adminOnly: true },
+      { key: 'integrations', icon: 'link',     label: 'Integrations', adminOnly: true },
+      { key: 'audit',        icon: 'clock',    label: 'Audit log', adminOnly: true, phase: 2 },
+      { key: 'export',       icon: 'download', label: 'Data export', adminOnly: true, phase: 2 },
+    ],
+  },
 ]
 
-const TAB_COMPONENTS = {
-  profile: ProfileTab,
-  organization: OrganizationTab,
-  team: TeamTab,
-  departments: DepartmentsTab,
-  competitors: CompetitorsTab,
-  screening: ScreeningQuestionsTab,
-  templates: MessageTemplatesTab,
-  scorecards: InterviewTemplatesTab,
-  integrations: IntegrationsTab,
-  appearance: AppearanceTab,
-  security: SecurityTab,
-  privacy: PrivacyTab,
+const SECTION_COMPONENTS = {
+  'profile': ProfileTab,
+  'ats-rules': ScreeningQuestionsTab, // Reuse screening as ATS placeholder
+  'sourcing': () => <PlaceholderSection title="Sourcing Schedule" desc="Configure AI sourcing frequency, daily caps, and talent-pool-first settings." icon="search" />,
+  'screening': ScreeningQuestionsTab,
+  'scorecards': InterviewTemplatesTab,
+  'bias': () => <PlaceholderSection title="JD Bias Detection" desc="Configure bias sensitivity level and language model for JD analysis." icon="shield" phase={2} />,
+  'llm': () => <PlaceholderSection title="LLM Provider" desc="Switch between Groq, OpenAI, and Gemini. Configure model, max tokens, and temperature." icon="settings" phase={2} />,
+  'departments': DepartmentsTab,
+  'team': TeamTab,
+  'approval': () => <PlaceholderSection title="Approval Rules" desc="Configure multi-step hire approval workflows and who approves what." icon="check" phase={2} />,
+  'notifications': () => <PlaceholderSection title="Notifications" desc="Configure email and in-app notification preferences per event type." icon="bell" />,
+  'organization': OrganizationTab,
+  'competitors': CompetitorsTab,
+  'templates': MessageTemplatesTab,
+  'appearance': AppearanceTab,
+  'career-brand': () => <PlaceholderSection title="Career Page Brand" desc="Configure primary color, banner image, tagline, and hero copy for your public career page." icon="home" phase={2} />,
+  'privacy': PrivacyTab,
+  'security': SecurityTab,
+  'integrations': IntegrationsTab,
+  'audit': () => <PlaceholderSection title="Audit Log" desc="View all organization actions with filters and export." icon="clock" phase={2} />,
+  'export': () => <PlaceholderSection title="Data Export" desc="GDPR Article 20 data portability — export candidate and org data." icon="download" phase={2} />,
 }
 
 export default function SettingsPage() {
   const { tab } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  const activeTab = tab || 'profile'
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'org_head' || user?.role === 'dept_admin'
 
-  const ActiveComponent = TAB_COMPONENTS[activeTab] || ProfileTab
+  // If a non-admin lands on an admin-only section via direct URL, fall back to profile.
+  const allAdminKeys = RAIL_GROUPS.flatMap(g => g.items.filter(i => i.adminOnly).map(i => i.key))
+  const resolvedTab = (!isAdmin && allAdminKeys.includes(tab)) ? 'profile' : (tab || 'profile')
+  const [activeSection, setActiveSection] = useState(resolvedTab)
+
+  const switchSection = (key) => {
+    setActiveSection(key)
+    navigate(`/settings/${key}`, { replace: true })
+  }
+
+  const ActiveComponent = SECTION_COMPONENTS[activeSection] || ProfileTab
+
+  // Find active group color
+  const activeGroup = RAIL_GROUPS.find(g => g.items.some(i => i.key === activeSection))
+  const groupColor = activeGroup?.color || 'var(--color-primary)'
 
   return (
-    <div className="settings-page">
-      <div className="settings-header">
-        <h1>⚙️ Settings</h1>
-        <p>Manage your account and organization</p>
+    <div className="st-page">
+      {/* Header */}
+      <div className="st-header">
+        <div className="st-header-left">
+          <div className="st-header-icon" style={{ background: `${groupColor}1a`, color: groupColor }}>
+            <Icon name="settings" size={18} />
+          </div>
+          <div>
+            <h1 className="st-header-title">AI Behavior Console</h1>
+            <p className="st-header-sub">Configure how AI agents work on your behalf</p>
+          </div>
+        </div>
+        <div className="st-header-actions">
+          <button className="st-btn st-btn-ghost" onClick={() => {}}>
+            <Icon name="rotate-ccw" size={13} /> Reset section
+          </button>
+          <button className="st-btn st-btn-primary">
+            <Icon name="check" size={13} /> Save changes
+          </button>
+        </div>
       </div>
 
-      <div className="settings-layout">
-        <nav className="settings-tabs">
-          {TABS.map(group => (
-            <div key={group.group}>
-              <div className="settings-tab-group-label">{group.group}</div>
-              {group.items.map(item => {
-                if (item.adminOnly && !isAdmin) return null
+      {/* 3-column layout */}
+      <div className="st-layout">
+        {/* Left Rail */}
+        <nav className="st-rail">
+          {/* Profile shortcut */}
+          <button
+            className={`st-rail-item ${activeSection === 'profile' ? 'active' : ''}`}
+            onClick={() => switchSection('profile')}
+          >
+            <Icon name="user" size={14} />
+            <span>My Profile</span>
+          </button>
+          <div className="st-rail-divider" />
+
+          {RAIL_GROUPS.map(group => (
+            <div key={group.key} className="st-rail-group">
+              <div className="st-rail-group-label" style={{ color: group.color }}>
+                <Icon name={group.icon} size={13} />
+                {group.label}
+              </div>
+              {group.items.filter(item => !item.adminOnly || isAdmin).map(item => {
                 return (
                   <button
                     key={item.key}
-                    className={`settings-tab ${activeTab === item.key ? 'active' : ''}`}
-                    onClick={() => navigate(`/settings/${item.key}`)}
+                    className={`st-rail-item ${activeSection === item.key ? 'active' : ''}`}
+                    onClick={() => switchSection(item.key)}
+                    style={activeSection === item.key ? { '--rail-accent': group.color } : {}}
                   >
-                    <span className="settings-tab-icon">{item.icon}</span>
-                    {item.label}
+                    <Icon name={item.icon} size={13} />
+                    <span>{item.label}</span>
+                    {item.phase && <Chip variant="neutral" size="xs">P{item.phase}</Chip>}
+                    {disabled && <span className="st-rail-lock"><Icon name="lock" size={10} /></span>}
                   </button>
                 )
               })}
@@ -88,10 +189,25 @@ export default function SettingsPage() {
           ))}
         </nav>
 
-        <div className="settings-content">
+        {/* Middle Form */}
+        <div className="st-form-area">
           <ActiveComponent />
         </div>
+
+        {/* Right Preview */}
+        <SettingsLivePreview activeSection={activeSection} />
       </div>
+    </div>
+  )
+}
+
+function PlaceholderSection({ title, desc, icon, phase }) {
+  return (
+    <div className="placeholder-section">
+      <Icon name={icon} size={40} style={{ opacity: 0.2 }} />
+      <h3>{title}</h3>
+      <p>{desc}</p>
+      {phase && <Chip variant="warning" size="sm">Phase {phase} — Coming Soon</Chip>}
     </div>
   )
 }

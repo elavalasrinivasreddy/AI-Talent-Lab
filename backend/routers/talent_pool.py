@@ -61,10 +61,11 @@ async def bulk_upload_resumes(
             continue  # silently skip oversized
         file_data.append((f.filename or "resume", content))
 
+    user_id = current_user["user_id"]
     try:
         result = await TalentPoolService.bulk_upload(
             org_id=current_user["org_id"],
-            user_id=current_user["id"],
+            user_id=user_id,
             files=file_data,
         )
         return result

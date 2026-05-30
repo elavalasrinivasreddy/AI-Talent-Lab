@@ -1,39 +1,50 @@
 /**
  * components/Positions/PositionDetailPage.jsx
- * Full position detail with 6 tabs: Pipeline, Candidates, JD, Interview Kit, Activity, Settings
- * Per docs/pages/04_position_detail.md
+ * v3 redesign — Stack-ranked pipeline view with stage health.
+ * Per docs/design/pages/03_position_detail.md
+ * Redesigned 2026-05-29.
  */
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import { positionsApi, dashboardApi } from '../../utils/api'
-import { POSITION_STATUSES, PRIORITY_LABELS } from '../../utils/constants'
-import StatusBadge from '../common/StatusBadge'
-import PipelineTab from './tabs/PipelineTab'
+import PositionHero from './PositionHero'
+import StageStatStrip from './StageStatStrip'
+import PipelineStackView from './PipelineStackView'
 import CandidatesTab from './tabs/CandidatesTab'
 import JDTab from './tabs/JDTab'
 import InterviewKitTab from './tabs/InterviewKitTab'
 import ActivityTab from './tabs/ActivityTab'
 import PositionSettingsTab from './tabs/PositionSettingsTab'
+import Icon from '../common/Icon'
 import './PositionDetailPage.css'
 
 const TABS = [
-  { id: 'pipeline', label: '📊 Pipeline' },
-  { id: 'candidates', label: '👥 Candidates' },
-  { id: 'jd', label: '📄 JD' },
-  { id: 'interview-kit', label: '🎯 Interview Kit' },
-  { id: 'activity', label: '📜 Activity' },
-  { id: 'settings', label: '⚙️ Settings' },
+  { id: 'pipeline',       label: 'Pipeline',      icon: 'layers' },
+  { id: 'candidates',     label: 'Candidates',    icon: 'users' },
+  { id: 'jd',             label: 'JD',            icon: 'file-text' },
+  { id: 'interview-kit',  label: 'Interview Kit', icon: 'briefcase' },
+  { id: 'activity',       label: 'Activity',      icon: 'clock' },
+  { id: 'settings',       label: 'Settings',      icon: 'settings' },
 ]
 
 export default function PositionDetailPage() {
   const { id, tab: tabParam } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const canEditSettings = user?.role === 'hr' || user?.role === 'org_head'
+  const visibleTabs = TABS.filter(t => t.id !== 'settings' || canEditSettings)
   const [activeTab, setActiveTab] = useState(tabParam || 'pipeline')
   const [position, setPosition] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searching, setSearching] = useState(false)
   const [searchMsg, setSearchMsg] = useState('')
+
+  // Pipeline summary for v3 stage health
+  const [summary, setSummary] = useState(null)
+  const [summaryUnavailable, setSummaryUnavailable] = useState(false)
+  const [activeStage, setActiveStage] = useState('sourced')
 
   const loadPosition = useCallback(async () => {
     try {
@@ -46,7 +57,31 @@ export default function PositionDetailPage() {
     }
   }, [id])
 
+  const loadSummary = useCallback(async () => {
+    try {
+      const data = await positionsApi.pipelineSummary(id)
+      setSummary(data)
+      setSummaryUnavailable(false)
+
+      // Auto-select first stage with candidates
+      if (data?.stages) {
+        const stagesWithCandidates = Object.entries(data.stages)
+          .filter(([, v]) => v.count > 0)
+          .sort((a, b) => {
+            const order = ['screening', 'interview', 'applied', 'sourced', 'emailed', 'selected', 'rejected']
+            return order.indexOf(a[0]) - order.indexOf(b[0])
+          })
+        if (stagesWithCandidates.length > 0) {
+          setActiveStage(stagesWithCandidates[0][0])
+        }
+      }
+    } catch {
+      setSummaryUnavailable(true)
+    }
+  }, [id])
+
   useEffect(() => { loadPosition() }, [loadPosition])
+  useEffect(() => { loadSummary() }, [loadSummary])
 
   const switchTab = (tabId) => {
     setActiveTab(tabId)
@@ -58,9 +93,9 @@ export default function PositionDetailPage() {
     setSearchMsg('')
     try {
       const res = await positionsApi.searchNow(id)
-      setSearchMsg(res.queued ? '✅ Search queued! Candidates will appear shortly.' : '⚠️ Could not queue search.')
+      setSearchMsg(res.queued ? 'Search queued! Candidates will appear shortly.' : 'Could not queue search.')
     } catch (e) {
-      setSearchMsg(`❌ ${e.message}`)
+      setSearchMsg(`Error: ${e.message}`)
     } finally {
       setSearching(false)
       setTimeout(() => setSearchMsg(''), 5000)
@@ -78,110 +113,63 @@ export default function PositionDetailPage() {
 
   if (loading) return <PositionSkeleton />
   if (error) return (
-    <div className="pos-error">
-      <span>⚠️</span>
+    <div className="pd-error">
+      <Icon name="alert-triangle" size={40} style={{ opacity: 0.3 }} />
       <p>{error}</p>
-      <Link to="/positions">← Back to Positions</Link>
+      <Link to="/positions" className="pd-btn pd-btn-outline">
+        <Icon name="chevron-right" size={14} style={{ transform: 'rotate(180deg)' }} />
+        Back to Positions
+      </Link>
     </div>
   )
 
-  const priority = PRIORITY_LABELS[position.priority] || PRIORITY_LABELS.normal
-  const counts = position.pipeline_counts || {}
-  const totalCandidates = position.total_candidates || 0
+  // JD version label for tab
+  const jdVersion = position.jd_version ? `v${position.jd_version}` : null
 
   return (
-    <div className="pos-detail">
-      {/* ── Header ── */}
-      <div className="pos-header">
-        <Link to="/positions" className="pos-back-link">← Back to Positions</Link>
+    <div className="pd-page">
+      {/* Hero */}
+      <PositionHero
+        position={position}
+        searching={searching}
+        searchMsg={searchMsg}
+        onSearchNow={handleSearchNow}
+        onStatusChange={handleStatusChange}
+      />
 
-        <div className="pos-header-main">
-          <div className="pos-header-left">
-            <h1 className="pos-title">{position.role_name}</h1>
-            <div className="pos-meta">
-              <span className="pos-meta-item">{position.department_name || 'Engineering'}</span>
-              <span className="pos-meta-sep">·</span>
-              <span className="pos-meta-item">
-                Created {new Date(position.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </span>
-              {position.deadline && (
-                <>
-                  <span className="pos-meta-sep">·</span>
-                  <span className="pos-meta-item">Deadline: {position.deadline}</span>
-                </>
-              )}
-            </div>
-            <div className="pos-badges">
-              <StatusBadge status={position.status} type="position" size="md" />
-              <span className="pos-priority-badge" style={{ color: priority.color }}>
-                {priority.label}
-              </span>
-              <span className="pos-headcount-badge">
-                👥 Headcount: {position.headcount}
-              </span>
-            </div>
-          </div>
+      {/* 7-stage stat strip */}
+      <StageStatStrip
+        summary={summary}
+        activeStage={activeStage}
+        onStageClick={setActiveStage}
+      />
 
-          <div className="pos-header-actions">
-            <button
-              className="btn-outline"
-              onClick={handleSearchNow}
-              disabled={searching}
-            >
-              {searching ? '⏳ Searching...' : '🔍 Run Search Now'}
-            </button>
-
-            <select
-              className="pos-status-select"
-              value={position.status}
-              onChange={(e) => handleStatusChange(e.target.value)}
-            >
-              <option value="open">Open</option>
-              <option value="on_hold">On Hold</option>
-              <option value="closed">Close Position</option>
-              <option value="archived">Archive</option>
-            </select>
-          </div>
-        </div>
-
-        {searchMsg && <div className="pos-search-msg">{searchMsg}</div>}
-
-        {/* ── Stats Row ── */}
-        <div className="pos-stats-row">
-          {[
-            { label: 'Sourced', count: counts.sourced || 0, icon: '🔍' },
-            { label: 'Emailed', count: counts.emailed || 0, icon: '📧' },
-            { label: 'Applied', count: counts.applied || 0, icon: '📝' },
-            { label: 'Screening', count: counts.screening || 0, icon: '🔎' },
-            { label: 'Interview', count: counts.interview || 0, icon: '🎙️' },
-            { label: 'Selected', count: counts.selected || 0, icon: '✅' },
-          ].map(({ label, count, icon }) => (
-            <div key={label} className="pos-stat-item">
-              <span className="pos-stat-icon">{icon}</span>
-              <span className="pos-stat-count">{count}</span>
-              <span className="pos-stat-label">{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Tab Bar ── */}
-      <div className="pos-tab-bar">
-        {TABS.map(t => (
+      {/* Tab Bar */}
+      <div className="pd-tab-bar">
+        {visibleTabs.map(t => (
           <button
             key={t.id}
-            className={`pos-tab-btn ${activeTab === t.id ? 'active' : ''}`}
+            className={`pd-tab-btn ${activeTab === t.id ? 'active' : ''}`}
             onClick={() => switchTab(t.id)}
           >
+            <Icon name={t.icon} size={14} />
             {t.label}
+            {t.id === 'jd' && jdVersion && (
+              <span className="pd-tab-version">{jdVersion}</span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* ── Tab Content ── */}
-      <div className="pos-tab-content">
+      {/* Tab Content */}
+      <div className="pd-tab-content">
         {activeTab === 'pipeline' && (
-          <PipelineTab positionId={id} orgId={position.org_id} />
+          <PipelineStackView
+            positionId={id}
+            activeStage={activeStage}
+            summary={summary}
+            summaryUnavailable={summaryUnavailable}
+          />
         )}
         {activeTab === 'candidates' && (
           <CandidatesTab positionId={id} />
@@ -205,10 +193,11 @@ export default function PositionDetailPage() {
 
 function PositionSkeleton() {
   return (
-    <div className="pos-detail">
-      <div className="pos-header skeleton-block" style={{ height: 180 }} />
-      <div className="pos-tab-bar skeleton-block" style={{ height: 44, marginTop: 16 }} />
-      <div className="skeleton-block" style={{ height: 400, marginTop: 16, borderRadius: 12 }} />
+    <div className="pd-page">
+      <div className="skeleton-block" style={{ height: 160, borderRadius: 14 }} />
+      <div className="skeleton-block" style={{ height: 64, marginTop: 12, borderRadius: 10 }} />
+      <div className="skeleton-block" style={{ height: 44, marginTop: 12, borderRadius: 10 }} />
+      <div className="skeleton-block" style={{ height: 400, marginTop: 12, borderRadius: 14 }} />
     </div>
   )
 }

@@ -125,7 +125,7 @@ class ChatSessionRepository:
         - Users without department: only their own sessions
         """
         async with get_connection() as conn:
-            if role == "admin":
+            if role == "org_head":
                 rows = await conn.fetch(
                     """
                     SELECT id, title, workflow_stage, updated_at, position_id, department_id, user_id

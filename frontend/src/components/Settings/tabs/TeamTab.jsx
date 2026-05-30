@@ -9,7 +9,8 @@ export default function TeamTab() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'recruiter', department_id: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'hr', department_id: '' })
+  const [inviteMode, setInviteMode] = useState(true)   // true = send invite email (default)
   const [adding, setAdding] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -38,12 +39,23 @@ export default function TeamTab() {
   const handleAdd = async () => {
     setAdding(true); setMsg('')
     try {
-      await api.post('/auth/add-user', {
-        ...form,
+      const payload = {
+        name: form.name,
+        email: form.email,
+        role: form.role,
         department_id: form.department_id ? Number(form.department_id) : null,
-      })
-      setMsg('User added!')
-      setForm({ name: '', email: '', password: '', role: 'recruiter', department_id: '' })
+      }
+      // Only include password when admin explicitly sets one; otherwise omit
+      // so the backend sends an invite email.
+      if (!inviteMode && form.password) {
+        payload.password = form.password
+      }
+      await api.post('/auth/add-user', payload)
+      const successMsg = inviteMode
+        ? `Invite email sent to ${form.email}`
+        : 'User added with password'
+      setMsg(successMsg)
+      setForm({ name: '', email: '', password: '', role: 'hr', department_id: '' })
       fetchUsers()
       setTimeout(() => setShowModal(false), 800)
     } catch (e) {
@@ -76,7 +88,12 @@ export default function TeamTab() {
   }
 
   const roleBadge = (role) => {
-    const map = { admin: { icon: '🟣', label: 'Admin' }, recruiter: { icon: '🔵', label: 'Recruiter' }, hiring_manager: { icon: '🟢', label: 'Hiring Mgr' } }
+    const map = {
+      org_head:    { icon: '🟣', label: 'Org Head' },
+      dept_admin:  { icon: '🟠', label: 'Dept Admin' },
+      hr:          { icon: '🔵', label: 'HR' },
+      team_lead:   { icon: '🟢', label: 'Team Lead' },
+    }
     return map[role] || { icon: '⚪', label: role }
   }
 
@@ -92,7 +109,7 @@ export default function TeamTab() {
       <div className="settings-form-section">
         <div className="section-header">
           <h3>👥 Team Directory</h3>
-          <button className="btn btn-primary btn-sm" onClick={() => { setShowModal(true); setMsg('') }}>
+          <button className="btn btn-primary btn-sm" onClick={() => { setShowModal(true); setMsg(''); setInviteMode(true) }}>
             + Add Member
           </button>
         </div>
@@ -122,13 +139,14 @@ export default function TeamTab() {
                       </td>
                       <td style={{color: 'var(--color-text-secondary)'}}>{u.email}</td>
                       <td>
-                        {isCurrent && u.role === 'admin' ? (
-                          <span>{roleBadge('admin').icon} Admin</span>
+                        {isCurrent && u.role === 'org_head' ? (
+                          <span>{roleBadge('org_head').icon} Org Head</span>
                         ) : (
                           <select value={u.role} onChange={e => updateRole(u.id, e.target.value)} className="inline-select" disabled={isCurrent}>
-                            <option value="admin">{roleBadge('admin').icon} Admin</option>
-                            <option value="recruiter">{roleBadge('recruiter').icon} Recruiter</option>
-                            <option value="hiring_manager">{roleBadge('hiring_manager').icon} Hiring Mgr</option>
+                            <option value="org_head">{roleBadge('org_head').icon} Org Head</option>
+                            <option value="dept_admin">{roleBadge('dept_admin').icon} Dept Admin</option>
+                            <option value="hr">{roleBadge('hr').icon} HR</option>
+                            <option value="team_lead">{roleBadge('team_lead').icon} Team Lead</option>
                           </select>
                         )}
                       </td>
@@ -181,17 +199,46 @@ export default function TeamTab() {
                 <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
               </div>
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Password</label>
-                <input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+
+            {/* Invite mode toggle */}
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label style={{ marginBottom: 6, display: 'block' }}>How should they get access?</label>
+              <div style={{ display: 'flex', gap: 16 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: inviteMode ? 600 : 400 }}>
+                  <input
+                    type="radio"
+                    name="accessMode"
+                    checked={inviteMode}
+                    onChange={() => setInviteMode(true)}
+                  />
+                  Send invite email (they set their own password)
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: !inviteMode ? 600 : 400 }}>
+                  <input
+                    type="radio"
+                    name="accessMode"
+                    checked={!inviteMode}
+                    onChange={() => setInviteMode(false)}
+                  />
+                  Set password now
+                </label>
               </div>
+            </div>
+
+            <div className="form-row">
+              {!inviteMode && (
+                <div className="form-group">
+                  <label>Password</label>
+                  <input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+                </div>
+              )}
               <div className="form-group">
                 <label>Role</label>
                 <select value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
-                  <option value="recruiter">Recruiter</option>
-                  <option value="hiring_manager">Hiring Manager</option>
-                  <option value="admin">Admin</option>
+                  <option value="hr">HR</option>
+                  <option value="team_lead">Team Lead</option>
+                  <option value="dept_admin">Dept Admin</option>
+                  <option value="org_head">Org Head</option>
                 </select>
               </div>
             </div>
@@ -204,10 +251,14 @@ export default function TeamTab() {
                 </select>
               </div>
             </div>
-            {msg && <p className={`form-msg ${msg.includes('added') ? 'success' : 'error'}`}>{msg}</p>}
+            {msg && (
+              <p className={`form-msg ${msg.toLowerCase().includes('failed') || msg.toLowerCase().includes('error') ? 'error' : 'success'}`}>
+                {msg}
+              </p>
+            )}
             <div className="btn-row">
               <button className="btn btn-primary" onClick={handleAdd} disabled={adding}>
-                {adding ? 'Adding...' : 'Add User'}
+                {adding ? 'Adding...' : inviteMode ? 'Send Invite' : 'Add User'}
               </button>
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
             </div>

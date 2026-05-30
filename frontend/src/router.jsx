@@ -2,6 +2,10 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import LoginPage from './components/Auth/LoginPage'
 import RegisterPage from './components/Auth/RegisterPage'
+import MagicLinkExchange from './components/Auth/MagicLinkExchange'
+import ForgotPasswordPage from './components/Auth/ForgotPasswordPage'
+import ResetPasswordPage from './components/Auth/ResetPasswordPage'
+import SetPasswordPage from './components/Auth/SetPasswordPage'
 import Sidebar from './components/Sidebar/Sidebar'
 import NotificationBell from './components/common/NotificationBell'
 import SettingsPage from './components/Settings/SettingsPage'
@@ -19,6 +23,11 @@ import DevAdminPage from './components/DevAdmin/DevAdminPage'
 import DeleteMyDataPage from './components/GDPR/DeleteMyDataPage'
 import CandidateStatusPage from './components/Status/CandidateStatusPage'
 import AnalyticsPage from './components/Analytics/AnalyticsPage'
+import PlatformPage from './components/Platform/PlatformPage'
+import HireRequestListPage from './components/HireRequests/HireRequestListPage'
+import HireRequestForm from './components/HireRequests/HireRequestForm'
+import HireRequestDetailPage from './components/HireRequests/HireRequestDetailPage'
+import InterviewsListPage from './components/Interviews/InterviewsListPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -30,9 +39,34 @@ function AuthGuard() {
 }
 
 function PublicGuard() {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth()
   if (loading) return null
-  if (isAuthenticated) return <Navigate to="/chat" replace />
+  if (isAuthenticated) {
+    return <Navigate to={user?.role === 'platform_admin' ? '/platform' : '/dashboard'} replace />
+  }
+  return <Outlet />
+}
+
+// ── Role Guard (role allowlist within authenticated zone) ────────────────────
+
+function RoleGuard({ roles }) {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (!roles.includes(user?.role)) return <Navigate to="/dashboard" replace />
+  return <Outlet />
+}
+
+// ── Dev Guard (platform_admin only) ─────────────────────────────────────────
+
+function DevGuard() {
+  const { isAuthenticated, loading, user } = useAuth()
+  if (loading) return null
+  // Dev console is accessible without login, but if logged in as a non-platform_admin
+  // org user, redirect away to avoid confusion. Unauthenticated access is allowed
+  // so developers can create first users without a session.
+  if (isAuthenticated && user?.role !== 'platform_admin') {
+    return <Navigate to="/dashboard" replace />
+  }
   return <Outlet />
 }
 
@@ -55,22 +89,6 @@ function AppLayout() {
   )
 }
 
-// ── Placeholder pages (phases not yet built) ────
-
-function PlaceholderPage({ title, icon }) {
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', height: '60vh', gap: 'var(--space-4)',
-      animation: 'fadeInUp 400ms ease both',
-    }}>
-      <span style={{ fontSize: '3rem' }}>{icon}</span>
-      <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 600 }}>{title}</h2>
-      <p style={{ color: 'var(--color-text-secondary)' }}>Coming in the next build step</p>
-    </div>
-  )
-}
-
 // ── Router ──────────────────────────────────────
 
 export const router = createBrowserRouter([
@@ -80,8 +98,14 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/reset-password/:token', element: <ResetPasswordPage /> },
+      { path: '/set-password/:token', element: <SetPasswordPage /> },
     ],
   },
+
+  // Magic-link exchange — always accessible, even when logged in (re-login flow)
+  { path: '/auth/verify', element: <MagicLinkExchange /> },
 
   // Protected routes
   {
@@ -90,9 +114,22 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          // Chat
-          { path: '/chat', element: <ChatPage /> },
-          { path: '/chat/:sessionId', element: <ChatPage /> },
+          // Chat — hr and org_head only; team_lead enters via /hire-requests/new
+          {
+            element: <RoleGuard roles={['hr', 'org_head']} />,
+            children: [
+              { path: '/chat', element: <ChatPage /> },
+              { path: '/chat/:sessionId', element: <ChatPage /> },
+            ],
+          },
+
+          // Analytics — admin tiers only; recruiters/team leads see no per-recruiter data
+          {
+            element: <RoleGuard roles={['org_head', 'dept_admin', 'platform_admin']} />,
+            children: [
+              { path: '/analytics', element: <AnalyticsPage /> },
+            ],
+          },
 
           // Positions
           { path: '/positions', element: <PositionsListPage /> },
@@ -102,20 +139,38 @@ export const router = createBrowserRouter([
           // Candidates
           { path: '/candidates/:id', element: <CandidateDetailPage /> },
 
-          // Other tabs (future steps)
+          // Other pages
           { path: '/dashboard', element: <DashboardPage /> },
           { path: '/talent-pool', element: <TalentPoolPage /> },
-          { path: '/interviews', element: <PlaceholderPage title="Interviews" icon="🎙" /> },
+          { path: '/interviews', element: <InterviewsListPage /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/:tab', element: <SettingsPage /> },
-          { path: '/analytics', element: <AnalyticsPage /> },
-          { path: '/dev-admin', element: <DevAdminPage /> },
+
+          // Hire requests
+          { path: '/hire-requests', element: <HireRequestListPage /> },
+          { path: '/hire-requests/new', element: <HireRequestForm mode="create" /> },
+          { path: '/hire-requests/:id', element: <HireRequestDetailPage /> },
+          { path: '/hire-requests/:id/edit', element: <HireRequestForm mode="edit" /> },
         ],
       },
     ],
   },
 
-  // Public pages (no auth) — magic links, career page
+  // Platform admin — no sidebar layout, role-checked inside the component
+  {
+    element: <AuthGuard />,
+    children: [
+      { path: '/platform', element: <PlatformPage /> },
+    ],
+  },
+
+  // Dev console — unauthenticated allowed, but org-role users are redirected away
+  {
+    element: <DevGuard />,
+    children: [
+      { path: '/dev', element: <DevAdminPage /> },
+    ],
+  },
   { path: '/apply/:token', element: <ApplyPage /> },
   { path: '/panel/:token', element: <PanelPage /> },
   { path: '/careers/:orgSlug', element: <CareerPage /> },

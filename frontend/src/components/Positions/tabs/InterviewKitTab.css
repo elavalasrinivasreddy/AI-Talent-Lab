@@ -28,11 +28,11 @@
 }
 .ik-copy-btn:hover { background: rgba(34,197,94,0.18); }
 .ik-regen-btn {
-  background: rgba(99,102,241,0.12);
-  color: #a78bfa;
-  border: 1px solid rgba(99,102,241,0.25);
+  background: rgba(13,148,136,0.12);
+  color: #14B8A6;
+  border: 1px solid rgba(13,148,136,0.25);
 }
-.ik-regen-btn:hover { background: rgba(99,102,241,0.2); }
+.ik-regen-btn:hover { background: rgba(13,148,136,0.2); }
 .ik-regen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Empty state */
@@ -52,7 +52,7 @@
   align-items: center;
   gap: 8px;
   padding: 13px 28px;
-  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  background: linear-gradient(135deg, #0D9488, #7c3aed);
   border: none;
   border-radius: 12px;
   color: white;
@@ -62,7 +62,7 @@
   margin-top: 4px;
   transition: all 150ms;
 }
-.ik-generate-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,0.4); }
+.ik-generate-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(13,148,136,0.4); }
 .ik-generate-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 .ik-spinner {
   width: 16px; height: 16px;
@@ -111,8 +111,8 @@
   overflow: hidden;
   transition: border-color 150ms;
 }
-.ik-question-card:hover { border-color: rgba(99,102,241,0.2); }
-.ik-question-card.expanded { border-color: rgba(99,102,241,0.3); }
+.ik-question-card:hover { border-color: rgba(13,148,136,0.2); }
+.ik-question-card.expanded { border-color: rgba(13,148,136,0.3); }
 
 .ik-question-header {
   display: flex;
@@ -127,8 +127,8 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: rgba(99,102,241,0.15);
-  color: #a78bfa;
+  background: rgba(13,148,136,0.15);
+  color: #14B8A6;
   font-size: 12px;
   font-weight: 700;
   display: flex;
@@ -234,7 +234,7 @@
 .ik-r2 { background: rgba(251,146,60,0.08); color: #fb923c; }
 .ik-r3 { background: rgba(245,158,11,0.08); color: #fbbf24; }
 .ik-r4 { background: rgba(34,197,94,0.08); color: #4ade80; }
-.ik-r5 { background: rgba(99,102,241,0.1); color: #a78bfa; }
+.ik-r5 { background: rgba(13,148,136,0.1); color: #14B8A6; }
 
 .ik-generated-at {
   font-size: 12px;

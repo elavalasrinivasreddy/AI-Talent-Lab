@@ -27,11 +27,11 @@ class DashboardService:
         app_filter = "org_id=$1"
         params = [org_id]
 
-        if role == "hiring_manager" and department_id:
+        if department_id:
             pos_filter += " AND department_id=$2"
             app_filter += " AND position_id IN (SELECT id FROM positions WHERE department_id=$2)"
             params.append(department_id)
-        elif role == "recruiter":
+        elif role == "hr":
             pos_filter += " AND assigned_to=$2"
             app_filter += " AND position_id IN (SELECT id FROM positions WHERE assigned_to=$2)"
             params.append(user_id)
@@ -86,10 +86,10 @@ class DashboardService:
         pos_filter = "p.org_id = $1"
         params = [org_id]
 
-        if role == "hiring_manager" and department_id:
+        if department_id:
             pos_filter += " AND p.department_id=$2"
             params.append(department_id)
-        elif role == "recruiter":
+        elif role == "hr":
             pos_filter += " AND p.assigned_to=$2"
             params.append(user_id)
 
@@ -283,9 +283,9 @@ class DashboardService:
                 "apply_to_interview": round(100 * funnel_dict.get("interview", 0) / max(total_applied, 1), 1),
                 "interview_to_hire": round(100 * funnel_dict.get("selected", 0) / max(funnel_dict.get("interview", 0), 1), 1),
             },
-            "avg_time_to_hire_days": round(float(avg_time_to_hire or 0), 1),
-            "source_breakdown": [{"source": r["source"] or "unknown", "count": r["count"]} for r in sources],
-            "weekly_velocity": [
+            "avg_time_to_hire": round(float(avg_time_to_hire or 0), 1),
+            "sources": [{"source": r["source"] or "unknown", "count": r["count"]} for r in sources],
+            "velocity": [
                 {
                     "week": r["week"].isoformat() if r["week"] else None,
                     "sourced": r["sourced"],
@@ -295,6 +295,9 @@ class DashboardService:
                 }
                 for r in velocity
             ],
+            "total_applications": total_candidates,
+            "total_selected": funnel_dict.get("selected", 0),
+            "offer_acceptance_rate": 0,
             "top_positions": [dict(r) for r in top_positions],
             "department_breakdown": [dict(r) for r in dept_stats],
         }

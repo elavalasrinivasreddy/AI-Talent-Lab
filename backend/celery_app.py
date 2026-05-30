@@ -1,7 +1,7 @@
 """
 celery_app.py – Celery + Redis configuration.
 Background task worker with beat schedule for periodic tasks.
-See docs/BACKEND_PLAN.md §16.
+See docs/architecture/03_backend.md §16.
 """
 from celery import Celery
 from backend.config import settings
@@ -40,11 +40,11 @@ celery_app.conf.beat_schedule = {
         "schedule": 3600.0,  # every hour
     },
     "gdpr-retention-cleanup": {
-        "task": "tasks.gdpr_cleanup.cleanup_expired_data",
+        "task": "backend.tasks.gdpr_cleanup.cleanup_expired_data",
         "schedule": 604800.0,  # every 7 days (weekly)
     },
     "gdpr-process-deletions": {
-        "task": "tasks.gdpr_cleanup.process_verified_deletions",
+        "task": "backend.tasks.gdpr_cleanup.process_verified_deletions",
         "schedule": 3600.0,  # every hour
     },
     "copilot-suggestions": {

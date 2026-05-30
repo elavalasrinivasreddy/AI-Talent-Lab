@@ -1,7 +1,7 @@
 """
 config.py – Pydantic BaseSettings for all environment variables.
 Validates on startup. App fails if JWT_SECRET is not set.
-See docs/BACKEND_PLAN.md §10.
+See docs/architecture/03_backend.md §10.
 """
 from pydantic_settings import BaseSettings
 from pydantic import field_validator

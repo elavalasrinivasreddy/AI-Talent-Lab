@@ -6,8 +6,15 @@
 
 const BASE = '/api/v1'
 
-// Token getter — set by AuthContext so the API always has the latest token
-let _tokenGetter = () => localStorage.getItem('token')
+// Token getter — wired by AuthContext on mount so the API always has the latest token.
+// Falls back to sessionStorage so pre-mount requests (before the effect fires) still
+// include the Bearer token from an existing session.
+let _tokenGetter = () => {
+  try {
+    const raw = sessionStorage.getItem('atl_session')
+    return raw ? (JSON.parse(raw)?.token ?? null) : null
+  } catch { return null }
+}
 
 export function setTokenGetter(getter) {
   _tokenGetter = getter
@@ -95,6 +102,14 @@ export const positionsApi = {
   generateInterviewKit: (id) => _post(`/positions/${id}/interview-kit/generate`),
   submitForApproval: (id) => _post(`/positions/${id}/submit-for-approval`),
   approvalDecision: (id, decision, notes = '') => _post(`/positions/${id}/approval-decision`, { decision, notes }),
+  listRequests: (status) => _get(`/positions/requests${status ? `?status=${status}` : ''}`),
+  submitRequest: (data) => _post('/positions/requests', data),
+  acceptRequest: (id) => _patch(`/positions/requests/${id}/accept`, {}),
+  cancelRequest: (id) => _patch(`/positions/requests/${id}/cancel`, {}),
+  linkViaSession: (requestId, sessionId) => _patch(`/positions/requests/${requestId}/link-session`, { session_id: sessionId }),
+  applicantsDaily: (id, days = 30) => _get(`/positions/${id}/applicants-daily?days=${days}`),
+  stageCounts: (id) => _get(`/positions/${id}/stage-counts`),
+  pipelineSummary: (id) => _get(`/positions/${id}/pipeline-summary`),
 }
 
 // ── Candidates ────────────────────────────────────────────────────────────────
@@ -126,8 +141,8 @@ export const candidatesApi = {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export const dashboardApi = {
-  getStats: (period = 'week') => _get(`/dashboard/stats?period=${period}`),
-  getPositions: () => _get('/dashboard/positions'),
+  getStats: (period = 'week', deptId = null) => _get(`/dashboard/stats?period=${period}${deptId && deptId !== 'all' ? `&dept_id=${deptId}` : ''}`),
+  getPositions: (deptId = null) => _get(`/dashboard/positions${deptId && deptId !== 'all' ? `?dept_id=${deptId}` : ''}`),
   getPipeline: (positionId) => _get(`/dashboard/pipeline/${positionId}`),
   getFunnel: () => _get('/dashboard/funnel'),
   getActivity: (positionId, limit = 30) => {
@@ -150,6 +165,7 @@ export const notificationsApi = {
 // ── Interviews ────────────────────────────────────────────────────────────────
 
 export const interviewsApi = {
+  list: (params = {}) => _get(`/interviews/?${new URLSearchParams(params)}`),
   create: (data) => _post('/interviews/', data),
   listForCandidate: (candidateId) => _get(`/interviews/candidate/${candidateId}`),
   listForPosition: (positionId) => _get(`/interviews/position/${positionId}`),
@@ -189,6 +205,35 @@ export const notesApi = {
   create: (candidateId, data) => _post(`/notes/candidate/${candidateId}`, data),
   update: (noteId, content) => _patch(`/notes/${noteId}`, { content }),
   delete: (noteId) => _delete(`/notes/${noteId}`),
+}
+
+// ── Hire Requests ────────────────────────────────────────────────────────────
+
+export const hireRequestsApi = {
+  list: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.scope) q.set('scope', params.scope)
+    if (params.status) q.set('status', params.status)
+    if (params.departmentId) q.set('department_id', params.departmentId)
+    const qs = q.toString()
+    return _get(`/hire-requests/${qs ? `?${qs}` : ''}`)
+  },
+  get: (id) => _get(`/hire-requests/${id}`),
+  create: (data) => _post('/hire-requests/', data),
+  update: (id, data) => _patch(`/hire-requests/${id}`, data),
+  approve: (id) => _post(`/hire-requests/${id}/approve`),
+  reject: (id, reason) => _post(`/hire-requests/${id}/reject`, { reason }),
+  accept: (id, chatSessionId) => _post(`/hire-requests/${id}/accept`, chatSessionId ? { chat_session_id: chatSessionId } : {}),
+  cancel: (id) => _post(`/hire-requests/${id}/cancel`),
+  pendingCount: () => _get('/hire-requests/pending-count'),
+  linkSession: (id, sessionId) => _post(`/hire-requests/${id}/link-session`, { session_id: sessionId }),
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+export const authApi = {
+  forgotPassword: (email) => _post('/auth/forgot-password', { email }),
+  resetPassword: (token, new_password) => _post('/auth/reset-password', { token, new_password }),
 }
 
 // ── GDPR / Privacy ────────────────────────────────────────────────────────────

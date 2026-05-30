@@ -30,6 +30,7 @@ class SavePositionRequest(BaseModel):
     ats_threshold: float = 80.0
     search_interval_hours: int = 24
     role_name: Optional[str] = None
+    as_draft: bool = False
 
 
 @router.get("/sessions")
@@ -159,7 +160,8 @@ async def save_position(
             session_id=session_id,
             org_id=user["org_id"],
             user_id=user["user_id"],
-            setup_data=req.model_dump()
+            setup_data=req.model_dump(exclude={"as_draft"}),
+            as_draft=req.as_draft,
         )
         return {"status": "ok", "position_id": position["id"]}
     except Exception as e:

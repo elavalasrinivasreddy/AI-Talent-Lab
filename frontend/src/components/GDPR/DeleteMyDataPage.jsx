@@ -60,7 +60,7 @@ export default function DeleteMyDataPage() {
           <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
             <rect width="40" height="40" rx="10" fill="url(#g1)" />
             <path d="M12 24h16M12 20h16M16 16h8" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
-            <defs><linearGradient id="g1" x1="0" y1="0" x2="40" y2="40"><stop stopColor="#6366f1" /><stop offset="1" stopColor="#8b5cf6" /></linearGradient></defs>
+            <defs><linearGradient id="g1" x1="0" y1="0" x2="40" y2="40"><stop stopColor="#0D9488" /><stop offset="1" stopColor="#14B8A6" /></linearGradient></defs>
           </svg>
           <span>AI Talent Lab</span>
         </div>
@@ -70,6 +70,30 @@ export default function DeleteMyDataPage() {
           Under GDPR Article 17 and India's DPDP Act, you have the right to request 
           deletion of your personal data from our systems.
         </p>
+
+        <div className="dmd-compliance-badges">
+          <span className="dmd-badge">🇪🇺 GDPR Art. 17</span>
+          <span className="dmd-badge">🇮🇳 DPDP Act</span>
+          <span className="dmd-badge">🔒 End-to-End Encrypted</span>
+        </div>
+
+        {/* Step indicator */}
+        <div className="dmd-steps">
+          <div className={`dmd-step-item ${step === 'form' ? 'active' : (step !== 'form' ? 'done' : '')}`}>
+            <span className="dmd-step-num">1</span>
+            <span>Request</span>
+          </div>
+          <div className="dmd-step-line" />
+          <div className={`dmd-step-item ${step === 'sent' ? 'active' : (step === 'verifying' || step === 'done' ? 'done' : '')}`}>
+            <span className="dmd-step-num">2</span>
+            <span>Verify</span>
+          </div>
+          <div className="dmd-step-line" />
+          <div className={`dmd-step-item ${step === 'done' ? 'active' : ''}`}>
+            <span className="dmd-step-num">3</span>
+            <span>Deleted</span>
+          </div>
+        </div>
 
         {step === 'form' && (
           <form className="dmd-form" onSubmit={handleRequest}>
@@ -162,6 +186,30 @@ export default function DeleteMyDataPage() {
             <li>Anonymized hiring metrics (no PII)</li>
             <li>Aggregate statistics for compliance reporting</li>
           </ul>
+          <h4>Processing timeline</h4>
+          <div className="dmd-timeline">
+            <div className="dmd-timeline-row">
+              <span className="dmd-timeline-dot" />
+              <div>
+                <strong>Immediately</strong>
+                <p>Your data is marked for deletion and hidden from all users</p>
+              </div>
+            </div>
+            <div className="dmd-timeline-row">
+              <span className="dmd-timeline-dot" />
+              <div>
+                <strong>Within 24 hours</strong>
+                <p>Personal data is anonymized across all records</p>
+              </div>
+            </div>
+            <div className="dmd-timeline-row">
+              <span className="dmd-timeline-dot" />
+              <div>
+                <strong>Within 72 hours</strong>
+                <p>Confirmation email sent; all PII permanently erased</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <footer className="dmd-footer">

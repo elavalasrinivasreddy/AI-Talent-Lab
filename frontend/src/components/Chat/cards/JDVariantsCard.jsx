@@ -1,147 +1,119 @@
-import React, { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import React, { useState, useEffect } from 'react';
 import { useChat } from '../../../context/ChatContext';
+import { IconCheck, IconArrowRight } from '../icons';
 
-const VARIANT_COLORS = {
-    skill_focused: { accent: '#3b82f6', bg: '#3b82f615', label: '🔧 Skill-Focused' },
-    outcome_focused: { accent: '#22c55e', bg: '#22c55e15', label: '🎯 Outcome-Focused' },
-    hybrid: { accent: '#a855f7', bg: '#a855f715', label: '⚡ Hybrid' }
+const VARIANT_META = {
+    skill_focused:   { label: 'Skill-Focused',   marker: '#3B82F6', hint: 'Lists exact technologies and seniority bands.' },
+    outcome_focused: { label: 'Outcome-Focused', marker: '#10B981', hint: 'Frames what the role delivers, not what it knows.' },
+    hybrid:          { label: 'Hybrid',          marker: '#0D9488', hint: 'Balanced — outcomes anchored to required skills.' },
 };
 
 /**
- * stripBoilerplate – removes "About Our Organization/Team" and the role title
- * header from variant content since those are common and redundant across all 3.
+ * JDVariantsCard — 3 variant summaries in the left rail.
+ * Body is in the rail; hovering a variant previews it in the right canvas
+ * via the lifted previewVariantType state passed from ChatPage.
  */
-function stripBoilerplate(content) {
-    if (!content) return '';
-    // Remove "# <Role Title>" header (first h1)
-    let cleaned = content.replace(/^#\s+.+\n*/m, '');
-    // Remove "## About Our Organization/Team/Company" section entirely
-    cleaned = cleaned.replace(
-        /##\s*About\s+(Our\s+)?(Organization|Team|Company)[\s\S]*?(?=\n##\s|\n#\s|$)/gi,
-        ''
-    );
-    return cleaned.trim();
-}
-
-const JDVariantsCard = ({ data }) => {
+const JDVariantsCard = ({ data, previewVariantType, setPreviewVariantType }) => {
     const { sendMessage, workflowStage } = useChat();
     const { variants, selected } = data;
-    
-    const isHistory = workflowStage && workflowStage !== 'jd_variants' && workflowStage !== 'market_research' && workflowStage !== 'internal_check' && workflowStage !== 'intake';
-    
-    const [editingVariant, setEditingVariant] = useState(null);
-    const [editContent, setEditContent] = useState('');
+
+    const isHistory =
+        workflowStage &&
+        workflowStage !== 'jd_variants' &&
+        workflowStage !== 'market_research' &&
+        workflowStage !== 'internal_check' &&
+        workflowStage !== 'intake';
+
     const [isDismissed, setIsDismissed] = useState(isHistory);
     const [selectedType, setSelectedType] = useState(isHistory ? selected : '');
 
+    // Default preview = first variant on mount, so canvas isn't empty.
+    // ChatPage clears previewVariantType on session change, so no cleanup needed.
+    useEffect(() => {
+        if (!previewVariantType && variants?.length && !isDismissed) {
+            setPreviewVariantType(variants[0].type);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const handleSelect = (variantType) => {
-        if (isDismissed || isHistory) return;
+        if (isDismissed) return;
         setSelectedType(variantType);
+        setPreviewVariantType(variantType);
         setIsDismissed(true);
         sendMessage({
             action: 'select_variant',
-            action_data: { variant_type: variantType }
+            action_data: { variant_type: variantType },
         });
-    };
-
-    const handleStartEdit = (variant) => {
-        if (isDismissed) return;
-        setEditingVariant(variant.type);
-        setEditContent(variant.content);
-    };
-
-    const handleSaveEdit = (variant) => {
-        variant.content = editContent;
-        setEditingVariant(null);
     };
 
     if (!variants || variants.length === 0) return null;
 
     return (
-        <div className="stage-card" style={{ maxWidth: '100%', width: '100%' }}>
-            <div className="stage-card-header">
-                <span className="stage-card-icon">📋</span>
-                <span>Choose Your JD Style</span>
+        <div className="stage-card" data-dismissed={isDismissed}>
+            <div className="stage-card-head">
+                <span className="stage-card-eyebrow">Step 4 · Choose a style</span>
+                {isDismissed && selectedType && (
+                    <span className="stage-card-status stage-card-status--ok">
+                        <IconCheck size={12} /> {VARIANT_META[selectedType]?.label || selectedType} selected
+                    </span>
+                )}
             </div>
+            <h3 className="stage-card-title">Three drafts. Pick the one that fits this hire.</h3>
             <p className="stage-card-desc">
-                {isDismissed
-                    ? `You selected the ${VARIANT_COLORS[selectedType]?.label || selectedType} variant.`
-                    : "Pick the style that fits best. Double-click content to edit before selecting."}
+                Hover to preview on the right. Click to lock it in and generate the final JD.
             </p>
 
-            <div className="variants-grid">
-                {variants.map((v, i) => {
-                    const colors = VARIANT_COLORS[v.type] || VARIANT_COLORS.hybrid;
-                    const isSelected = selectedType === v.type;
-                    const isDisabled = isDismissed && !isSelected;
-                    const cleanContent = stripBoilerplate(v.content);
+            <div className="variants">
+                {variants.map((v) => {
+                    const meta = VARIANT_META[v.type] || { label: v.type, marker: '#0D9488', hint: '' };
+                    const isSelected =
+                        (previewVariantType === v.type && !isDismissed) ||
+                        (isDismissed && selectedType === v.type);
+                    const isDisabled = isDismissed && selectedType !== v.type;
 
                     return (
-                        <div key={i} className={`variant-card ${isSelected ? 'variant-card--selected' : ''} ${isDisabled ? 'variant-card--disabled' : ''}`}
-                            style={{ borderTopColor: colors.accent }}
+                        <div
+                            key={v.type}
+                            className="variant"
+                            aria-selected={isSelected}
+                            data-disabled={isDisabled}
+                            onMouseEnter={() => !isDismissed && setPreviewVariantType(v.type)}
+                            onFocus={() => !isDismissed && setPreviewVariantType(v.type)}
+                            onClick={() => handleSelect(v.type)}
+                            role="button"
+                            tabIndex={isDismissed ? -1 : 0}
+                            onKeyDown={(e) => {
+                                if ((e.key === 'Enter' || e.key === ' ') && !isDismissed) {
+                                    e.preventDefault();
+                                    handleSelect(v.type);
+                                }
+                            }}
+                            style={{ '--marker': meta.marker }}
                         >
-                            <div className="variant-card-head">
-                                <h6 className="variant-card-label" style={{ color: colors.accent }}>
-                                    {colors.label}
-                                </h6>
-                                {isSelected && <span className="variant-selected-badge" style={{ color: colors.accent }}>SELECTED</span>}
-                            </div>
-
-                            {v.summary && (
-                                <p className="variant-card-summary">{v.summary}</p>
-                            )}
-
-                            {/* Scrollable Content Area */}
-                            <div
-                                className="variant-card-content"
-                                onDoubleClick={() => !isDismissed && handleStartEdit(v)}
-                            >
-                                {editingVariant === v.type ? (
-                                    <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                                        <textarea
-                                            autoFocus
-                                            className="variant-edit-textarea"
-                                            value={editContent}
-                                            onChange={e => setEditContent(e.target.value)}
-                                        />
-                                        <div className="variant-edit-actions">
-                                            <button className="stage-btn stage-btn--primary stage-btn--sm" onClick={() => handleSaveEdit(v)}>
-                                                Save
-                                            </button>
-                                            <button className="stage-btn stage-btn--ghost stage-btn--sm" onClick={() => setEditingVariant(null)}>
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <ReactMarkdown>{cleanContent}</ReactMarkdown>
+                            <div className="variant-head">
+                                <h4 className="variant-label">
+                                    <span className="variant-label-marker" />
+                                    {meta.label}
+                                </h4>
+                                {v.skills_count && (
+                                    <span className="variant-skill">{v.skills_count} skills</span>
                                 )}
                             </div>
-
-                            {/* Skills at bottom */}
+                            <p className="variant-summary">{v.summary || meta.hint}</p>
                             {v.skills && v.skills.length > 0 && (
-                                <div className="variant-card-skills">
-                                    <div className="variant-skills-label">Required ({v.skills_count || v.skills.length})</div>
-                                    <div className="variant-skills-list">
-                                        {v.skills.map((skill, si) => (
-                                            <span key={si} className="variant-skill-tag" style={{ background: colors.bg, color: colors.accent }}>
-                                                {skill}
-                                            </span>
-                                        ))}
-                                    </div>
+                                <div className="variant-skills">
+                                    {v.skills.slice(0, 6).map((skill, si) => (
+                                        <span key={si} className="variant-skill">{skill}</span>
+                                    ))}
+                                    {v.skills.length > 6 && (
+                                        <span className="variant-skill">+{v.skills.length - 6}</span>
+                                    )}
                                 </div>
                             )}
-
-                            {!isDismissed && (
-                                <button
-                                    className="variant-select-btn"
-                                    style={{ background: colors.accent }}
-                                    onClick={() => handleSelect(v.type)}
-                                >
-                                    Choose This Style
-                                </button>
-                            )}
+                            <div className="variant-action">
+                                {isSelected ? 'Selected' : 'Choose'} <IconArrowRight size={12} />
+                            </div>
                         </div>
                     );
                 })}

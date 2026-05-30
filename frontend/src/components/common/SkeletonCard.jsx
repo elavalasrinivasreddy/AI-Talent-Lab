@@ -2,7 +2,7 @@ import React from 'react'
 
 /**
  * SkeletonCard — shimmer loading placeholder.
- * Used instead of spinners per docs/FRONTEND_PLAN.md §11.
+ * Used instead of spinners per docs/architecture/05_frontend.md §11.
  */
 export default function SkeletonCard({
   lines = 3,

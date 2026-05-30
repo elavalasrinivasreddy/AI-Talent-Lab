@@ -1,7 +1,7 @@
 /**
  * TalentPoolPage.jsx – Org-wide talent pool with bulk upload and AI suggestions
  * Route: /talent-pool
- * Per docs/pages/08_talent_pool.md
+ * Per docs/design/pages/08_talent_pool.md
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -14,7 +14,7 @@ const REASON_COLORS = {
   rejected: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', label: 'Rejected' },
   position_closed: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', label: 'Position Closed' },
   position_archived: { color: '#9ca3af', bg: 'rgba(156,163,175,0.1)', label: 'Archived' },
-  manual: { color: '#6366f1', bg: 'rgba(99,102,241,0.1)', label: 'Manual' },
+  manual: { color: '#0D9488', bg: 'rgba(13,148,136,0.1)', label: 'Manual' },
 }
 
 function authHeader() {
@@ -71,7 +71,7 @@ export default function TalentPoolPage() {
     load()
     positionsApi.list({ status: 'open' }).then(data => {
       setPositions(Array.isArray(data) ? data : data.positions || [])
-    }).catch(() => {})
+    }).catch(() => { })
   }, [])
 
   const handleSearch = (val) => {
@@ -318,9 +318,9 @@ export default function TalentPoolPage() {
 }
 
 const CONTACT_STATUS_CFG = {
-  active:       { label: 'Contactable',    color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
-  unsubscribed: { label: 'Unsubscribed',   color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  employed:     { label: 'Employed',       color: '#6366f1', bg: 'rgba(99,102,241,0.1)' },
+  active: { label: 'Contactable', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+  unsubscribed: { label: 'Unsubscribed', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  employed: { label: 'Employed', color: '#0D9488', bg: 'rgba(13,148,136,0.1)' },
 }
 
 function CandidateCard({ candidate: c, onNavigate }) {

@@ -4,37 +4,37 @@
  */
 
 export const PIPELINE_STAGES = {
-  sourced:   { label: 'Sourced',    color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
-  emailed:   { label: 'Emailed',    color: '#38bdf8', bg: 'rgba(56,189,248,0.12)' },
-  applied:   { label: 'Applied',    color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
-  screening: { label: 'Screening',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  interview: { label: 'Interview',  color: '#fb923c', bg: 'rgba(251,146,60,0.12)' },
-  selected:  { label: 'Selected',   color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
-  rejected:  { label: 'Rejected',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-  on_hold:   { label: 'On Hold',    color: '#9ca3af', bg: 'rgba(156,163,175,0.12)' },
+  sourced:   { label: 'Sourced',    color: '#06B6D4', bg: 'rgba(6,182,212,0.12)' },
+  emailed:   { label: 'Emailed',    color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)' },
+  applied:   { label: 'Applied',    color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
+  screening: { label: 'Screening',  color: '#0D9488', bg: 'rgba(13,148,136,0.12)' },
+  interview: { label: 'Interview',  color: '#6366F1', bg: 'rgba(99,102,241,0.12)' },
+  selected:  { label: 'Selected',   color: '#10B981', bg: 'rgba(16,185,129,0.12)' },
+  rejected:  { label: 'Rejected',   color: '#64748B', bg: 'rgba(100,116,139,0.12)' },
+  on_hold:   { label: 'On Hold',    color: '#D97706', bg: 'rgba(217,119,6,0.12)' },
 }
 
 export const POSITION_STATUSES = {
-  draft:    { label: 'Draft',    color: '#9ca3af' },
-  open:     { label: 'Open',    color: '#22c55e' },
-  on_hold:  { label: 'On Hold', color: '#f59e0b' },
-  closed:   { label: 'Closed',  color: '#ef4444' },
-  archived: { label: 'Archived', color: '#6b7280' },
+  draft:    { label: 'Draft',    color: '#64748B' },
+  open:     { label: 'Open',    color: '#10B981' },
+  on_hold:  { label: 'On Hold', color: '#D97706' },
+  closed:   { label: 'Closed',  color: '#EF4444' },
+  archived: { label: 'Archived', color: '#475569' },
 }
 
 export const PRIORITY_LABELS = {
-  urgent: { label: '🔴 Urgent',  color: '#ef4444' },
-  high:   { label: '🟠 High',    color: '#f97316' },
-  normal: { label: '🟡 Normal',  color: '#f59e0b' },
-  low:    { label: '🟢 Low',     color: '#22c55e' },
+  urgent: { label: 'Urgent',  color: '#EF4444' },
+  high:   { label: 'High',    color: '#F97316' },
+  normal: { label: 'Normal',  color: '#D97706' },
+  low:    { label: 'Low',     color: '#10B981' },
 }
 
 /** ATS score → label + color */
 export function getScoreStyle(score) {
-  if (score >= 80) return { label: 'Strong Match',   color: '#22c55e' }
-  if (score >= 60) return { label: 'Good Match',     color: '#f59e0b' }
-  if (score >= 40) return { label: 'Partial Match',  color: '#fb923c' }
-  return            { label: 'Weak Match',   color: '#ef4444' }
+  if (score >= 80) return { label: 'Strong Match',   color: '#10B981' }
+  if (score >= 60) return { label: 'Good Match',     color: '#D97706' }
+  if (score >= 40) return { label: 'Partial Match',  color: '#F97316' }
+  return            { label: 'Weak Match',   color: '#EF4444' }
 }
 
 export const KANBAN_STAGE_ORDER = [

@@ -27,17 +27,16 @@ export const ChatProvider = ({ children }) => {
     const [isJdStreaming, setIsJdStreaming] = useState(false);
     const [biasCard, setBiasCard] = useState(null);
     const [biasIssues, setBiasIssues] = useState([]); // Store issues for highlighting
+    const [stageSkipped, setStageSkipped] = useState([]); // stages soft-skipped during this session
+    const [graphState, setGraphState] = useState({});     // mirror of backend graph_state_parsed (for intake block etc.)
     const [error, setError] = useState(null);
 
     // ── Reset all chat state ──────────────────────────────────
     const resetChat = useCallback(() => {
         setCurrentSessionId(null);
         setSessionTitle('New Hire');
-        setMessages([{
-            role: 'assistant',
-            content: "Hi! I'm your AI hiring assistant. 👋\n\nLet's create a job description together. What role are you looking to fill?\n\nYou can also upload an existing JD if you'd like me to start from that.",
-            isComplete: true
-        }]);
+        // Greeting comes from backend on first session fetch — no longer hardcoded here.
+        setMessages([]);
         setIsStreaming(false);
         setWorkflowStage('intake');
         setInternalCard(null);
@@ -48,6 +47,8 @@ export const ChatProvider = ({ children }) => {
         setIsJdStreaming(false);
         setBiasCard(null);
         setBiasIssues([]);
+        setStageSkipped([]);
+        setGraphState({});
         setError(null);
     }, []);
 
@@ -100,6 +101,7 @@ export const ChatProvider = ({ children }) => {
                 // Restore interactive cards from graph_state_parsed
                 // Show cards even if already acted upon (they render in dismissed state)
                 const gs = data.graph_state_parsed || {};
+                setGraphState(gs);
 
                 // Internal check card — show if data exists
                 if (gs.internal_skills_found?.length) {
@@ -132,20 +134,41 @@ export const ChatProvider = ({ children }) => {
                     setBiasCard({ issues: gs.bias_issues, clean: (gs.bias_issues || []).length === 0 });
                     setBiasIssues(gs.bias_issues || []);
                 }
+
+                // Restore skipped-stages — derived from state booleans, since SSE
+                // `stage_skipped` events only fire during the run that skipped them.
+                const skips = [];
+                if (gs.internal_skipped) skips.push('internal_check');
+                if (gs.market_skipped) skips.push('market_research');
+                if (gs.bias_skipped) skips.push('bias_check');
+                setStageSkipped(skips);
             } else if (res.status === 404) {
-                // Session doesn't exist yet — fresh chat
+                // Session doesn't exist yet — fresh chat. Backend creates it
+                // (with greeting) on the first POST /chat/stream call.
                 setCurrentSessionId(sessionId);
-                setMessages([{
-                    role: 'assistant',
-                    content: "Hi! I'm your AI hiring assistant. 👋\n\nLet's create a job description together. What role are you looking to fill?\n\nYou can also upload an existing JD if you'd like me to start from that.",
-                    isComplete: true
-                }]);
+                setMessages([]);
                 setWorkflowStage('intake');
                 setSessionTitle('New Hire');
             }
         } catch (err) {
             console.error("Failed to load session", err);
             setCurrentSessionId(sessionId);
+        }
+    }, [token]);
+
+    // ── Lightweight refresh of graphState only (doesn't reset cards) ──
+    const refreshGraphState = useCallback(async (sessionId) => {
+        if (!token || !sessionId) return;
+        try {
+            const res = await fetch(`/api/v1/chat/sessions/${sessionId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.graph_state_parsed) setGraphState(data.graph_state_parsed);
+            }
+        } catch {
+            // Silent — best-effort refresh
         }
     }, [token]);
 
@@ -191,10 +214,13 @@ export const ChatProvider = ({ children }) => {
         }
 
         // Reset streaming JD text if we're generating a new one
-        if (payload.action === 'select_variant') {
+        if (payload.action === 'select_variant' || payload.action === 'rewrite_section') {
             setStreamingJdText('');
             setFinalJdMarkdown(null);
             setIsJdStreaming(true);
+        }
+        if (payload.action === 'regenerate_variants') {
+            setVariantsCard(null);
         }
 
         try {
@@ -303,12 +329,23 @@ export const ChatProvider = ({ children }) => {
                 break;
 
             case 'stage_skipped':
-                // Could show a system message
+                // Track for the stepper so the pill renders as 'skipped'.
+                if (data.stage) {
+                    setStageSkipped(prev => prev.includes(data.stage) ? prev : [...prev, data.stage]);
+                }
+                // Surface a system message so the rail conversation shows what happened.
                 setMessages(prev => [...prev, {
                     role: 'system',
                     content: data.reason || `${data.stage} was skipped.`,
                     isComplete: true
                 }]);
+                break;
+
+            case 'metadata':
+                if (typeof data.final_jd === 'string') {
+                    setFinalJdMarkdown(data.final_jd);
+                    setStreamingJdText('');
+                }
                 break;
 
             case 'draft_saved':
@@ -340,13 +377,16 @@ export const ChatProvider = ({ children }) => {
                 setIsStreaming(false);
                 // Refresh sessions list to update titles/history
                 fetchSessions();
+                // Refresh canonical graph state so the Intake / agent blocks
+                // reflect any fields captured during the turn.
+                if (currentSessionId) refreshGraphState(currentSessionId);
                 break;
 
             default:
                 console.log('Unknown SSE event:', event, data);
                 break;
         }
-    }, [handleTitleAnimation, fetchSessions]);
+    }, [handleTitleAnimation, fetchSessions, refreshGraphState, currentSessionId]);
 
     // ── Clear cards after user acts on them ────────────────────
     const dismissInternalCard = useCallback(() => setInternalCard(null), []);
@@ -364,7 +404,9 @@ export const ChatProvider = ({ children }) => {
         variantsCard, setVariantsCard, dismissVariantsCard,
         finalJdMarkdown, streamingJdText, isJdStreaming,
         setFinalJdMarkdown,
-        biasCard, setBiasCard, biasIssues, setBiasIssues
+        biasCard, setBiasCard, biasIssues, setBiasIssues,
+        stageSkipped,
+        graphState, refreshGraphState,
     };
 
     return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
