@@ -89,11 +89,19 @@ const ChatPage = () => {
     // the agent uses to skip ahead.
     useEffect(() => {
         const req = location.state?.hireRequest;
+        
         // If there are already messages, we shouldn't send an auto-seed message
         // This prevents duplicate sends during React Strict Mode remounts.
-        if (!req || hireRequestSentRef.current || workflowStage !== 'intake' || messages.length > 0) return;
-
+        if (hireRequestSentRef.current || workflowStage !== 'intake' || messages.length > 0) return;
+        
         hireRequestSentRef.current = true;
+
+        if (!req) {
+            // Fresh blank chat — send empty initialization ping to backend
+            // so it creates the session and returns the AI greeting via sync_state.
+            sendMessage({ message: "" });
+            return;
+        }
 
         const lines = [`I need to hire a ${req.role_name}.`];
         if (req.department_name) lines.push(`Department: ${req.department_name}`);

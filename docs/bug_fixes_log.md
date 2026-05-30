@@ -639,3 +639,22 @@ During a UI/UX design validation of the v3 JD Chat (Document-first Canvas) inter
 - `frontend/src/components/Chat/JDRail.jsx`
 - `frontend/src/components/Chat/ChatTopBar.jsx`
 - `frontend/src/styles/chat.css`
+- `frontend/src/components/Chat/ChatPage.jsx`
+- `frontend/src/components/Chat/MessageInput.jsx`
+
+### 47. JD Chat UI - Greeting Initialization & Composer Refining
+**Date:** 2026-05-30
+**Issue:** 
+- The user noted that when launching a brand "New Hire" chat from the sidebar (without a pre-existing Hire Request), the AI failed to render the initial greeting message.
+- The composer container still had a visible top border and background, making it look boxed-in instead of seamlessly floating.
+- The "AI makes mistakes / Enter to send" helper text was requested to be restored below the new pill-shaped input.
+
+**Idea / Solution:**
+1. **Auto-Seed Initial Greeting:** Modified the `useEffect` in `ChatPage.jsx`. If there is no `hireRequest` (blank slate) and `messages.length === 0`, the frontend now fires an empty `sendMessage({ message: "" })` initialization ping. This seamlessly forces the backend to create the session and return the `GREETING_MESSAGE` via `sync_state`.
+2. **Transparent Composer:** Removed the `border-top` and `background` from `.composer` in `chat.css`, allowing the pill-shaped `.composer-shell` to float directly on the rail background.
+3. **Restored Helper Text:** Re-added `.composer-foot` in `MessageInput.jsx` with a minimized, lower-opacity design that rests gently beneath the input pill.
+
+**Files Modified:**
+- `frontend/src/components/Chat/ChatPage.jsx`
+- `frontend/src/styles/chat.css`
+- `frontend/src/components/Chat/MessageInput.jsx`
