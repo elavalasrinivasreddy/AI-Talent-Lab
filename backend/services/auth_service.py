@@ -269,6 +269,19 @@ class AuthService:
             )
             return
 
+        # Per-user rate limit: max 3 requests per minute to prevent spam
+        recent_requests = await conn.fetchval(
+            """
+            SELECT COUNT(*) FROM audit_log
+            WHERE user_id = $1 AND action = 'magic_link_requested'
+            AND created_at > NOW() - INTERVAL '1 minute'
+            """,
+            user["id"]
+        )
+        if recent_requests >= 3:
+            logger.warning(f"[magic-link] rate limit exceeded for user {user['id']}")
+            return
+
         token = create_magic_link_token(
             token_type="auth_magic",
             entity_id=user["id"],
@@ -602,3 +615,29 @@ class AuthService:
         await UserRepository.update_password(conn, user_id, new_hash)
         # Clear lockout / failed-attempt counters so the user can sign in immediately
         await UserRepository.reset_login_state(conn, user_id)
+
+    @staticmethod
+    async def logout(token: str) -> None:
+        """Denylist the given access token until its expiry."""
+        from backend.config import settings
+        import redis.asyncio as redis
+        from backend.utils.security import decode_access_token
+        from datetime import datetime, timezone
+
+        try:
+            payload = decode_access_token(token)
+            jti = payload.get("jti")
+            exp = payload.get("exp")
+            if not jti or not exp:
+                return
+
+            now = datetime.now(timezone.utc).timestamp()
+            ttl = int(exp - now)
+            if ttl > 0:
+                r = redis.from_url(settings.REDIS_URL)
+                try:
+                    await r.setex(f"denylist:{jti}", ttl, "1")
+                finally:
+                    await r.aclose()
+        except Exception as e:
+            logger.warning(f"Logout failed to decode token: {e}")

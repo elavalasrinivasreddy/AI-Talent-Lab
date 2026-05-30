@@ -119,6 +119,21 @@ async def login(
     }
 
 
+# ── POST /logout ──────────────────────────────────────────────────────────────
+
+@router.post("/logout")
+async def logout(
+    request: Request,
+    user: dict = Depends(get_current_user),
+):
+    """Logout user by denylisting their JWT."""
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.removeprefix("Bearer ").strip()
+    if token:
+        await AuthService.logout(token)
+    return {"message": "Logged out successfully"}
+
+
 # ── POST /magic-link ─────────────────────────────────────────────────────────
 
 @router.post("/magic-link")

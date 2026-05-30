@@ -11,15 +11,7 @@ import ResetPasswordPage from './components/Auth/ResetPasswordPage'
 import SetPasswordPage from './components/Auth/SetPasswordPage'
 import Sidebar from './components/Sidebar/Sidebar'
 import NotificationBell from './components/common/NotificationBell'
-import SettingsPage from './components/Settings/SettingsPage'
 import { ChatProvider } from './context/ChatContext'
-import DashboardPage from './components/Dashboard/DashboardPage'
-import ApplyPage from './components/Apply/ApplyPage'
-import PanelPage from './components/Panel/PanelPage'
-import CareerPage from './components/Careers/CareerPage'
-import DeleteMyDataPage from './components/GDPR/DeleteMyDataPage'
-import CandidateStatusPage from './components/Status/CandidateStatusPage'
-import PositionsListPage from './components/Positions/PositionsListPage'
 
 // ── Lazy imports (heavy pages — code-split into separate chunks) ─────────────
 const ChatPage             = lazy(() => import('./components/Chat/ChatPage'))
@@ -33,6 +25,15 @@ const HireRequestDetailPage = lazy(() => import('./components/HireRequests/HireR
 const InterviewsListPage   = lazy(() => import('./components/Interviews/InterviewsListPage'))
 const DevAdminPage         = lazy(() => import('./components/DevAdmin/DevAdminPage'))
 const PlatformPage         = lazy(() => import('./components/Platform/PlatformPage'))
+
+const SettingsPage         = lazy(() => import('./components/Settings/SettingsPage'))
+const DashboardPage        = lazy(() => import('./components/Dashboard/DashboardPage'))
+const ApplyPage            = lazy(() => import('./components/Apply/ApplyPage'))
+const PanelPage            = lazy(() => import('./components/Panel/PanelPage'))
+const CareerPage           = lazy(() => import('./components/Careers/CareerPage'))
+const DeleteMyDataPage     = lazy(() => import('./components/GDPR/DeleteMyDataPage'))
+const CandidateStatusPage  = lazy(() => import('./components/Status/CandidateStatusPage'))
+const PositionsListPage    = lazy(() => import('./components/Positions/PositionsListPage'))
 
 // ── Shared fallback ──────────────────────────────────────────────────────────
 const PageLoading = <div className="page-loading">Loading…</div>
@@ -195,13 +196,13 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  { path: '/apply/:token', element: <ApplyPage /> },
-  { path: '/panel/:token', element: <PanelPage /> },
-  { path: '/careers/:orgSlug', element: <CareerPage /> },
-  { path: '/careers/:orgSlug/:positionId', element: <CareerPage /> },
-  { path: '/delete-my-data', element: <DeleteMyDataPage /> },
-  { path: '/privacy', element: <DeleteMyDataPage /> },
-  { path: '/status/:token', element: <CandidateStatusPage /> },
+  { path: '/apply/:token', element: <Suspense fallback={PageLoading}><ApplyPage /></Suspense> },
+  { path: '/panel/:token', element: <Suspense fallback={PageLoading}><PanelPage /></Suspense> },
+  { path: '/careers/:orgSlug', element: <Suspense fallback={PageLoading}><CareerPage /></Suspense> },
+  { path: '/careers/:orgSlug/:positionId', element: <Suspense fallback={PageLoading}><CareerPage /></Suspense> },
+  { path: '/delete-my-data', element: <Suspense fallback={PageLoading}><DeleteMyDataPage /></Suspense> },
+  { path: '/privacy', element: <Suspense fallback={PageLoading}><DeleteMyDataPage /></Suspense> },
+  { path: '/status/:token', element: <Suspense fallback={PageLoading}><CandidateStatusPage /></Suspense> },
 
   // Catch-all
   { path: '*', element: <Navigate to="/login" replace /> },

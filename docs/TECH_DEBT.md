@@ -33,9 +33,9 @@ Shipped 2026-05-19. Solid, but improvements identified:
 
 | Severity | Item | Notes |
 |---|---|---|
-| 🟡 Medium | **JWT denylist on logout** | Logout today is client-side only (clears sessionStorage). To truly invalidate a session before its 24h expiry, we need a Redis-backed denylist keyed by JWT `jti` (auth tokens don't carry `jti` yet — magic-link tokens do). |
-| 🟡 Medium | **Periodic cleanup of `consumed_magic_links`** | Rows accumulate forever. Add a daily Celery task to delete entries older than 30 days. |
-| 🟢 Low | **Per-user rate limit on `POST /auth/magic-link`** | Currently `5/min` per IP. A per-account limit would prevent inbox spam if many people share an IP. |
+| ~~🟡 Medium~~ | ~~**JWT denylist on logout**~~ | ~~Logout today is client-side only (clears sessionStorage). To truly invalidate a session before its 24h expiry, we need a Redis-backed denylist keyed by JWT `jti` (auth tokens don't carry `jti` yet — magic-link tokens do).~~ Resolved (2026-05-30) |
+| ~~🟡 Medium~~ | ~~**Periodic cleanup of `consumed_magic_links`**~~ | ~~Rows accumulate forever. Add a daily Celery task to delete entries older than 30 days.~~ Resolved (2026-05-30) |
+| ~~🟢 Low~~ | ~~**Per-user rate limit on `POST /auth/magic-link`**~~ | ~~Currently `5/min` per IP. A per-account limit would prevent inbox spam if many people share an IP.~~ Resolved (2026-05-30) |
 
 ## JD Chat (`/api/v1/chat/*`)
 
@@ -57,7 +57,7 @@ These predate the redesign work — fix opportunistically during related page wo
 | Severity | Item | Where | Notes |
 |---|---|---|---|
 | ~~🟠 High~~ | ~~`current_user["id"]` KeyError~~ | ~~`routers/positions.py`, `routers/candidates.py`, `routers/talent_pool.py`~~ | ~~`get_current_user` returns `user_id`, not `id`. `routers/notifications.py` already has a fix-comment. Will 500 any code path that hits it. Fix during next positions / candidate / talent-pool page audit.~~ (resolved 2026-05-28) |
-| 🟡 Medium | Inconsistent error format in legacy endpoints | Various pre-redesign routers | Some still use `HTTPException(detail={"error": ...})` instead of `AppError`. Standardize during page-by-page work. |
+| ~~🟡 Medium~~ | ~~Inconsistent error format in legacy endpoints~~ | ~~Various pre-redesign routers~~ | ~~Some still use `HTTPException(detail={"error": ...})` instead of `AppError`. Standardize during page-by-page work.~~ Resolved (2026-05-30) |
 
 ## General
 
@@ -66,9 +66,9 @@ These predate the redesign work — fix opportunistically during related page wo
 | ~~🟠 High~~ | ~~**HTML injection in transactional email templates**~~ | ~~`backend/services/email_service.py` interpolates `candidate_name`, `role_name`, `org_name`, `round_name`, `meeting_link`, `apply_url`, `feedback_url`, etc. directly into f-strings. Escape with `html.escape()` and validate URL schemes (only `https://`). Better: move to Jinja2 with `autoescape=True`. Flagged by automated security review 2026-05-27.~~ Resolved (2026-05-30) |
 | ~~🟠 High~~ | ~~**Notification IDOR within tenant**~~ | ~~`backend/services/notification_service.py:mark_read(org_id, notification_id)` scopes by tenant but not by user. Any user in the org can mark another user's notifications read. Add `user_id` to signature + WHERE clause. Flagged by automated security review 2026-05-27.~~ Resolved (2026-05-30) |
 | ~~🟠 High~~ | ~~**`backend/dist/` and chroma binary noise in working tree**~~ | ~~`backend/data/chroma/*.sqlite3` shows as modified on every run. Either add to `.gitignore` or move to a runtime-only path.~~ Resolved (2026-05-30) |
-| 🟡 Medium | **Frontend bundle is >500KB after minify** | Vite warns. Code-split routes (especially `/dev`, `/platform`) via `React.lazy` + `Suspense`. |
+| ~~🟡 Medium~~ | ~~**Frontend bundle is >500KB after minify**~~ | ~~Vite warns. Code-split routes (especially `/dev`, `/platform`) via `React.lazy` + `Suspense`.~~ Resolved (2026-05-30) |
 | 🟡 Medium | **No E2E tests** | Manual smoke tests cover auth + hire request today. Phase 1 cohort can ship without, but post-customer-1 we need Playwright or similar. |
-| 🟢 Low | **Cleanup of legacy `/positions/requests/*` shims** | Kept for backward compatibility with existing Dashboard widgets. Migrate Dashboard widgets to `hireRequestsApi` and delete the shims. |
+| ~~🟢 Low~~ | ~~**Cleanup of legacy `/positions/requests/*` shims**~~ | ~~Kept for backward compatibility with existing Dashboard widgets. Migrate Dashboard widgets to `hireRequestsApi` and delete the shims.~~ Resolved (2026-05-30) |
 
 ---
 
