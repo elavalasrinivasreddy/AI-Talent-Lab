@@ -115,3 +115,23 @@ The "Team Members" directory was displaying the current logged-in user, which is
 **Files Modified:**
 - `frontend/src/components/Settings/tabs/TeamTab.jsx`
 - `backend/services/auth_service.py`
+
+---
+
+## 9. Implement Strict RBAC for Team Management & UI Polishing
+
+**Problem Statement:**
+Department Admins were encountering an error when trying to add HRs, as the endpoint required `org_head` privileges. Additionally, `dept_admin` users could see the "Org Head" profile in their team list, which should be hidden. Lastly, the Active/Inactive status toggle UI used crude buttons instead of a polished visual component.
+
+**Idea / Solution:**
+1. **Backend RBAC:** Changed the `/users`, `/add-user`, and `/users/{user_id}` endpoints in `backend/routers/auth.py` to use `require_dept_admin`. Enforced strict boundary logic: `dept_admin` cannot modify or elevate users to `org_head` or `dept_admin`, and can only assign/modify users within their own department.
+2. **Frontend RBAC & Visibility:** 
+   - Hid the `Departments` settings tab from `dept_admin` (only visible to `org_head`).
+   - Hid `Team Members` and `Departments` completely from `hr` and `team_lead`.
+   - In `TeamTab.jsx`, restricted the dropdown options so a `dept_admin` can only add HRs and Team Leads to their own department. Filtered the users list so `dept_admin` only sees downstream roles within their own department.
+3. **UI Polish:** Replaced the ugly status toggle buttons in the team directory with the standard `Chip` component, utilizing hover effects and tooltips for better UX.
+
+**Files Modified:**
+- `backend/routers/auth.py`
+- `frontend/src/components/Settings/SettingsPage.jsx`
+- `frontend/src/components/Settings/tabs/TeamTab.jsx`
