@@ -71,7 +71,7 @@ export default function TalentPoolPage() {
     load()
     positionsApi.list({ status: 'open' }).then(data => {
       setPositions(Array.isArray(data) ? data : data.positions || [])
-    }).catch(() => {})
+    }).catch(() => { })
   }, [])
 
   const handleSearch = (val) => {
@@ -318,9 +318,9 @@ export default function TalentPoolPage() {
 }
 
 const CONTACT_STATUS_CFG = {
-  active:       { label: 'Contactable',    color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
-  unsubscribed: { label: 'Unsubscribed',   color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  employed:     { label: 'Employed',       color: '#0D9488', bg: 'rgba(13,148,136,0.1)' },
+  active: { label: 'Contactable', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+  unsubscribed: { label: 'Unsubscribed', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  employed: { label: 'Employed', color: '#0D9488', bg: 'rgba(13,148,136,0.1)' },
 }
 
 function CandidateCard({ candidate: c, onNavigate }) {
