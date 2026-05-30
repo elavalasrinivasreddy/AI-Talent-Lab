@@ -31,7 +31,14 @@ const STAGES = [
 const RUNNING_STAGES = STAGES.map((s) => s.key);
 
 function statePerStage(currentStage, gs, skipped) {
-  const currentIdx = RUNNING_STAGES.indexOf(currentStage);
+  let effectiveStage = currentStage;
+  // If bias check has issues defined, it means it has finished running.
+  // Visually advance the stepper to the final 'Save' stage.
+  if (currentStage === 'bias_check' && gs?.bias_issues !== undefined) {
+    effectiveStage = 'complete';
+  }
+
+  const currentIdx = RUNNING_STAGES.indexOf(effectiveStage);
   const map = {};
   RUNNING_STAGES.forEach((key, idx) => {
     if (skipped.has(key)) {
@@ -43,28 +50,25 @@ function statePerStage(currentStage, gs, skipped) {
       return;
     }
     if (idx === currentIdx) {
-      // `complete` is "done" only after explicit save; before then it's `current`
-      if (key === 'complete') map[key] = 'current';
-      else map[key] = 'current';
+      map[key] = 'current';
       return;
     }
     map[key] = 'pending';
   });
-  // Derived: if final_jd has a saved JD and we're not in bias/complete, leave as is.
-  // If bias_check ran and finished, mark it done unless still active.
-  if (gs?.bias_issues !== undefined && currentStage !== 'bias_check') {
-    map.bias_check = gs.bias_skipped ? 'skipped' : 'done';
+
+  if (gs?.bias_skipped && currentIdx > RUNNING_STAGES.indexOf('bias_check')) {
+    map.bias_check = 'skipped';
   }
   return map;
 }
 
 export default function JDStepper({ isRailOpen, onToggleRail }) {
-  const { workflowStage, stageSkipped } = useChat();
+  const { workflowStage, stageSkipped, graphState } = useChat();
   const skipped = useMemo(() => new Set(stageSkipped || []), [stageSkipped]);
 
   const states = useMemo(
-    () => statePerStage(workflowStage, {}, skipped),
-    [workflowStage, skipped]
+    () => statePerStage(workflowStage, graphState, skipped),
+    [workflowStage, graphState, skipped]
   );
 
   return (

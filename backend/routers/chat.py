@@ -24,7 +24,7 @@ class StreamRequest(BaseModel):
 
 
 class SavePositionRequest(BaseModel):
-    department_id: int
+    department_id: Optional[int] = None
     headcount: int = 1
     priority: str = "normal"
     ats_threshold: float = 80.0

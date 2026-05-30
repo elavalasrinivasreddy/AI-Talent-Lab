@@ -53,10 +53,6 @@ const PositionSetupModal = ({ show, onClose }) => {
     }, [show, token]);
 
     const _savePosition = async (asDraft) => {
-        if (!formData.department_id) {
-            setError('Please select a department.');
-            return;
-        }
 
         if (asDraft) setIsDraftLoading(true);
         else setIsLoading(true);
@@ -70,7 +66,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    department_id: parseInt(formData.department_id),
+                    ...(formData.department_id && { department_id: parseInt(formData.department_id) }),
                     headcount: parseInt(formData.headcount),
                     priority: formData.priority,
                     ats_threshold: parseFloat(formData.ats_threshold),
@@ -168,49 +164,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                         <div className="pmodal-body">
                             {error && <div className="pmodal-error">{error}</div>}
 
-                            <div className="pfield">
-                                <label className="pfield-label" htmlFor="pf-dept">Department</label>
-                                <select
-                                    id="pf-dept"
-                                    className="pfield-select"
-                                    value={formData.department_id}
-                                    onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
-                                    required
-                                >
-                                    <option value="" disabled>Select a department…</option>
-                                    {departments.map((d) => (
-                                        <option key={d.id} value={d.id}>{d.name}</option>
-                                    ))}
-                                </select>
-                            </div>
 
-                            <div className="pmodal-row">
-                                <div className="pfield">
-                                    <label className="pfield-label" htmlFor="pf-hc">Headcount</label>
-                                    <input
-                                        id="pf-hc"
-                                        type="number"
-                                        className="pfield-input"
-                                        min="1"
-                                        value={formData.headcount}
-                                        onChange={(e) => setFormData({ ...formData, headcount: e.target.value })}
-                                    />
-                                </div>
-                                <div className="pfield">
-                                    <label className="pfield-label" htmlFor="pf-pri">Priority</label>
-                                    <select
-                                        id="pf-pri"
-                                        className="pfield-select"
-                                        value={formData.priority}
-                                        onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                                    >
-                                        <option value="low">Low</option>
-                                        <option value="normal">Normal</option>
-                                        <option value="high">High</option>
-                                        <option value="critical">Critical</option>
-                                    </select>
-                                </div>
-                            </div>
 
                             <div className="pmodal-row">
                                 <div className="pfield">
@@ -247,7 +201,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                             <button
                                 type="button"
                                 className="btn-ghost"
-                                disabled={isDraftLoading || isLoading || !formData.department_id}
+                                disabled={isDraftLoading || isLoading}
                                 onClick={handleSaveAsDraft}
                             >
                                 {isDraftLoading ? 'Saving…' : 'Save as draft'}
@@ -255,7 +209,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                             <button
                                 type="submit"
                                 className="btn-primary"
-                                disabled={isLoading || isDraftLoading || !formData.department_id}
+                                disabled={isLoading || isDraftLoading}
                             >
                                 {isLoading ? 'Submitting…' : (
                                     <>Submit for approval <IconArrowRight size={14} /></>
