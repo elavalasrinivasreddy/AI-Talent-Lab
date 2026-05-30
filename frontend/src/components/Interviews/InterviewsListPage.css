@@ -1,198 +1,73 @@
-/* InterviewsListPage.css */
+/* ── Interviews — v3 Calendar-First Hub ──────────────────── */
 
-.interviews-page {
-  padding: var(--space-6) var(--space-8);
-  max-width: 1100px;
-  animation: fadeInUp 400ms ease both;
-}
+.iv-page { animation: fadeInUp 300ms ease both; }
 
-.interviews-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: var(--space-5);
-  gap: var(--space-4);
-  flex-wrap: wrap;
-}
-.interviews-header h1 {
-  font-size: var(--font-size-2xl);
-  font-weight: 800;
-  color: var(--color-text-primary);
-  margin: 0;
-}
-.interviews-subtitle {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  margin: 2px 0 0;
-}
-.interviews-search input {
-  padding: 8px 14px;
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-primary);
-  font-size: 14px;
-  width: 240px;
-}
+/* Header */
+.iv-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-3); }
+.iv-header-left { display:flex; align-items:center; gap:var(--space-3); }
+.iv-header-icon { width:40px; height:40px; border-radius:var(--radius-md); background:rgba(13,148,136,0.1); color:var(--color-primary); display:flex; align-items:center; justify-content:center; }
+.iv-header-title { font-size:var(--font-size-xl); font-weight:700; margin:0; }
+.iv-header-sub { font-size:var(--font-size-sm); color:var(--color-text-secondary); margin:0; }
+.iv-header-actions { display:flex; gap:var(--space-2); }
+.iv-search { display:flex; align-items:center; gap:var(--space-2); padding:var(--space-2) var(--space-3); border:1px solid var(--color-border); border-radius:var(--radius-md); background:var(--color-bg-input); min-width:220px; }
+.iv-search input { border:none; background:transparent; outline:none; color:var(--color-text-primary); font-size:var(--font-size-sm); font-family:inherit; flex:1; }
 
 /* Tabs */
-.interviews-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: var(--space-5);
-  background: var(--color-bg-input);
-  border-radius: var(--radius-md);
-  padding: 3px;
-  width: fit-content;
-}
-.interviews-tab {
-  padding: 6px 16px;
-  border: none;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 150ms;
-}
-.interviews-tab.active {
-  background: var(--color-bg-card);
-  color: var(--color-text-primary);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
+.iv-tabs { display:flex; gap:2px; background:var(--color-bg-secondary); border-radius:var(--radius-md); padding:3px; margin-bottom:var(--space-3); width:fit-content; }
+.iv-tab { display:flex; align-items:center; gap:5px; padding:6px 14px; border:none; background:transparent; border-radius:var(--radius-sm); font-size:var(--font-size-sm); font-weight:500; color:var(--color-text-secondary); cursor:pointer; font-family:inherit; transition:all 150ms; }
+.iv-tab.active { background:var(--color-primary); color:#fff; box-shadow:0 2px 8px rgba(13,148,136,0.3); }
+.iv-tab:hover:not(.active) { color:var(--color-text-primary); }
 
-/* List */
-.interviews-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+/* Day Selector Strip */
+.iv-day-strip { display:flex; gap:var(--space-1); overflow-x:auto; padding-bottom:var(--space-3); margin-bottom:var(--space-3); border-bottom:1px solid var(--color-border); }
+.iv-day-cell { display:flex; flex-direction:column; align-items:center; gap:2px; padding:var(--space-2) var(--space-3); border:1px solid var(--color-border); border-radius:var(--radius-md); background:var(--color-bg-card); cursor:pointer; transition:all 150ms; min-width:52px; font-family:inherit; }
+.iv-day-cell:hover { border-color:var(--color-primary); }
+.iv-day-cell.active { background:var(--color-primary); color:#fff; border-color:var(--color-primary); }
+.iv-day-cell.today { border-color:var(--color-primary); }
+.iv-day-cell.today:not(.active) .iv-day-num { color:var(--color-primary); font-weight:700; }
+.iv-day-dow { font-size:10px; text-transform:uppercase; letter-spacing:0.04em; opacity:0.7; }
+.iv-day-num { font-size:var(--font-size-lg); font-weight:600; }
+.iv-day-label { font-size:12px; font-weight:600; }
+.iv-day-count { font-size:11px; opacity:0.7; }
+.iv-day-dot { width:18px; height:18px; border-radius:50%; background:rgba(13,148,136,0.15); color:var(--color-primary); font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.iv-day-cell.active .iv-day-dot { background:rgba(255,255,255,0.2); color:#fff; }
 
-.interview-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  background: var(--color-bg-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: all 200ms;
-  gap: var(--space-4);
-}
-.interview-card:hover {
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  transform: translateY(-1px);
-}
+/* Timeline */
+.iv-timeline { display:flex; flex-direction:column; gap:var(--space-4); }
+.iv-time-group { display:flex; gap:var(--space-3); }
+.iv-time-label { width:72px; flex-shrink:0; display:flex; align-items:flex-start; gap:4px; font-size:12px; font-weight:600; color:var(--color-text-muted); padding-top:var(--space-3); }
+.iv-time-cards { flex:1; display:flex; flex-direction:column; gap:var(--space-2); }
 
-.iv-card-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-  min-width: 0;
-}
-.iv-card-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: white;
-  flex-shrink: 0;
-}
-.iv-card-info { min-width: 0; }
-.iv-card-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-text-primary);
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.iv-card-role {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  margin: 1px 0 0;
-}
-.iv-card-type {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  text-transform: capitalize;
-  margin: 0;
-}
+/* Interview Card */
+.iv-card { display:flex; align-items:center; gap:var(--space-3); padding:var(--space-3) var(--space-4); background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:var(--radius-lg); cursor:pointer; transition:all 200ms ease; }
+.iv-card:hover { border-color:var(--color-primary); box-shadow:0 4px 16px rgba(13,148,136,0.08); transform:translateY(-1px); }
+.iv-card-left { display:flex; align-items:center; gap:var(--space-2); flex:1; min-width:0; }
+.iv-card-avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:14px; flex-shrink:0; }
+.iv-card-name { font-weight:600; font-size:var(--font-size-sm); margin:0; }
+.iv-card-role { font-size:12px; color:var(--color-text-secondary); margin:0; }
+.iv-card-type { font-size:11px; color:var(--color-text-muted); }
+.iv-card-center { display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex-shrink:0; }
+.iv-card-date { font-size:12px; font-weight:500; }
+.iv-card-time { font-size:var(--font-size-sm); font-weight:600; color:var(--color-primary); }
+.iv-card-duration { font-size:11px; color:var(--color-text-muted); display:flex; align-items:center; gap:3px; }
+.iv-card-right { display:flex; flex-direction:column; align-items:flex-end; gap:var(--space-1); flex-shrink:0; }
+.iv-card-panel { font-size:11px; color:var(--color-text-muted); }
 
-.iv-card-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 100px;
-}
-.iv-card-date {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-.iv-card-time {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-.iv-card-duration {
-  font-size: 11px;
-  color: var(--color-text-muted);
-}
+/* Empty */
+.iv-empty { display:flex; flex-direction:column; align-items:center; text-align:center; padding:var(--space-10); gap:var(--space-2); }
+.iv-empty h3 { font-weight:600; margin:0; }
+.iv-empty p { color:var(--color-text-secondary); font-size:var(--font-size-sm); margin:0; }
 
-.iv-card-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  min-width: 100px;
-}
-.iv-card-status {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-.iv-card-panel {
-  font-size: 11px;
-  color: var(--color-text-muted);
-}
+/* Skeleton */
+.iv-skel { display:flex; flex-direction:column; gap:var(--space-2); }
 
-/* Empty / Loading */
-.interviews-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 60px 0;
-  text-align: center;
-  color: var(--color-text-secondary);
-}
-.interviews-empty-icon { font-size: 2.5rem; margin-bottom: var(--space-3); }
-.interviews-empty h3 { font-size: 16px; font-weight: 700; color: var(--color-text-primary); margin: 0 0 4px; }
-.interviews-empty p { font-size: 13px; margin: 0; max-width: 340px; }
-
-.interviews-loading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.interviews-skeleton {
-  height: 64px;
-  background: var(--color-bg-card);
-  border-radius: var(--radius-lg);
-  animation: skeletonPulse 1.5s ease-in-out infinite;
-}
-@keyframes skeletonPulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.8; }
+/* Responsive */
+@media (max-width: 768px) {
+  .iv-header { flex-direction:column; align-items:flex-start; gap:var(--space-2); }
+  .iv-search { min-width:0; width:100%; }
+  .iv-card { flex-direction:column; align-items:flex-start; }
+  .iv-card-center { flex-direction:row; gap:var(--space-2); }
+  .iv-card-right { flex-direction:row; }
+  .iv-time-group { flex-direction:column; gap:var(--space-1); }
+  .iv-time-label { width:auto; }
 }
