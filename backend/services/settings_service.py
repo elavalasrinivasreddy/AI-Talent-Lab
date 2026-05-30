@@ -471,7 +471,6 @@ class SettingsService:
     async def seed_defaults(conn: asyncpg.Connection, org_id: int) -> None:
         """
         Seed default data for a new org. Called during registration.
-        - 1 default department ("General")
         - 5 default screening questions
         - 5 default message templates
         - 1 default scorecard template

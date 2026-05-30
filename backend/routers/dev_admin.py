@@ -278,7 +278,7 @@ async def reset_all_org_data(org_id: Optional[int] = Query(None)):
     """
     _require_dev_mode()
     async with get_connection() as conn:
-        if org_id:
+        if org_id is not None:
             await conn.execute("DELETE FROM notifications WHERE org_id = $1", org_id)
             await conn.execute("DELETE FROM pipeline_events WHERE org_id = $1", org_id)
             await conn.execute("DELETE FROM candidate_applications WHERE org_id = $1", org_id)

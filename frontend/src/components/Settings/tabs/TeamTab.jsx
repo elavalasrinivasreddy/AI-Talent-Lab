@@ -115,7 +115,7 @@ export default function TeamTab() {
           </button>
         </div>
 
-        {users.length > 0 ? (
+        {filtered.length > 0 ? (
           <>
             <div className="settings-filters" style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' }}>
               <div className="search-input-wrapper" style={{ flex: 1, position: 'relative' }}>

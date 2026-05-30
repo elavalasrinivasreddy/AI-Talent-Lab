@@ -205,7 +205,8 @@ async def add_user(
         if body.role in ["org_head", "dept_admin"]:
             raise InsufficientPermissionsError("Department admins can only add HR and Team Leads")
         # Ensure they are adding to their own department
-        if body.department_id != user.get("dept_id"):
+        dept_admin_dept = user.get("dept_id")
+        if dept_admin_dept is None or body.department_id != dept_admin_dept:
             raise InsufficientPermissionsError("You can only add users to your own department")
 
     new_user = await AuthService.add_user(
