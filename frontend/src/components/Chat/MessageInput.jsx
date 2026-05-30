@@ -148,6 +148,8 @@ const MessageInput = () => {
                             disabled={!canSend}
                         >
                             {isStreaming ? <IconLoader size={14} /> : <IconSend size={14} />}
+                        </button>
+                    </div>
                 </div>
                 <div className="composer-foot" style={{ marginTop: '8px', fontSize: '10px', opacity: 0.7, display: 'flex', justifyContent: 'space-between', padding: '0 10px' }}>
                     <span><kbd style={{ background: 'var(--color-bg-secondary)', padding: '2px 4px', borderRadius: '3px' }}>Enter</kbd> to send</span>
