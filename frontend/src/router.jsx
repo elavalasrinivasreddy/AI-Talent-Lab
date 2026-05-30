@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
+import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
 import { useAuth } from './context/AuthContext'
 
@@ -82,15 +82,20 @@ function DevGuard() {
 // ── Layouts ─────────────────────────────────────
 
 function AppLayout() {
+  const location = useLocation()
+  const isChatPage = location.pathname.startsWith('/chat')
+
   return (
     <ChatProvider>
       <div className="app-layout">
         <Sidebar />
-        {/* Global top bar with notification bell */}
-        <div className="app-topbar">
-          <NotificationBell />
-        </div>
-        <main className="app-main">
+        {/* Hide global top bar on chat page to maximize vertical space */}
+        {!isChatPage && (
+          <div className="app-topbar">
+            <NotificationBell />
+          </div>
+        )}
+        <main className={`app-main ${isChatPage ? 'app-main--full' : ''}`}>
           <Suspense fallback={PageLoading}>
             <Outlet />
           </Suspense>

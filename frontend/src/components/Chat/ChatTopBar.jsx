@@ -1,5 +1,6 @@
 import React from 'react';
 import { useChat } from '../../context/ChatContext';
+import FinalizeCTA from './FinalizeCTA';
 
 const STAGE_CONFIG = {
     intake:          { label: 'Intake',           index: 1 },
@@ -39,6 +40,8 @@ const ChatTopBar = ({ isRailOpen, onToggleRail }) => {
                         Stage {stage.index} / {TOTAL_STAGES} · {stage.label}
                     </span>
                 </div>
+                
+                <FinalizeCTA />
                 
                 <button 
                     onClick={onToggleRail} 

@@ -17,17 +17,12 @@ import FinalizeCTA from './FinalizeCTA';
 export default function JDRail() {
   return (
     <aside className="jd-rail" aria-label="Stage and conversation">
-      <header className="jd-rail-head">
-        <span className="jd-rail-head-label">State &amp; chat</span>
-      </header>
-
       <RailStateCard />
 
       <RailConversation />
 
       <footer className="jd-rail-foot">
         <MessageInput />
-        <FinalizeCTA />
       </footer>
     </aside>
   );

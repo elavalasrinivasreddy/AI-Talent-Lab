@@ -26,22 +26,13 @@ export default function FinalizeCTA() {
     <>
       <button
         type="button"
-        className="rail-finalize"
-        data-ready={canFinalize || undefined}
+        className="btn btn--primary btn--sm"
         onClick={() => setOpen(true)}
         disabled={!canFinalize}
+        style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
       >
-        <span className="rail-finalize-icon" aria-hidden="true">
-          {isComplete ? <IconCheck size={14} /> : <IconArrowRight size={14} />}
-        </span>
-        <span className="rail-finalize-body">
-          <strong>Save &amp; find candidates</strong>
-          <small>
-            {canFinalize
-              ? 'Creates the position and starts sourcing.'
-              : 'Enabled once the JD is drafted.'}
-          </small>
-        </span>
+        {isComplete ? <IconCheck size={14} /> : null}
+        <span>Save & find candidates</span>
       </button>
 
       <PositionSetupModal

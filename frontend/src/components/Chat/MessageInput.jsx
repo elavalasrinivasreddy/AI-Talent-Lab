@@ -151,12 +151,6 @@ const MessageInput = () => {
                         </button>
                     </div>
                 </div>
-                <div className="composer-foot">
-                    <span>
-                        <span className="composer-foot-key">Enter</span> to send · <span className="composer-foot-key">Shift</span>+<span className="composer-foot-key">Enter</span> for a new line
-                    </span>
-                    <span>AI Talent Lab can make mistakes — verify requirements.</span>
-                </div>
             </div>
         </div>
     );
