@@ -8,7 +8,7 @@ from typing import Optional
 
 import asyncpg
 
-from backend.dependencies import get_db, get_current_user, require_org_head
+from backend.dependencies import get_db, get_current_user, require_org_head, require_dept_admin
 from backend.services.settings_service import SettingsService
 from backend.models.settings import (
     OrgProfileUpdate,
@@ -19,6 +19,7 @@ from backend.models.settings import (
     ScorecardTemplateCreate,
     AiBehaviorBody,
 )
+from backend.exceptions import InsufficientPermissionsError
 
 router = APIRouter(prefix="/api/v1/settings", tags=["Settings"])
 
@@ -78,10 +79,12 @@ async def create_department(
 async def update_department(
     dept_id: int,
     body: DepartmentUpdate,
-    user: dict = Depends(require_org_head),
+    user: dict = Depends(require_dept_admin),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Update a department (admin only)."""
+    if user["role"] == "dept_admin" and user.get("department_id") != dept_id:
+        raise InsufficientPermissionsError("You can only modify your own department")
     fields = body.model_dump(exclude_none=True)
     dept = await SettingsService.update_department(
         db, dept_id, user["org_id"], user["user_id"], **fields,

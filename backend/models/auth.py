@@ -75,6 +75,7 @@ class UpdateProfileRequest(BaseModel):
     phone: Optional[str] = None
     avatar_url: Optional[str] = None
     timezone: Optional[str] = None
+    auto_approve_jds: Optional[bool] = None
 
 
 VALID_ORG_ROLES = ("org_head", "dept_admin", "hr", "team_lead")
@@ -130,6 +131,7 @@ class UserResponse(BaseModel):
     timezone: str
     is_active: bool
     department_id: Optional[int] = None
+    auto_approve_jds: bool = False
     created_at: Optional[datetime] = None
 
 

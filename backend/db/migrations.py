@@ -540,6 +540,19 @@ async def run_migrations(conn) -> None:
         END IF;
     END $$;
 
+    -- Approval Rules
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='departments' AND column_name='auto_approve_hire_requests') THEN
+            ALTER TABLE departments ADD COLUMN auto_approve_hire_requests BOOLEAN DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='users' AND column_name='auto_approve_jds') THEN
+            ALTER TABLE users ADD COLUMN auto_approve_jds BOOLEAN DEFAULT FALSE;
+        END IF;
+    END $$;
+
     DO $$
     BEGIN
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns
