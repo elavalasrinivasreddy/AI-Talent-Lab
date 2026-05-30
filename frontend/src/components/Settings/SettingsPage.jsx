@@ -181,7 +181,7 @@ export default function SettingsPage() {
                     <Icon name={item.icon} size={13} />
                     <span>{item.label}</span>
                     {item.phase && <Chip variant="neutral" size="xs">P{item.phase}</Chip>}
-                    {disabled && <span className="st-rail-lock"><Icon name="lock" size={10} /></span>}
+                    {item.disabled && <span className="st-rail-lock"><Icon name="lock" size={10} /></span>}
                   </button>
                 )
               })}

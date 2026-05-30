@@ -42,3 +42,15 @@ The frontend was only fetching the updated row counts (`loadStats()`) after a re
 **Files Modified:**
 - `frontend/src/components/DevAdmin/DevAdminPage.jsx` (Line 106)
 
+---
+
+## 4. Settings Page Crash (ReferenceError: disabled is not defined)
+
+**Problem Statement:**
+Navigating to the Settings page threw a fatal React error: `ReferenceError: disabled is not defined`. This crashed the entire page rendering, displaying the Vite ErrorBoundary overlay.
+
+**Idea / Solution:**
+In the left-rail rendering loop of `SettingsPage.jsx`, a stray check for `{disabled && ...}` was attempting to render a lock icon. Because it wasn't scoping to the mapped object (`item.disabled`), it threw a reference error. Updated the variable to correctly point to `item.disabled`.
+
+**Files Modified:**
+- `frontend/src/components/Settings/SettingsPage.jsx` (Line 184)
