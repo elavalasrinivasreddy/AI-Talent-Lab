@@ -121,7 +121,7 @@ function buildPulseLane(activity) {
   return ai.length > 0 ? ai.slice(0, 12) : activity.slice(0, 12)
 }
 
-export default function useDashboardData(role, period) {
+export default function useDashboardData(role, period, dept = 'all') {
   const [suggestions, setSuggestions] = useState([])
   const [activity, setActivity]       = useState([])
   const [positions, setPositions]     = useState([])
@@ -166,14 +166,14 @@ export default function useDashboardData(role, period) {
   const fetchPositions = useCallback(async () => {
     setErrorPositions(null)
     try {
-      const raw = await dashboardApi.getPositions()
+      const raw = await dashboardApi.getPositions(dept)
       setPositions(Array.isArray(raw) ? raw : (raw?.positions || []))
     } catch (e) {
       setErrorPositions(e.message || 'Failed to load positions')
     } finally {
       setLoadingPositions(false)
     }
-  }, [])
+  }, [dept])
 
   const fetchHealth = useCallback(async () => {
     if (!ADMIN_ROLES.has(role)) {
@@ -182,14 +182,14 @@ export default function useDashboardData(role, period) {
     }
     setErrorHealth(null)
     try {
-      const raw = await dashboardApi.getStats(period || 'week')
+      const raw = await dashboardApi.getStats(period || 'week', dept)
       setHealth(raw)
     } catch (e) {
       setErrorHealth(e.message || 'Failed to load health stats')
     } finally {
       setLoadingHealth(false)
     }
-  }, [role, period])
+  }, [role, period, dept])
 
   // Initial fetches
   useEffect(() => { fetchSuggestions() }, [fetchSuggestions])

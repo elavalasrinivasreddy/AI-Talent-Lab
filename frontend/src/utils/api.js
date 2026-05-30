@@ -141,8 +141,8 @@ export const candidatesApi = {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export const dashboardApi = {
-  getStats: (period = 'week') => _get(`/dashboard/stats?period=${period}`),
-  getPositions: () => _get('/dashboard/positions'),
+  getStats: (period = 'week', deptId = null) => _get(`/dashboard/stats?period=${period}${deptId && deptId !== 'all' ? `&dept_id=${deptId}` : ''}`),
+  getPositions: (deptId = null) => _get(`/dashboard/positions${deptId && deptId !== 'all' ? `?dept_id=${deptId}` : ''}`),
   getPipeline: (positionId) => _get(`/dashboard/pipeline/${positionId}`),
   getFunnel: () => _get('/dashboard/funnel'),
   getActivity: (positionId, limit = 30) => {

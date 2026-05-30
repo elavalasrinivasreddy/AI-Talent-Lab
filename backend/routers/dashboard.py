@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @router.get("/stats")
 async def get_stats(
     period: str = Query("week", regex="^(today|week|month)$"),
+    dept_id: Optional[int] = Query(None),
     current_user=Depends(get_current_user),
 ):
     """Stats cards + trends for the dashboard header."""
@@ -24,13 +25,14 @@ async def get_stats(
         org_id=current_user["org_id"],
         user_id=current_user["user_id"],      # fixed: was ["id"]
         role=current_user["role"],
-        department_id=current_user.get("dept_id"),   # fixed: was ["department_id"]
+        department_id=dept_id or current_user.get("dept_id"),
         period=period
     )
 
 
 @router.get("/positions")
 async def get_dashboard_positions(
+    dept_id: Optional[int] = Query(None),
     current_user=Depends(get_current_user),
 ):
     """Positions with candidate counts for the dashboard table."""
@@ -38,7 +40,7 @@ async def get_dashboard_positions(
         org_id=current_user["org_id"],
         user_id=current_user["user_id"],      # fixed: was ["id"]
         role=current_user["role"],
-        department_id=current_user.get("dept_id"),   # fixed: was ["department_id"]
+        department_id=dept_id or current_user.get("dept_id"),
     )
 
 

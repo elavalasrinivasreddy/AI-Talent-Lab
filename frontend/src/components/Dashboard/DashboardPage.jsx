@@ -97,7 +97,7 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState('week')
   const [selectedDept, setSelectedDept] = useState('all')
 
-  const data = useDashboardData(role, period)
+  const data = useDashboardData(role, period, selectedDept)
   const { lanes, suggestions, positions, health, loading, error, dismiss, dismissAll } = data
 
   const depts   = useMemo(() => deriveDepts(positions), [positions])
