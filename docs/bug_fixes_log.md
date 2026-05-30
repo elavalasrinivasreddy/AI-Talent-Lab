@@ -402,3 +402,17 @@ Updated the `timeAgo` function in `NotificationBell.jsx` to append a `Z` suffix 
 **Files Modified:**
 - `frontend/src/components/common/NotificationBell.jsx`
 
+---
+
+## 32. Cleanup of Duplicate Pydantic Fields and Code Formatting
+
+**Problem Statement:**
+There were duplicate field definitions for `auto_approve_hire_requests` in the `DepartmentCreate` and `DepartmentResponse` schemas within `backend/models/settings.py` (both `Optional[bool] = None` and `bool = False` were present). Additionally, there were minor whitespace and alignment formatting inconsistencies in the frontend hire request components.
+
+**Idea / Solution:**
+Removed the duplicate `Optional[bool] = None` definitions from the Pydantic models in `backend/models/settings.py` to ensure only the correctly typed and defaulted `bool = False` definition remains. Applied code formatting and whitespace cleanup to `frontend/src/components/HireRequests/HireRequestForm.jsx` and `frontend/src/components/HireRequests/helpers.js` to adhere to standard code style.
+
+**Files Modified:**
+- `backend/models/settings.py`
+- `frontend/src/components/HireRequests/HireRequestForm.jsx`
+- `frontend/src/components/HireRequests/helpers.js`

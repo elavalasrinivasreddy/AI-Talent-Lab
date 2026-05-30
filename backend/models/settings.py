@@ -57,7 +57,6 @@ class DepartmentCreate(BaseModel):
     description: Optional[str] = None
     parent_dept_id: Optional[int] = None
     head_user_id: Optional[int] = None
-    auto_approve_hire_requests: Optional[bool] = None
     auto_approve_hire_requests: bool = False
 
     @field_validator("name")
@@ -84,7 +83,6 @@ class DepartmentResponse(BaseModel):
     description: Optional[str] = None
     parent_dept_id: Optional[int] = None
     head_user_id: Optional[int] = None
-    auto_approve_hire_requests: Optional[bool] = None
     head_name: Optional[str] = None
     auto_approve_hire_requests: bool = False
     user_count: int = 0

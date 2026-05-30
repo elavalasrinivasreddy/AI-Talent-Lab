@@ -7,9 +7,9 @@
 // (Finance step dropped — still Phase 2 placeholder, not wired to backend)
 // dept step is now REAL: backed by dept_admin approval workflow.
 export const RELAY_STAGES = [
-  { key: 'filed',    label: 'Filed',         who: req => req.requested_by_name || 'Requester' },
-  { key: 'dept',     label: 'Dept approval', who: req => req.approved_by_name || 'Dept admin' },
-  { key: 'hr',       label: 'HR',            who: req => req.accepted_by_name || 'Awaiting pickup' },
+  { key: 'filed', label: 'Filed', who: req => req.requested_by_name || 'Requester' },
+  { key: 'dept', label: 'Dept approval', who: req => req.approved_by_name || 'Dept admin' },
+  { key: 'hr', label: 'HR', who: req => req.accepted_by_name || 'Awaiting pickup' },
   { key: 'position', label: 'Position open', who: req => req.position_role_name ? 'Live' : 'After JD save' },
 ]
 
@@ -70,31 +70,31 @@ export function computeRelayStates(req) {
 export function statusLabel(req) {
   if (!req) return ''
   switch (req.status) {
-    case 'pending':   return 'Awaiting dept approval'
-    case 'approved':  return 'Approved — awaiting HR pickup'
-    case 'rejected':  return 'Not approved'
-    case 'accepted':  return req.position_id ? 'JD in progress' : 'HR working on JD'
+    case 'pending': return 'Awaiting dept approval'
+    case 'approved': return 'Approved — awaiting HR pickup'
+    case 'rejected': return 'Not approved'
+    case 'accepted': return req.position_id ? 'JD in progress' : 'HR working on JD'
     case 'fulfilled': {
       const ap = req.position_approval_status
-      if (ap === 'pending')           return 'JD ready — awaiting your approval'
+      if (ap === 'pending') return 'JD ready — awaiting your approval'
       if (ap === 'changes_requested') return 'JD changes requested'
       return 'Active position'
     }
     case 'cancelled': return 'Cancelled'
-    default:          return req.status
+    default: return req.status
   }
 }
 
 export function statusTone(req) {
   if (!req) return 'neutral'
-  if (req.status === 'cancelled')                                    return 'neutral'
-  if (req.status === 'rejected')                                     return 'danger'
-  if (req.status === 'pending')                                      return 'warning'
-  if (req.status === 'approved')                                     return 'info'
+  if (req.status === 'cancelled') return 'neutral'
+  if (req.status === 'rejected') return 'danger'
+  if (req.status === 'pending') return 'warning'
+  if (req.status === 'approved') return 'info'
   if (req.status === 'fulfilled' && req.position_approval_status === 'pending') return 'warning'
   if (req.status === 'fulfilled' && req.position_approval_status === 'changes_requested') return 'danger'
-  if (req.status === 'fulfilled')                                    return 'success'
-  if (req.status === 'accepted')                                     return 'info'
+  if (req.status === 'fulfilled') return 'success'
+  if (req.status === 'accepted') return 'info'
   return 'neutral'
 }
 

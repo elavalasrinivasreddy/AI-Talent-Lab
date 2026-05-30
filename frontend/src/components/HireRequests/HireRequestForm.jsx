@@ -162,7 +162,7 @@ export default function HireRequestForm({ mode }) {
 
       <form className="hr-form" onSubmit={submit} noValidate>
         <div className="hr-form-grid" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
+
           <section className="hr-form-section">
             <h2 className="hr-form-section-title">Role Basics</h2>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', margin: '-10px 0 16px' }}>
@@ -202,7 +202,7 @@ export default function HireRequestForm({ mode }) {
 
           <section className="hr-form-section">
             <h2 className="hr-form-section-title">Logistics & Compensation</h2>
-            
+
             <div className="hr-field-row" style={{ marginBottom: '16px' }}>
               <div className="hr-field">
                 <label htmlFor="hr-headcount">Headcount</label>
