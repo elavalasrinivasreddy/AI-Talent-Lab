@@ -236,6 +236,13 @@ export const authApi = {
   resetPassword: (token, new_password) => _post('/auth/reset-password', { token, new_password }),
 }
 
+// ── Settings — AI Behavior ────────────────────────────────────────────────────
+
+export const settingsApi = {
+  getAiBehavior: () => _get('/settings/ai-behavior'),
+  updateAiBehavior: (settings) => _patch('/settings/ai-behavior', settings),
+}
+
 // ── GDPR / Privacy ────────────────────────────────────────────────────────────
 
 export const gdprApi = {

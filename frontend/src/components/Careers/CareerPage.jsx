@@ -29,6 +29,7 @@ function CareerPageView({ orgSlug }) {
   const [search, setSearch] = useState('')
   const [filterDept, setFilterDept] = useState('')
   const [filterWorkType, setFilterWorkType] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
 
   const load = async (s = '', dept = '', wt = '') => {
     try {
@@ -56,9 +57,26 @@ function CareerPageView({ orgSlug }) {
 
   const { org, positions = [] } = data
 
+  // Sort positions
+  const sortedPositions = [...positions].sort((a, b) => {
+    if (sortBy === 'newest') {
+      return new Date(b.created_at) - new Date(a.created_at)
+    }
+    if (sortBy === 'fit_score') {
+      // Sort by seniority (experience_max desc) as fit proxy; nulls last
+      const aScore = a.experience_max ?? -1
+      const bScore = b.experience_max ?? -1
+      return bScore - aScore
+    }
+    if (sortBy === 'title') {
+      return (a.role_name || '').localeCompare(b.role_name || '')
+    }
+    return 0
+  })
+
   // Group by department
   const byDept = {}
-  for (const p of positions) {
+  for (const p of sortedPositions) {
     const dept = p.department || 'General'
     if (!byDept[dept]) byDept[dept] = []
     byDept[dept].push(p)
@@ -158,6 +176,11 @@ function CareerPageView({ orgSlug }) {
             <option value="remote">Remote</option>
             <option value="hybrid">Hybrid</option>
             <option value="onsite">Onsite</option>
+          </select>
+          <select className="cp-filter-select cp-sort-select" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+            <option value="newest">Newest First</option>
+            <option value="fit_score">Senior Roles First</option>
+            <option value="title">A–Z by Title</option>
           </select>
         </div>
 

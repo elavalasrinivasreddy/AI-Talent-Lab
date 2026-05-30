@@ -1,5 +1,8 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
+import { Suspense, lazy } from 'react'
 import { useAuth } from './context/AuthContext'
+
+// ── Static imports (small / always needed on first render) ──────────────────
 import LoginPage from './components/Auth/LoginPage'
 import RegisterPage from './components/Auth/RegisterPage'
 import MagicLinkExchange from './components/Auth/MagicLinkExchange'
@@ -10,24 +13,29 @@ import Sidebar from './components/Sidebar/Sidebar'
 import NotificationBell from './components/common/NotificationBell'
 import SettingsPage from './components/Settings/SettingsPage'
 import { ChatProvider } from './context/ChatContext'
-import ChatPage from './components/Chat/ChatPage'
-import PositionsListPage from './components/Positions/PositionsListPage'
-import PositionDetailPage from './components/Positions/PositionDetailPage'
-import CandidateDetailPage from './components/Candidates/CandidateDetailPage'
-import ApplyPage from './components/Apply/ApplyPage'
 import DashboardPage from './components/Dashboard/DashboardPage'
+import ApplyPage from './components/Apply/ApplyPage'
 import PanelPage from './components/Panel/PanelPage'
-import TalentPoolPage from './components/TalentPool/TalentPoolPage'
 import CareerPage from './components/Careers/CareerPage'
-import DevAdminPage from './components/DevAdmin/DevAdminPage'
 import DeleteMyDataPage from './components/GDPR/DeleteMyDataPage'
 import CandidateStatusPage from './components/Status/CandidateStatusPage'
-import AnalyticsPage from './components/Analytics/AnalyticsPage'
-import PlatformPage from './components/Platform/PlatformPage'
-import HireRequestListPage from './components/HireRequests/HireRequestListPage'
-import HireRequestForm from './components/HireRequests/HireRequestForm'
-import HireRequestDetailPage from './components/HireRequests/HireRequestDetailPage'
-import InterviewsListPage from './components/Interviews/InterviewsListPage'
+import PositionsListPage from './components/Positions/PositionsListPage'
+
+// ── Lazy imports (heavy pages — code-split into separate chunks) ─────────────
+const ChatPage             = lazy(() => import('./components/Chat/ChatPage'))
+const PositionDetailPage   = lazy(() => import('./components/Positions/PositionDetailPage'))
+const CandidateDetailPage  = lazy(() => import('./components/Candidates/CandidateDetailPage'))
+const AnalyticsPage        = lazy(() => import('./components/Analytics/AnalyticsPage'))
+const TalentPoolPage       = lazy(() => import('./components/TalentPool/TalentPoolPage'))
+const HireRequestListPage  = lazy(() => import('./components/HireRequests/HireRequestListPage'))
+const HireRequestForm      = lazy(() => import('./components/HireRequests/HireRequestForm'))
+const HireRequestDetailPage = lazy(() => import('./components/HireRequests/HireRequestDetailPage'))
+const InterviewsListPage   = lazy(() => import('./components/Interviews/InterviewsListPage'))
+const DevAdminPage         = lazy(() => import('./components/DevAdmin/DevAdminPage'))
+const PlatformPage         = lazy(() => import('./components/Platform/PlatformPage'))
+
+// ── Shared fallback ──────────────────────────────────────────────────────────
+const PageLoading = <div className="page-loading">Loading…</div>
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -82,7 +90,9 @@ function AppLayout() {
           <NotificationBell />
         </div>
         <main className="app-main">
-          <Outlet />
+          <Suspense fallback={PageLoading}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </ChatProvider>
@@ -160,7 +170,14 @@ export const router = createBrowserRouter([
   {
     element: <AuthGuard />,
     children: [
-      { path: '/platform', element: <PlatformPage /> },
+      {
+        path: '/platform',
+        element: (
+          <Suspense fallback={PageLoading}>
+            <PlatformPage />
+          </Suspense>
+        ),
+      },
     ],
   },
 
@@ -168,7 +185,14 @@ export const router = createBrowserRouter([
   {
     element: <DevGuard />,
     children: [
-      { path: '/dev', element: <DevAdminPage /> },
+      {
+        path: '/dev',
+        element: (
+          <Suspense fallback={PageLoading}>
+            <DevAdminPage />
+          </Suspense>
+        ),
+      },
     ],
   },
   { path: '/apply/:token', element: <ApplyPage /> },

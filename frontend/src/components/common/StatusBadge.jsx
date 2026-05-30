@@ -8,8 +8,8 @@ import { PIPELINE_STAGES, POSITION_STATUSES } from '../../utils/constants'
 export default function StatusBadge({ status, type = 'pipeline', size = 'sm' }) {
   const config =
     type === 'pipeline'
-      ? PIPELINE_STAGES[status] || { label: status, color: '#9ca3af', bg: 'rgba(156,163,175,0.12)' }
-      : POSITION_STATUSES[status] || { label: status, color: '#9ca3af' }
+      ? PIPELINE_STAGES[status] || { label: status, color: 'var(--color-text-muted, #9ca3af)', bg: 'rgba(156,163,175,0.12)' }
+      : POSITION_STATUSES[status] || { label: status, color: 'var(--color-text-muted, #9ca3af)' }
 
   const bg = config.bg || `${config.color}1a`
 

@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, Query, Request
 import asyncpg
 
 from backend.dependencies import get_db, get_current_user
+from backend.middleware.rate_limiter import limiter
 from backend.services.hire_request_service import HireRequestService
 from backend.db.repositories.hire_requests import HireRequestRepository
 from backend.models.hire_request import (
@@ -41,14 +42,20 @@ async def list_hire_requests(
     scope: str = Query("default", pattern="^(default|mine|all)$"),
     status: Optional[str] = Query(None),
     department_id: Optional[int] = Query(None),
+    cursor_created_at: Optional[str] = Query(None),
+    cursor_id: Optional[int] = Query(None),
+    limit: int = Query(50, ge=1, le=100),
     current_user=Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """
     Role-aware list. Use `scope=mine` for the requester's own list,
     `scope=all` for admins/recruiters to see every request.
+
+    Supports cursor/seek pagination: pass `cursor_created_at` and `cursor_id`
+    from the previous response's `next_cursor` to fetch the next page.
     """
-    rows = await HireRequestService.list_for_user(
+    rows, next_cursor = await HireRequestService.list_for_user(
         db,
         org_id=current_user["org_id"],
         user_id=current_user["user_id"],
@@ -56,8 +63,11 @@ async def list_hire_requests(
         scope=scope,
         status=status,
         department_id=department_id,
+        cursor_created_at=cursor_created_at,
+        cursor_id=cursor_id,
+        limit=limit,
     )
-    return {"requests": rows}
+    return {"requests": rows, "next_cursor": next_cursor}
 
 
 # ── Sidebar badge — pending count ────────────────────────────────────────────
@@ -87,6 +97,7 @@ async def get_hire_request(
 # ── Create ────────────────────────────────────────────────────────────────────
 
 @router.post("/")
+@limiter.limit("30/minute")
 async def create_hire_request(
     request: Request,
     body: HireRequestCreate,
@@ -107,6 +118,7 @@ async def create_hire_request(
 # ── Update ────────────────────────────────────────────────────────────────────
 
 @router.patch("/{request_id}")
+@limiter.limit("60/minute")
 async def update_hire_request(
     request_id: int,
     request: Request,

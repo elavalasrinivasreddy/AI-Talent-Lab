@@ -54,3 +54,35 @@ In the left-rail rendering loop of `SettingsPage.jsx`, a stray check for `{disab
 
 **Files Modified:**
 - `frontend/src/components/Settings/SettingsPage.jsx` (Line 184)
+
+---
+
+## 5. Remove "General" Default Department
+
+**Problem Statement:**
+When a new organization registered, a default "General" department was automatically seeded. This forced users to delete it if it didn't fit their structure, as new orgs should start with a clean slate.
+
+**Idea / Solution:**
+Removed the default department creation step from the org seeding logic in the backend. New organizations now start with exactly zero departments.
+
+**Files Modified:**
+- `backend/services/settings_service.py`
+
+---
+
+## 6. Team Members UX Improvements & Pending Status
+
+**Problem Statement:**
+The Team members table had UI inconsistencies: The current user's role was rendered as raw text instead of a dropdown, the "Add User" modal was over-engineered with a password toggle, and invited users who hadn't accepted their invites yet falsely showed as "Active".
+
+**Idea / Solution:**
+1. Unified the Role column to always use a standard `<select>` (disabled for the current user) for better visual consistency.
+2. Simplified the Add Member modal to only use the "Send Invite Email" flow, removing the password toggle.
+3. Exposed `last_login_at` from the database. If a user has been invited but has never logged in, their status badge now cleanly displays as `⏳ Pending`.
+
+**Files Modified:**
+- `backend/db/repositories/users.py`
+- `backend/routers/auth.py`
+- `backend/services/auth_service.py`
+- `frontend/src/components/Settings/tabs/TeamTab.jsx`
+

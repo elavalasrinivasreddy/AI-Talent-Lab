@@ -17,6 +17,7 @@ from backend.models.settings import (
     ScreeningQuestionCreate, ScreeningQuestionUpdate, ReorderRequest,
     MessageTemplateCreate, MessageTemplateUpdate,
     ScorecardTemplateCreate,
+    AiBehaviorBody,
 )
 
 router = APIRouter(prefix="/api/v1/settings", tags=["Settings"])
@@ -301,3 +302,29 @@ async def update_scorecard_template(
         db, template_id, user["org_id"], user["user_id"], **fields,
     )
     return {"template": t}
+
+
+# ── AI Behavior Settings ──────────────────────────────────────────────────────
+
+@router.get("/ai-behavior")
+async def get_ai_behavior_settings(
+    user: dict = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Get AI behavior settings for the org."""
+    settings = await SettingsService.get_ai_behavior(db, user["org_id"])
+    return {"settings": settings}
+
+
+@router.patch("/ai-behavior")
+async def update_ai_behavior_settings(
+    body: AiBehaviorBody,
+    user: dict = Depends(require_org_head),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Update AI behavior settings (org_head only)."""
+    settings = await SettingsService.update_ai_behavior(
+        db, user["org_id"], user["user_id"],
+        body.model_dump(),
+    )
+    return {"settings": settings}

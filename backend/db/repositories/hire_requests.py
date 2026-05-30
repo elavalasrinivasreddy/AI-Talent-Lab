@@ -13,7 +13,7 @@ Status lifecycle:
        └→ rejected (terminal, with reason)
        └→ cancelled
 """
-from typing import Optional, List
+from typing import Optional, List, Tuple
 import asyncpg
 
 
@@ -80,9 +80,16 @@ class HireRequestRepository:
         status: Optional[str] = None,
         requested_by: Optional[int] = None,
         department_id: Optional[int] = None,
-        limit: int = 100,
-    ) -> List[dict]:
-        """List hire requests with optional filters."""
+        cursor_created_at: Optional[str] = None,
+        cursor_id: Optional[int] = None,
+        limit: int = 50,
+    ) -> Tuple[List[dict], Optional[dict]]:
+        """List hire requests with optional filters. Returns (rows, next_cursor).
+
+        Uses seek/keyset pagination on (created_at DESC, id DESC) for stable,
+        efficient cursoring even on large result sets. Pass cursor_created_at +
+        cursor_id from the previous page's next_cursor to fetch the next page.
+        """
         where = ["hr.org_id = $1"]
         params: list = [org_id]
         if status is not None:
@@ -94,13 +101,29 @@ class HireRequestRepository:
         if department_id is not None:
             params.append(department_id)
             where.append(f"hr.department_id = ${len(params)}")
+        if cursor_created_at is not None and cursor_id is not None:
+            params.append(cursor_created_at)
+            params.append(cursor_id)
+            at_idx = len(params) - 1
+            id_idx = len(params)
+            where.append(
+                f"(hr.created_at, hr.id) < (${at_idx}::timestamptz, ${id_idx})"
+            )
         params.append(limit)
         sql = (
             f"{_LIST_SELECT} WHERE {' AND '.join(where)} "
-            f"ORDER BY hr.created_at DESC LIMIT ${len(params)}"
+            f"ORDER BY hr.created_at DESC, hr.id DESC LIMIT ${len(params)}"
         )
         rows = await conn.fetch(sql, *params)
-        return [dict(r) for r in rows]
+        result = [dict(r) for r in rows]
+        next_cursor: Optional[dict] = None
+        if len(result) == limit:
+            last = result[-1]
+            next_cursor = {
+                "created_at": last["created_at"].isoformat() if hasattr(last["created_at"], "isoformat") else str(last["created_at"]),
+                "id": last["id"],
+            }
+        return result, next_cursor
 
     @staticmethod
     async def count_pending_for_org(conn: asyncpg.Connection, org_id: int) -> int:

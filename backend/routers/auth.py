@@ -47,6 +47,7 @@ def _user_response(user: dict) -> dict:
         "timezone": user.get("timezone", "Asia/Kolkata"),
         "is_active": user.get("is_active", True),
         "department_id": user.get("department_id"),
+        "last_login_at": user.get("last_login_at"),
         "created_at": user.get("created_at"),
     }
 

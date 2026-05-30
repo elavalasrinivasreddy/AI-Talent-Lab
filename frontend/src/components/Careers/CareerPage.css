@@ -202,6 +202,16 @@
   background: #1a1a24;
 }
 
+.cp-sort-select {
+  border-color: rgba(13, 148, 136, 0.2);
+}
+
+.cp-sort-select:focus {
+  outline: none;
+  border-color: var(--color-teal, #0D9488);
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
+}
+
 /* Dept group */
 .cp-dept-group {
   display: flex;

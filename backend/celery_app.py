@@ -16,6 +16,7 @@ celery_app = Celery(
         "backend.tasks.scheduled_search",
         "backend.tasks.gdpr_cleanup",
         "backend.tasks.copilot_analysis",
+        "backend.tasks.auth_cleanup",
     ],
 )
 
@@ -50,5 +51,9 @@ celery_app.conf.beat_schedule = {
     "copilot-suggestions": {
         "task": "backend.tasks.copilot_analysis.generate_copilot_suggestions",
         "schedule": 3600.0,  # every hour
+    },
+    "auth-cleanup-consumed-magic-links": {
+        "task": "backend.tasks.auth_cleanup.cleanup_consumed_magic_links",
+        "schedule": 86400.0,  # every 24 hours (daily)
     },
 }

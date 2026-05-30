@@ -20,6 +20,7 @@ export default function ApplyPage() {
   const [jdOpen, setJdOpen] = useState(false)
   const [uploadState, setUploadState] = useState('idle') // idle | uploading | done | error
   const [videoState, setVideoState] = useState('idle')   // idle | uploading | done | skipped | error
+  const [sessionWarning, setSessionWarning] = useState(null)
   const videoInputRef = useRef(null)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -131,6 +132,7 @@ export default function ApplyPage() {
         setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
         setStep(data.step || step)
       }
+      if (data.session_warning) setSessionWarning(data.session_warning)
       if (data.completed) setPageState('completed')
       if (data.not_interested) setStep('declined')
     } catch (e) {
@@ -168,6 +170,7 @@ export default function ApplyPage() {
       setUploadState('done')
       setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
       setStep(data.step || step)
+      if (data.session_warning) setSessionWarning(data.session_warning)
     } catch (e) {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -246,6 +249,20 @@ export default function ApplyPage() {
 
       {/* ── Progress Bar ── */}
       <ApplyProgress step={step} />
+
+      {/* ── Session persistence warning ── */}
+      {sessionWarning && (
+        <div className="apply-session-warning">
+          <span>⚠ Progress may not be saved. Continue — we'll retry automatically.</span>
+          <button
+            className="apply-session-warning-close"
+            onClick={() => setSessionWarning(null)}
+            aria-label="Dismiss warning"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* ── Position strip ── */}
       <div className="apply-position-strip">
@@ -438,32 +455,62 @@ const APPLY_STEPS = [
 const PROGRESS_LABELS = ['Welcome', 'Interest', 'Questions', 'Resume', 'Review', 'Complete']
 
 function ApplyProgress({ step }) {
-  // Map current step to progress index
+  // Map current step id → PROGRESS_LABELS index
   const stepObj = APPLY_STEPS.find(s => s.id === step)
   const currentLabel = stepObj?.label || 'Welcome'
   const currentIdx = PROGRESS_LABELS.indexOf(currentLabel)
   const progress = currentIdx >= 0 ? currentIdx : 0
 
+  // Human-readable fraction: 1-based, capped at total
+  const totalSteps = PROGRESS_LABELS.length
+  const displayStep = Math.min(progress + 1, totalSteps)
+
   return (
-    <div className="apply-progress">
-      {PROGRESS_LABELS.map((label, idx) => (
-        <div
-          key={label}
-          className={`apply-progress-step ${idx <= progress ? 'active' : ''} ${idx === progress ? 'current' : ''}`}
-        >
-          <div className="apply-progress-dot">
-            {idx < progress ? (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            ) : (
-              <span>{idx + 1}</span>
-            )}
-          </div>
-          <span className="apply-progress-label">{label}</span>
-          {idx < PROGRESS_LABELS.length - 1 && <div className="apply-progress-line" />}
-        </div>
-      ))}
+    <div className="apply-progress-wrapper">
+      <div className="apply-progress-fraction" aria-live="polite">
+        Step {displayStep} of {totalSteps}
+      </div>
+      <div className="apply-progress" role="progressbar" aria-valuenow={displayStep} aria-valuemax={totalSteps}>
+        {PROGRESS_LABELS.map((label, idx) => {
+          const isCompleted = idx < progress
+          const isCurrent   = idx === progress
+          const stepClass = [
+            'apply-progress-step',
+            isCompleted ? 'completed' : '',
+            isCurrent   ? 'current'   : '',
+            !isCompleted && !isCurrent ? 'future' : '',
+          ].filter(Boolean).join(' ')
+
+          return (
+            <div key={label} className={stepClass}>
+              <div className="apply-progress-dot">
+                {isCompleted ? (
+                  <svg
+                    className="apply-progress-check"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                ) : (
+                  <span className="apply-progress-number">{idx + 1}</span>
+                )}
+              </div>
+              <span className="apply-progress-label">{label}</span>
+              {idx < PROGRESS_LABELS.length - 1 && (
+                <div className={`apply-progress-line${isCompleted ? ' completed' : ''}`} />
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

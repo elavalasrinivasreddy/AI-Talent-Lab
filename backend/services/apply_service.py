@@ -214,20 +214,31 @@ class ApplyService:
         else:
             ai_response, session_state = await controller.process_message(user_message)
 
-        # Save user message and AI response
-        await ApplyService._append_message(session_id, "user", user_message, None)
-        await ApplyService._append_message(session_id, "assistant", ai_response, session_state)
+        # Save user message and AI response — non-fatal: warn candidate if DB write fails
+        session_warning = None
+        try:
+            await ApplyService._append_message(session_id, "user", user_message, None)
+            await ApplyService._append_message(session_id, "assistant", ai_response, session_state)
+        except Exception as e:
+            logger.warning(f"Session persistence failed for session {session_id}: {e}")
+            session_warning = (
+                "Progress could not be saved — your answers are still visible "
+                "but may be lost on refresh."
+            )
 
         # Check for not_interested → don't advance to applied
         step = session_state.get("step")
 
-        return {
+        result = {
             "response": ai_response,
             "step": step,
             "session_state": session_state,
             "completed": step == "completion",
             "not_interested": step == "declined",
         }
+        if session_warning:
+            result["session_warning"] = session_warning
+        return result
 
     @staticmethod
     async def handle_resume_upload(
@@ -286,13 +297,24 @@ class ApplyService:
             controller = CandidateChatController(session_state, context)
             ai_response, session_state = await controller._step_complete()
 
-        await ApplyService._append_message(session_id, "assistant", ai_response, session_state)
-        await ApplyService._save_session(session_id, session_state)
+        session_warning = None
+        try:
+            await ApplyService._append_message(session_id, "assistant", ai_response, session_state)
+            await ApplyService._save_session(session_id, session_state)
+        except Exception as e:
+            logger.warning(f"Session persistence failed after resume upload (session {session_id}): {e}")
+            session_warning = (
+                "Progress could not be saved — your answers are still visible "
+                "but may be lost on refresh."
+            )
 
-        return {
+        result = {
             "response": ai_response,
             "step": session_state.get("step"),
         }
+        if session_warning:
+            result["session_warning"] = session_warning
+        return result
 
     @staticmethod
     async def complete_application(token: str) -> dict:

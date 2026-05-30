@@ -5,12 +5,13 @@
  *
  * 3-column: purpose-grouped left rail → middle form → right live preview
  */
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Icon from '../common/Icon'
 import Chip from '../common/Chip'
 import SettingsLivePreview from './SettingsLivePreview'
+import { settingsApi } from '../../utils/api'
 
 import ProfileTab from './tabs/ProfileTab'
 import OrganizationTab from './tabs/OrganizationTab'
@@ -33,12 +34,12 @@ const RAIL_GROUPS = [
     icon: 'cpu',
     color: 'var(--color-primary)',
     items: [
-      { key: 'ats-rules',   icon: 'bar-chart',      label: 'ATS scoring rules', adminOnly: true },
-      { key: 'sourcing',    icon: 'search',          label: 'Sourcing schedule', adminOnly: true },
-      { key: 'screening',   icon: 'help-circle',     label: 'Screening questions', adminOnly: true },
-      { key: 'scorecards',  icon: 'target',          label: 'Scorecard rubric', adminOnly: true },
-      { key: 'bias',        icon: 'shield',          label: 'JD bias detection', adminOnly: true, phase: 2 },
-      { key: 'llm',         icon: 'settings',        label: 'LLM provider', adminOnly: true, phase: 2 },
+      { key: 'ats-rules', icon: 'bar-chart', label: 'ATS scoring rules', adminOnly: true },
+      { key: 'sourcing', icon: 'search', label: 'Sourcing schedule', adminOnly: true },
+      { key: 'screening', icon: 'help-circle', label: 'Screening questions', adminOnly: true },
+      { key: 'scorecards', icon: 'target', label: 'Scorecard rubric', adminOnly: true },
+      { key: 'bias', icon: 'shield', label: 'JD bias detection', adminOnly: true, phase: 2 },
+      { key: 'llm', icon: 'settings', label: 'LLM provider', adminOnly: true, phase: 2 },
     ],
   },
   {
@@ -47,10 +48,10 @@ const RAIL_GROUPS = [
     icon: 'users',
     color: '#8B5CF6',
     items: [
-      { key: 'departments',  icon: 'home',     label: 'Departments', adminOnly: true },
-      { key: 'team',         icon: 'users',    label: 'Team members', adminOnly: true },
-      { key: 'approval',     icon: 'check',    label: 'Approval rules', adminOnly: true, phase: 2 },
-      { key: 'notifications',icon: 'bell',     label: 'Notifications' },
+      { key: 'departments', icon: 'home', label: 'Departments', adminOnly: true },
+      { key: 'team', icon: 'users', label: 'Team members', adminOnly: true },
+      { key: 'approval', icon: 'check', label: 'Approval rules', adminOnly: true, phase: 2 },
+      { key: 'notifications', icon: 'bell', label: 'Notifications' },
     ],
   },
   {
@@ -60,10 +61,10 @@ const RAIL_GROUPS = [
     color: '#06B6D4',
     items: [
       { key: 'organization', icon: 'briefcase', label: 'Organization profile' },
-      { key: 'competitors',  icon: 'trending-up', label: 'Competitor intel' },
-      { key: 'templates',    icon: 'mail',      label: 'Email templates', adminOnly: true },
-      { key: 'appearance',   icon: 'palette',   label: 'Appearance' },
-      { key: 'career-brand', icon: 'home',      label: 'Career page brand', adminOnly: true, phase: 2 },
+      { key: 'competitors', icon: 'trending-up', label: 'Competitor intel' },
+      { key: 'templates', icon: 'mail', label: 'Email templates', adminOnly: true },
+      { key: 'appearance', icon: 'palette', label: 'Appearance' },
+      { key: 'career-brand', icon: 'home', label: 'Career page brand', adminOnly: true, phase: 2 },
     ],
   },
   {
@@ -72,11 +73,11 @@ const RAIL_GROUPS = [
     icon: 'lock',
     color: 'var(--color-text-muted)',
     items: [
-      { key: 'privacy',      icon: 'shield',   label: 'GDPR / DPDP', adminOnly: true },
-      { key: 'security',     icon: 'lock',     label: 'Security', adminOnly: true },
-      { key: 'integrations', icon: 'link',     label: 'Integrations', adminOnly: true },
-      { key: 'audit',        icon: 'clock',    label: 'Audit log', adminOnly: true, phase: 2 },
-      { key: 'export',       icon: 'download', label: 'Data export', adminOnly: true, phase: 2 },
+      { key: 'privacy', icon: 'shield', label: 'GDPR / DPDP', adminOnly: true },
+      { key: 'security', icon: 'lock', label: 'Security', adminOnly: true },
+      { key: 'integrations', icon: 'link', label: 'Integrations', adminOnly: true },
+      { key: 'audit', icon: 'clock', label: 'Audit log', adminOnly: true, phase: 2 },
+      { key: 'export', icon: 'download', label: 'Data export', adminOnly: true, phase: 2 },
     ],
   },
 ]
@@ -116,6 +117,33 @@ export default function SettingsPage() {
   const resolvedTab = (!isAdmin && allAdminKeys.includes(tab)) ? 'profile' : (tab || 'profile')
   const [activeSection, setActiveSection] = useState(resolvedTab)
 
+  // ── AI Behavior Settings persistence ──────────────────────────────────────
+  const [aiSettings, setAiSettings] = useState({})
+  const [aiSaveStatus, setAiSaveStatus] = useState(null) // null | 'saving' | 'saved' | 'error'
+  const saveToastTimer = useRef(null)
+
+  useEffect(() => {
+    settingsApi.getAiBehavior()
+      .then(res => setAiSettings(res.settings || {}))
+      .catch(() => { /* silently ignore — settings not critical to page load */ })
+  }, [])
+
+  const handleSaveAiBehavior = async () => {
+    setAiSaveStatus('saving')
+    try {
+      const res = await settingsApi.updateAiBehavior(aiSettings)
+      setAiSettings(res.settings || {})
+      setAiSaveStatus('saved')
+      clearTimeout(saveToastTimer.current)
+      saveToastTimer.current = setTimeout(() => setAiSaveStatus(null), 3000)
+    } catch {
+      setAiSaveStatus('error')
+      clearTimeout(saveToastTimer.current)
+      saveToastTimer.current = setTimeout(() => setAiSaveStatus(null), 4000)
+    }
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   const switchSection = (key) => {
     setActiveSection(key)
     navigate(`/settings/${key}`, { replace: true })
@@ -141,11 +169,32 @@ export default function SettingsPage() {
           </div>
         </div>
         <div className="st-header-actions">
-          <button className="st-btn st-btn-ghost" onClick={() => {}}>
+          {aiSaveStatus === 'saved' && (
+            <span className="st-save-badge st-save-badge--ok">
+              <Icon name="check" size={12} /> Saved
+            </span>
+          )}
+          {aiSaveStatus === 'error' && (
+            <span className="st-save-badge st-save-badge--err">
+              <Icon name="alert-circle" size={12} /> Save failed
+            </span>
+          )}
+          <button
+            className="st-btn st-btn-ghost"
+            onClick={() => {
+              setAiSettings({})
+              setAiSaveStatus(null)
+            }}
+          >
             <Icon name="rotate-ccw" size={13} /> Reset section
           </button>
-          <button className="st-btn st-btn-primary">
-            <Icon name="check" size={13} /> Save changes
+          <button
+            className="st-btn st-btn-primary"
+            disabled={aiSaveStatus === 'saving'}
+            onClick={handleSaveAiBehavior}
+          >
+            <Icon name="check" size={13} />
+            {aiSaveStatus === 'saving' ? 'Saving…' : 'Save changes'}
           </button>
         </div>
       </div>

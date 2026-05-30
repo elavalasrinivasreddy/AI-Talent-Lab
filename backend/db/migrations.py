@@ -845,4 +845,17 @@ async def run_migrations(conn) -> None:
     await conn.execute(feature_sql)
     logger.info("  Feature schema additions (v2) applied.")
 
+    # ── AI Behavior Settings column ───────────────────────────────────────────
+    ai_behavior_sql = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='organizations' AND column_name='ai_behavior_settings') THEN
+            ALTER TABLE organizations ADD COLUMN ai_behavior_settings JSONB NOT NULL DEFAULT '{}';
+        END IF;
+    END $$;
+    """
+    await conn.execute(ai_behavior_sql)
+    logger.info("  AI behavior settings column ensured.")
+
     logger.info("Database migrations complete.")

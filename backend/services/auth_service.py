@@ -315,7 +315,7 @@ class AuthService:
         user_row = await conn.fetchrow(
             """
             SELECT id, org_id, email, name, role, phone, avatar_url, timezone,
-                   is_active, department_id, created_at
+                   is_active, department_id, last_login_at, created_at
             FROM users WHERE id = $1
             """,
             user_id,

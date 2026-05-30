@@ -327,6 +327,50 @@ class SettingsService:
             raise NotFoundError("Scorecard template not found")
         return t
 
+    # ── AI Behavior Settings ───────────────────────────────────────────────────
+
+    @staticmethod
+    async def get_ai_behavior(conn: asyncpg.Connection, org_id: int) -> dict:
+        """Return the org's ai_behavior_settings JSONB column as a plain dict."""
+        row = await conn.fetchrow(
+            "SELECT ai_behavior_settings FROM organizations WHERE id=$1",
+            org_id,
+        )
+        if row and row["ai_behavior_settings"]:
+            val = row["ai_behavior_settings"]
+            return dict(val) if not isinstance(val, dict) else val
+        return {}
+
+    @staticmethod
+    async def update_ai_behavior(
+        conn: asyncpg.Connection,
+        org_id: int,
+        user_id: int,
+        settings: dict,
+    ) -> dict:
+        """Persist ai_behavior_settings and write an audit entry."""
+        row = await conn.fetchrow(
+            """UPDATE organizations
+               SET ai_behavior_settings = $1
+               WHERE id = $2
+               RETURNING ai_behavior_settings""",
+            json.dumps(settings),
+            org_id,
+        )
+        await AuditLogRepository.create(
+            conn,
+            org_id=org_id,
+            user_id=user_id,
+            action="update_ai_behavior",
+            entity_type="organization",
+            entity_id=str(org_id),
+            details=settings,
+        )
+        if row and row["ai_behavior_settings"]:
+            val = row["ai_behavior_settings"]
+            return dict(val) if not isinstance(val, dict) else val
+        return {}
+
     # ── Default Seeding ────────────────────────────────────────────────────────
 
     @staticmethod
@@ -340,8 +384,8 @@ class SettingsService:
         """
         logger.info(f"Seeding defaults for org {org_id}...")
 
-        # 1. Default department
-        await DeptRepository.create(conn, org_id, "General", "Default department")
+        # 1. Default department (removed per request)
+        # No default department created
 
         # 2. Default screening questions
         default_questions = [

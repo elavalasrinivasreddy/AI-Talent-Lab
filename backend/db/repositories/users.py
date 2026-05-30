@@ -27,7 +27,7 @@ class UserRepository:
             INSERT INTO users (org_id, email, password_hash, name, role, department_id, phone)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING id, org_id, email, name, role, phone, avatar_url, timezone,
-                      is_active, department_id, created_at
+                      is_active, department_id, last_login_at, created_at
             """,
             org_id, email, password_hash, name, role, department_id, phone,
         )
@@ -67,7 +67,7 @@ class UserRepository:
         rows = await conn.fetch(
             """
             SELECT id, org_id, email, name, role, phone, avatar_url, timezone,
-                   is_active, department_id, created_at
+                   is_active, department_id, last_login_at, created_at
             FROM users WHERE org_id = $1 ORDER BY created_at DESC
             """,
             org_id,
@@ -96,7 +96,7 @@ class UserRepository:
             UPDATE users SET {', '.join(set_clauses)}
             WHERE id = ${len(values) - 1} AND org_id = ${len(values)}
             RETURNING id, org_id, email, name, role, phone, avatar_url, timezone,
-                      is_active, department_id, created_at
+                      is_active, department_id, last_login_at, created_at
         """
         row = await conn.fetchrow(query, *values)
         return dict(row) if row else None

@@ -10,7 +10,7 @@ import Icon from '../common/Icon'
 import { PIPELINE_STAGES } from '../../utils/constants'
 
 export default function StageHealthHeader({ stage, stageData, unavailable }) {
-  const cfg = PIPELINE_STAGES[stage] || { label: stage, color: '#94A3B8' }
+  const cfg = PIPELINE_STAGES[stage] || { label: stage, color: 'var(--color-text-muted, #94A3B8)' }
 
   if (unavailable) {
     return (

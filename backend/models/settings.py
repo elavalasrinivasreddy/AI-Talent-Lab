@@ -1,7 +1,7 @@
 """
 models/settings.py – Pydantic schemas for settings request/response validation.
 """
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -211,3 +211,10 @@ class ScorecardTemplateResponse(BaseModel):
     dimensions: str
     is_default: bool = False
     created_at: Optional[datetime] = None
+
+
+# ── AI Behavior Settings ───────────────────────────────────────────────────────
+
+class AiBehaviorBody(BaseModel):
+    """Accepts any JSON key/value pairs for AI behavior settings."""
+    model_config = ConfigDict(extra="allow")

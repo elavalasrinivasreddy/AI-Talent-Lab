@@ -96,9 +96,13 @@ class HireRequestService:
         scope: str = "default",
         status: Optional[str] = None,
         department_id: Optional[int] = None,
-    ) -> List[dict]:
+        cursor_created_at: Optional[str] = None,
+        cursor_id: Optional[int] = None,
+        limit: int = 50,
+    ):
         """
         Role-aware list. Caller can override with explicit `status`/`department_id`.
+        Returns (rows, next_cursor) for seek pagination.
 
         scope:
           "default" — role-appropriate default view:
@@ -115,6 +119,8 @@ class HireRequestService:
             return await HireRequestRepository.list_for_org(
                 conn, org_id, status=eff_status, requested_by=user_id,
                 department_id=department_id,
+                cursor_created_at=cursor_created_at, cursor_id=cursor_id,
+                limit=limit,
             )
 
         if scope == "all":
@@ -124,12 +130,16 @@ class HireRequestService:
                 )
             return await HireRequestRepository.list_for_org(
                 conn, org_id, status=eff_status, department_id=department_id,
+                cursor_created_at=cursor_created_at, cursor_id=cursor_id,
+                limit=limit,
             )
 
         # scope == "default"
         if role == "team_lead":
             return await HireRequestRepository.list_for_org(
                 conn, org_id, status=eff_status, requested_by=user_id,
+                cursor_created_at=cursor_created_at, cursor_id=cursor_id,
+                limit=limit,
             )
         if role == "dept_admin":
             # dept_admin sees their dept; if they have no dept they see nothing
@@ -139,10 +149,14 @@ class HireRequestService:
             return await HireRequestRepository.list_for_org(
                 conn, org_id, status=eff_status,
                 department_id=(user or {}).get("department_id"),
+                cursor_created_at=cursor_created_at, cursor_id=cursor_id,
+                limit=limit,
             )
         # hr / org_head — default to the approved work queue (ready for pickup)
         return await HireRequestRepository.list_for_org(
             conn, org_id, status=eff_status or "approved",
+            cursor_created_at=cursor_created_at, cursor_id=cursor_id,
+            limit=limit,
         )
 
     # ── Get one ───────────────────────────────────────────────────────────
