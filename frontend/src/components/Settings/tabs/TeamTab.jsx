@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../../../utils/api'
 import { useAuth } from '../../../context/AuthContext'
 import Chip from '../../common/Chip'
+import Icon from '../../common/Icon'
 
 export default function TeamTab() {
   const { user: currentUser } = useAuth()
@@ -9,6 +10,8 @@ export default function TeamTab() {
   const [depts, setDepts] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
+  const [deptFilter, setDeptFilter] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ 
     name: '', 
@@ -43,6 +46,9 @@ export default function TeamTab() {
       if (u.department_id !== currentUser.department_id) return false;
       if (u.role === 'org_head' || u.role === 'dept_admin') return false;
     }
+    
+    if (roleFilter && u.role !== roleFilter) return false;
+    if (deptFilter && u.department_id !== Number(deptFilter)) return false;
     
     return (u.name?.toLowerCase().includes(search.toLowerCase()) ||
             u.email?.toLowerCase().includes(search.toLowerCase()));
@@ -111,10 +117,41 @@ export default function TeamTab() {
 
         {users.length > 0 ? (
           <>
-            <div className="search-bar">
-              <span>🔍</span>
-              <input placeholder="Search by name or email..." value={search}
-                     onChange={e => setSearch(e.target.value)} />
+            <div className="settings-filters" style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center' }}>
+              <div className="search-input-wrapper" style={{ flex: 1, position: 'relative' }}>
+                <Icon name="search" size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                <input 
+                  placeholder="Search team members by name or email..." 
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                />
+              </div>
+              <select 
+                value={roleFilter} 
+                onChange={e => setRoleFilter(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+              >
+                <option value="">All Roles</option>
+                {currentUser?.role === 'org_head' && (
+                  <>
+                    <option value="org_head">Org Head</option>
+                    <option value="dept_admin">Dept Admin</option>
+                  </>
+                )}
+                <option value="team_lead">Team Lead</option>
+                <option value="hr">HR</option>
+              </select>
+              {currentUser?.role === 'org_head' && (
+                <select 
+                  value={deptFilter} 
+                  onChange={e => setDeptFilter(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                >
+                  <option value="">All Departments</option>
+                  {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              )}
             </div>
 
             <table className="settings-table">
