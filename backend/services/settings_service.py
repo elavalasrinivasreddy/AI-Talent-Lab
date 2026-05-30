@@ -170,7 +170,7 @@ class SettingsService:
         dept = await DeptRepository.get_by_id(conn, department_id, org_id)
         dept_name = dept["name"] if dept else "Unknown Dept"
         
-        if creator["role"] == "dept_admin":
+        if creator and creator["role"] == "dept_admin":
             # Notify org heads
             org_heads = await conn.fetch("SELECT id FROM users WHERE org_id=$1 AND role='org_head'", org_id)
             for head in org_heads:
@@ -184,7 +184,7 @@ class SettingsService:
                         "message": f"{creator['name']} added {name} to {dept_name} competitors."
                     }
                 )
-        elif creator["role"] == "org_head":
+        elif creator and creator["role"] == "org_head":
             # Notify dept admins
             dept_admins = await conn.fetch("SELECT id FROM users WHERE org_id=$1 AND role='dept_admin' AND department_id=$2", org_id, department_id)
             for admin in dept_admins:
@@ -226,8 +226,9 @@ class SettingsService:
             creator = await UserRepository.get_by_id(conn, user_id, org_id)
             dept = await DeptRepository.get_by_id(conn, department_id, org_id)
             dept_name = dept["name"] if dept else "Unknown Dept"
+            creator_name = creator["name"] if creator else "System"
             
-            if creator["role"] == "dept_admin":
+            if creator and creator.get("role") == "dept_admin":
                 org_heads = await conn.fetch("SELECT id FROM users WHERE org_id=$1 AND role='org_head'", org_id)
                 for head in org_heads:
                     await NotificationRepository.create(
@@ -237,10 +238,10 @@ class SettingsService:
                             "user_id": head["id"],
                             "type": "competitor_removed",
                             "title": f"Competitor Removed for {dept_name}",
-                            "message": f"{creator['name']} removed {comp['name']} from {dept_name} competitors."
+                            "message": f"{creator_name} removed {comp['name']} from {dept_name} competitors."
                         }
                     )
-            elif creator["role"] == "org_head":
+            elif creator and creator.get("role") == "org_head":
                 dept_admins = await conn.fetch("SELECT id FROM users WHERE org_id=$1 AND role='dept_admin' AND department_id=$2", org_id, department_id)
                 for admin in dept_admins:
                     await NotificationRepository.create(
@@ -250,7 +251,7 @@ class SettingsService:
                             "user_id": admin["id"],
                             "type": "competitor_removed",
                             "title": f"Competitor Removed for {dept_name}",
-                            "message": f"{creator['name']} removed {comp['name']} from your department's competitors."
+                            "message": f"{creator_name} removed {comp['name']} from your department's competitors."
                         }
                     )
 
@@ -421,6 +422,12 @@ class SettingsService:
         )
         if row and row["ai_behavior_settings"]:
             val = row["ai_behavior_settings"]
+            if isinstance(val, str):
+                import json
+                try:
+                    val = json.loads(val)
+                except Exception:
+                    val = {}
             return dict(val) if not isinstance(val, dict) else val
         return {}
 
@@ -484,7 +491,16 @@ class SettingsService:
              "options": "Yes (3 days/week),Yes (5 days/week),No (Remote only)", "is_required": True, "sort_order": 5},
         ]
         for q in default_questions:
-            await ScreeningQuestionRepository.create(conn, org_id, **q)
+            await ScreeningQuestionRepository.create(
+                conn, 
+                org_id, 
+                field_key=str(q["field_key"]), 
+                label=str(q["label"]), 
+                field_type=str(q.get("field_type", "text")),
+                options=str(q["options"]) if "options" in q else None,
+                is_required=bool(q.get("is_required", False)),
+                sort_order=int(q.get("sort_order", 0))
+            )
 
         # 3. Default message templates
         default_templates = [
@@ -525,7 +541,15 @@ class SettingsService:
             },
         ]
         for t in default_templates:
-            await MessageTemplateRepository.create(conn, org_id, **t)
+            await MessageTemplateRepository.create(
+                conn, 
+                org_id, 
+                name=str(t["name"]), 
+                category=str(t["category"]), 
+                body=str(t["body"]), 
+                subject=str(t["subject"]) if "subject" in t else None,
+                is_default=bool(t.get("is_default", False))
+            )
 
         # 4. Default scorecard template
         default_dimensions = json.dumps([

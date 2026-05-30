@@ -114,7 +114,7 @@ async def list_competitors(
     """List competitors. If org_head, they see all (or filtered). If dept_admin, they see only theirs unless specified otherwise, but service allows filtering."""
     if user["role"] == "dept_admin":
         # Dept admin can only see their department's competitors
-        department_id = user["department_id"]
+        department_id = user.get("dept_id")
         
     comps = await SettingsService.list_competitors(db, user["org_id"], department_id)
     return {"competitors": comps}
@@ -129,7 +129,7 @@ async def create_competitor(
     """Add a competitor."""
     # Ensure Dept Admin can only add to their department
     dept_id = body.department_id
-    if user["role"] == "dept_admin" and dept_id != user["department_id"]:
+    if user["role"] == "dept_admin" and dept_id != user.get("dept_id"):
         raise InsufficientPermissionsError("Department Admin can only add competitors to their own department")
         
     comp = await SettingsService.create_competitor(

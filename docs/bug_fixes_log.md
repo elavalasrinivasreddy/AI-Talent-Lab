@@ -328,3 +328,31 @@ The static analyzer flagged `is_auto_approved` and `created` as possibly unbound
 **Root Cause:** The `SettingsService` was invoking `NotificationRepository.create()` using positional arguments, whereas the repository method expects a single `data: dict` argument containing the payload.
 **Fix:** Updated `SettingsService.create_competitor` and `SettingsService.delete_competitor` to pass a correctly formatted dictionary to the `NotificationRepository.create()` function, resolving the 500 error.
 
+---
+## 27. Settings API KeyErrors and JSON Deserialization
+
+**Problem Statement:**
+When adding a competitor as an Org Head, the API crashed with `KeyError: 'department_id'` because it attempted to access a key absent from the user object payload. Additionally, accessing the AI Behavior settings crashed with `ValueError: dictionary update sequence element #0 has length 1` because the database value was fetched as a stringified JSON instead of a raw dictionary.
+
+**Idea / Solution:**
+Updated the user property access in `backend/routers/settings.py` to correctly extract `.get("dept_id")`, matching the JWT claims format in `backend/dependencies.py`. Updated `backend/services/settings_service.py` to defend against raw JSON strings by checking `isinstance(row["settings"], str)` and using `json.loads` if needed.
+
+**Files Modified:**
+- `backend/routers/settings.py`
+- `backend/services/settings_service.py`
+
+---
+
+## 28. Settings Service NoneType and Unpacking Errors
+
+**Problem Statement:**
+Errors occurred in `settings_service.py` across several lines:
+1. Lines 230, 240, 253: A `TypeError` (`'NoneType' object is not subscriptable`) could occur when checking `creator["role"]` or accessing `creator["name"]` because the database fetch can return `None`.
+2. Lines 493, 534: Type-checking and runtime unpacking errors occurred when using `**kwargs` unpacking (`**q` and `**t`) to pass dictionary items into strict repository create methods (`ScreeningQuestionRepository.create` and `MessageTemplateRepository.create`).
+
+**Idea / Solution:**
+1. Added safety checks for the `creator` object (`if creator and creator.get("role") == ...`) and gracefully extracted the user's name (`creator["name"] if creator else "System"`).
+2. Replaced the `**kwargs` unpacking with explicit keyword assignments (e.g. `field_key=str(q["field_key"])`) and proper fallback logic (`q.get("is_required", False)`), satisfying the strict type-checking constraints.
+
+**Files Modified:**
+- `backend/services/settings_service.py`
