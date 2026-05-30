@@ -282,3 +282,9 @@ The static analyzer flagged `is_auto_approved` and `created` as possibly unbound
 **Symptom:** Vite build failed complaining about missing `react-hot-toast` dependency in `ApprovalRulesTab.jsx`.
 **Root Cause:** The project does not have `react-hot-toast` installed in `package.json`, and it was mistakenly added to the new component.
 **Fix:** Removed the `import { toast } from 'react-hot-toast'` and replaced error notifications with native `alert()`.
+
+---
+### 20. Corrected Approval Rules Visibility for Dept Admins
+**Symptom:** Department Admins were seeing two toggles in the Approval Rules tab ("Auto-Approve Hire Requests" and "Auto-Approve Final JDs").
+**Root Cause:** The Final JD auto-approve logic used `(isHM || isDeptAdmin)` which incorrectly exposed the Team Lead-specific setting to Department Admins.
+**Fix:** Modified `ApprovalRulesTab.jsx` to restrict the "Auto-Approve Final JDs" toggle exclusively to `isHM` (Team Leads). Department Admins now correctly see only the "Auto-Approve Hire Requests" toggle.

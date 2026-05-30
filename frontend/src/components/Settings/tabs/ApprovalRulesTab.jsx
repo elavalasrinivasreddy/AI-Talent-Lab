@@ -108,7 +108,7 @@ export default function ApprovalRulesTab() {
           </div>
         )}
 
-        {(isHM || isDeptAdmin) && (
+        {isHM && (
           <div className="settings-card" style={{ 
             display: 'flex', 
             alignItems: 'flex-start', 
