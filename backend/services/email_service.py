@@ -10,6 +10,7 @@ caches the adapter instance, and exposes templated send helpers:
 Every helper goes through the same `_send()` path so logging, error handling and
 the from-address default are consistent.
 """
+from datetime import datetime
 import html
 import logging
 from typing import Optional
@@ -367,7 +368,7 @@ class EmailService:
         role_name: str,
         org_name: str,
         round_name: str,
-        scheduled_at: Optional["datetime"] = None,
+        scheduled_at: Optional[datetime] = None,
         duration_minutes: int = 60,
         meeting_link: Optional[str] = None,
     ) -> bool:
