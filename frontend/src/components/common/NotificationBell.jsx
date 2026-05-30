@@ -6,6 +6,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import { notificationsApi } from '../../utils/api'
 import Icon from './Icon'
 import './NotificationBell.css'
@@ -23,6 +24,7 @@ export default function NotificationBell() {
   const [data, setData] = useState({ notifications: [], unread_count: 0 })
   const [open, setOpen] = useState(false)
   const drawerRef = useRef(null)
+  const navigate = useNavigate()
 
   const load = useCallback(async () => {
     try {
@@ -166,7 +168,13 @@ export default function NotificationBell() {
                         <div
                           key={n.id}
                           className={`notif-item ${n.is_read ? '' : 'unread'}`}
-                          onClick={() => !n.is_read && handleMarkRead(n.id)}
+                          onClick={() => {
+                            if (!n.is_read) handleMarkRead(n.id)
+                            if (n.action_url) {
+                              setOpen(false)
+                              navigate(n.action_url)
+                            }
+                          }}
                         >
                           <div className="notif-item-body">
                             <div className="notif-item-title">{n.title}</div>

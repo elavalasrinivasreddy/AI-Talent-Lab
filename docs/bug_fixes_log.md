@@ -416,3 +416,17 @@ Removed the duplicate `Optional[bool] = None` definitions from the Pydantic mode
 - `backend/models/settings.py`
 - `frontend/src/components/HireRequests/HireRequestForm.jsx`
 - `frontend/src/components/HireRequests/helpers.js`
+
+---
+
+## 33. Notification Navigation Routing
+
+**Problem Statement:**
+When users clicked on a notification (e.g. for a new hire request or a new competitor), it was only being marked as read in the UI but did not actually navigate the user to the corresponding page. The industry standard expectation is that clicking a notification acts as a deep link to the relevant action or entity.
+
+**Idea / Solution:**
+Updated `NotificationBell.jsx` to import and utilize `useNavigate` from `react-router-dom`. Modified the notification item's `onClick` handler to check if an `action_url` is provided in the notification payload. If it exists, the app now closes the notification drawer and routes the user directly to the target page, while still marking the notification as read.
+
+**Files Modified:**
+- `frontend/src/components/common/NotificationBell.jsx`
+
