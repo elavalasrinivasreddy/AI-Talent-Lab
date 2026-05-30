@@ -36,8 +36,8 @@ export default function ApprovalRulesTab() {
   }, [isDeptAdmin, user?.department_id])
 
   const handleHrToggle = async (checked) => {
-    setHrAutoApprove(checked)
     if (!deptId) return
+    setHrAutoApprove(checked)
     try {
       await api.patch(`/settings/departments/${deptId}`, {
         auto_approve_hire_requests: checked
@@ -105,6 +105,14 @@ export default function ApprovalRulesTab() {
               <input type="checkbox" checked={hrAutoApprove} onChange={e => handleHrToggle(e.target.checked)} />
               <span className="st-slider"></span>
             </label>
+          </div>
+        )}
+
+        {!isDeptAdmin && !isHM && (
+          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            <p style={{ fontSize: '14px', margin: 0 }}>
+              Approval rules are configured by Department Admins (hire requests) and Hiring Managers (job descriptions).
+            </p>
           </div>
         )}
 

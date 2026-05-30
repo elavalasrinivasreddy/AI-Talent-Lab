@@ -165,9 +165,12 @@ class HireRequestService:
             # hr sees approved requests for their dept; if they have no dept they see nothing
             from backend.db.repositories.users import UserRepository
             user = await UserRepository.get_by_id(conn, user_id, org_id)
+            hr_dept_id = (user or {}).get("department_id")
+            if hr_dept_id is None:
+                return []
             return await HireRequestRepository.list_for_org(
                 conn, org_id, status=eff_status,
-                department_id=(user or {}).get("department_id"),
+                department_id=hr_dept_id,
                 cursor_created_at=cursor_created_at, cursor_id=cursor_id,
                 limit=limit,
             )
@@ -276,7 +279,7 @@ class HireRequestService:
                 location=location,
             )
 
-            if department_id:
+            if department_id is not None:
                 from backend.db.repositories.departments import DeptRepository
                 dept = await DeptRepository.get_by_id(conn, department_id, org_id)
                 if dept and dept.get("auto_approve_hire_requests"):
