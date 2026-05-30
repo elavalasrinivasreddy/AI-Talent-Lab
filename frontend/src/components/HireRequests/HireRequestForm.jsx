@@ -150,7 +150,7 @@ export default function HireRequestForm({ mode }) {
 
       {/* Relay viz — for new, it's a preview of the path the request will take */}
       <RelayVisualization request={existing || {
-        status: 'pending',
+        status: 'draft',
         requested_by_name: user?.name || 'You',
       }} />
 

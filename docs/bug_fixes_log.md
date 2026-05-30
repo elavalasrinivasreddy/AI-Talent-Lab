@@ -288,3 +288,9 @@ The static analyzer flagged `is_auto_approved` and `created` as possibly unbound
 **Symptom:** Department Admins were seeing two toggles in the Approval Rules tab ("Auto-Approve Hire Requests" and "Auto-Approve Final JDs").
 **Root Cause:** The Final JD auto-approve logic used `(isHM || isDeptAdmin)` which incorrectly exposed the Team Lead-specific setting to Department Admins.
 **Fix:** Modified `ApprovalRulesTab.jsx` to restrict the "Auto-Approve Final JDs" toggle exclusively to `isHM` (Team Leads). Department Admins now correctly see only the "Auto-Approve Hire Requests" toggle.
+
+---
+### 21. Fixed Unfiled Hire Request Showing Step-1 as Done
+**Symptom:** When a Hiring Manager opened the "New Hire Request" page, the progress relay visualizer incorrectly showed Step-1 ("Filed") as completed before the form was even submitted.
+**Root Cause:** The `HireRequestForm.jsx` passed a mock request with `status: 'pending'` to the visualizer. In the system logic, `pending` means the request is successfully filed and awaiting Dept Admin approval (i.e., Step-1 is done, Step-2 is active).
+**Fix:** Introduced a conceptual `draft` status in `helpers.js` that maps to Step-1 being the `current` state, and passed this `draft` status from the form when `existing` data is null.

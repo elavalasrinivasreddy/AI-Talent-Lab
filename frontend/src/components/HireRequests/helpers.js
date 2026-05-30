@@ -36,6 +36,10 @@ export function computeRelayStates(req) {
     return { filed: 'done', dept: 'pending', hr: 'pending', position: 'pending' }
   }
 
+  if (s === 'draft') {
+    return { filed: 'current', dept: 'pending', hr: 'pending', position: 'pending' }
+  }
+
   if (s === 'rejected') {
     return { filed: 'done', dept: 'rejected', hr: 'pending', position: 'pending' }
   }
