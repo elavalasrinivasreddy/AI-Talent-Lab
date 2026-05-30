@@ -247,13 +247,3 @@ An `AttributeError` ("'Record' object has no attribute 'get'") occurred in `hire
 
 ---
 
-## 17. Settings Service Dictionary Unpacking Type Errors
-
-**Problem Statement:**
-Static type checkers / IDEs reported errors on lines 404 and 445 in `settings_service.py` because `**q` and `**t` were being used to unpack untyped dictionaries into repository `create` methods. Python static analysis cannot guarantee the dictionary keys match the method parameters.
-
-**Idea / Solution:**
-Replaced the `**` dictionary unpacking in `SettingsService.seed_defaults` with explicit keyword arguments (using `.get()` for optional fields) when calling `ScreeningQuestionRepository.create` and `MessageTemplateRepository.create`. This resolves the linter/type errors and makes the mapping explicit and type-safe.
-
-**Files Modified:**
-- `backend/services/settings_service.py`
