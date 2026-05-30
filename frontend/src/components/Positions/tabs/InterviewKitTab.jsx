@@ -1,7 +1,7 @@
 /**
  * InterviewKitTab.jsx – AI-generated interview questions + scorecard template
  * Used in PositionDetailPage tabs
- * Per docs/pages/09_career_page.md §Interview Kit
+ * Per docs/design/pages/12_career_page.md §Interview Kit
  */
 import React, { useState, useEffect } from 'react'
 import './InterviewKitTab.css'

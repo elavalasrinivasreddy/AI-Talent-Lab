@@ -49,6 +49,61 @@ class UpdateInterviewRequest(BaseModel):
     notes: Optional[str] = None
 
 
+# ── List all ──────────────────────────────────────────────────────────────────
+
+@router.get("/")
+async def list_interviews(
+    filter: str = "all",
+    current_user=Depends(get_current_user),
+):
+    """
+    List all interviews for the organization.
+    filter: upcoming | today | past | all
+    """
+    from backend.db.connection import get_connection
+    from datetime import datetime as dt, timedelta
+
+    org_id = current_user["org_id"]
+    where = "i.org_id=$1"
+    params = [org_id]
+
+    now = dt.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+
+    if filter == "upcoming":
+        where += " AND i.scheduled_at > $2 AND i.status NOT IN ('completed','cancelled')"
+        params.append(now)
+    elif filter == "today":
+        where += " AND i.scheduled_at >= $2 AND i.scheduled_at < $3"
+        params.extend([today_start, today_end])
+    elif filter == "past":
+        where += " AND (i.scheduled_at < $2 OR i.status IN ('completed','cancelled'))"
+        params.append(now)
+
+    async with get_connection() as conn:
+        rows = await conn.fetch(
+            f"""
+            SELECT i.id, i.round_number, i.round_name, i.round_type,
+                   i.scheduled_at, i.duration_minutes, i.status,
+                   i.overall_result, i.meeting_link,
+                   i.position_id, i.candidate_id,
+                   c.name AS candidate_name,
+                   p.role_name,
+                   (SELECT COUNT(*) FROM interview_panel ip WHERE ip.interview_id=i.id) AS panel_count,
+                   (SELECT COUNT(*) FROM interview_panel ip WHERE ip.interview_id=i.id AND ip.feedback_submitted=TRUE) AS feedback_count
+            FROM interviews i
+            JOIN candidates c ON c.id = i.candidate_id
+            JOIN positions p ON p.id = i.position_id
+            WHERE {where}
+            ORDER BY COALESCE(i.scheduled_at, i.created_at) DESC
+            LIMIT 100
+            """,
+            *params,
+        )
+    return {"interviews": [dict(r) for r in rows]}
+
+
 # ── Create ────────────────────────────────────────────────────────────────────
 
 @router.post("/")

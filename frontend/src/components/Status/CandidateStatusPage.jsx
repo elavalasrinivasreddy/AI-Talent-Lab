@@ -94,8 +94,8 @@ export default function CandidateStatusPage() {
                   <span className="cs-iv-round">{iv.round}</span>
                   <span className={`cs-iv-status cs-iv-${iv.status}`}>
                     {iv.status === 'completed' ? '✅ Completed' :
-                     iv.status === 'scheduled' ? '🗓 Scheduled' :
-                     iv.status === 'cancelled' ? '❌ Cancelled' : '⏳ Pending'}
+                      iv.status === 'scheduled' ? '🗓 Scheduled' :
+                        iv.status === 'cancelled' ? '❌ Cancelled' : '⏳ Pending'}
                   </span>
                 </div>
                 {iv.scheduled_at && (
@@ -117,7 +117,7 @@ export default function CandidateStatusPage() {
         {/* Info */}
         <div className="cs-info">
           <p>
-            This page shows the current status of your application. 
+            This page shows the current status of your application.
             You'll receive email updates when your status changes.
           </p>
         </div>

@@ -360,7 +360,7 @@ export default function DevAdminPage() {
 function CreateUserPanel({ orgs, onCreated, addLog }) {
   const [form, setForm] = useState({
     name: '', email: '', password: 'test1234',
-    role: 'recruiter', org_id: '', org_name: '',
+    role: 'hr', org_id: '', org_name: '',
     useNewOrg: false,
   })
   const [saving, setSaving] = useState(false)
@@ -408,10 +408,10 @@ function CreateUserPanel({ orgs, onCreated, addLog }) {
 
         <label className="dev-label">Role</label>
         <select className="dev-select" value={form.role} onChange={e => set('role', e.target.value)}>
-          <option value="admin">admin — HR Director</option>
-          <option value="recruiter">recruiter — HR / Recruiter</option>
-          <option value="hiring_manager">hiring_manager — Hiring Manager</option>
-          <option value="dept_admin">dept_admin — Department Head</option>
+          <option value="org_head">org_head — Organization Owner</option>
+          <option value="dept_admin">dept_admin — Department Admin</option>
+          <option value="hr">hr — HR / Recruiter</option>
+          <option value="team_lead">team_lead — Team Lead</option>
           <option value="platform_admin">platform_admin — SaaS Owner (no org)</option>
         </select>
 

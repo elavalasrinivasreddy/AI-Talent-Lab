@@ -34,7 +34,7 @@ function saveSession(token, user, org) {
 /**
  * Default landing route per role.
  * platform_admin lives outside the org sidebar; everyone else hits the
- * universal dashboard. Per docs/redesign/14_auth.md.
+ * universal dashboard. Per docs/design/pages/14_auth.md.
  */
 export function defaultRouteForRole(role) {
   if (role === 'platform_admin') return '/platform'
@@ -73,12 +73,18 @@ export function AuthProvider({ children }) {
         setUser(data.user)
         setOrg(data.org)
         saveSession(initial.token, data.user, data.org)
-      } catch {
+      } catch (e) {
         if (cancelled) return
-        setUser(null)
-        setOrg(null)
-        setToken(null)
-        saveSession(null, null, null)
+        // Only clear session on definitive auth rejection (401/403).
+        // Transient errors (5xx, network) leave state intact so a brief
+        // backend hiccup doesn't log the user out.
+        const status = e?.status ?? e?.response?.status
+        if (status === 401 || status === 403) {
+          setUser(null)
+          setOrg(null)
+          setToken(null)
+          saveSession(null, null, null)
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }

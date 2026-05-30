@@ -1,7 +1,7 @@
 /**
  * PanelPage.jsx – Panel member feedback submission via magic link
  * Route: /panel/:token (public, no auth)
- * Per docs/pages/11_panel_feedback.md — mobile-first form
+ * Per docs/design/pages/11_panel_feedback.md — mobile-first form
  */
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
@@ -110,7 +110,7 @@ export default function PanelPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ attended: false, is_draft: false }),
         })
-      } catch (e) {}
+      } catch (e) { }
       setPageState('not_attended')
     } else {
       setPageState('form')

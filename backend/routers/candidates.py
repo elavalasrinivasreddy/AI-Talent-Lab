@@ -90,12 +90,13 @@ async def update_candidate_status(
             }
         })
 
+    user_id = current_user["user_id"]
     try:
         app = await CandidateService.update_status(
             application_id=application_id,
             org_id=current_user["org_id"],
             new_status=new_status,
-            user_id=current_user["id"],
+            user_id=user_id,
             candidate_id=candidate_id,
             position_id=position_id,
         )
@@ -120,12 +121,13 @@ async def mark_candidate_selected(
             "error": {"code": "MISSING_FIELDS",
                       "message": "application_id and position_id are required", "details": None}
         })
+    user_id = current_user["user_id"]
     result = await CandidateService.mark_selected(
         candidate_id=candidate_id,
         application_id=application_id,
         position_id=position_id,
         org_id=current_user["org_id"],
-        user_id=current_user["id"],
+        user_id=user_id,
     )
     return result
 
@@ -155,11 +157,12 @@ async def add_tag(
         raise HTTPException(status_code=422, detail={
             "error": {"code": "MISSING_TAG", "message": "tag field is required", "details": None}
         })
+    user_id = current_user["user_id"]
     tags = await CandidateService.add_tag(
         candidate_id=candidate_id,
         org_id=current_user["org_id"],
         tag=tag,
-        user_id=current_user["id"],
+        user_id=user_id,
     )
     return {"tags": tags}
 

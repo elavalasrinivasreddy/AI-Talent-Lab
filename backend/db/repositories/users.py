@@ -17,7 +17,7 @@ class UserRepository:
         email: str,
         password_hash: str,
         name: str,
-        role: str = "recruiter",
+        role: str = "hr",
         department_id: Optional[int] = None,
         phone: Optional[str] = None,
     ) -> dict:

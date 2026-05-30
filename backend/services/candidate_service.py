@@ -1,6 +1,6 @@
 """
 services/candidate_service.py – Business logic for candidate management.
-Implements two-step semantic ATS scoring per docs/BACKEND_PLAN.md §15.
+Implements two-step semantic ATS scoring per docs/architecture/03_backend.md §15.
 """
 import json
 import logging
@@ -52,7 +52,7 @@ async def compute_ats_score(
     org_id: int
 ) -> dict:
     """
-    Two-step semantic ATS scoring per docs/BACKEND_PLAN.md §15.
+    Two-step semantic ATS scoring per docs/architecture/03_backend.md §15.
     Step 1: Embedding cosine similarity (fast)
     Step 2: LLM structured analysis (deep, only above embedding threshold)
     """

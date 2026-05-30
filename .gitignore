@@ -13,3 +13,7 @@ old_frontend/
 **/__pycache__/
 *.py[cod]
 *$py.class
+
+# Local dev / tooling
+.claude/
+graphify-out/

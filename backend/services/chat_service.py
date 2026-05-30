@@ -96,22 +96,73 @@ class ChatService:
         if user_message:
             await ChatSessionRepository.add_message(session_id, "user", user_message)
 
-        initial_stage = state.get("stage", "intake")
-
         try:
-            # ── Run the pipeline ──────────────────────────────────────
-            new_state = await run_agent(
-                state=state,
-                user_message=user_message,
-                action=action,
-                action_data=action_data
+            initial_stage = state.get("stage", "intake")
+
+            # We only want token-level streaming when the upcoming turn is going
+            # to draft the final JD. That is true when:
+            #   (a) the user just selected a variant (action == "select_variant"), or
+            #   (b) we're already on final_jd and getting a refinement/rewrite.
+            will_stream_final = (
+                action == "select_variant"
+                or action in {"rewrite_section", "regenerate_variants"}
+                or (state.get("stage") == "final_jd" and user_message)
             )
+
+            if will_stream_final:
+                token_queue: asyncio.Queue = asyncio.Queue()
+
+                async def _runner():
+                    try:
+                        return await run_agent(
+                            state=state,
+                            user_message=user_message,
+                            action=action,
+                            action_data=action_data,
+                            token_queue=token_queue,
+                        )
+                    finally:
+                        await token_queue.put(None)  # sentinel
+
+                agent_task = asyncio.create_task(_runner())
+
+                # Drain the queue → SSE jd_token events
+                while True:
+                    chunk = await token_queue.get()
+                    if chunk is None:
+                        break
+                    yield StreamHandler.emit_jd_token(chunk)
+
+                new_state = await agent_task
+            else:
+                new_state = await run_agent(
+                    state=state,
+                    user_message=user_message,
+                    action=action,
+                    action_data=action_data,
+                )
 
             current_stage = new_state.get("stage")
 
-            # ── Emit stage change if it changed ───────────────────────
-            if current_stage != initial_stage:
+            # ── Emit one stage_change per actual transition ──────────
+            # Orchestrator stamps `_run_meta.transitions` with every stage it
+            # entered during this turn (intake → internal_check → market_research
+            # → … ). Without iterating over it we'd only ever emit the final
+            # stage, and the UI stepper would skip pills.
+            run_meta = new_state.pop("_run_meta", None) or {}
+            for transition_stage in run_meta.get("transitions", []):
+                yield StreamHandler.emit_stage_change(transition_stage)
+
+            # If the orchestrator didn't record any transitions but the stage
+            # actually moved (e.g. interviewer set stage directly), emit once.
+            if not run_meta.get("transitions") and current_stage != initial_stage:
                 yield StreamHandler.emit_stage_change(current_stage)
+
+            # ── Emit one stage_skipped per soft-skipped stage ────────
+            for skipped in run_meta.get("skipped", []):
+                yield StreamHandler.emit_stage_skipped(
+                    skipped["stage"], skipped.get("reason", "")
+                )
 
             # ── Emit errors ───────────────────────────────────────────
             if new_state.get("error_stage"):
@@ -131,7 +182,7 @@ class ChatService:
             if new_state.get("messages") and user_message:
                 last_msg = new_state["messages"][-1]
                 if last_msg.get("role") == "assistant":
-                    yield StreamHandler.emit_token(last_msg["content"])
+                    yield StreamHandler.emit_message(last_msg["content"])
                     await ChatSessionRepository.add_message(
                         session_id, "assistant", last_msg["content"]
                     )
@@ -160,22 +211,18 @@ class ChatService:
                 if jd_variants and current_stage == "jd_variants":
                     yield StreamHandler.emit_card_variants(jd_variants)
 
-            # ── Stream final JD token by token ────────────────────────
-            # Only stream if this is the FIRST time final_jd appears (transitioning to final_jd stage)
-            if current_stage in ("final_jd",) and initial_stage != "final_jd" and new_state.get("final_jd"):
-                final_text = new_state["final_jd"]
-                # Stream word-by-word for natural typing effect
-                words = final_text.split(" ")
-                for word in words:
-                    yield StreamHandler.emit_jd_token(word + " ")
-                    await asyncio.sleep(0.012)
-
             # ── Bias check card ───────────────────────────────────────
             if current_stage == "bias_check" and new_state.get("bias_issues") is not None:
                 issues = new_state.get("bias_issues", [])
                 yield StreamHandler.emit_card_bias(issues, len(issues) == 0)
 
-
+                # After apply_bias_fix, also re-publish the patched final JD so
+                # the canvas re-renders. We emit it as a metadata event since
+                # jd_token would append; metadata replaces.
+                if action == "apply_bias_fix":
+                    yield StreamHandler.emit_metadata({
+                        "final_jd": new_state.get("final_jd", "")
+                    })
 
             # ── Persist state back to DB ──────────────────────────────
             await ChatSessionRepository.update_state(
@@ -199,7 +246,8 @@ class ChatService:
         session_id: str,
         org_id: int,
         user_id: int,
-        setup_data: dict
+        setup_data: dict,
+        as_draft: bool = False
     ) -> dict[str, Any]:
         """
         Takes the final JD and variants from the session, creates a Position,
@@ -227,7 +275,7 @@ class ChatService:
                 role_name=role_name,
                 jd_markdown=final_jd,
                 jd_variant_selected=state.get("selected_variant"),
-                status="open",   # Activate immediately on save
+                status="draft",  # Stays draft until team_lead approves
                 headcount=setup_data.get("headcount", 1),
                 priority=setup_data.get("priority", "normal"),
                 ats_threshold=setup_data.get("ats_threshold", 80.0),
@@ -297,14 +345,22 @@ class ChatService:
         except Exception as e:
             logger.warning(f"ChromaDB JD embedding failed (non-blocking): {e}")
 
-        # ── Trigger Celery candidate pipeline ─────────────────────────────────
-        try:
-            from backend.tasks.candidate_pipeline import run_candidate_search
-            run_candidate_search.delay(position_id, org_id, department_id, user_id)
-            logger.info(f"Candidate pipeline task queued for position {position_id}")
-        except Exception as e:
-            logger.warning(f"Could not enqueue candidate pipeline (non-blocking): {e}")
-
+        # ── Auto-submit for team_lead approval ────────────────────────────────
+        # Candidate sourcing is NOT started here — it fires only after approval.
+        # Skip auto-submit when saving as a draft — HR resumes from dashboard.
+        if not as_draft:
+            try:
+                from backend.services.position_service import PositionService
+                await PositionService.submit_for_approval(
+                    position_id=position_id,
+                    org_id=org_id,
+                    submitted_by_user_id=user_id,
+                )
+                logger.info(f"Position {position_id} auto-submitted for team_lead approval")
+            except Exception as e:
+                logger.warning(f"Auto-submit for approval failed (non-blocking): {e}")
+        else:
+            logger.info(f"Position {position_id} saved as draft — approval skipped")
 
         return position
 

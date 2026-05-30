@@ -9,7 +9,7 @@ import {
 
 /**
  * /login — magic-link primary CTA, password fallback below.
- * Per docs/redesign/14_auth.md.
+ * Per docs/design/pages/14_auth.md.
  */
 export default function LoginPage() {
   const { login, requestMagicLink } = useAuth()

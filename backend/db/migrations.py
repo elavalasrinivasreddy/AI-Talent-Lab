@@ -1,6 +1,6 @@
 """
 db/migrations.py – ALL CREATE TABLE statements.
-Implements every table from docs/BACKEND_PLAN.md §4 (sections 4.1–4.5).
+Implements every table from docs/architecture/03_backend.md §4 (sections 4.1–4.5).
 Includes schema additions from §12 (followup) and §15 (embeddings).
 Uses IF NOT EXISTS — safe to run on every app startup.
 After tables, enables PostgreSQL Row-Level Security on tenant-scoped tables.
@@ -575,6 +575,14 @@ async def run_migrations(conn) -> None:
             ALTER TABLE positions ADD COLUMN assigned_to INTEGER REFERENCES users(id);
         END IF;
     END $$;
+
+    -- Role rename + dept_admin tier (2026-05-28)
+    -- Renames the legacy role names to the explicit org-hierarchy roles.
+    -- Idempotent: only updates rows that still hold the legacy value.
+    UPDATE users SET role = 'org_head'  WHERE role = 'admin';
+    UPDATE users SET role = 'hr'        WHERE role = 'recruiter';
+    UPDATE users SET role = 'team_lead' WHERE role = 'hiring_manager';
+    ALTER TABLE users ALTER COLUMN role SET DEFAULT 'hr';
     """
     await conn.execute(incremental_sql)
 
@@ -803,6 +811,22 @@ async def run_migrations(conn) -> None:
                 ADD COLUMN comp_min INTEGER,
                 ADD COLUMN comp_max INTEGER,
                 ADD COLUMN location TEXT;
+        END IF;
+    END $$;
+
+    -- hire_requests: dept_admin approval workflow (2026-05-28)
+    -- New status values: pending → approved → accepted → fulfilled
+    --                    pending → rejected  (terminal, reason stored)
+    -- approved_by / approved_at: set when dept_admin or org_head approves.
+    -- rejection_reason: free-text, required on reject.
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='approved_by') THEN
+            ALTER TABLE hire_requests
+                ADD COLUMN approved_by INTEGER REFERENCES users(id),
+                ADD COLUMN approved_at TIMESTAMP,
+                ADD COLUMN rejection_reason TEXT;
         END IF;
     END $$;
 

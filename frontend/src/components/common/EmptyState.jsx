@@ -2,7 +2,7 @@ import React from 'react'
 
 /**
  * EmptyState — reusable empty state for list/collection pages.
- * See docs/FRONTEND_PLAN.md §11.
+ * See docs/architecture/05_frontend.md §11.
  */
 export default function EmptyState({
   icon = '📋',

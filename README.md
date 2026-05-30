@@ -346,11 +346,14 @@ AI Talent Lab/
 │       │   └── globals.css        # CSS custom properties (design tokens)
 │       └── router.jsx             # React Router v6 route config
 │
-├── docs/                          # Full planning documentation
-│   ├── PRODUCT_PLAN.md
-│   ├── BACKEND_PLAN.md
-│   ├── FRONTEND_PLAN.md
-│   └── pages/                     # Per-page design specs
+├── docs/                          # Consolidated documentation (see docs/README.md)
+│   ├── README.md                  # Master index
+│   ├── STATUS.md                  # Redesign build-status tracker
+│   ├── product/                   # Overview, features, roadmap
+│   ├── architecture/              # Stack, data model, backend, AI agents, frontend
+│   ├── design/                    # Design system + per-page specs (design/pages/)
+│   ├── integrations/              # Calendar guide
+│   └── TECH_DEBT.md
 ├── docker-compose.yml             # PostgreSQL 16 + Redis 7
 └── .env.example                   # All environment variable documentation
 ```
@@ -433,27 +436,19 @@ These rules are enforced across the entire codebase:
 
 ## 📚 Documentation
 
-All planning and architectural decisions are in `docs/`:
+All planning and architectural decisions live in `docs/`. Start at **[`docs/README.md`](docs/README.md)** — the master index. Quick map:
 
-| File | Contents |
+| Area | Where |
 |---|---|
-| `docs/PRODUCT_PLAN.md` | Product vision, features, build order, Phase 2 roadmap |
-| `docs/BACKEND_PLAN.md` | Full DB schema, API spec, agent architecture |
-| `docs/FRONTEND_PLAN.md` | Component tree, design system, routing |
-| `docs/PRODUCT_IMPROVEMENTS.md` | Competitive analysis, role-based UI recs, Phase 2/3 roadmap, compliance status |
-| `docs/CALENDAR_INTEGRATION_GUIDE.md` | Google Calendar + Outlook OAuth setup guide for developers |
-| `docs/pages/01_auth.md` | Auth pages spec |
-| `docs/pages/02_chat.md` | JD generation chat flow |
-| `docs/pages/03_dashboard.md` | Dashboard spec |
-| `docs/pages/04_position_detail.md` | Position detail page |
-| `docs/pages/05_candidate_detail.md` | Candidate profile page |
-| `docs/pages/06_settings.md` | Settings (11 tabs) |
-| `docs/pages/07_apply.md` | Candidate apply chat |
-| `docs/pages/08_talent_pool.md` | Talent pool + bulk upload |
-| `docs/pages/09_career_page.md` | Public career page |
-| `docs/pages/10_interview_scheduling.md` | Interview scheduling |
-| `docs/pages/11_panel_feedback.md` | Panel feedback flow |
-| `docs/pages/12_chat_flows.md` | AI conversation scripts |
+| Product overview, features (w/ build status), roadmap | `docs/product/` |
+| Stack, data model, backend, AI agents, frontend | `docs/architecture/` |
+| Design system + per-page specs | `docs/design/` (`docs/design/pages/NN_*.md`) |
+| Redesign build status (what's done vs pending) | `docs/STATUS.md` |
+| Calendar OAuth guide | `docs/integrations/calendar.md` |
+| Production hardening tracker | `docs/TECH_DEBT.md` |
+
+Each per-page spec in `docs/design/pages/` carries a **Build status** banner and merges
+the v3 redesign spec with the pre-v3 behavioral spec (appendix).
 
 ---
 

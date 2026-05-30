@@ -8,20 +8,20 @@ import { dashboardApi } from '../../utils/api'
 import './AnalyticsPage.css'
 
 const PERIODS = [
-  { value: 'week',    label: 'Last 7 days' },
-  { value: 'month',   label: 'Last 30 days' },
+  { value: 'week', label: 'Last 7 days' },
+  { value: 'month', label: 'Last 30 days' },
   { value: 'quarter', label: 'Last Quarter' },
-  { value: 'year',    label: 'Last Year' },
+  { value: 'year', label: 'Last Year' },
 ]
 
 const STAGE_COLORS = {
-  sourced:   '#06B6D4',
-  emailed:   '#8B5CF6',
-  applied:   '#3B82F6',
+  sourced: '#06B6D4',
+  emailed: '#8B5CF6',
+  applied: '#3B82F6',
   screening: '#0D9488',
   interview: '#6366F1',
-  selected:  '#10B981',
-  rejected:  '#64748B',
+  selected: '#10B981',
+  rejected: '#64748B',
 }
 
 // Inline Lucide-style SVG icons (no external deps)
@@ -108,9 +108,9 @@ export default function AnalyticsPage() {
 function KPIStrip({ data }) {
   const kpis = [
     { label: 'Total Applications', value: data.total_applications ?? '—', icon: ICONS.applications, color: '#0D9488' },
-    { label: 'Avg. Time to Hire',  value: data.avg_time_to_hire ? `${Math.round(data.avg_time_to_hire)}d` : '—', icon: ICONS.clock, color: '#D97706' },
-    { label: 'Selected',           value: data.total_selected ?? '—', icon: ICONS.check, color: '#10B981' },
-    { label: 'Offer Accept Rate',  value: data.offer_acceptance_rate ? `${data.offer_acceptance_rate}%` : '—', icon: ICONS.award, color: '#3B82F6' },
+    { label: 'Avg. Time to Hire', value: data.avg_time_to_hire ? `${Math.round(data.avg_time_to_hire)}d` : '—', icon: ICONS.clock, color: '#D97706' },
+    { label: 'Selected', value: data.total_selected ?? '—', icon: ICONS.check, color: '#10B981' },
+    { label: 'Offer Accept Rate', value: data.offer_acceptance_rate ? `${data.offer_acceptance_rate}%` : '—', icon: ICONS.award, color: '#3B82F6' },
   ]
   return (
     <div className="analytics-kpi-strip">
@@ -261,10 +261,10 @@ function AnalyticsSkeleton() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        {[1,2,3,4].map(i => <div key={i} className="skeleton-block" style={{ height: 80, borderRadius: 12 }} />)}
+        {[1, 2, 3, 4].map(i => <div key={i} className="skeleton-block" style={{ height: 80, borderRadius: 12 }} />)}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        {[1,2,3,4].map(i => <div key={i} className="skeleton-block" style={{ height: 260, borderRadius: 12 }} />)}
+        {[1, 2, 3, 4].map(i => <div key={i} className="skeleton-block" style={{ height: 260, borderRadius: 12 }} />)}
       </div>
     </div>
   )

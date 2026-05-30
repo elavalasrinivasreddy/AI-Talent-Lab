@@ -2,7 +2,7 @@
  * CareerPage.jsx – Public org career page and job board
  * Routes: /careers/:orgSlug, /careers/:orgSlug/:positionId
  * No auth — fully public, mobile-first, SEO-optimized
- * Per docs/pages/09_career_page.md
+ * Per docs/design/pages/12_career_page.md
  */
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'

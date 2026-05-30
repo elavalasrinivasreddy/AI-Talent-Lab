@@ -114,7 +114,7 @@ async def delete_note(note_id: int, user=Depends(get_current_user)):
         )
         if not row:
             raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "Note not found"})
-        if row["author_id"] != user["id"] and user.get("role") != "admin":
+        if row["author_id"] != user["id"] and user.get("role") != "org_head":
             raise HTTPException(status_code=403, detail={"code": "FORBIDDEN", "message": "Only the author or admin can delete this note"})
         await conn.execute("DELETE FROM hiring_notes WHERE id=$1", note_id)
     return {"ok": True}

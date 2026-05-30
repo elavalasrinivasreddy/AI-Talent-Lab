@@ -8,7 +8,7 @@ from typing import Optional
 
 import asyncpg
 
-from backend.dependencies import get_db, get_current_user, require_admin
+from backend.dependencies import get_db, get_current_user, require_org_head
 from backend.services.settings_service import SettingsService
 from backend.models.settings import (
     OrgProfileUpdate,
@@ -37,7 +37,7 @@ async def get_org(
 @router.patch("/org")
 async def update_org(
     body: OrgProfileUpdate,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Update org profile (admin only)."""
@@ -61,7 +61,7 @@ async def list_departments(
 @router.post("/departments")
 async def create_department(
     body: DepartmentCreate,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Create a department (admin only)."""
@@ -77,7 +77,7 @@ async def create_department(
 async def update_department(
     dept_id: int,
     body: DepartmentUpdate,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Update a department (admin only)."""
@@ -91,7 +91,7 @@ async def update_department(
 @router.delete("/departments/{dept_id}")
 async def delete_department(
     dept_id: int,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Delete a department (admin only, must be empty)."""
@@ -153,7 +153,7 @@ async def list_screening_questions(
 @router.post("/screening-questions")
 async def create_screening_question(
     body: ScreeningQuestionCreate,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Create a screening question (admin only)."""
@@ -171,7 +171,7 @@ async def create_screening_question(
 async def update_screening_question(
     question_id: int,
     body: ScreeningQuestionUpdate,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Update a screening question (admin only)."""
@@ -185,7 +185,7 @@ async def update_screening_question(
 @router.delete("/screening-questions/{question_id}")
 async def delete_screening_question(
     question_id: int,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Delete a screening question (admin only)."""
@@ -198,7 +198,7 @@ async def delete_screening_question(
 @router.patch("/screening-questions/reorder")
 async def reorder_screening_questions(
     body: ReorderRequest,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Reorder screening questions (admin only)."""
@@ -222,7 +222,7 @@ async def list_message_templates(
 @router.post("/message-templates")
 async def create_message_template(
     body: MessageTemplateCreate,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Create a message template (admin only)."""
@@ -238,7 +238,7 @@ async def create_message_template(
 async def update_message_template(
     template_id: int,
     body: MessageTemplateUpdate,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Update a message template (admin only)."""
@@ -252,7 +252,7 @@ async def update_message_template(
 @router.delete("/message-templates/{template_id}")
 async def delete_message_template(
     template_id: int,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Delete a message template (admin only)."""
@@ -277,7 +277,7 @@ async def list_scorecard_templates(
 @router.post("/scorecard-templates")
 async def create_scorecard_template(
     body: ScorecardTemplateCreate,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Create a scorecard template (admin only)."""
@@ -292,7 +292,7 @@ async def create_scorecard_template(
 async def update_scorecard_template(
     template_id: int,
     body: ScorecardTemplateCreate,
-    user: dict = Depends(require_admin),
+    user: dict = Depends(require_org_head),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Update a scorecard template (admin only)."""

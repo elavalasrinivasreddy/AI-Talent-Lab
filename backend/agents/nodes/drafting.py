@@ -41,6 +41,12 @@ async def run_drafting_variants(state: AgentState) -> AgentState:
         about_us = state.get("org_about_us", "An innovative tech company.")
         benefits = state.get("org_benefits_text", "Competitive salary and benefits.")
 
+        refinement = state.get("variant_refinement")
+        refinement_block = (
+            f"\nREFINEMENT FROM PREVIOUS ROUND: {refinement}\n"
+            if refinement else ""
+        )
+
         user_content = f"""Mode: VARIANT_GENERATION
 
 Role: {role_name}
@@ -49,7 +55,7 @@ Experience: {state.get('experience_min')} - {state.get('experience_max')} years
 Location/Work Type: {state.get('location')} / {state.get('work_type')}
 About Us: {about_us}
 Benefits: {benefits}
-
+{refinement_block}
 Generate the 3 JD variants now."""
 
         messages = [
@@ -75,6 +81,7 @@ Generate the 3 JD variants now."""
             raise ValueError(f"Expected 3 variants, got {len(variants)}")
 
         state["jd_variants"] = variants
+        state.pop("variant_refinement", None)  # one-shot
         state["stage"] = "jd_variants"
         state["awaiting_user_input"] = True
         state["error_stage"] = None
@@ -101,26 +108,27 @@ Generate the 3 JD variants now."""
         return state
 
 
-async def run_drafting_final(state: AgentState) -> AgentState:
+async def run_drafting_final(state: AgentState, token_queue=None) -> AgentState:
     """
     Generate final JD based on selected variant.
-    (Note: Streaming is handled by the orchestrator passing callbacks. Here we just set the final text if not streaming, or this function could return just the state. For streaming we'll yield tokens from orchestrator. Here we just do the logic to get the final text directly if needed. But in LangGraph, we typically use the streaming callback handler.)
+
+    If `token_queue` is provided, stream tokens via `llm.astream()` and put each
+    chunk onto the queue. Otherwise fall back to `ainvoke` (used by tests and
+    the JD_STREAM_LIVE=0 fallback path).
     """
     try:
-        # In this architecture, final_jd generation is often streamed.
-        # We will configure the LLM with streaming=False here just for state preservation,
-        # but the orchestrator will likely bind a streaming LLM to this node if requested.
-        # For simplicity, we just use ainvoke and rely on the callbacks passed in by LangGraph.
-        llm = get_llm(temperature=0.6, max_tokens=3000)
-        
+        streaming = token_queue is not None
+        llm = get_llm(temperature=0.6, max_tokens=3000, streaming=streaming)
+
         system_prompt = _load_prompt()
-        
+
         role_name = state.get("role_name", "")
         selected_style = state.get("selected_variant", "hybrid")
-        
-        # Find the chosen variant to get structure clues
+
         variants = state.get("jd_variants", [])
-        chosen_variant_summary = next((v.get("summary") for v in variants if v.get("type") == selected_style), "")
+        chosen_variant_summary = next(
+            (v.get("summary") for v in variants if v.get("type") == selected_style), ""
+        )
 
         skills_required = state.get("skills_required", [])
         internal_accepted = state.get("internal_skills_accepted", [])
@@ -130,13 +138,20 @@ async def run_drafting_final(state: AgentState) -> AgentState:
         about_us = state.get("org_about_us", "An innovative tech company.")
         benefits = state.get("org_benefits_text", "Competitive salary and benefits.")
 
-        # User feedback for refinement
+        # Refinement context — either an existing user message during final_jd
+        # (legacy path) or a Phase 2 `section_rewrite` payload set by the
+        # rewrite_section action handler.
         feedback = ""
-        user_msgs = [m for m in state.get("messages", []) if m["role"] == "user"]
-        if user_msgs:
-            # If the stage was already final_jd and user sent a message, it's refinement feedback
-            # Check the last message if we want to augment prompt with it
-            if state.get("user_action") == "message" and state.get("stage") == "final_jd":
+        section_rewrite = state.get("section_rewrite")
+        if section_rewrite and section_rewrite.get("instruction"):
+            section = section_rewrite.get("section") or "the entire JD"
+            feedback = (
+                f"\n\nUSER REWRITE REQUEST for {section}:\n"
+                f"{section_rewrite['instruction']}"
+            )
+        else:
+            user_msgs = [m for m in state.get("messages", []) if m["role"] == "user"]
+            if user_msgs and state.get("user_action") == "message" and state.get("stage") == "final_jd":
                 feedback = f"\n\nUSER REFINEMENT REQUEST:\n{user_msgs[-1]['content']}"
 
         user_content = f"""Mode: FINAL_GENERATION
@@ -158,9 +173,18 @@ Generate the final polished JD in markdown now."""
         ]
 
         logger.info(f"Generating final JD for {role_name} in style {selected_style}")
-        # Note: If orchestrator passes callbacks in config, they apply here
-        response = await llm.ainvoke(messages)
-        content = response.content.strip()
+
+        if streaming:
+            parts: list[str] = []
+            async for chunk in llm.astream(messages):
+                text = getattr(chunk, "content", "") or ""
+                if text:
+                    parts.append(text)
+                    await token_queue.put(text)
+            content = "".join(parts).strip()
+        else:
+            response = await llm.ainvoke(messages)
+            content = response.content.strip()
 
         state["final_jd"] = content
         state["stage"] = "final_jd"
@@ -169,6 +193,8 @@ Generate the final polished JD in markdown now."""
         state["error_code"] = None
         state["error_message"] = None
         state["retry_count"] = 0
+        # Consume one-shot section rewrite payload so the next turn doesn't re-apply it
+        state.pop("section_rewrite", None)
 
         return state
 
@@ -180,5 +206,5 @@ Generate the final polished JD in markdown now."""
             state["error_stage"] = "final_jd"
             state["error_code"] = "FINAL_JD_FAILED"
             state["error_message"] = "Connection interrupted. Click Regenerate to continue."
-        
+
         return state

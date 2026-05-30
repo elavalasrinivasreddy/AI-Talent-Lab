@@ -3,6 +3,9 @@ import { useAuth } from './context/AuthContext'
 import LoginPage from './components/Auth/LoginPage'
 import RegisterPage from './components/Auth/RegisterPage'
 import MagicLinkExchange from './components/Auth/MagicLinkExchange'
+import ForgotPasswordPage from './components/Auth/ForgotPasswordPage'
+import ResetPasswordPage from './components/Auth/ResetPasswordPage'
+import SetPasswordPage from './components/Auth/SetPasswordPage'
 import Sidebar from './components/Sidebar/Sidebar'
 import NotificationBell from './components/common/NotificationBell'
 import SettingsPage from './components/Settings/SettingsPage'
@@ -24,6 +27,7 @@ import PlatformPage from './components/Platform/PlatformPage'
 import HireRequestListPage from './components/HireRequests/HireRequestListPage'
 import HireRequestForm from './components/HireRequests/HireRequestForm'
 import HireRequestDetailPage from './components/HireRequests/HireRequestDetailPage'
+import InterviewsListPage from './components/Interviews/InterviewsListPage'
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -38,7 +42,30 @@ function PublicGuard() {
   const { isAuthenticated, loading, user } = useAuth()
   if (loading) return null
   if (isAuthenticated) {
-    return <Navigate to={user?.role === 'platform_admin' ? '/platform' : '/chat'} replace />
+    return <Navigate to={user?.role === 'platform_admin' ? '/platform' : '/dashboard'} replace />
+  }
+  return <Outlet />
+}
+
+// ── Role Guard (role allowlist within authenticated zone) ────────────────────
+
+function RoleGuard({ roles }) {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (!roles.includes(user?.role)) return <Navigate to="/dashboard" replace />
+  return <Outlet />
+}
+
+// ── Dev Guard (platform_admin only) ─────────────────────────────────────────
+
+function DevGuard() {
+  const { isAuthenticated, loading, user } = useAuth()
+  if (loading) return null
+  // Dev console is accessible without login, but if logged in as a non-platform_admin
+  // org user, redirect away to avoid confusion. Unauthenticated access is allowed
+  // so developers can create first users without a session.
+  if (isAuthenticated && user?.role !== 'platform_admin') {
+    return <Navigate to="/dashboard" replace />
   }
   return <Outlet />
 }
@@ -71,6 +98,9 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/reset-password/:token', element: <ResetPasswordPage /> },
+      { path: '/set-password/:token', element: <SetPasswordPage /> },
     ],
   },
 
@@ -84,9 +114,22 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          // Chat
-          { path: '/chat', element: <ChatPage /> },
-          { path: '/chat/:sessionId', element: <ChatPage /> },
+          // Chat — hr and org_head only; team_lead enters via /hire-requests/new
+          {
+            element: <RoleGuard roles={['hr', 'org_head']} />,
+            children: [
+              { path: '/chat', element: <ChatPage /> },
+              { path: '/chat/:sessionId', element: <ChatPage /> },
+            ],
+          },
+
+          // Analytics — admin tiers only; recruiters/team leads see no per-recruiter data
+          {
+            element: <RoleGuard roles={['org_head', 'dept_admin', 'platform_admin']} />,
+            children: [
+              { path: '/analytics', element: <AnalyticsPage /> },
+            ],
+          },
 
           // Positions
           { path: '/positions', element: <PositionsListPage /> },
@@ -99,10 +142,9 @@ export const router = createBrowserRouter([
           // Other pages
           { path: '/dashboard', element: <DashboardPage /> },
           { path: '/talent-pool', element: <TalentPoolPage /> },
-          { path: '/interviews', element: <Navigate to="/positions" replace /> },
+          { path: '/interviews', element: <InterviewsListPage /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/settings/:tab', element: <SettingsPage /> },
-          { path: '/analytics', element: <AnalyticsPage /> },
 
           // Hire requests
           { path: '/hire-requests', element: <HireRequestListPage /> },
@@ -122,8 +164,13 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // Public pages (no auth) — magic links, career page, dev console
-  { path: '/dev', element: <DevAdminPage /> },
+  // Dev console — unauthenticated allowed, but org-role users are redirected away
+  {
+    element: <DevGuard />,
+    children: [
+      { path: '/dev', element: <DevAdminPage /> },
+    ],
+  },
   { path: '/apply/:token', element: <ApplyPage /> },
   { path: '/panel/:token', element: <PanelPage /> },
   { path: '/careers/:orgSlug', element: <CareerPage /> },

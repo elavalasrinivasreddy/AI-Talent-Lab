@@ -1,6 +1,6 @@
 /**
  * CandidatesTab.jsx – Sorted list view with filters, ATS score, quick actions.
- * Per docs/pages/04_position_detail.md §3.2
+ * Per docs/design/pages/03_position_detail.md §3.2
  */
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'

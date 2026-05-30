@@ -2,7 +2,7 @@
 
 > **Purpose:** Items that are *not* roadmap features but *are* needed for a fully production-ready system. Things like rate limiting, pagination, test coverage, performance budgets, and pre-existing bugs surfaced during audits.
 >
-> Different from `docs/PRODUCT_PLAN.md §13` (Phase 2 user-facing features) and `docs/PRODUCT_IMPROVEMENTS.md §5` (Phase 2 roadmap). Items here ship silently — users don't notice them landing, but a production deploy without them is risky.
+> Different from [`product/03_roadmap.md`](product/03_roadmap.md) (Phase 2/3 user-facing features). Items here ship silently — users don't notice them landing, but a production deploy without them is risky.
 >
 > **Last updated:** 2026-05-19
 
@@ -37,19 +37,34 @@ Shipped 2026-05-19. Solid, but improvements identified:
 | 🟡 Medium | **Periodic cleanup of `consumed_magic_links`** | Rows accumulate forever. Add a daily Celery task to delete entries older than 30 days. |
 | 🟢 Low | **Per-user rate limit on `POST /auth/magic-link`** | Currently `5/min` per IP. A per-account limit would prevent inbox spam if many people share an IP. |
 
+## JD Chat (`/api/v1/chat/*`)
+
+Phase 1 of the redesign shipped 2026-05-20. Backend SSE emission was tightened; frontend got a full layout inversion (canvas-left, rail-right) with 8-stage stepper + 5 inline agent blocks. Remaining gaps:
+
+| Severity | Item | Notes |
+|---|---|---|
+| ~~🟡 Medium~~ | ~~**Fake LLM token streaming**~~ | ~~`services/chat_service.py:166-171` splits the finished JD into words with 12ms sleep. Real LLM streaming needs `astream_tokens` plumbing in the LLM adapter layer.~~ Resolved — Phase 2 Bucket A (2026-05-29) |
+| ~~🟡 Medium~~ | ~~**`emit_token` misnamed**~~ | ~~Same root cause — sends complete messages as one chunk, not real per-token streaming. Bundle with the LLM-streaming fix.~~ Resolved (2026-05-29) |
+| ~~🟡 Medium~~ | ~~**Greeting drift risk**~~ | ~~`chat_service.GREETING_MESSAGE` and `ChatContext.resetChat` both hardcode the same welcome text. Will drift on edit. Extract to a single source (config endpoint or shared constant).~~ Resolved — Bucket D2 (2026-05-29) |
+| ~~🟡 Medium~~ | ~~**Stage skip not emitted for `intake` / `final_jd` / `complete`**~~ | Resolved by design 2026-05-28 — HARD-STOP stages (intake, jd_variants, final_jd) cannot soft-skip; the orchestrator only emits `stage_skipped` for soft-skippable stages (internal_check, market_research, bias_check). Documented in `agents/orchestrator.py:_record_skip`. |
+| 🟢 Low | **Type-checker warnings in `agents/orchestrator.py`** | `state: dict` parameter vs `AgentState` TypedDict expected by nodes; `action_data` Optional[dict] hits `.get(...)` without a None guard. Runtime safe (Python doesn't enforce TypedDict); fix during a static-analysis sweep |
+| 🟢 Low | **Unused `AgentState` import** in `orchestrator.py` line 11 | Pre-existing — left alone in this PR to keep the diff focused |
+
 ## Pre-existing bugs surfaced during audits
 
 These predate the redesign work — fix opportunistically during related page work.
 
 | Severity | Item | Where | Notes |
 |---|---|---|---|
-| 🟠 High | `current_user["id"]` KeyError | `routers/positions.py`, `routers/candidates.py`, `routers/talent_pool.py` | `get_current_user` returns `user_id`, not `id`. `routers/notifications.py` already has a fix-comment. Will 500 any code path that hits it. Fix during next positions / candidate / talent-pool page audit. |
+| ~~🟠 High~~ | ~~`current_user["id"]` KeyError~~ | ~~`routers/positions.py`, `routers/candidates.py`, `routers/talent_pool.py`~~ | ~~`get_current_user` returns `user_id`, not `id`. `routers/notifications.py` already has a fix-comment. Will 500 any code path that hits it. Fix during next positions / candidate / talent-pool page audit.~~ (resolved 2026-05-28) |
 | 🟡 Medium | Inconsistent error format in legacy endpoints | Various pre-redesign routers | Some still use `HTTPException(detail={"error": ...})` instead of `AppError`. Standardize during page-by-page work. |
 
 ## General
 
 | Severity | Item | Notes |
 |---|---|---|
+| 🟠 High | **HTML injection in transactional email templates** | `backend/services/email_service.py` interpolates `candidate_name`, `role_name`, `org_name`, `round_name`, `meeting_link`, `apply_url`, `feedback_url`, etc. directly into f-strings. Escape with `html.escape()` and validate URL schemes (only `https://`). Better: move to Jinja2 with `autoescape=True`. Flagged by automated security review 2026-05-27. |
+| 🟠 High | **Notification IDOR within tenant** | `backend/services/notification_service.py:mark_read(org_id, notification_id)` scopes by tenant but not by user. Any user in the org can mark another user's notifications read. Add `user_id` to signature + WHERE clause. Flagged by automated security review 2026-05-27. |
 | 🟠 High | **`backend/dist/` and chroma binary noise in working tree** | `backend/data/chroma/*.sqlite3` shows as modified on every run. Either add to `.gitignore` or move to a runtime-only path. |
 | 🟡 Medium | **Frontend bundle is >500KB after minify** | Vite warns. Code-split routes (especially `/dev`, `/platform`) via `React.lazy` + `Suspense`. |
 | 🟡 Medium | **No E2E tests** | Manual smoke tests cover auth + hire request today. Phase 1 cohort can ship without, but post-customer-1 we need Playwright or similar. |
@@ -62,4 +77,4 @@ These predate the redesign work — fix opportunistically during related page wo
 - **When shipping a feature**, add any hardening items that didn't make the Phase 1 cut here, with severity + notes
 - **When auditing a page before redesign**, log any pre-existing bugs you spot here (don't fix them inline unless they block the redesign)
 - **At sprint planning**, pull all 🔴 + 🟠 items and triage; 🟡 / 🟢 schedule opportunistically
-- Items in this doc do **not** appear in `PRODUCT_PLAN.md` because they're not customer-facing features — they're "operational excellence" work
+- Items in this doc do **not** appear in `product/02_features.md` because they're not customer-facing features — they're "operational excellence" work

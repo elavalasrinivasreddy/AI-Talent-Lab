@@ -1,2 +1,2 @@
-# TODO: Implement (Phase 3) — see docs/BACKEND_PLAN.md §2
+# TODO: Implement (Phase 3) — see docs/architecture/03_backend.md §2
 """Naukri API adapter stub"""

@@ -2,7 +2,7 @@
 exceptions.py – Custom exception classes and global FastAPI exception handler.
 All exceptions produce the standard error format:
 {"error": {"code": "SNAKE_CASE", "message": "...", "details": null}}
-See docs/BACKEND_PLAN.md §11.
+See docs/architecture/03_backend.md §11.
 """
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse

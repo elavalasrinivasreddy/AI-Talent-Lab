@@ -1,7 +1,13 @@
 """
 dependencies.py – FastAPI Depends() functions.
-get_db(), get_current_user(), require_admin(),
-verify_apply_token(), verify_panel_token().
+
+Role tiers (org-internal, weakest → strongest):
+  team_lead  — raises hire requests for their squad
+  hr         — recruiter; runs JD chat, sources candidates, schedules
+  dept_admin — manages one department; approves hire requests, invites team
+  org_head   — owns the org; full admin across all departments
+
+  platform_admin lives outside org tenancy (SaaS owners only).
 """
 from fastapi import Depends, Request
 from typing import AsyncGenerator
@@ -15,6 +21,16 @@ from backend.exceptions import (
     InsufficientPermissionsError,
     TokenExpiredError,
 )
+
+ORG_HEAD = "org_head"
+DEPT_ADMIN = "dept_admin"
+HR = "hr"
+TEAM_LEAD = "team_lead"
+PLATFORM_ADMIN = "platform_admin"
+
+# An org_head implicitly satisfies any dept_admin check (they're above
+# dept-scoped permissions). Same idea elsewhere — encoded once here.
+_PRIVILEGED_OVER_DEPT = {ORG_HEAD, DEPT_ADMIN}
 
 
 async def get_db() -> AsyncGenerator[asyncpg.Connection, None]:
@@ -46,10 +62,46 @@ async def get_current_user(request: Request) -> dict:
     }
 
 
-async def require_admin(user: dict = Depends(get_current_user)) -> dict:
-    """Require the current user to have admin role."""
-    if user["role"] != "admin":
-        raise InsufficientPermissionsError("This action requires admin privileges")
+async def require_org_head(user: dict = Depends(get_current_user)) -> dict:
+    """Require the current user to be the org_head (organization owner)."""
+    if user["role"] != ORG_HEAD:
+        raise InsufficientPermissionsError("This action requires org_head privileges")
+    return user
+
+
+async def require_dept_admin(user: dict = Depends(get_current_user)) -> dict:
+    """
+    Require dept_admin or org_head. org_head can act on any department;
+    dept_admin can act on their own department (route handler enforces
+    the dept_id match where relevant).
+    """
+    if user["role"] not in _PRIVILEGED_OVER_DEPT:
+        raise InsufficientPermissionsError(
+            "This action requires dept_admin or org_head privileges"
+        )
+    return user
+
+
+async def require_hr(user: dict = Depends(get_current_user)) -> dict:
+    """
+    Require hr, dept_admin, or org_head. Recruiter actions are open to
+    anyone above the team_lead tier within the dept.
+    """
+    if user["role"] not in {ORG_HEAD, DEPT_ADMIN, HR}:
+        raise InsufficientPermissionsError(
+            "This action requires hr, dept_admin, or org_head privileges"
+        )
+    return user
+
+
+async def require_team_lead(user: dict = Depends(get_current_user)) -> dict:
+    """
+    Require team_lead or above. Anyone with an org role can raise / view
+    hire requests in their scope; this guard exists for actions that
+    should not be available to outside tooling.
+    """
+    if user["role"] not in {ORG_HEAD, DEPT_ADMIN, HR, TEAM_LEAD}:
+        raise InsufficientPermissionsError("This action requires an org user role")
     return user
 
 
@@ -65,13 +117,13 @@ async def require_platform_admin(request: Request) -> dict:
     token = auth_header.removeprefix("Bearer ").strip()
     payload = decode_access_token(token)
 
-    if payload.get("role") != "platform_admin":
+    if payload.get("role") != PLATFORM_ADMIN:
         raise InsufficientPermissionsError("Platform admin access required")
 
     return {
         "user_id": int(payload["sub"]),
         "org_id": payload.get("org_id", 0),
-        "role": "platform_admin",
+        "role": PLATFORM_ADMIN,
     }
 
 

@@ -65,5 +65,20 @@ class HireRequestAccept(BaseModel):
     chat_session_id: Optional[str] = None
 
 
+class HireRequestReject(BaseModel):
+    """Rejection payload — reason is mandatory."""
+    reason: str
+
+    @field_validator("reason")
+    @classmethod
+    def reason_not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Rejection reason is required")
+        if len(v) > 1000:
+            raise ValueError("Rejection reason is too long (max 1000 chars)")
+        return v
+
+
 class HireRequestLinkSession(BaseModel):
     session_id: str

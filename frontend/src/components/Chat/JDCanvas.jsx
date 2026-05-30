@@ -1,116 +1,119 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useChat } from '../../context/ChatContext';
-import FinalJDCard from './cards/FinalJDCard';
+import AgentBlockIntake from './blocks/AgentBlockIntake';
+import AgentBlockInternal from './blocks/AgentBlockInternal';
+import AgentBlockMarket from './blocks/AgentBlockMarket';
+import AgentBlockVariants from './blocks/AgentBlockVariants';
+import AgentBlockBias from './blocks/AgentBlockBias';
 import { IconFileText, IconSparkles } from './icons';
 
 /**
- * JDCanvas — the right side of the split. Three states:
- *   1. EMPTY (intake / internal_check / market_research): quiet placeholder.
- *   2. PREVIEW (jd_variants): hover-preview of focused variant, or "Pick a style".
- *   3. DOCUMENT (final_jd onward): the JD itself, with actions + bias diff.
+ * JDCanvas — the document-first surface (~65% of the chat page).
+ *
+ * Renders inline agent blocks in pipeline order plus the JD body that gets
+ * streamed in once the user picks a variant. The whole thing is one long
+ * vertical doc — that's the entire point of the redesign: the JD IS the
+ * canvas, chat is a side rail.
+ *
+ * Per docs/design/pages/05_jd_chat.md §5.
  */
-const JDCanvas = ({ previewVariantType }) => {
-    const {
-        workflowStage,
-        finalJdMarkdown,
-        streamingJdText,
-        isJdStreaming,
-        variantsCard,
-    } = useChat();
+export default function JDCanvas() {
+  const {
+    graphState,
+    sessionTitle,
+    internalCard,
+    marketCard,
+    variantsCard,
+    finalJdMarkdown,
+    streamingJdText,
+    isJdStreaming,
+    workflowStage,
+  } = useChat();
 
-    // Document state: streaming or final JD present
-    const hasJd = Boolean(finalJdMarkdown) || Boolean(streamingJdText);
+  const hasContent =
+    Boolean(internalCard) ||
+    Boolean(marketCard) ||
+    Boolean(variantsCard) ||
+    Boolean(finalJdMarkdown) ||
+    Boolean(streamingJdText) ||
+    Boolean(graphState?.role_name);
 
-    if (hasJd) {
-        return <FinalJDCard />;
-    }
+  if (!hasContent) {
+    return <EmptyCanvas />;
+  }
 
-    // Variants preview state
-    if (workflowStage === 'jd_variants' && variantsCard?.variants?.length) {
-        const focused = previewVariantType
-            ? variantsCard.variants.find((v) => v.type === previewVariantType)
-            : null;
-        return (
-            <CanvasShell stageLabel="Drafting · Choose a style">
-                {focused ? (
-                    <div className="canvas-doc">
-                        <div className="canvas-preview-eyebrow">
-                            <IconSparkles size={12} />
-                            Preview · {LABELS[focused.type] || focused.type}
-                        </div>
-                        <div className="jd-doc">
-                            <ReactMarkdown>{stripBoilerplate(focused.content)}</ReactMarkdown>
-                        </div>
-                    </div>
-                ) : (
-                    <CanvasPlaceholder
-                        eyebrow="Step 4 · Choose a style"
-                        title="Hover a style on the left to preview it here."
-                        footer="Each variant is a complete draft. Select one to generate the final JD."
-                    />
-                )}
-            </CanvasShell>
-        );
-    }
+  // The streaming text takes precedence — once it's promoted to finalJdMarkdown
+  // by the `done` event, we render the saved markdown instead.
+  const jdBody = finalJdMarkdown || streamingJdText;
 
-    // Empty / quiet placeholder for intake → market_research
-    return (
-        <CanvasShell stageLabel="Document · Draft">
-            <CanvasPlaceholder
-                eyebrow="Drafting space"
-                title="Your job description will appear here as we build it together."
-                footer="We'll shape the role through chat first — skills, scope, market context — then write the JD here on the right."
-            />
-        </CanvasShell>
-    );
-};
+  return (
+    <div className="jd-doc">
+      <CanvasHeader title={sessionTitle} graphState={graphState} />
 
-const CanvasShell = ({ stageLabel, children }) => (
-    <>
-        <div className="canvas-head">
-            <div className="canvas-head-meta">
-                <IconFileText size={14} />
-                <span>{stageLabel}</span>
-            </div>
-        </div>
-        <div className="canvas-body">{children}</div>
-    </>
-);
+      <AgentBlockIntake state={graphState} />
+      {internalCard && <AgentBlockInternal />}
+      {marketCard && <AgentBlockMarket />}
+      {variantsCard && <AgentBlockVariants />}
 
-const CanvasPlaceholder = ({ eyebrow, title, footer }) => (
-    <div className="canvas-placeholder">
-        <div className="canvas-placeholder-eyebrow">
-            <IconFileText size={12} />
-            {eyebrow}
-        </div>
-        <h2 className="canvas-placeholder-title">{title}</h2>
-        <div className="canvas-placeholder-lines" aria-hidden="true">
-            <div className="canvas-placeholder-line" />
-            <div className="canvas-placeholder-line" />
-            <div className="canvas-placeholder-line" />
-            <div className="canvas-placeholder-line is-gap" />
-            <div className="canvas-placeholder-line" />
-            <div className="canvas-placeholder-line" />
-        </div>
-        {footer && <div className="canvas-placeholder-footer">{footer}</div>}
+      {jdBody && (
+        <article className="jd-body">
+          <ReactMarkdown>{jdBody}</ReactMarkdown>
+          {isJdStreaming && <span className="jd-stream-cursor" aria-hidden="true" />}
+        </article>
+      )}
+
+      {/* Bias block renders itself only when there's a final JD to check. */}
+      <AgentBlockBias />
     </div>
-);
-
-const LABELS = {
-    skill_focused: 'Skill-Focused',
-    outcome_focused: 'Outcome-Focused',
-    hybrid: 'Hybrid',
-};
-
-function stripBoilerplate(content) {
-    if (!content) return '';
-    let cleaned = content.replace(/^#\s+.+\n*/m, '');
-    cleaned = cleaned.replace(
-        /##\s*About\s+(Our\s+)?(Organization|Team|Company)[\s\S]*?(?=\n##\s|\n#\s|$)/gi,
-        ''
-    );
-    return cleaned.trim();
+  );
 }
 
-export default JDCanvas;
+function CanvasHeader({ title, graphState }) {
+  const meta = [];
+  if (graphState?.location) meta.push(graphState.location);
+  if (graphState?.work_type) {
+    const wt = graphState.work_type.charAt(0).toUpperCase() + graphState.work_type.slice(1);
+    meta.push(wt);
+  }
+  if (graphState?.experience_min != null || graphState?.experience_max != null) {
+    const min = graphState.experience_min ?? 0;
+    const max = graphState.experience_max != null ? `${graphState.experience_max} yrs` : 'open';
+    meta.push(`${min}–${max}`);
+  }
+
+  return (
+    <header className="jd-doc-header">
+      <span className="jd-doc-eyebrow">
+        <IconFileText size={12} /> Job description
+      </span>
+      <h1 className="jd-doc-title">{title || graphState?.role_name || 'New role'}</h1>
+      {meta.length > 0 && (
+        <p className="jd-doc-meta">{meta.join(' · ')}</p>
+      )}
+    </header>
+  );
+}
+
+function EmptyCanvas() {
+  return (
+    <div className="jd-doc jd-doc--empty">
+      <div className="jd-empty-card">
+        <span className="jd-empty-eyebrow">
+          <IconSparkles size={12} /> Empty canvas
+        </span>
+        <h2>Your job description will appear here.</h2>
+        <p>
+          Start by telling the AI which role you&apos;re hiring for in the chat on
+          the right. The JD will build itself in this space as we go — skills,
+          variants, bias check, all inline.
+        </p>
+        <ul className="jd-empty-points">
+          <li>The agent records intake fields as a captured-data block.</li>
+          <li>Internal + market skills appear as chip clouds you can toggle.</li>
+          <li>Variants render side-by-side; pick one and the full JD streams in.</li>
+        </ul>
+      </div>
+    </div>
+  );
+}

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { hireRequestsApi } from '../../utils/api'
+import api from '../../utils/api'
 import RelayVisualization from './RelayVisualization'
 import {
   ArrowLeftIcon, ArrowRightIcon, AlertIcon, SpinnerIcon,
@@ -36,11 +37,21 @@ export default function HireRequestForm({ mode }) {
   const { user } = useAuth()
   const isEdit = mode === 'edit'
 
-  const [form, setForm] = useState(BLANK)
+  const [form, setForm] = useState({ ...BLANK, department_id: user?.dept_id ?? '' })
   const [existing, setExisting] = useState(null)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [depts, setDepts] = useState([])
+
+  const fetchDepts = useCallback(async () => {
+    try {
+      const res = await api.get('/settings/departments')
+      setDepts(res.data.departments || [])
+    } catch (e) { console.error('Failed to load departments:', e) }
+  }, [])
+
+  useEffect(() => { fetchDepts() }, [fetchDepts])
 
   useEffect(() => {
     if (!isEdit) return
@@ -165,6 +176,20 @@ export default function HireRequestForm({ mode }) {
               maxLength={200}
               required
             />
+          </div>
+
+          <div className="hr-field">
+            <label htmlFor="hr-dept">Department</label>
+            <select
+              id="hr-dept"
+              value={form.department_id}
+              onChange={e => set('department_id', e.target.value)}
+            >
+              <option value="">— None —</option>
+              {depts.map(d => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="hr-field-row">

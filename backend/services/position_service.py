@@ -150,6 +150,229 @@ class PositionService:
         return events
 
     @staticmethod
+    async def submit_for_approval(
+        position_id: int,
+        org_id: int,
+        submitted_by_user_id: int,
+    ) -> None:
+        """
+        Set approval_status='pending', notify all team_leads in the department,
+        and send an email to each of them.
+
+        Judgement call: we notify ALL team_leads whose department matches the
+        position's department_id (or all org-level team_leads if the position
+        has no department). The first one to act wins — the router already
+        writes the decision atomically. If there are no team_leads we still
+        set pending so an org_head or dept_admin can unblock it.
+        """
+        from backend.services.email_service import EmailService
+        from backend.config import settings
+
+        async with get_connection() as conn:
+            # Fetch the position + submitting user
+            pos_row = await conn.fetchrow(
+                "SELECT id, role_name, department_id FROM positions WHERE id=$1 AND org_id=$2",
+                position_id, org_id,
+            )
+            if not pos_row:
+                raise ValueError(f"Position {position_id} not found")
+
+            submitter_row = await conn.fetchrow(
+                "SELECT name, email FROM users WHERE id=$1 AND org_id=$2",
+                submitted_by_user_id, org_id,
+            )
+            hr_name = submitter_row["name"] if submitter_row else "HR"
+
+            # Set approval_status = pending
+            await conn.execute(
+                "UPDATE positions SET approval_status='pending', updated_at=NOW() WHERE id=$1",
+                position_id,
+            )
+
+            # Audit log
+            await AuditLogRepository.create(conn, {
+                "org_id": org_id,
+                "user_id": submitted_by_user_id,
+                "action": "position_submitted_for_approval",
+                "entity_type": "position",
+                "entity_id": str(position_id),
+                "details": json.dumps({"role_name": pos_row["role_name"]})
+            })
+
+            # Find all team_leads in the same department (or org-wide if no dept)
+            dept_id = pos_row["department_id"]
+            if dept_id:
+                team_leads = await conn.fetch(
+                    """
+                    SELECT id, name, email FROM users
+                    WHERE org_id=$1 AND role='team_lead' AND is_active=TRUE
+                      AND (department_id=$2 OR department_id IS NULL)
+                    ORDER BY id
+                    """,
+                    org_id, dept_id,
+                )
+            else:
+                team_leads = await conn.fetch(
+                    "SELECT id, name, email FROM users WHERE org_id=$1 AND role='team_lead' AND is_active=TRUE ORDER BY id",
+                    org_id,
+                )
+
+            # In-app notification to each team_lead
+            for tl in team_leads:
+                await conn.execute(
+                    """
+                    INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
+                    VALUES ($1,$2,'jd_pending_approval','JD ready for your approval',
+                            $3, $4)
+                    """,
+                    org_id, tl["id"],
+                    f"\"{pos_row['role_name']}\" was submitted by {hr_name} and is waiting for your approval.",
+                    f"/positions/{position_id}",
+                )
+
+        # Email each team_lead (outside the conn block — non-blocking)
+        base_url = getattr(settings, "APP_BASE_URL", "https://app.aitalentlab.com")
+        review_url = f"{base_url}/positions/{position_id}"
+        for tl in team_leads:
+            try:
+                await EmailService.send_jd_ready_for_review(
+                    to_email=tl["email"],
+                    team_lead_name=tl["name"],
+                    role_name=pos_row["role_name"],
+                    hr_name=hr_name,
+                    review_url=review_url,
+                )
+            except Exception as e:
+                logger.warning(f"Could not email team_lead {tl['id']} for approval: {e}")
+
+    @staticmethod
+    async def record_approval_decision(
+        position_id: int,
+        org_id: int,
+        approver_user_id: int,
+        decision: str,
+        notes: str = "",
+    ) -> None:
+        """
+        Persist the approval decision, notify the HR author, send email, and
+        — on 'approved' only — fire the Celery candidate pipeline.
+        """
+        from backend.services.email_service import EmailService
+        from backend.config import settings
+
+        async with get_connection() as conn:
+            pos_row = await conn.fetchrow(
+                "SELECT role_name, created_by, department_id, approval_status FROM positions WHERE id=$1 AND org_id=$2",
+                position_id, org_id,
+            )
+            if not pos_row:
+                raise ValueError(f"Position {position_id} not found")
+
+            # Idempotency: prevent double-fire of Celery sourcing on concurrent approvals.
+            target_status = "approved" if decision == "approved" else "changes_requested"
+            if pos_row["approval_status"] == target_status:
+                return
+
+            approver_row = await conn.fetchrow(
+                "SELECT name FROM users WHERE id=$1 AND org_id=$2",
+                approver_user_id, org_id,
+            )
+            approver_name = approver_row["name"] if approver_row else "Team Lead"
+
+            hr_user_id = pos_row["created_by"]
+            hr_row = await conn.fetchrow(
+                "SELECT name, email FROM users WHERE id=$1 AND org_id=$2",
+                hr_user_id, org_id,
+            ) if hr_user_id else None
+            hr_name = hr_row["name"] if hr_row else "HR"
+            hr_email = hr_row["email"] if hr_row else None
+
+            # On approved → flip status to open so the position is live
+            if decision == "approved":
+                await conn.execute(
+                    """
+                    UPDATE positions
+                    SET approval_status='approved', approved_by=$1, approved_at=NOW(),
+                        status='open', updated_at=NOW()
+                    WHERE id=$2
+                    """,
+                    approver_user_id, position_id,
+                )
+            else:
+                await conn.execute(
+                    """
+                    UPDATE positions
+                    SET approval_status='changes_requested', updated_at=NOW()
+                    WHERE id=$1
+                    """,
+                    position_id,
+                )
+
+            # In-app notification to HR
+            if hr_user_id:
+                msg = (
+                    f"\"{pos_row['role_name']}\" was approved by {approver_name}. Sourcing has started."
+                    if decision == "approved"
+                    else f"\"{pos_row['role_name']}\" needs changes before approval. Notes: {notes or '—'}"
+                )
+                await conn.execute(
+                    """
+                    INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
+                    VALUES ($1,$2,'jd_approval_decision','JD approval update',$3,$4)
+                    """,
+                    org_id, hr_user_id, msg,
+                    f"/positions/{position_id}",
+                )
+
+            # Audit log
+            await AuditLogRepository.create(conn, {
+                "org_id": org_id,
+                "user_id": approver_user_id,
+                "action": f"position_{decision}",
+                "entity_type": "position",
+                "entity_id": str(position_id),
+                "details": json.dumps({"role_name": pos_row["role_name"], "notes": notes})
+            })
+
+            dept_id = pos_row["department_id"]
+
+        # Email HR (outside conn block)
+        base_url = getattr(settings, "APP_BASE_URL", "https://app.aitalentlab.com")
+        position_url = f"{base_url}/positions/{position_id}"
+        if hr_email:
+            try:
+                if decision == "approved":
+                    await EmailService.send_jd_approved(
+                        to_email=hr_email,
+                        hr_name=hr_name,
+                        role_name=pos_row["role_name"],
+                        team_lead_name=approver_name,
+                        position_url=position_url,
+                    )
+                else:
+                    await EmailService.send_jd_changes_requested(
+                        to_email=hr_email,
+                        hr_name=hr_name,
+                        role_name=pos_row["role_name"],
+                        team_lead_name=approver_name,
+                        reason=notes,
+                        position_url=position_url,
+                    )
+            except Exception as e:
+                logger.warning(f"Could not send approval-decision email to HR {hr_user_id}: {e}")
+
+        # Fire Celery sourcing ONLY on approved
+        if decision == "approved":
+            try:
+                from backend.tasks.candidate_pipeline import run_candidate_search
+                run_candidate_search.delay(
+                    position_id, org_id, dept_id, approver_user_id
+                )
+                logger.info(f"Candidate pipeline queued for position {position_id} after approval")
+            except Exception as e:
+                logger.warning(f"Could not enqueue candidate pipeline after approval: {e}")
+
+    @staticmethod
     async def get_interview_kit(position_id: int, org_id: int) -> Optional[dict]:
         async with get_connection() as conn:
             kit = await PositionRepository.get_interview_kit(conn, position_id, org_id)
