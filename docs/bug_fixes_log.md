@@ -536,3 +536,20 @@ Updated the filter tabs in `frontend/src/components/HireRequests/HireRequestList
 
 **Files Modified:**
 - `frontend/src/components/HireRequests/HireRequestListPage.jsx`
+
+---
+
+## 41. Hire Request Missing from "All" Tab & Missing "Resume JD Chat" Button
+
+**Problem Statement:**
+1. When HR clicked on the "All" tab on the Hire Requests page, they didn't see requests that were "In progress". This occurred because the backend treated `status: 'all'` as `None`, and then a fallback fallback logic `eff_status or 'approved'` incorrectly overwrote the "All" intent back to "approved".
+2. When an HR recruiter deleted their draft JD chat for a picked-up Hire Request (status `accepted`), there was no way to restart or resume the chat because the "Pick up" button disappears once a request is accepted.
+
+**Idea / Solution:**
+1. Updated `backend/services/hire_request_service.py` to explicitly handle `status='all'` by setting `eff_status = None` and updated the fallback to `eff_status if eff_status is not None else "approved"`. Also updated the frontend `HireRequestListPage.jsx` to correctly pass `status: 'all'` for the "All" tab.
+2. Added a "Resume JD chat" button in `HireRequestDetailPage.jsx` for recruiters when `req.status === 'accepted'` and `!req.position_id`. This allows them to cleanly re-enter the chat with the same hire request payload.
+
+**Files Modified:**
+- `backend/services/hire_request_service.py`
+- `frontend/src/components/HireRequests/HireRequestListPage.jsx`
+- `frontend/src/components/HireRequests/HireRequestDetailPage.jsx`

@@ -283,6 +283,35 @@ export default function HireRequestDetailPage() {
               </button>
             )}
 
+            {/* HR / org_head: resume JD chat if picked up but position not created yet */}
+            {isRecruiter && req.status === 'accepted' && !req.position_id && (
+              <button
+                type="button"
+                className="hr-btn hr-btn-primary hr-btn-block"
+                onClick={() => navigate('/chat', {
+                  state: {
+                    hireRequest: {
+                      id: req.id,
+                      role_name: req.role_name,
+                      department_name: req.department_name,
+                      headcount: req.headcount,
+                      work_type: req.work_type,
+                      location: req.location,
+                      experience_min: req.experience_min,
+                      experience_max: req.experience_max,
+                      comp_min: req.comp_min,
+                      comp_max: req.comp_max,
+                      target_start: req.target_start,
+                      requirements: req.requirements,
+                      requested_by_name: req.requested_by_name,
+                    },
+                  },
+                })}
+              >
+                <CheckIcon /> Resume JD chat
+              </button>
+            )}
+
             {canEdit && (
               <Link to={`/hire-requests/${req.id}/edit`} className="hr-btn hr-btn-secondary hr-btn-block">
                 Edit request
@@ -298,7 +327,7 @@ export default function HireRequestDetailPage() {
                 {busy === 'cancel' ? <><SpinnerIcon /> Cancelling…</> : <><XIcon /> Cancel request</>}
               </button>
             )}
-            {!canApprove && !canPickup && !canEdit && !canCancel && (
+            {!canApprove && !canPickup && !canEdit && !canCancel && !(isRecruiter && req.status === 'accepted' && !req.position_id) && (
               <p className="hr-side-empty">No actions available for this request.</p>
             )}
 

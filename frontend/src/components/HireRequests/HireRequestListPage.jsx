@@ -13,7 +13,7 @@ const FILTERS = [
   { key: 'accepted',       label: 'In progress',      scopeStatus: { scope: 'default', status: 'accepted' }, roles: ['org_head', 'hr', 'dept_admin'] },
   { key: 'fulfilled',      label: 'Fulfilled',        scopeStatus: { scope: 'default', status: 'fulfilled' },roles: ['org_head', 'hr', 'dept_admin'] },
   { key: 'cancelled',      label: 'Cancelled',        scopeStatus: { scope: 'default', status: 'cancelled' },roles: ['org_head', 'hr', 'dept_admin'] },
-  { key: 'all',            label: 'All',              scopeStatus: { scope: 'default' },                     roles: ['org_head', 'hr', 'dept_admin'] },
+  { key: 'all',            label: 'All',              scopeStatus: { scope: 'default', status: 'all' },      roles: ['org_head', 'hr', 'dept_admin'] },
 ]
 
 /**
