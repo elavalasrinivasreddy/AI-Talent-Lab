@@ -212,7 +212,7 @@ class HireRequestRepository:
         conn: asyncpg.Connection,
         request_id: int,
         org_id: int,
-        approved_by: int,
+        approved_by: Optional[int],
     ) -> None:
         """Mark `pending` → `approved`. Caller verifies state + permission."""
         await conn.execute(

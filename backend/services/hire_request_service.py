@@ -236,31 +236,65 @@ class HireRequestService:
                 location=location,
             )
 
-            # Notify dept_admins (or org_head if no dept_admins) about new request.
-            action_url = f"/hire-requests/{created['id']}"
-            msg = f"New hire request: {role_name} ({headcount} headcount)"
+            is_auto_approved = False
             if department_id:
+                from backend.db.repositories.departments import DeptRepository
+                dept = await DeptRepository.get_by_id(conn, department_id, org_id)
+                if dept and dept.get("auto_approve_hire_requests"):
+                    is_auto_approved = True
+
+            if is_auto_approved:
+                # Bypass pending, go straight to approved
+                await HireRequestRepository.approve(conn, created["id"], org_id, approved_by=None)
+                
+                await AuditLogRepository.create(
+                    conn,
+                    org_id=org_id,
+                    user_id=user_id,
+                    action="hire_request_auto_approved",
+                    entity_type="hire_request",
+                    entity_id=str(created["id"]),
+                    details={"role_name": role_name, "headcount": headcount},
+                    ip_address=ip_address,
+                )
+                
+                # Notify HR directly
                 await HireRequestService._notify_role(
                     conn,
                     org_id=org_id,
-                    role="dept_admin",
-                    type="hire_request_pending",
-                    title="New hire request awaiting approval",
-                    message=msg,
-                    action_url=action_url,
+                    role="hr",
+                    type="hire_request_approved",
+                    title="Hire request ready for pickup (Auto-approved)",
+                    message=f"{role_name} hire request is ready for pickup.",
+                    action_url=f"/hire-requests/{created['id']}",
                     department_id=department_id,
                 )
             else:
-                # No dept — notify org_head
-                await HireRequestService._notify_role(
-                    conn,
-                    org_id=org_id,
-                    role="org_head",
-                    type="hire_request_pending",
-                    title="New hire request awaiting approval",
-                    message=msg,
-                    action_url=action_url,
-                )
+                # Notify dept_admins (or org_head if no dept_admins) about new request.
+                action_url = f"/hire-requests/{created['id']}"
+                msg = f"New hire request: {role_name} ({headcount} headcount)"
+                if department_id:
+                    await HireRequestService._notify_role(
+                        conn,
+                        org_id=org_id,
+                        role="dept_admin",
+                        type="hire_request_pending",
+                        title="New hire request awaiting approval",
+                        message=msg,
+                        action_url=action_url,
+                        department_id=department_id,
+                    )
+                else:
+                    # No dept — notify org_head
+                    await HireRequestService._notify_role(
+                        conn,
+                        org_id=org_id,
+                        role="org_head",
+                        type="hire_request_pending",
+                        title="New hire request awaiting approval",
+                        message=msg,
+                        action_url=action_url,
+                    )
 
             await AuditLogRepository.create(
                 conn,
@@ -273,16 +307,20 @@ class HireRequestService:
                 ip_address=ip_address,
             )
 
-        # Fire email to dept_admins (or org_head) — outside transaction so it
-        # doesn't block / roll back the create on email failure.
-        await HireRequestService._notify_approvers_on_create(
-            conn,
-            org_id=org_id,
-            request_id=created["id"],
-            role_name=role_name,
-            department_id=department_id,
-            action_url=f"/hire-requests/{created['id']}",
-        )
+        if not is_auto_approved:
+            # Fire email to dept_admins (or org_head) — outside transaction so it
+            # doesn't block / roll back the create on email failure.
+            await HireRequestService._notify_approvers_on_create(
+                conn,
+                org_id=org_id,
+                request_id=created["id"],
+                role_name=role_name,
+                department_id=department_id,
+                action_url=f"/hire-requests/{created['id']}",
+            )
+        else:
+            # Need to reload it to get the updated status for response
+            created = await HireRequestRepository.get_by_id(conn, created["id"], org_id)
 
         return created
 

@@ -247,3 +247,18 @@ An `AttributeError` ("'Record' object has no attribute 'get'") occurred in `hire
 
 ---
 
+## 17. Implement Auto-Approval Backend Business Logic
+
+**Problem Statement:**
+While the settings UI and database schema supported toggling `auto_approve_hire_requests` (for Department Admins) and `auto_approve_jds` (for Hiring Managers), the underlying business logic in the backend was not executing these flags. Both request creation and JD generation pipelines were still strictly adhering to the manual review process.
+
+**Idea / Solution:**
+1. Integrated `auto_approve_hire_requests` into `HireRequestService.create()`. If the department flag is enabled, the request immediately transitions to `approved`, creates a special audit log entry, and alerts HR directly instead of sending an approval email to the Dept Admin. Modified the underlying `approve` repository method to accept `Optional[int]` for `approved_by` to accommodate the system's auto-approval.
+2. Integrated `auto_approve_jds` into `PositionService.submit_for_approval()`. When HR submits a finalized JD, the system looks up the `hire_request` associated with the position and checks if the requesting team lead has JD auto-approval enabled. If they do, it immediately records the decision as "approved" (triggering the Celery background sourcing tasks) and skips the manual review loop.
+
+**Files Modified:**
+- `backend/services/hire_request_service.py`
+- `backend/db/repositories/hire_requests.py`
+- `backend/services/position_service.py`
+
+---

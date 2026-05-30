@@ -176,6 +176,25 @@ class PositionService:
             )
             if not pos_row:
                 raise ValueError(f"Position {position_id} not found")
+            
+            role_name = pos_row["role_name"]
+            dept_id = pos_row["department_id"]
+
+            # Check if auto-approve is enabled for the requester of the hire request
+            hr_row = await conn.fetchrow(
+                "SELECT requested_by FROM hire_requests WHERE position_id=$1 AND org_id=$2",
+                position_id, org_id
+            )
+            is_auto_approved = False
+            auto_approve_user_id = None
+            if hr_row and hr_row["requested_by"]:
+                user_row = await conn.fetchrow(
+                    "SELECT id, auto_approve_jds FROM users WHERE id=$1 AND org_id=$2",
+                    hr_row["requested_by"], org_id
+                )
+                if user_row and user_row["auto_approve_jds"]:
+                    is_auto_approved = True
+                    auto_approve_user_id = user_row["id"]
 
             submitter_row = await conn.fetchrow(
                 "SELECT name, email FROM users WHERE id=$1 AND org_id=$2",
@@ -183,6 +202,18 @@ class PositionService:
             )
             hr_name = submitter_row["name"] if submitter_row else "HR"
 
+        if is_auto_approved:
+            # We exit the connection context and call record_approval_decision directly
+            await PositionService.record_approval_decision(
+                position_id=position_id,
+                org_id=org_id,
+                approver_user_id=auto_approve_user_id,
+                decision="approved",
+                notes="Auto-approved via user settings."
+            )
+            return
+
+        async with get_connection() as conn:
             # Set approval_status = pending
             await conn.execute(
                 "UPDATE positions SET approval_status='pending', updated_at=NOW() WHERE id=$1",
@@ -196,11 +227,10 @@ class PositionService:
                 "action": "position_submitted_for_approval",
                 "entity_type": "position",
                 "entity_id": str(position_id),
-                "details": json.dumps({"role_name": pos_row["role_name"]})
+                "details": json.dumps({"role_name": role_name})
             })
 
             # Find all team_leads in the same department (or org-wide if no dept)
-            dept_id = pos_row["department_id"]
             if dept_id:
                 team_leads = await conn.fetch(
                     """
@@ -226,7 +256,7 @@ class PositionService:
                             $3, $4)
                     """,
                     org_id, tl["id"],
-                    f"\"{pos_row['role_name']}\" was submitted by {hr_name} and is waiting for your approval.",
+                    f"\"{role_name}\" was submitted by {hr_name} and is waiting for your approval.",
                     f"/positions/{position_id}",
                 )
 
@@ -238,7 +268,7 @@ class PositionService:
                 await EmailService.send_jd_ready_for_review(
                     to_email=tl["email"],
                     team_lead_name=tl["name"],
-                    role_name=pos_row["role_name"],
+                    role_name=role_name,
                     hr_name=hr_name,
                     review_url=review_url,
                 )
