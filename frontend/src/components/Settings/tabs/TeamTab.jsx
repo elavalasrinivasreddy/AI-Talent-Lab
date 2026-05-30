@@ -130,7 +130,7 @@ export default function TeamTab() {
               <select 
                 value={roleFilter} 
                 onChange={e => setRoleFilter(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                style={{ padding: '6px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer', maxWidth: '140px' }}
               >
                 <option value="">All Roles</option>
                 {currentUser?.role === 'org_head' && (
@@ -146,7 +146,7 @@ export default function TeamTab() {
                 <select 
                   value={deptFilter} 
                   onChange={e => setDeptFilter(e.target.value)}
-                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                  style={{ padding: '6px 10px', fontSize: '13px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: 'pointer', maxWidth: '160px' }}
                 >
                   <option value="">All Departments</option>
                   {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
