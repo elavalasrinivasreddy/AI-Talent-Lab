@@ -101,21 +101,45 @@ export default function PlatformPage() {
         {/* Overview */}
         {tab === 'overview' && (
           <div className="plat-section">
-            <div className="plat-stats-grid">
-              <StatCard label="Total Organisations" value={stats?.total_orgs ?? '—'} icon="🏢" accent="#0D9488" />
-              <StatCard label="Total Users" value={stats?.total_users ?? '—'} icon="👥" accent="#0ea5e9" />
-              <StatCard label="Active Positions" value={stats?.active_positions ?? '—'} icon="💼" accent="#22c55e" />
-              <StatCard label="Total Candidates" value={stats?.total_candidates ?? '—'} icon="🔍" accent="#14B8A6" />
-              <StatCard label="Total Applications" value={stats?.total_applications ?? '—'} icon="📋" accent="#f59e0b" />
-              <StatCard label="JD Sessions" value={stats?.total_jd_sessions ?? '—'} icon="✨" accent="#fb923c" />
-            </div>
+            {loading ? (
+              <div className="plat-stats-grid">
+                {[1,2,3,4,5,6].map(i => (
+                  <div key={i} className="plat-stat-card plat-skel">
+                    <div className="plat-skel-icon" />
+                    <div><div className="plat-skel-val" /><div className="plat-skel-lbl" /></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="plat-stats-grid">
+                  <StatCard label="Total Organisations" value={stats?.total_orgs ?? '—'} icon="🏢" accent="#0D9488" />
+                  <StatCard label="Total Users" value={stats?.total_users ?? '—'} icon="👥" accent="#0ea5e9" />
+                  <StatCard label="Active Positions" value={stats?.active_positions ?? '—'} icon="💼" accent="#22c55e" />
+                  <StatCard label="Total Candidates" value={stats?.total_candidates ?? '—'} icon="🔍" accent="#14B8A6" />
+                  <StatCard label="Total Applications" value={stats?.total_applications ?? '—'} icon="📋" accent="#f59e0b" />
+                  <StatCard label="JD Sessions" value={stats?.total_jd_sessions ?? '—'} icon="✨" accent="#fb923c" />
+                </div>
 
-            <div className="plat-growth-row">
-              <GrowthCard label="New Orgs (30d)" value={stats?.new_orgs_30d ?? '—'} icon="🚀" />
-              <GrowthCard label="New Users (30d)" value={stats?.new_users_30d ?? '—'} icon="👤" />
-              <GrowthCard label="New Positions (30d)" value={stats?.new_positions_30d ?? '—'} icon="📄" />
-              <GrowthCard label="Applications (7d)" value={stats?.applications_7d ?? '—'} icon="📥" />
-            </div>
+                <div className="plat-growth-row">
+                  <GrowthCard label="New Orgs (30d)" value={stats?.new_orgs_30d ?? '—'} icon="🚀" />
+                  <GrowthCard label="New Users (30d)" value={stats?.new_users_30d ?? '—'} icon="👤" />
+                  <GrowthCard label="New Positions (30d)" value={stats?.new_positions_30d ?? '—'} icon="📄" />
+                  <GrowthCard label="Applications (7d)" value={stats?.applications_7d ?? '—'} icon="📥" />
+                </div>
+
+                {/* System health */}
+                <div className="plat-card plat-health-card">
+                  <h3 className="plat-card-title">🩺 System Health</h3>
+                  <div className="plat-health-grid">
+                    <HealthIndicator label="Database" status="healthy" />
+                    <HealthIndicator label="Celery Workers" status={stats?.celery_healthy ? 'healthy' : 'degraded'} />
+                    <HealthIndicator label="Redis" status={stats?.redis_healthy ? 'healthy' : 'degraded'} />
+                    <HealthIndicator label="LLM Provider" status={stats?.llm_healthy ? 'healthy' : 'unknown'} />
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Top orgs by activity */}
             {orgs.length > 0 && (
@@ -250,5 +274,22 @@ function timeAgo(dateStr) {
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return `${hrs}h ago`
   return `${Math.floor(hrs / 24)}d ago`
+}
+
+function HealthIndicator({ label, status }) {
+  const colors = {
+    healthy: { dot: '#22c55e', bg: 'rgba(34,197,94,0.1)', text: 'Healthy' },
+    degraded: { dot: '#f59e0b', bg: 'rgba(245,158,11,0.1)', text: 'Degraded' },
+    down: { dot: '#ef4444', bg: 'rgba(239,68,68,0.1)', text: 'Down' },
+    unknown: { dot: '#9ca3af', bg: 'rgba(156,163,175,0.1)', text: 'Unknown' },
+  }
+  const c = colors[status] || colors.unknown
+  return (
+    <div className="plat-health-item">
+      <span className="plat-health-dot" style={{ background: c.dot }} />
+      <span className="plat-health-label">{label}</span>
+      <span className="plat-health-status" style={{ color: c.dot, background: c.bg }}>{c.text}</span>
+    </div>
+  )
 }
 

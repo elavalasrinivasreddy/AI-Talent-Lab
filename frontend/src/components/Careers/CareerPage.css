@@ -2,8 +2,8 @@
 
 .cp-page {
   min-height: 100dvh;
-  background: #0f0f13;
-  color: #f1f5f9;
+  background: var(--color-bg-primary, #0f0f13);
+  color: var(--color-text-primary, #f1f5f9);
   font-family: 'Inter', -apple-system, sans-serif;
   max-width: 860px;
   margin: 0 auto;
@@ -11,6 +11,12 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
+  animation: cpFadeIn 350ms ease both;
+}
+
+@keyframes cpFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Org Header */
@@ -18,8 +24,11 @@
   display: flex;
   align-items: flex-start;
   gap: 20px;
-  padding: 28px 0 0;
+  padding: 32px 24px;
   flex-wrap: wrap;
+  border-radius: var(--radius-xl, 16px);
+  background: linear-gradient(135deg, rgba(13,148,136,0.06), rgba(124,58,237,0.04));
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
 .cp-org-logo-wrap {
@@ -501,8 +510,9 @@
   gap: 12px;
   padding: 40px;
   text-align: center;
-  background: #0f0f13;
-  color: #f1f5f9;
+  background: var(--color-bg-primary, #0f0f13);
+  color: var(--color-text-primary, #f1f5f9);
+  animation: cpFadeIn 350ms ease both;
 }
 
 .cp-state-page h2 {

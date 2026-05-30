@@ -431,39 +431,54 @@ const APPLY_STEPS = [
   { id: 'notice_period', label: 'Questions' },
   { id: 'screening_q', label: 'Questions' },
   { id: 'resume_upload', label: 'Resume' },
+  { id: 'video_intro', label: 'Resume' },
   { id: 'confirmation', label: 'Review' },
   { id: 'completion', label: 'Complete' },
 ]
 
-const PROGRESS_LABELS = ['Welcome', 'Interest', 'Questions', 'Resume', 'Review', 'Complete']
+const PROGRESS_STAGES = [
+  { label: 'Welcome',   icon: '👋', desc: 'Getting started' },
+  { label: 'Interest',  icon: '💬', desc: 'Express interest' },
+  { label: 'Questions', icon: '📝', desc: 'Your background' },
+  { label: 'Resume',    icon: '📎', desc: 'Upload resume' },
+  { label: 'Review',    icon: '✅', desc: 'Confirm details' },
+  { label: 'Complete',  icon: '🎉', desc: 'All done!' },
+]
 
 function ApplyProgress({ step }) {
   // Map current step to progress index
   const stepObj = APPLY_STEPS.find(s => s.id === step)
   const currentLabel = stepObj?.label || 'Welcome'
-  const currentIdx = PROGRESS_LABELS.indexOf(currentLabel)
+  const currentIdx = PROGRESS_STAGES.findIndex(s => s.label === currentLabel)
   const progress = currentIdx >= 0 ? currentIdx : 0
+  const pct = Math.round((progress / (PROGRESS_STAGES.length - 1)) * 100)
 
   return (
-    <div className="apply-progress">
-      {PROGRESS_LABELS.map((label, idx) => (
-        <div
-          key={label}
-          className={`apply-progress-step ${idx <= progress ? 'active' : ''} ${idx === progress ? 'current' : ''}`}
-        >
-          <div className="apply-progress-dot">
-            {idx < progress ? (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            ) : (
-              <span>{idx + 1}</span>
-            )}
+    <div className="apply-progress-wrap">
+      <div className="apply-progress">
+        {PROGRESS_STAGES.map((stage, idx) => (
+          <div
+            key={stage.label}
+            className={`apply-progress-step ${idx <= progress ? 'active' : ''} ${idx === progress ? 'current' : ''} ${idx < progress ? 'completed' : ''}`}
+            title={stage.desc}
+          >
+            <div className="apply-progress-dot">
+              {idx < progress ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <span className="apply-progress-icon">{stage.icon}</span>
+              )}
+            </div>
+            <span className="apply-progress-label">{stage.label}</span>
+            {idx < PROGRESS_STAGES.length - 1 && <div className="apply-progress-line" />}
           </div>
-          <span className="apply-progress-label">{label}</span>
-          {idx < PROGRESS_LABELS.length - 1 && <div className="apply-progress-line" />}
-        </div>
-      ))}
+        ))}
+      </div>
+      <div className="apply-progress-bar">
+        <div className="apply-progress-bar-fill" style={{ width: `${pct}%` }} />
+      </div>
     </div>
   )
 }

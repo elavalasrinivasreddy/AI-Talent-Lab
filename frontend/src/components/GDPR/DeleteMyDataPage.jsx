@@ -71,6 +71,30 @@ export default function DeleteMyDataPage() {
           deletion of your personal data from our systems.
         </p>
 
+        <div className="dmd-compliance-badges">
+          <span className="dmd-badge">🇪🇺 GDPR Art. 17</span>
+          <span className="dmd-badge">🇮🇳 DPDP Act</span>
+          <span className="dmd-badge">🔒 End-to-End Encrypted</span>
+        </div>
+
+        {/* Step indicator */}
+        <div className="dmd-steps">
+          <div className={`dmd-step-item ${step === 'form' ? 'active' : (step !== 'form' ? 'done' : '')}`}>
+            <span className="dmd-step-num">1</span>
+            <span>Request</span>
+          </div>
+          <div className="dmd-step-line" />
+          <div className={`dmd-step-item ${step === 'sent' ? 'active' : (step === 'verifying' || step === 'done' ? 'done' : '')}`}>
+            <span className="dmd-step-num">2</span>
+            <span>Verify</span>
+          </div>
+          <div className="dmd-step-line" />
+          <div className={`dmd-step-item ${step === 'done' ? 'active' : ''}`}>
+            <span className="dmd-step-num">3</span>
+            <span>Deleted</span>
+          </div>
+        </div>
+
         {step === 'form' && (
           <form className="dmd-form" onSubmit={handleRequest}>
             <label htmlFor="dmd-email">Email address used in your application</label>
@@ -162,6 +186,30 @@ export default function DeleteMyDataPage() {
             <li>Anonymized hiring metrics (no PII)</li>
             <li>Aggregate statistics for compliance reporting</li>
           </ul>
+          <h4>Processing timeline</h4>
+          <div className="dmd-timeline">
+            <div className="dmd-timeline-row">
+              <span className="dmd-timeline-dot" />
+              <div>
+                <strong>Immediately</strong>
+                <p>Your data is marked for deletion and hidden from all users</p>
+              </div>
+            </div>
+            <div className="dmd-timeline-row">
+              <span className="dmd-timeline-dot" />
+              <div>
+                <strong>Within 24 hours</strong>
+                <p>Personal data is anonymized across all records</p>
+              </div>
+            </div>
+            <div className="dmd-timeline-row">
+              <span className="dmd-timeline-dot" />
+              <div>
+                <strong>Within 72 hours</strong>
+                <p>Confirmation email sent; all PII permanently erased</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <footer className="dmd-footer">
