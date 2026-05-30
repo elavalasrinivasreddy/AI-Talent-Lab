@@ -17,3 +17,5 @@ old_frontend/
 # Local dev / tooling
 .claude/
 graphify-out/
+backend/data/chroma/
+backend/dist/

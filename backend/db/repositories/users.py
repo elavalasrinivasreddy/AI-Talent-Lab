@@ -31,6 +31,8 @@ class UserRepository:
             """,
             org_id, email, password_hash, name, role, department_id, phone,
         )
+        if not row:
+            raise RuntimeError("Database INSERT returned no rows. Schema migration may be pending.")
         return dict(row)
 
     @staticmethod

@@ -86,3 +86,32 @@ The Team members table had UI inconsistencies: The current user's role was rende
 - `backend/services/auth_service.py`
 - `frontend/src/components/Settings/tabs/TeamTab.jsx`
 
+
+---
+
+## 7. Crash in users.py during User Registration / Invite
+
+**Problem Statement:**
+When creating a new user or registering a new organization, the backend crashed at line 34 of `users.py`. This occurred because the `last_login_at` column (which was added to the `RETURNING` clause to enable "Pending" status for invites) was missing from existing local databases, throwing an `UndefinedColumnError`. 
+
+**Idea / Solution:**
+Added an incremental SQL migration (`ALTER TABLE ... ADD COLUMN`) for `last_login_at`, `failed_login_attempts`, and `locked_until` in `db/migrations.py`. This ensures that existing local databases automatically get the new columns on server startup without requiring a full database wipe. Additionally, added a safety check in `UserRepository.create` to raise a descriptive error if `conn.fetchrow` returns nothing.
+
+**Files Modified:**
+- `backend/db/migrations.py`
+- `backend/db/repositories/users.py`
+
+---
+
+## 8. Hide Current User in Team Directory & Fix Registration Login State
+
+**Problem Statement:**
+The "Team Members" directory was displaying the current logged-in user, which is generally bad UX (users shouldn't accidentally deactivate themselves or edit their own role from a team management table; this belongs in a personal profile). Additionally, newly registered organization heads were showing up as "Pending" because their `last_login_at` timestamp wasn't being set during the initial registration automatic login.
+
+**Idea / Solution:**
+1. Filtered out the `currentUser` from the users array in `TeamTab.jsx` before rendering the table, effectively hiding the logged-in user from the Team directory.
+2. Modified `AuthService.register` to explicitly call `UserRepository.reset_login_state` right after user creation, correctly setting their initial `last_login_at` timestamp.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/TeamTab.jsx`
+- `backend/services/auth_service.py`

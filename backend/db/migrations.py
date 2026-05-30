@@ -583,6 +583,16 @@ async def run_migrations(conn) -> None:
     UPDATE users SET role = 'hr'        WHERE role = 'recruiter';
     UPDATE users SET role = 'team_lead' WHERE role = 'hiring_manager';
     ALTER TABLE users ALTER COLUMN role SET DEFAULT 'hr';
+    
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='users' AND column_name='last_login_at') THEN
+            ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP;
+            ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0;
+            ALTER TABLE users ADD COLUMN locked_until TIMESTAMP;
+        END IF;
+    END $$;
     """
     await conn.execute(incremental_sql)
 
