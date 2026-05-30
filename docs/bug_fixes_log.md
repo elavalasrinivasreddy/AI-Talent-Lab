@@ -555,3 +555,33 @@ Updated the filter tabs in `frontend/src/components/HireRequests/HireRequestList
 - `frontend/src/components/HireRequests/HireRequestDetailPage.jsx`
 
 *Update:* The initial fix for the "All" tab still resulted in only "approved" requests showing. This was because the backend was first converting `status="all"` to `status=None`, and then a downstream line evaluated `status if status is not None else "approved"`, effectively changing it right back to `"approved"`. The logic has been reordered so that the default fallback only applies if `status` was *originally* `None` (no filter requested), allowing `"all"` to properly clear the filter.
+---
+
+## 42. Auth Service Type Inference Error (fetchval NoneType)
+
+**Problem Statement:**
+The static type checker (linter) was flagging an error in `backend/services/auth_service.py` at the magic-link rate limit check: `Argument 'None' is not assignable to parameter 'value' with type 'int'`. This occurred because `conn.fetchval()` can theoretically return `None`, making the expression `recent_requests >= 3` invalid if `recent_requests` is `None`.
+
+**Idea / Solution:**
+Appended a fallback `or 0` to the `conn.fetchval()` call. This guarantees that `recent_requests` evaluates to an integer, satisfying strict type checks and preventing runtime comparison errors if the query were to ever return `None`.
+
+**Files Modified:**
+- `backend/services/auth_service.py`
+
+---
+
+## 43. Cleanup of Legacy Hire Request Endpoints & Consistent Error Handling
+
+**Problem Statement:**
+The `positions` router contained several legacy endpoints for managing hire requests (e.g., `/requests`, `/requests/{request_id}/cancel`) that were deprecated in favor of the dedicated `api/v1/hire-requests` router. Additionally, the `status` router was using a generic `HTTPException` instead of the standardized `NotFoundError` pattern.
+
+**Idea / Solution:**
+1. Completely removed the legacy hire request shim endpoints from `backend/routers/positions.py`.
+2. Updated the frontend dashboard and API utilities (`LegacyDashboard.jsx` and `api.js`) to point to the modern `hireRequestsApi` methods instead of the deprecated `positionsApi` ones.
+3. Updated `backend/routers/status.py` to use `NotFoundError` for consistency with the application's `AppError` handling architecture.
+
+**Files Modified:**
+- `backend/routers/positions.py`
+- `backend/routers/status.py`
+- `frontend/src/components/Dashboard/legacy/LegacyDashboard.jsx`
+- `frontend/src/utils/api.js`

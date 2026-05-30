@@ -277,7 +277,7 @@ class AuthService:
             AND created_at > NOW() - INTERVAL '1 minute'
             """,
             user["id"]
-        )
+        ) or 0
         if recent_requests >= 3:
             logger.warning(f"[magic-link] rate limit exceeded for user {user['id']}")
             return

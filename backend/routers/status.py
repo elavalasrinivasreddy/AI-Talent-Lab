@@ -5,7 +5,8 @@ Route: GET /api/v1/status/{status_token}
 Uses the permanent status_token (UUID, never expires) so candidates can
 bookmark this URL and check their status at any time.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
+from backend.exceptions import NotFoundError
 from backend.db.connection import get_connection
 
 router = APIRouter(prefix="/api/v1/status", tags=["Candidate Status"])
@@ -43,10 +44,7 @@ async def get_application_status(status_token: str):
         )
 
     if not app_row:
-        raise HTTPException(
-            status_code=404,
-            detail={"code": "NOT_FOUND", "message": "Application not found. The link may be invalid."},
-        )
+        raise NotFoundError("Application not found. The link may be invalid.")
 
     app_id = app_row["id"]
 

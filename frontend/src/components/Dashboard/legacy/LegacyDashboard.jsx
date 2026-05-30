@@ -460,7 +460,7 @@ function MyHireRequests({ requests, onCancelled }) {
   const handleCancel = async (id) => {
     setCancelling(id)
     try {
-      await positionsApi.cancelRequest(id)
+      await hireRequestsApi.cancel(id)
       onCancelled()
     } catch {
       setCancelling(null)
@@ -609,7 +609,7 @@ function HireRequestModal({ onClose, onSubmitted }) {
     setSaving(true)
     setError('')
     try {
-      await positionsApi.submitRequest({
+      await hireRequestsApi.create({
         ...form,
         headcount: parseInt(form.headcount) || 1,
         experience_min: form.experience_min ? parseInt(form.experience_min) : null,
