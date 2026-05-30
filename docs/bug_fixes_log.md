@@ -637,3 +637,28 @@ The `priority` field was recently removed from the 'Save and Find Candidates' mo
 - `frontend/src/components/Positions/PositionHero.jsx`
 - `frontend/src/components/Positions/tabs/JDTab.jsx`
 - `frontend/src/components/Positions/tabs/JDTab.css`
+
+### 48. JD Approval Workflow & Team Lead Access Controls
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+Team Leads could incorrectly see JD generation chat history in their sidebar. Additionally, the JD Approval workflow was lacking visual clarity in the UI: the position relay visualization did not show the "JD Approval" step, the Team Lead had no explicit interface to approve/reject the JD within the Position Details, notifications directed users to the default tab instead of the JD tab, and HR could still edit the JD even after submitting it for approval. Finally, there was no indicator in the sidebar showing how many JDs were pending approval.
+
+**Idea / Solution:**
+1. **Chat Session Visibility:** Modified `ChatSessionRepository.list_visible` so that `team_lead`s only see their own sessions, not the entire department's chat history (which belongs to HR).
+2. **Relay Visualization Update:** Added a new 'JD Approval' stage to `RELAY_STAGES` in `frontend/src/components/HireRequests/helpers.js` to accurately reflect the workflow.
+3. **JD Approval UI:** In `JDTab.jsx`, introduced a conditionally rendered banner for Team Leads to "Approve JD" or "Request Changes". 
+4. **Edit Restrictions:** Disabled the "Edit" button for HR users while the position `approval_status` is `pending`, giving exclusive review/edit access to the Team Lead during this phase.
+5. **Notification Deep-linking:** Updated the `action_url` in `PositionService` so that clicking the "JD Ready for Review" notification (and the email link) takes the user directly to the `/positions/{id}/jd` tab.
+6. **Sidebar Badges:** Added a `pendingCount` endpoint for positions and updated `Sidebar.jsx` to show a notification badge on the "Positions" menu item for Team Leads.
+
+**Files Modified:**
+- `backend/db/repositories/sessions.py`
+- `frontend/src/components/HireRequests/helpers.js`
+- `frontend/src/components/Positions/tabs/JDTab.jsx`
+- `frontend/src/components/Positions/tabs/JDTab.css`
+- `backend/routers/positions.py`
+- `frontend/src/utils/api.js`
+- `frontend/src/components/Sidebar/Sidebar.jsx`
+- `backend/services/position_service.py`

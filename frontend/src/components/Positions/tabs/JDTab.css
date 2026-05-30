@@ -1,5 +1,33 @@
 /* JDTab.css */
 .jd-tab { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.jd-approval-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  background-color: var(--color-warning-bg, #fff3cd);
+  border: 1px solid var(--color-warning-border, #ffeeba);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+.jd-approval-text strong {
+  display: block;
+  color: var(--color-warning-text, #856404);
+  font-size: var(--font-size-base);
+  margin-bottom: var(--space-1);
+}
+.jd-approval-text p {
+  margin: 0;
+  color: var(--color-warning-text, #856404);
+  font-size: var(--font-size-sm);
+  opacity: 0.9;
+}
+.jd-approval-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
 .jd-header { display: flex; justify-content: space-between; align-items: center; }
 .jd-title { font-size: var(--font-size-lg); font-weight: 600; color: var(--color-text-primary); margin: 0; }
 .jd-actions { display: flex; gap: var(--space-2); }

@@ -105,6 +105,7 @@ export const positionsApi = {
   applicantsDaily: (id, days = 30) => _get(`/positions/${id}/applicants-daily?days=${days}`),
   stageCounts: (id) => _get(`/positions/${id}/stage-counts`),
   pipelineSummary: (id) => _get(`/positions/${id}/pipeline-summary`),
+  pendingCount: () => _get('/positions/pending-count'),
 }
 
 // ── Candidates ────────────────────────────────────────────────────────────────

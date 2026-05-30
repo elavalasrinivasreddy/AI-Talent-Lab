@@ -261,12 +261,12 @@ class PositionService:
                     """,
                     org_id, tl["id"],
                     f"\"{role_name}\" was submitted by {hr_name} and is waiting for your approval.",
-                    f"/positions/{position_id}",
+                    f"/positions/{position_id}/jd",
                 )
 
         # Email each team_lead (outside the conn block — non-blocking)
         base_url = getattr(settings, "APP_BASE_URL", "https://app.aitalentlab.com")
-        review_url = f"{base_url}/positions/{position_id}"
+        review_url = f"{base_url}/positions/{position_id}/jd"
         for tl in team_leads:
             try:
                 await EmailService.send_jd_ready_for_review(
@@ -355,7 +355,7 @@ class PositionService:
                     VALUES ($1,$2,'jd_approval_decision','JD approval update',$3,$4)
                     """,
                     org_id, hr_user_id, msg,
-                    f"/positions/{position_id}",
+                    f"/positions/{position_id}/jd",
                 )
 
             # Audit log
@@ -372,7 +372,7 @@ class PositionService:
 
         # Email HR (outside conn block)
         base_url = getattr(settings, "APP_BASE_URL", "https://app.aitalentlab.com")
-        position_url = f"{base_url}/positions/{position_id}"
+        position_url = f"{base_url}/positions/{position_id}/jd"
         if hr_email:
             try:
                 if decision == "approved":

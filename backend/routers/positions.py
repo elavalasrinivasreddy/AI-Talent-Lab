@@ -34,6 +34,37 @@ async def list_positions(
     return {"positions": positions, "page": page}
 
 
+@router.get("/pending-count")
+async def pending_count(current_user=Depends(get_current_user)):
+    """Count positions pending approval for this user."""
+    from backend.db.connection import get_connection
+    org_id = current_user["org_id"]
+    role = current_user.get("role")
+    dept_id = current_user.get("department_id")
+    
+    async with get_connection() as conn:
+        if role == "org_head":
+            row = await conn.fetchrow(
+                "SELECT COUNT(*) FROM positions WHERE org_id=$1 AND approval_status='pending'",
+                org_id
+            )
+        elif role in ("team_lead", "dept_admin"):
+            if dept_id:
+                row = await conn.fetchrow(
+                    "SELECT COUNT(*) FROM positions WHERE org_id=$1 AND approval_status='pending' AND department_id=$2",
+                    org_id, dept_id
+                )
+            else:
+                row = await conn.fetchrow(
+                    "SELECT COUNT(*) FROM positions WHERE org_id=$1 AND approval_status='pending'",
+                    org_id
+                )
+        else:
+            return {"count": 0}
+            
+        return {"count": row["count"] if row else 0}
+
+
 @router.get("/{position_id}")
 async def get_position(
     position_id: int,

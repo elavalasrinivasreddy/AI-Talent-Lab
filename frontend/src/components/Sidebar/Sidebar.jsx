@@ -29,7 +29,7 @@ const ALL_NAV = [
     { to: '/dashboard', icon: Icons.dashboard, label: 'Dashboard' },
   ]},
   { section: 'Hiring', items: [
-    { to: '/positions',     icon: Icons.briefcase, label: 'Positions' },
+    { to: '/positions',     icon: Icons.briefcase, label: 'Positions', badge: 'positions_pending' },
     { to: '/interviews',    icon: Icons.calendar,  label: 'Interviews' },
     { to: '/hire-requests', icon: Icons.inbox,     label: 'Hire Requests', roles: ['dept_admin', 'hr', 'team_lead'], badge: 'hire_requests_pending' },
     { to: '/talent-pool',   icon: Icons.users,     label: 'Talent Pool',   roles: ['org_head', 'dept_admin', 'hr'] },
@@ -64,14 +64,21 @@ export default function Sidebar() {
     if (!role) return
     // team_lead doesn't need the org-wide pending count; their "Mine"
     // tab is the meaningful one and we don't have a count for that yet.
-    if (!['dept_admin', 'hr'].includes(role)) return
+    if (!['dept_admin', 'hr', 'team_lead', 'org_head'].includes(role)) return
 
     let cancelled = false
     const refresh = async () => {
       try {
-        const data = await hireRequestsApi.pendingCount()
+        const [hrData, posData] = await Promise.all([
+          ['dept_admin', 'hr'].includes(role) ? hireRequestsApi.pendingCount() : Promise.resolve({ count: 0 }),
+          ['team_lead', 'dept_admin', 'org_head'].includes(role) ? import('../../utils/api').then(m => m.positionsApi.pendingCount()) : Promise.resolve({ count: 0 })
+        ])
         if (!cancelled) {
-          setBadges(b => ({ ...b, hire_requests_pending: data?.count ?? 0 }))
+          setBadges(b => ({ 
+            ...b, 
+            hire_requests_pending: hrData?.count ?? 0,
+            positions_pending: posData?.count ?? 0
+          }))
         }
       } catch {
         // sidebar badge is best-effort

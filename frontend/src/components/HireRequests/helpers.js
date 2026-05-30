@@ -11,8 +11,9 @@ import { timeAgo } from '../../utils/date'
 export const RELAY_STAGES = [
   { key: 'filed', label: 'Filed', who: req => req.requested_by_name || 'Requester' },
   { key: 'dept', label: 'Dept approval', who: req => req.approved_by_name || 'Dept admin' },
-  { key: 'hr', label: 'HR', who: req => req.accepted_by_name || 'Awaiting pickup' },
-  { key: 'position', label: 'Position open', who: req => req.position_role_name ? 'Live' : 'After JD save' },
+  { key: 'hr', label: 'JD Generation', who: req => req.accepted_by_name || 'HR Recruiter' },
+  { key: 'jd_approval', label: 'JD Approval', who: req => 'Team Lead' },
+  { key: 'position', label: 'Position open', who: req => req.position_role_name ? 'Live' : 'Active' },
 ]
 
 /**
@@ -35,38 +36,42 @@ export function computeRelayStates(req) {
   const s = req.status
 
   if (s === 'cancelled') {
-    return { filed: 'done', dept: 'pending', hr: 'pending', position: 'pending' }
+    return { filed: 'done', dept: 'pending', hr: 'pending', jd_approval: 'pending', position: 'pending' }
   }
 
   if (s === 'draft') {
-    return { filed: 'current', dept: 'pending', hr: 'pending', position: 'pending' }
+    return { filed: 'current', dept: 'pending', hr: 'pending', jd_approval: 'pending', position: 'pending' }
   }
 
   if (s === 'rejected') {
-    return { filed: 'done', dept: 'rejected', hr: 'pending', position: 'pending' }
+    return { filed: 'done', dept: 'rejected', hr: 'pending', jd_approval: 'pending', position: 'pending' }
   }
 
   if (s === 'pending') {
-    return { filed: 'done', dept: 'current', hr: 'pending', position: 'pending' }
+    return { filed: 'done', dept: 'current', hr: 'pending', jd_approval: 'pending', position: 'pending' }
   }
 
   if (s === 'approved') {
-    return { filed: 'done', dept: 'done', hr: 'current', position: 'pending' }
+    return { filed: 'done', dept: 'done', hr: 'current', jd_approval: 'pending', position: 'pending' }
   }
 
   if (s === 'accepted') {
     return {
-      filed: 'done', dept: 'done', hr: 'done',
-      position: req.position_id ? 'done' : 'current',
+      filed: 'done', dept: 'done', hr: 'current', jd_approval: 'pending', position: 'pending'
     }
   }
 
   if (s === 'fulfilled') {
-    return { filed: 'done', dept: 'done', hr: 'done', position: 'done' }
+    // Fulfilled means JD generated. Now check position approval status
+    const ap = req.position_approval_status
+    if (ap === 'pending' || ap === 'changes_requested') {
+      return { filed: 'done', dept: 'done', hr: 'done', jd_approval: 'current', position: 'pending' }
+    }
+    return { filed: 'done', dept: 'done', hr: 'done', jd_approval: 'done', position: 'done' }
   }
 
   // Unknown status — show everything pending
-  return { filed: 'done', dept: 'pending', hr: 'pending', position: 'pending' }
+  return { filed: 'done', dept: 'pending', hr: 'pending', jd_approval: 'pending', position: 'pending' }
 }
 
 export function statusLabel(req) {

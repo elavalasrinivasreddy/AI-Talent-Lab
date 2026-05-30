@@ -120,9 +120,9 @@ class ChatSessionRepository:
     ) -> list[dict[str, Any]]:
         """
         List visible sessions for sidebar history.
-        - Admin: all org sessions
-        - Department users: sessions within same department + their own legacy sessions without department
-        - Users without department: only their own sessions
+        - org_head: all org sessions
+        - hr / dept_admin: sessions within same department + their own legacy sessions
+        - team_lead / others: only their own sessions
         """
         async with get_connection() as conn:
             if role == "org_head":
@@ -137,7 +137,7 @@ class ChatSessionRepository:
                     """,
                     org_id,
                 )
-            elif dept_id is not None:
+            elif role in ("hr", "dept_admin") and dept_id is not None:
                 rows = await conn.fetch(
                     """
                     SELECT id, title, workflow_stage, updated_at, position_id, department_id, user_id
