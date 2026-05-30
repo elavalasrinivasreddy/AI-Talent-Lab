@@ -13,7 +13,7 @@ Two axes per surface:
 
 ## Headline
 
-**13 of 19 surfaces redesigned to v3.** 6 partial/pending. All surfaces are functionally live.
+**13 of 19 surfaces redesigned to v3.** 6 partial/deferred. All surfaces are functionally live.
 
 | | Count |
 |---|---|
@@ -41,12 +41,12 @@ All 10 critical/high/medium bugs fixed (16 commits on this branch).
 
 | # | Surface | Feature | v3 redesign | Notes |
 |---|---|---|---|---|
-| 01 | Dashboard | Live | ✅ | NOW/NEXT/PULSE lanes, role-adaptive content, copilot bar. Legacy behind `?legacy_dashboard=1`. DeptChipBar non-functional pending backend dept param. |
+| 01 | Dashboard | Live | ✅ | NOW/NEXT/PULSE lanes, role-adaptive content, copilot bar. Legacy behind `?legacy_dashboard=1`. DeptChipBar dept filter wired end-to-end. |
 | 02 | Positions List | Live | ✅ | Pipeline Garden cards, sparkline, stage strip per card. |
 | 03 | Position Detail | Live | ✅ | PositionHero, StageStatStrip, StageHealthHeader, PipelineStackView, CandidateRankedRow. Settings tab gated to hr+org_head. |
 | 04 | Candidate Detail | Live | ✅ | CandidateHero, CompareToIdealGrid, ScoreBreakdownBand, TagsRow. All score/timeline/notes tabs live. |
 | 05 | **JD Chat** | Live | ✅ | Document-first canvas, 8-stage stepper, inline blocks, interactive refinement, retry, save-as-draft. |
-| 06 | Analytics | Live | ✅ | Funnel, Agent ROI, bottleneck radar SVG, throughput table. Backend `agent-roi`/`bottleneck-radar`/`throughput` endpoints pending (frontend shows zeros gracefully). |
+| 06 | Analytics | Live | ✅ | Funnel, source breakdown, weekly velocity, time-to-hire. Backend response keys aligned with frontend (was showing zeros). |
 | 07 | Settings | Live | ✅ | AI Behavior Console, 4-group rail, adminOnly items hidden for non-admin roles, SettingsLivePreview. Phase 2 tabs are placeholders. |
 | 08 | Talent Pool | Live | ✅ | Score matrix, bulk add-to-position, contact status toggle, search+filter. |
 | 09 | **Hire Request** | Live | ✅ | Full CRUD, dept_admin approval workflow, relay visualization, 4 email touchpoints. |
@@ -67,8 +67,6 @@ All 10 critical/high/medium bugs fixed (16 commits on this branch).
 
 | Item | Priority | Notes |
 |---|---|---|
-| Analytics backend endpoints | HIGH | `agent-roi`, `bottleneck-radar`, `throughput` — frontend ready, backend missing |
-| DeptChipBar backend filter | MED | `/dashboard/stats` needs dept param for dept_admin scoping |
 | Apply Chat conversational stepper | MED | Existing apply flow works; spec calls for richer stepper UX |
 | Career page story + fit-filter | LOW | CSS done; redesign of job-fit filtering deferred |
 | Status portal transparency URL | LOW | CSS done; full redesign deferred |
