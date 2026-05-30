@@ -39,7 +39,7 @@ async def _resolve_dept_id(
 
 @router.get("/stats")
 async def get_stats(
-    period: str = Query("week", regex="^(today|week|month)$"),
+    period: str = Query("week", pattern="^(today|week|month)$"),
     dept_id: Optional[int] = Query(None),
     current_user=Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db),
@@ -105,7 +105,7 @@ async def get_activity(
 
 @router.get("/analytics")
 async def get_analytics(
-    period: str = Query("month", regex="^(week|month|quarter|year)$"),
+    period: str = Query("month", pattern="^(week|month|quarter|year)$"),
     current_user=Depends(get_current_user),
 ):
     """Full hiring analytics: velocity, source breakdown, conversion rates, time-to-hire."""
