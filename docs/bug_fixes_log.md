@@ -553,3 +553,5 @@ Updated the filter tabs in `frontend/src/components/HireRequests/HireRequestList
 - `backend/services/hire_request_service.py`
 - `frontend/src/components/HireRequests/HireRequestListPage.jsx`
 - `frontend/src/components/HireRequests/HireRequestDetailPage.jsx`
+
+*Update:* The initial fix for the "All" tab still resulted in only "approved" requests showing. This was because the backend was first converting `status="all"` to `status=None`, and then a downstream line evaluated `status if status is not None else "approved"`, effectively changing it right back to `"approved"`. The logic has been reordered so that the default fallback only applies if `status` was *originally* `None` (no filter requested), allowing `"all"` to properly clear the filter.

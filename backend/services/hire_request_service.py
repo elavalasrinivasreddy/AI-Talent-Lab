@@ -115,6 +115,12 @@ class HireRequestService:
         """
         eff_status = status
 
+        # If no status is provided, apply role-based defaults for the work queue
+        if eff_status is None:
+            if role in ("hr", "org_head") and scope not in ("mine", "all"):
+                eff_status = "approved"
+
+        # If the user explicitly asks for "all" statuses, translate it to None (no filter)
         if eff_status == "all":
             eff_status = None
 
@@ -160,14 +166,14 @@ class HireRequestService:
             from backend.db.repositories.users import UserRepository
             user = await UserRepository.get_by_id(conn, user_id, org_id)
             return await HireRequestRepository.list_for_org(
-                conn, org_id, status=eff_status if eff_status is not None else "approved",
+                conn, org_id, status=eff_status,
                 department_id=(user or {}).get("department_id"),
                 cursor_created_at=cursor_created_at, cursor_id=cursor_id,
                 limit=limit,
             )
         # org_head — default to the approved work queue (ready for pickup) across the org
         return await HireRequestRepository.list_for_org(
-            conn, org_id, status=eff_status if eff_status is not None else "approved",
+            conn, org_id, status=eff_status,
             cursor_created_at=cursor_created_at, cursor_id=cursor_id,
             limit=limit,
         )
