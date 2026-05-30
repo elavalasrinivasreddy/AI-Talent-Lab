@@ -83,7 +83,7 @@ async def update_department(
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Update a department (admin only)."""
-    if user["role"] == "dept_admin" and user.get("department_id") != dept_id:
+    if user["role"] == "dept_admin" and user.get("dept_id") != dept_id:
         raise InsufficientPermissionsError("You can only modify your own department")
     fields = body.model_dump(exclude_none=True)
     dept = await SettingsService.update_department(
@@ -150,7 +150,7 @@ async def delete_competitor(
     if user["role"] == "dept_admin":
         from backend.db.repositories.competitors import CompetitorRepository
         comp = await CompetitorRepository.get_by_id(db, competitor_id, user["org_id"])
-        if comp and comp.get("department_id") != user["department_id"]:
+        if comp and comp.get("department_id") != user.get("dept_id"):
             raise InsufficientPermissionsError("Department Admin can only delete competitors in their own department")
             
     await SettingsService.delete_competitor(db, competitor_id, user["org_id"], user["user_id"])

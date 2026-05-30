@@ -497,3 +497,16 @@ Added `"action_url": "/settings?tab=competitors"` to the notification payload di
 
 **Files Modified:**
 - `backend/services/settings_service.py`
+
+---
+
+## 38. Department Admin Unable to Update Settings/Competitors
+
+**Problem Statement:**
+When a Department Admin tried to toggle the "Auto-Approve New Hire Requests" setting on their department, or delete a competitor, the backend raised a 403 Forbidden error stating "You can only modify your own department". This occurred because the `user` dependency dictionary decoded from the JWT token uses the key `"dept_id"`, but the router endpoints were checking `user.get("department_id")`. This evaluated to `None` and falsely triggered the permission check failure.
+
+**Idea / Solution:**
+Fixed the dictionary key references in `backend/routers/settings.py` to correctly use `user.get("dept_id")` for both updating departments and deleting competitors. This correctly validates the Department Admin's scope and allows them to perform these actions successfully.
+
+**Files Modified:**
+- `backend/routers/settings.py`
