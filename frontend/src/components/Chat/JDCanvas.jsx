@@ -102,8 +102,10 @@ function EmptyCanvas() {
         <span className="jd-empty-eyebrow">
           <IconSparkles size={12} /> Empty canvas
         </span>
-        <h2>Your job description will appear here.</h2>
-        <p>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 500, textTransform: 'none', margin: '12px 0 8px 0', letterSpacing: 'normal' }}>
+          Your job description will appear here.
+        </h3>
+        <p style={{ opacity: 0.8, fontSize: '14px', lineHeight: 1.5 }}>
           Start chatting with the AI on the right to begin building your requirements. The JD will draft itself inline automatically.
         </p>
       </div>

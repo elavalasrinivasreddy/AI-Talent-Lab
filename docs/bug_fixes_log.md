@@ -568,135 +568,30 @@ Appended a fallback `or 0` to the `conn.fetchval()` call. This guarantees that `
 **Files Modified:**
 - `backend/services/auth_service.py`
 
----
 
-## 43. Cleanup of Legacy Hire Request Endpoints & Consistent Error Handling
-
-**Problem Statement:**
-The `positions` router contained several legacy endpoints for managing hire requests (e.g., `/requests`, `/requests/{request_id}/cancel`) that were deprecated in favor of the dedicated `api/v1/hire-requests` router. Additionally, the `status` router was using a generic `HTTPException` instead of the standardized `NotFoundError` pattern.
-
-**Idea / Solution:**
-1. Completely removed the legacy hire request shim endpoints from `backend/routers/positions.py`.
-2. Updated the frontend dashboard and API utilities (`LegacyDashboard.jsx` and `api.js`) to point to the modern `hireRequestsApi` methods instead of the deprecated `positionsApi` ones.
-3. Updated `backend/routers/status.py` to use `NotFoundError` for consistency with the application's `AppError` handling architecture.
-
-**Files Modified:**
-- `backend/routers/positions.py`
-- `backend/routers/status.py`
-- `frontend/src/components/Dashboard/legacy/LegacyDashboard.jsx`
-- `frontend/src/utils/api.js`
-
----
-
-## 44. JD Chat UX Validation & Responsive Layout Refinements
+## 45. JD Chat UI Optimizations
 
 **Problem Statement:**
-During a UI/UX design validation of the v3 JD Chat (Document-first Canvas) interface, we identified potential usability issues:
-1. The fixed 320px right rail could cause the primary document canvas to feel cramped on smaller screens (e.g., 13-inch laptops).
-2. Streaming the LLM output into the canvas could cause severe Cumulative Layout Shift (CLS), making it difficult to track the cursor.
-3. The Bias Check functionality lacked a clear visual indicator for when a text patch is applied to the document.
+The JD Chat interface (where recruiters generate the job description) was feeling cramped and structurally cluttered. Too much vertical screen real estate was lost to redundant headers (like the global app topbar, the `RailStateCard`, and the chat topbar stage indicators). Furthermore, the chat composer felt boxy, the "Save & find candidates" CTA looked broken and out of place when disabled, the stepper pipeline was left-aligned leaving awkward empty space, and the AI greeting message was failing to render natively on brand-new blank sessions without an expensive API roundtrip. The initial empty canvas also felt overly verbose with too many bullet points.
 
 **Idea / Solution:**
-1. Introduced a collapsable toggle state (`isRailOpen`) in `ChatPage.jsx` and added an intuitive icon button to `ChatTopBar`. 
-2. Implemented a draggable split-pane resizer (`.rail-resizer`) between the canvas and the rail. Users can now click and drag the divider to widen or narrow the chat window (rail) between 320px and 800px, giving them total control over the real estate while keeping the toggle functionality. The CSS grid dynamically updates `grid-template-columns: minmax(0, 1fr) 4px ${railWidth}px`.
-3. Added `scroll-behavior: smooth` and `overflow-anchor: auto` to `.chat-body-canvas` in `chat.css` to mitigate layout shifting and preserve reading context during token streaming.
-4. Prepared `@keyframes biasFlash` animation in `chat.css` to provide a subtle green flash highlighting exactly where the text was patched during Bias Check replacement.
+Executed a comprehensive layout sweep of the JD Chat interface to maximize "Document-First" real estate and harmony:
+1. **Maximized Real Estate:** Set `chat-page--v3` to `height: 100vh` and hid the global app layout padding/headers on the `/chat` route. 
+2. **Header Consolidation:** Removed the redundant `RailStateCard` completely. Ripped redundant stage indicators out of `ChatTopBar.jsx`. The top bar now only elegantly houses the Session Title and Notification Bell.
+3. **Stepper Centering:** Centered the `JDStepper` list so the pipeline visuals align nicely in the middle of the screen. Moved the `FinalizeCTA` (styled as a standard secondary button) and the "Toggle Rail" button into this stepper bar on the far right.
+4. **Composer Redesign:** Stripped background and border classes off the composer, replacing it with a sleek, floating pill-shaped input (`.composer-shell` at `24px` border-radius). Trimmed footer padding and brought back the muted helper text (`Enter to send`, `AI makes mistakes`).
+5. **Instant Local Greeting:** Replaced the backend ping strategy for the initial greeting on completely fresh (404) sessions. `ChatContext.jsx` now locally injects the greeting message (`"Hi! Tell me about the role..."`) into state immediately, ensuring zero-latency startup for new recruiters.
+6. **Canvas Clean-up:** Simplified the massive text block in `JDCanvas.jsx`'s empty state into a single elegant heading and sentence.
 
 **Files Modified:**
-- `frontend/src/components/Chat/ChatPage.jsx`
-- `frontend/src/components/Chat/ChatTopBar.jsx`
-- `frontend/src/styles/chat.css`
-- `docs/design/pages/05_jd_chat.md`
-
-### 45. JD Chat Layout Instability and Duplicate Assistant Responses
-**Date:** 2026-05-30
-**Issue:** 
-- The `.chat-page--v3` layout exhibited vertical scrolling instability (causing large window scrollbars and pushing the UI top to bottom) instead of creating independent scrollable regions.
-- The AI assistant was duplicating initial JD intake responses. This was caused by React 18 Strict Mode and router remount behavior resetting the local `hireRequestSentRef` when `sessionId` momentarily evaluated to `undefined`, which re-triggered the `sendMessage` function and dispatched duplicate SSE sessions to the backend.
-
-**Idea / Solution:**
-1. Modified `chat.css` to update the `.chat-page--v3` wrapper `height` from `100%` to a strictly bound `calc(100vh - 108px)`. This locks the chat window to the exact viewport height and eliminates document-level scrollbars, ensuring only the inner canvas and chat rail scroll.
-2. Hardened the auto-send logic in `ChatPage.jsx` by adding a defensive check for `messages.length > 0` before triggering the seed message. This leverages the preserved state from `ChatProvider` to conclusively block duplicate transmissions across router remounts and React Strict Mode lifecycles.
-
-**Files Modified:**
+- `frontend/src/router.jsx`
+- `frontend/src/styles/layout.css`
 - `frontend/src/styles/chat.css`
 - `frontend/src/components/Chat/ChatPage.jsx`
-
-### 46. JD Chat UI - Second Round of UX Refinements (Screen Real-Estate)
-**Date:** 2026-05-30
-**Issue:** 
-- The user indicated that the JD Chat layout was still wasting vertical screen space.
-- The `RailStateCard` showing the sub-title (e.g., "Intake - Tell me about the role...") was largely redundant since `ChatTopBar` and `JDStepper` already displayed the current state.
-- The chat input area was blocky and occupied excessive vertical height. 
-- The global notification bell was lost when the global AppTopbar was hidden in the previous layout update.
-
-**Idea / Solution:**
-1. **Removed Redundant Header / State Card:** Fully removed the `<RailStateCard />` from `JDRail.jsx` to regain significant vertical real estate for the actual chat conversation.
-2. **Modernized Message Composer:** Redesigned the `.composer-shell` in `chat.css` to feature a fully rounded "pill" shape (`border-radius: 24px`) instead of a box, and significantly reduced its inner paddings to make it sleek.
-3. **Restored Notification Bell:** Imported and embedded `<NotificationBell />` directly into `ChatTopBar.jsx` next to the new compact "Save" button so users retain platform-level visibility without needing the massive global `AppLayout` top padding.
-
-**Files Modified:**
 - `frontend/src/components/Chat/JDRail.jsx`
-- `frontend/src/components/Chat/ChatTopBar.jsx`
-- `frontend/src/styles/chat.css`
-- `frontend/src/components/Chat/ChatPage.jsx`
 - `frontend/src/components/Chat/MessageInput.jsx`
-
-### 47. JD Chat UI - Greeting Initialization & Composer Refining
-**Date:** 2026-05-30
-**Issue:** 
-- The user noted that when launching a brand "New Hire" chat from the sidebar (without a pre-existing Hire Request), the AI failed to render the initial greeting message.
-- The composer container still had a visible top border and background, making it look boxed-in instead of seamlessly floating.
-- The "AI makes mistakes / Enter to send" helper text was requested to be restored below the new pill-shaped input.
-
-**Idea / Solution:**
-1. **Auto-Seed Initial Greeting:** Modified the `useEffect` in `ChatPage.jsx`. If there is no `hireRequest` (blank slate) and `messages.length === 0`, the frontend now fires an empty `sendMessage({ message: "" })` initialization ping. This seamlessly forces the backend to create the session and return the `GREETING_MESSAGE` via `sync_state`.
-2. **Transparent Composer:** Removed the `border-top` and `background` from `.composer` in `chat.css`, allowing the pill-shaped `.composer-shell` to float directly on the rail background.
-3. **Restored Helper Text:** Re-added `.composer-foot` in `MessageInput.jsx` with a minimized, lower-opacity design that rests gently beneath the input pill.
-
-**Files Modified:**
-- `frontend/src/components/Chat/ChatPage.jsx`
-- `frontend/src/styles/chat.css`
-- `frontend/src/components/Chat/MessageInput.jsx`
-
-### 48. JD Chat UI - Header Consolidation & Layout Centering
-**Date:** 2026-05-31
-**Issue:** 
-- The user found the redundant stage indicator in the top header unnecessary since the stepper already tracks the stage.
-- The "Save & find candidates" button styling didn't feel premium, and its location in the top-bar was suboptimal.
-- The visual stepper was left-aligned, leaving empty space on the right.
-- The composer footer still had too much vertical padding.
-- The AI greeting was relying on an expensive backend stream ping, causing delays or failures.
-
-**Idea / Solution:**
-1. **Header Cleanup:** Stripped out the Stage label, FinalizeCTA, and Toggle Rail buttons from `ChatTopBar.jsx`, leaving only the Session Title and Notification Bell for a super clean header.
-2. **Stepper Centering & Action Move:** Moved `FinalizeCTA` and the Rail Toggle button to the right side of `JDStepper.jsx` using `position: absolute`. Centered the actual stepper list with `justify-content: center` in `chat.css`.
-3. **Button Redesign:** Styled `FinalizeCTA` with rounded borders (`borderRadius: 24px`), custom padding, and font weights to look like a sleek premium pill button instead of a default rectangular block.
-4. **Composer Padding:** Removed `marginTop` in the composer footer and compressed the `.composer` padding to keep everything tight.
-5. **Local AI Greeting:** Instead of sending an empty ping to the backend, `ChatContext.jsx` now locally injects a static "Hi! Tell me about the role..." message directly into state for brand new sessions (404 response). The real backend interaction only begins when the user actually types something.
-
-**Files Modified:**
-- `frontend/src/components/Chat/ChatPage.jsx`
+- `frontend/src/components/Chat/FinalizeCTA.jsx`
 - `frontend/src/components/Chat/ChatTopBar.jsx`
 - `frontend/src/components/Chat/JDStepper.jsx`
-- `frontend/src/components/Chat/FinalizeCTA.jsx`
-- `frontend/src/components/Chat/MessageInput.jsx`
-- `frontend/src/context/ChatContext.jsx`
-- `frontend/src/styles/chat.css`
-
-### 49. JD Chat UI - Syntax Fixes & Canvas Cleanup
-**Date:** 2026-05-31
-**Issue:** 
-- A stray `}}}` was rendering on screen near the JD Stepper due to a duplicated JSX bracket.
-- The "Save & find candidates" CTA looked like plain text because it was using an undefined BEM class (`btn--primary`).
-- The empty state on the JD Canvas contained too much instructional text, cluttering the premium interface.
-
-**Idea / Solution:**
-1. **Cleaned up JDStepper:** Removed the duplicated `})}` closure.
-2. **Fixed Button Classes:** Reverted `btn--primary` back to the standard global `btn-primary` class to restore proper button styling and backgrounds (even in the disabled state).
-3. **Empty Canvas Minimalism:** Removed the verbose bullet points from `EmptyCanvas` in `JDCanvas.jsx`, opting for a single clean sentence directing the user to chat.
-
-**Files Modified:**
-- `frontend/src/components/Chat/JDStepper.jsx`
-- `frontend/src/components/Chat/FinalizeCTA.jsx`
 - `frontend/src/components/Chat/JDCanvas.jsx`
+- `frontend/src/context/ChatContext.jsx`
