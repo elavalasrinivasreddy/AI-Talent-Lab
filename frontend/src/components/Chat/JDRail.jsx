@@ -1,5 +1,5 @@
 import React from 'react';
-import RailStateCard from './RailStateCard';
+
 import RailConversation from './RailConversation';
 import MessageInput from './MessageInput';
 import FinalizeCTA from './FinalizeCTA';
@@ -17,8 +17,6 @@ import FinalizeCTA from './FinalizeCTA';
 export default function JDRail() {
   return (
     <aside className="jd-rail" aria-label="Stage and conversation">
-      <RailStateCard />
-
       <RailConversation />
 
       <footer className="jd-rail-foot">

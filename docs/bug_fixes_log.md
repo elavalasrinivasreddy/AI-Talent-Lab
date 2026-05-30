@@ -621,3 +621,21 @@ During a UI/UX design validation of the v3 JD Chat (Document-first Canvas) inter
 **Files Modified:**
 - `frontend/src/styles/chat.css`
 - `frontend/src/components/Chat/ChatPage.jsx`
+
+### 46. JD Chat UI - Second Round of UX Refinements (Screen Real-Estate)
+**Date:** 2026-05-30
+**Issue:** 
+- The user indicated that the JD Chat layout was still wasting vertical screen space.
+- The `RailStateCard` showing the sub-title (e.g., "Intake - Tell me about the role...") was largely redundant since `ChatTopBar` and `JDStepper` already displayed the current state.
+- The chat input area was blocky and occupied excessive vertical height. 
+- The global notification bell was lost when the global AppTopbar was hidden in the previous layout update.
+
+**Idea / Solution:**
+1. **Removed Redundant Header / State Card:** Fully removed the `<RailStateCard />` from `JDRail.jsx` to regain significant vertical real estate for the actual chat conversation.
+2. **Modernized Message Composer:** Redesigned the `.composer-shell` in `chat.css` to feature a fully rounded "pill" shape (`border-radius: 24px`) instead of a box, and significantly reduced its inner paddings to make it sleek.
+3. **Restored Notification Bell:** Imported and embedded `<NotificationBell />` directly into `ChatTopBar.jsx` next to the new compact "Save" button so users retain platform-level visibility without needing the massive global `AppLayout` top padding.
+
+**Files Modified:**
+- `frontend/src/components/Chat/JDRail.jsx`
+- `frontend/src/components/Chat/ChatTopBar.jsx`
+- `frontend/src/styles/chat.css`

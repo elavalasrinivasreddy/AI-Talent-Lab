@@ -1,6 +1,7 @@
 import React from 'react';
 import { useChat } from '../../context/ChatContext';
 import FinalizeCTA from './FinalizeCTA';
+import NotificationBell from '../common/NotificationBell';
 
 const STAGE_CONFIG = {
     intake:          { label: 'Intake',           index: 1 },
@@ -61,6 +62,7 @@ const ChatTopBar = ({ isRailOpen, onToggleRail }) => {
                         </svg>
                     )}
                 </button>
+                <NotificationBell />
             </div>
         </header>
     );
