@@ -607,3 +607,17 @@ During a UI/UX design validation of the v3 JD Chat (Document-first Canvas) inter
 - `frontend/src/components/Chat/ChatTopBar.jsx`
 - `frontend/src/styles/chat.css`
 - `docs/design/pages/05_jd_chat.md`
+
+### 45. JD Chat Layout Instability and Duplicate Assistant Responses
+**Date:** 2026-05-30
+**Issue:** 
+- The `.chat-page--v3` layout exhibited vertical scrolling instability (causing large window scrollbars and pushing the UI top to bottom) instead of creating independent scrollable regions.
+- The AI assistant was duplicating initial JD intake responses. This was caused by React 18 Strict Mode and router remount behavior resetting the local `hireRequestSentRef` when `sessionId` momentarily evaluated to `undefined`, which re-triggered the `sendMessage` function and dispatched duplicate SSE sessions to the backend.
+
+**Idea / Solution:**
+1. Modified `chat.css` to update the `.chat-page--v3` wrapper `height` from `100%` to a strictly bound `calc(100vh - 108px)`. This locks the chat window to the exact viewport height and eliminates document-level scrollbars, ensuring only the inner canvas and chat rail scroll.
+2. Hardened the auto-send logic in `ChatPage.jsx` by adding a defensive check for `messages.length > 0` before triggering the seed message. This leverages the preserved state from `ChatProvider` to conclusively block duplicate transmissions across router remounts and React Strict Mode lifecycles.
+
+**Files Modified:**
+- `frontend/src/styles/chat.css`
+- `frontend/src/components/Chat/ChatPage.jsx`

@@ -27,6 +27,7 @@ const ChatPage = () => {
         resetChat,
         sendMessage,
         workflowStage,
+        messages,
     } = useChat();
 
     const loadedRef = useRef(null);
@@ -88,7 +89,9 @@ const ChatPage = () => {
     // the agent uses to skip ahead.
     useEffect(() => {
         const req = location.state?.hireRequest;
-        if (!req || hireRequestSentRef.current || workflowStage !== 'intake') return;
+        // If there are already messages, we shouldn't send an auto-seed message
+        // This prevents duplicate sends during React Strict Mode remounts.
+        if (!req || hireRequestSentRef.current || workflowStage !== 'intake' || messages.length > 0) return;
 
         hireRequestSentRef.current = true;
 
@@ -112,7 +115,7 @@ const ChatPage = () => {
         if (req.requested_by_name) lines.push(`\nRequested by: ${req.requested_by_name}`);
 
         sendMessage({ message: lines.join('\n') });
-    }, [location.state, workflowStage, sendMessage]);
+    }, [location.state, workflowStage, sendMessage, messages.length]);
 
     // Link the created position back to the hire request once JD generation completes.
     useEffect(() => {
