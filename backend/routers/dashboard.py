@@ -5,13 +5,36 @@ All routes under /api/v1/dashboard/
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+import asyncpg
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.dependencies import get_current_user
+from backend.db.repositories.departments import DeptRepository
+from backend.dependencies import get_current_user, get_db
 from backend.services.dashboard_service import DashboardService
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["Dashboard"])
 logger = logging.getLogger(__name__)
+
+_DEPT_FILTER_ROLES = {"org_head", "dept_admin", "platform_admin"}
+
+
+async def _resolve_dept_id(
+    requested: Optional[int],
+    current_user: dict,
+    db: asyncpg.Connection,
+) -> Optional[int]:
+    """Return the effective department_id to filter by.
+
+    Only admin roles may override via query param; the requested dept must
+    belong to the caller's org to prevent cross-org data leakage.
+    Non-admin roles always get their own JWT dept (or None).
+    """
+    if requested is None or current_user["role"] not in _DEPT_FILTER_ROLES:
+        return current_user.get("dept_id")
+    dept = await DeptRepository.get_by_id(db, requested, current_user["org_id"])
+    if dept is None:
+        raise HTTPException(status_code=403, detail="Department not found or not in your org")
+    return requested
 
 
 @router.get("/stats")
@@ -19,13 +42,15 @@ async def get_stats(
     period: str = Query("week", regex="^(today|week|month)$"),
     dept_id: Optional[int] = Query(None),
     current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Stats cards + trends for the dashboard header."""
+    effective_dept = await _resolve_dept_id(dept_id, current_user, db)
     return await DashboardService.get_stats(
         org_id=current_user["org_id"],
-        user_id=current_user["user_id"],      # fixed: was ["id"]
+        user_id=current_user["user_id"],
         role=current_user["role"],
-        department_id=dept_id or current_user.get("dept_id"),
+        department_id=effective_dept,
         period=period
     )
 
@@ -34,13 +59,15 @@ async def get_stats(
 async def get_dashboard_positions(
     dept_id: Optional[int] = Query(None),
     current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
 ):
     """Positions with candidate counts for the dashboard table."""
+    effective_dept = await _resolve_dept_id(dept_id, current_user, db)
     return await DashboardService.get_positions_summary(
         org_id=current_user["org_id"],
-        user_id=current_user["user_id"],      # fixed: was ["id"]
+        user_id=current_user["user_id"],
         role=current_user["role"],
-        department_id=dept_id or current_user.get("dept_id"),
+        department_id=effective_dept,
     )
 
 
