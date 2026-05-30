@@ -273,7 +273,8 @@ async def reset_notifications(org_id: Optional[int] = Query(None)):
 async def reset_all_org_data(org_id: Optional[int] = Query(None)):
     """
     Nuclear: delete ALL business data for an org or globally.
-    Keeps: org, users, departments. Deletes everything else.
+    If org_id is provided, keeps: org, users, departments.
+    If org_id is absent (global), deletes EVERYTHING (orgs, users, departments).
     """
     _require_dev_mode()
     async with get_connection() as conn:
@@ -284,15 +285,12 @@ async def reset_all_org_data(org_id: Optional[int] = Query(None)):
             await conn.execute("DELETE FROM candidates WHERE org_id = $1", org_id)
             await conn.execute("DELETE FROM positions WHERE org_id = $1", org_id)
             await conn.execute("DELETE FROM chat_sessions WHERE org_id = $1", org_id)
+            msg = "Org data cleared. Org, users, and departments preserved."
         else:
-            await conn.execute("DELETE FROM notifications")
-            await conn.execute("DELETE FROM pipeline_events")
-            await conn.execute("DELETE FROM candidate_applications")
-            await conn.execute("DELETE FROM candidates")
-            await conn.execute("DELETE FROM positions")
-            await conn.execute("DELETE FROM chat_sessions")
+            await conn.execute("TRUNCATE TABLE organizations CASCADE")
+            msg = "Global data cleared. ALL orgs, users, and departments wiped."
     logger.warning(f"[DEV] Full reset for org {org_id or 'ALL'}")
-    return {"ok": True, "message": "All org data cleared. Org, users, and departments preserved."}
+    return {"ok": True, "message": msg}
 
 
 # ── Session Restore ───────────────────────────────────────────────────────────
