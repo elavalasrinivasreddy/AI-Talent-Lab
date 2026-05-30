@@ -160,7 +160,11 @@ export default function NotificationBell() {
                             if (!n.is_read) handleMarkRead(n.id)
                             if (n.action_url) {
                               setOpen(false)
-                              navigate(n.action_url)
+                              if (n.action_url.startsWith('http')) {
+                                window.open(n.action_url, '_blank', 'noopener,noreferrer')
+                              } else {
+                                navigate(n.action_url)
+                              }
                             }
                           }}
                         >
