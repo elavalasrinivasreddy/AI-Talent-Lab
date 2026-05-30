@@ -110,7 +110,7 @@ export default function PanelPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ attended: false, is_draft: false }),
         })
-      } catch (e) {}
+      } catch (e) { }
       setPageState('not_attended')
     } else {
       setPageState('form')
