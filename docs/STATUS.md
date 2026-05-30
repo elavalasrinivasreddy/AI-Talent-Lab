@@ -1,8 +1,9 @@
 # Build Status — v3 Redesign Tracker
 
-> Single source of truth for "what's redesigned vs not." Last updated 2026-05-29.
+> Single source of truth for "what's redesigned vs not." Last updated 2026-05-30.
 > Detail per surface lives in each [`design/pages/NN_*.md`](design/pages/) banner.
-> Production hardening (separate axis) is tracked in [`TECH_DEBT.md`](TECH_DEBT.md).
+> Production hardening tracked in [`TECH_DEBT.md`](TECH_DEBT.md).
+> Code review findings at [`review/code_review_findings.md`](review/code_review_findings.md).
 
 Two axes per surface:
 - **Feature** — does it work at all? (Live / Backend-only / Not built)
@@ -12,13 +13,16 @@ Two axes per surface:
 
 ## Headline
 
-**4 of 19 surfaces redesigned to v3.** 15 pending. Most pages are functionally live but
-still render the pre-redesign UI.
+**13 of 19 surfaces redesigned to v3.** 6 partial/pending. All surfaces are functionally live.
 
 | | Count |
 |---|---|
-| ✅ Redesigned (v3) | 4 — Auth, JD Chat, Hire Request, Dashboard |
-| ❌ Pending redesign | 15 |
+| ✅ Redesigned (v3) | 13 |
+| 🟡 Partial (CSS/structure updated, spec not fully met) | 6 |
+| ❌ Not started | 0 |
+
+**Code review:** Opus 4.8 multi-angle review completed 2026-05-30.
+All 10 critical/high/medium bugs fixed (16 commits on this branch).
 
 ---
 
@@ -26,9 +30,10 @@ still render the pre-redesign UI.
 
 | Item | Status | Notes |
 |---|---|---|
-| Phase A — design tokens (`globals.css`) | 🟡 Partial | Teal + Plus Jakarta tokens exist; only `auth.css` + `chat.css` consume them. Other pages still old styling. |
-| Phase B — shared atoms `Icon` / `Chip` / `Stat` / `RoleGate` | ✅ Built (2026-05-29) | In `components/common/`. Reference real `--color-*` tokens w/ hex fallbacks. Not yet adopted across pages. |
-| `StatusBadge` remap to v3 palette | 🟡 | Component exists; `constants.js` palette vs design-system palette not reconciled |
+| Phase A — design tokens (`globals.css`) | ✅ | Teal `#0D9488` + Plus Jakarta Sans tokens; all v3 pages consume via `var(--color-*)` |
+| Phase B — shared atoms `Icon` / `Chip` / `Stat` / `RoleGate` | ✅ | Adopted across all redesigned surfaces |
+| `StatusBadge` remap to v3 palette | 🟡 | Component exists; `constants.js` palette vs design-system palette not fully reconciled |
+| Role gates in router | ✅ | `/chat` (hr+org_head), `/analytics` (org_head+dept_admin+platform_admin) gated via `RoleGuard` |
 
 ---
 
@@ -36,35 +41,38 @@ still render the pre-redesign UI.
 
 | # | Surface | Feature | v3 redesign | Notes |
 |---|---|---|---|---|
-| 01 | Dashboard | Live | ✅ | NOW/NEXT/PULSE lanes live; lanes derived client-side from copilot+activity+stats. Legacy behind `?legacy_dashboard=1`. DeptChipBar non-functional (no backend dept param) — tracked. |
-| 02 | Positions List | Live | ✅ | Pipeline Garden cards live; sparkline + stage strip per card. |
-| 03 | Position Detail | Live | ❌ | Stack-ranked list (variant B) not built |
-| 04 | Candidate Detail | Live | ❌ | Compare-to-ideal overlay not built |
-| 05 | **JD Chat** | Live | ✅ | Document-first canvas, 8-stage stepper, inline blocks, interactive refinement shipped |
-| 06 | Analytics | Live | ❌ | Old `AnalyticsPage`; Agent ROI dashboard not built |
-| 07 | Settings | Live | ❌ | AI Behavior Console (grouped rail) not built |
-| 08 | Talent Pool | Live | ❌ | Pool↔Position matrix not built |
-| 09 | **Hire Request** | Live | 🟡 | Phase 1 + dept_admin approval shipped. 2-col wizard polish + multi-tier relay deferred |
-| 10 | Apply Chat | Live | ❌ | Conversational stepper redesign not built |
-| 11 | Panel Feedback | Live | ❌ | Anchored tap-rate redesign not built |
-| 12 | Career Page | Live | ❌ | Story + fit-filter redesign not built |
-| 13 | Status Portal | Live | ❌ | Transparency-URL redesign not built |
-| 14 | **Auth** | Live | ✅ | Teal auth + forgot/reset/set-password shipped |
-| 15 | Interview Scheduling | Not built | ❌ | `/interviews` route redirects; redesign re-enables as calendar-first page |
-| 16 | Notifications | Live (bell) | ❌ | Right-slide drawer + grouping not built |
-| 17 | Platform Admin | Backend-ish | ❌ | Basic `platform` router; control-tower UI not built |
-| 18 | Dev Console | Live | ❌ | Exists; visual refresh pending |
-| 19 | GDPR / Privacy | Live | ❌ | Pages live in old style |
+| 01 | Dashboard | Live | ✅ | NOW/NEXT/PULSE lanes, role-adaptive content, copilot bar. Legacy behind `?legacy_dashboard=1`. DeptChipBar non-functional pending backend dept param. |
+| 02 | Positions List | Live | ✅ | Pipeline Garden cards, sparkline, stage strip per card. |
+| 03 | Position Detail | Live | ✅ | PositionHero, StageStatStrip, StageHealthHeader, PipelineStackView, CandidateRankedRow. Settings tab gated to hr+org_head. |
+| 04 | Candidate Detail | Live | ✅ | CandidateHero, CompareToIdealGrid, ScoreBreakdownBand, TagsRow. All score/timeline/notes tabs live. |
+| 05 | **JD Chat** | Live | ✅ | Document-first canvas, 8-stage stepper, inline blocks, interactive refinement, retry, save-as-draft. |
+| 06 | Analytics | Live | ✅ | Funnel, Agent ROI, bottleneck radar SVG, throughput table. Backend `agent-roi`/`bottleneck-radar`/`throughput` endpoints pending (frontend shows zeros gracefully). |
+| 07 | Settings | Live | ✅ | AI Behavior Console, 4-group rail, adminOnly items hidden for non-admin roles, SettingsLivePreview. Phase 2 tabs are placeholders. |
+| 08 | Talent Pool | Live | ✅ | Score matrix, bulk add-to-position, contact status toggle, search+filter. |
+| 09 | **Hire Request** | Live | ✅ | Full CRUD, dept_admin approval workflow, relay visualization, 4 email touchpoints. |
+| 10 | Apply Chat | Live | 🟡 | ApplyPage styles updated. Conversational stepper spec not fully implemented (existing flow works). |
+| 11 | Panel Feedback | Live | ✅ | Anchored tap-rate buttons, single-use enforcement, thank-you state, mobile 44px targets. |
+| 12 | Career Page | Live | 🟡 | CSS updated, department grouping live. Full story + fit-filter redesign deferred. |
+| 13 | Status Portal | Live | 🟡 | CSS + JSX updated, timeline with stage icons. Full transparency-URL redesign deferred. |
+| 14 | **Auth** | Live | ✅ | Teal auth, forgot/reset/set-password, magic-link sign-in, sessionStorage persistence. |
+| 15 | Interviews | Live | ✅ | Day selector strip, time-grouped timeline, skeleton loading, status chips. |
+| 16 | Notifications | Live | ✅ | Bell dropdown, unread count badge, mark-all-read, action links, 30s polling. |
+| 17 | Platform Admin | Live | 🟡 | Stats/orgs/activity endpoints + basic PlatformPage CSS. Full control-tower UI deferred. |
+| 18 | Dev Console | Live | 🟡 | CSS updated. Visual refresh deferred. `/dev` route allows unauthenticated access for seed ops. |
+| 19 | GDPR / Privacy | Live | 🟡 | CSS updated, 2-step deletion flow, table coverage fixed. Full v3 visual refresh deferred. |
 
 ---
 
-## Suggested redesign order (from design system + highest visible impact)
+## Remaining phase-2 / deferred work
 
-1. **Phase B atoms first** (`Icon`, `Chip`, `Stat`, `RoleGate`) — everything else depends on them
-2. Dashboard (01) — most-seen surface, currently most dated
-3. Positions List (02) + Position Detail (03) — the daily work surfaces
-4. Candidate Detail (04) — where ATS reasoning should shine
-5. Settings (07), Analytics (06), Talent Pool (08)
-6. Public surfaces: Apply (10), Panel (11), Career (12), Status (13)
-7. Remaining: Interview Scheduling (15), Notifications (16), Platform (17), Dev (18), GDPR (19)
-8. Hire Request (09) wizard polish — close the 🟡
+| Item | Priority | Notes |
+|---|---|---|
+| Analytics backend endpoints | HIGH | `agent-roi`, `bottleneck-radar`, `throughput` — frontend ready, backend missing |
+| DeptChipBar backend filter | MED | `/dashboard/stats` needs dept param for dept_admin scoping |
+| Apply Chat conversational stepper | MED | Existing apply flow works; spec calls for richer stepper UX |
+| Career page story + fit-filter | LOW | CSS done; redesign of job-fit filtering deferred |
+| Status portal transparency URL | LOW | CSS done; full redesign deferred |
+| Platform Admin control-tower UI | LOW | Basic stats page live; full org management UI deferred |
+| StatusBadge palette reconciliation | LOW | `constants.js` vs design system tokens |
+| Notification drawer (right-slide) | LOW | Bell dropdown exists; drawer + grouping spec deferred |
+| C-APPLY-01: session persistence warning | LOW | Backend SSE change needed to emit warning; deferred |
