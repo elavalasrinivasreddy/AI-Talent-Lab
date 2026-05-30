@@ -1,4 +1,4 @@
-> **Build status:** ❌ Not redesigned — old Settings tabs live
+> **Build status:** ✅ Redesigned (2026-05-29)
 > Consolidated docs index: [../../README.md](../../README.md) · Status tracker: [../../STATUS.md](../../STATUS.md) · Design system: [../00_design_system.md](../00_design_system.md)
 > This page merges the v3 redesign spec with the pre-v3 behavioral spec (appendix below, where one existed).
 
