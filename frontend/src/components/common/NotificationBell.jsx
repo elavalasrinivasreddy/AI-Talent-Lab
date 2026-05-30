@@ -132,7 +132,8 @@ export default function NotificationBell() {
             {/* Unread count banner */}
             {data.unread_count > 0 && (
               <div className="notif-unread-banner">
-                {data.unread_count} unread notification{data.unread_count !== 1 ? 's' : ''}
+                <Icon name="bell" size={14} />
+                <span>{data.unread_count} unread notification{data.unread_count !== 1 ? 's' : ''}</span>
               </div>
             )}
 
