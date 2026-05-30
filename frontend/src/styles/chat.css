@@ -674,7 +674,7 @@
 /* ── Composer (input) ─────────────────────────────────────── */
 .composer {
   flex: 0 0 auto;
-  padding: 8px 16px 12px;
+  padding: 4px 16px 8px;
   background: transparent;
 }
 
@@ -1421,6 +1421,11 @@
   background: var(--color-bg-secondary);
   overflow-x: auto;
   scrollbar-width: thin;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 0 16px;
 }
 
 .jd-stepper-list {
@@ -1428,9 +1433,17 @@
   align-items: center;
   gap: 0;
   list-style: none;
-  padding: 8px 24px;
+  padding: 8px 0;
   margin: 0;
   min-width: max-content;
+}
+
+.jd-stepper-actions {
+  position: absolute;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .jd-stepper-item {

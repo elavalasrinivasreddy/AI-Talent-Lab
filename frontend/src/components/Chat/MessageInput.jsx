@@ -151,7 +151,7 @@ const MessageInput = () => {
                         </button>
                     </div>
                 </div>
-                <div className="composer-foot" style={{ marginTop: '8px', fontSize: '10px', opacity: 0.7, display: 'flex', justifyContent: 'space-between', padding: '0 10px' }}>
+                <div className="composer-foot" style={{ fontSize: '10px', opacity: 0.7, display: 'flex', justifyContent: 'space-between', padding: '2px 10px 0 10px' }}>
                     <span><kbd style={{ background: 'var(--color-bg-secondary)', padding: '2px 4px', borderRadius: '3px' }}>Enter</kbd> to send</span>
                     <span>AI Talent Lab can make mistakes.</span>
                 </div>

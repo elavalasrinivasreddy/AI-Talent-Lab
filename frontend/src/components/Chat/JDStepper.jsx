@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useChat } from '../../context/ChatContext';
 import { IconCheck, IconX, IconLoader } from './icons';
+import FinalizeCTA from './FinalizeCTA';
 
 /**
  * Top stepper with one pill per LangGraph stage. Each pill shows:
@@ -57,7 +58,7 @@ function statePerStage(currentStage, gs, skipped) {
   return map;
 }
 
-export default function JDStepper() {
+export default function JDStepper({ isRailOpen, onToggleRail }) {
   const { workflowStage, stageSkipped } = useChat();
   const skipped = useMemo(() => new Set(stageSkipped || []), [stageSkipped]);
 
@@ -105,7 +106,29 @@ export default function JDStepper() {
             </li>
           );
         })}
+        })}
       </ol>
+      <div className="jd-stepper-actions">
+        <FinalizeCTA />
+        <button 
+          onClick={onToggleRail} 
+          className="icon-btn toggle-rail-btn" 
+          title={isRailOpen ? "Hide Rail" : "Show Rail"}
+          aria-label={isRailOpen ? "Hide Rail" : "Show Rail"}
+        >
+          {isRailOpen ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="15" y1="3" x2="15" y2="21"></line>
+              </svg>
+          ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="9" y1="3" x2="9" y2="21"></line>
+              </svg>
+          )}
+        </button>
+      </div>
     </nav>
   );
 }

@@ -143,10 +143,10 @@ export const ChatProvider = ({ children }) => {
                 if (gs.bias_skipped) skips.push('bias_check');
                 setStageSkipped(skips);
             } else if (res.status === 404) {
-                // Session doesn't exist yet — fresh chat. Backend creates it
-                // (with greeting) on the first POST /chat/stream call.
+                // Session doesn't exist yet — fresh chat.
+                // We seed the static greeting message locally immediately.
                 setCurrentSessionId(sessionId);
-                setMessages([]);
+                setMessages([{ role: 'assistant', content: "Hi! Tell me about the role you're hiring for.", isComplete: true }]);
                 setWorkflowStage('intake');
                 setSessionTitle('New Hire');
             }

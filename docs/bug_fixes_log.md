@@ -658,3 +658,28 @@ During a UI/UX design validation of the v3 JD Chat (Document-first Canvas) inter
 - `frontend/src/components/Chat/ChatPage.jsx`
 - `frontend/src/styles/chat.css`
 - `frontend/src/components/Chat/MessageInput.jsx`
+
+### 48. JD Chat UI - Header Consolidation & Layout Centering
+**Date:** 2026-05-31
+**Issue:** 
+- The user found the redundant stage indicator in the top header unnecessary since the stepper already tracks the stage.
+- The "Save & find candidates" button styling didn't feel premium, and its location in the top-bar was suboptimal.
+- The visual stepper was left-aligned, leaving empty space on the right.
+- The composer footer still had too much vertical padding.
+- The AI greeting was relying on an expensive backend stream ping, causing delays or failures.
+
+**Idea / Solution:**
+1. **Header Cleanup:** Stripped out the Stage label, FinalizeCTA, and Toggle Rail buttons from `ChatTopBar.jsx`, leaving only the Session Title and Notification Bell for a super clean header.
+2. **Stepper Centering & Action Move:** Moved `FinalizeCTA` and the Rail Toggle button to the right side of `JDStepper.jsx` using `position: absolute`. Centered the actual stepper list with `justify-content: center` in `chat.css`.
+3. **Button Redesign:** Styled `FinalizeCTA` with rounded borders (`borderRadius: 24px`), custom padding, and font weights to look like a sleek premium pill button instead of a default rectangular block.
+4. **Composer Padding:** Removed `marginTop` in the composer footer and compressed the `.composer` padding to keep everything tight.
+5. **Local AI Greeting:** Instead of sending an empty ping to the backend, `ChatContext.jsx` now locally injects a static "Hi! Tell me about the role..." message directly into state for brand new sessions (404 response). The real backend interaction only begins when the user actually types something.
+
+**Files Modified:**
+- `frontend/src/components/Chat/ChatPage.jsx`
+- `frontend/src/components/Chat/ChatTopBar.jsx`
+- `frontend/src/components/Chat/JDStepper.jsx`
+- `frontend/src/components/Chat/FinalizeCTA.jsx`
+- `frontend/src/components/Chat/MessageInput.jsx`
+- `frontend/src/context/ChatContext.jsx`
+- `frontend/src/styles/chat.css`

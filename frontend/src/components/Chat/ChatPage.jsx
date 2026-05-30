@@ -97,9 +97,6 @@ const ChatPage = () => {
         hireRequestSentRef.current = true;
 
         if (!req) {
-            // Fresh blank chat — send empty initialization ping to backend
-            // so it creates the session and returns the AI greeting via sync_state.
-            sendMessage({ message: "" });
             return;
         }
 
@@ -135,8 +132,8 @@ const ChatPage = () => {
 
     return (
         <div className="chat-page chat-page--v3">
-            <ChatTopBar isRailOpen={isRailOpen} onToggleRail={() => setIsRailOpen(!isRailOpen)} />
-            <JDStepper />
+            <ChatTopBar />
+            <JDStepper isRailOpen={isRailOpen} onToggleRail={() => setIsRailOpen(!isRailOpen)} />
             <div 
                 className={`chat-body ${!isRailOpen ? 'rail-closed' : ''}`}
                 style={{ gridTemplateColumns: isRailOpen ? `minmax(0, 1fr) 4px ${railWidth}px` : `minmax(0, 1fr) 0px 0px` }}
