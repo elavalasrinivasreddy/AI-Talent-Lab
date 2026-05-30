@@ -1,26 +1,38 @@
 /**
- * components/common/NotificationBell.jsx
- * Notification bell with unread count badge, dropdown list.
+ * NotificationBell.jsx — v3 Right-Slide Drawer + Grouped Notifications
+ * Redesigned 2026-05-29.
+ *
+ * Bell button → right drawer (not dropdown) → grouped by type → mark-read
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { notificationsApi } from '../../utils/api'
+import Icon from './Icon'
 import './NotificationBell.css'
+
+const TYPE_META = {
+  search_complete:       { icon: 'cpu',      label: 'AI Activity',    color: '#0D9488' },
+  candidate_selected:    { icon: 'check',    label: 'Selections',     color: '#10B981' },
+  application_received:  { icon: 'file-text',label: 'Applications',   color: '#3B82F6' },
+  interview_scheduled:   { icon: 'calendar', label: 'Interviews',     color: '#6366F1' },
+  feedback_submitted:    { icon: 'award',    label: 'Feedback',       color: '#D97706' },
+  status_changed:        { icon: 'activity', label: 'Status Updates', color: '#06B6D4' },
+}
 
 export default function NotificationBell() {
   const [data, setData] = useState({ notifications: [], unread_count: 0 })
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const drawerRef = useRef(null)
 
   const load = useCallback(async () => {
     try {
       const result = await notificationsApi.list()
       setData(result)
-    } catch { /* ignore — bell is non-critical */ }
+    } catch { /* non-critical */ }
   }, [])
 
   useEffect(() => {
     load()
-    const interval = setInterval(load, 30000) // poll every 30s
+    const interval = setInterval(load, 30000)
     return () => clearInterval(interval)
   }, [load])
 
@@ -28,10 +40,18 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!open) return
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+      if (drawerRef.current && !drawerRef.current.contains(e.target)) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
   }, [open])
 
   const handleMarkAllRead = async () => {
@@ -40,7 +60,7 @@ export default function NotificationBell() {
       setData(prev => ({
         ...prev,
         notifications: prev.notifications.map(n => ({ ...n, is_read: true })),
-        unread_count: 0
+        unread_count: 0,
       }))
     } catch {}
   }
@@ -50,68 +70,118 @@ export default function NotificationBell() {
       await notificationsApi.markRead(id)
       setData(prev => ({
         notifications: prev.notifications.map(n => n.id === id ? { ...n, is_read: true } : n),
-        unread_count: Math.max(0, prev.unread_count - 1)
+        unread_count: Math.max(0, prev.unread_count - 1),
       }))
     } catch {}
   }
 
-  const ICONS = {
-    search_complete: '🤖',
-    candidate_selected: '⭐',
-    application_received: '📝',
-    interview_scheduled: '📅',
-    feedback_submitted: '📋',
+  // Group notifications by type
+  const grouped = {}
+  data.notifications.forEach(n => {
+    const type = n.type || 'other'
+    if (!grouped[type]) grouped[type] = []
+    grouped[type].push(n)
+  })
+
+  const timeAgo = (dateStr) => {
+    if (!dateStr) return ''
+    const diff = Date.now() - new Date(dateStr).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return 'now'
+    if (mins < 60) return `${mins}m`
+    const hrs = Math.floor(mins / 60)
+    if (hrs < 24) return `${hrs}h`
+    return `${Math.floor(hrs / 24)}d`
   }
 
   return (
-    <div className="notif-bell-wrap" ref={ref}>
+    <>
+      {/* Bell Button */}
       <button
         className="notif-bell-btn"
         onClick={() => { setOpen(p => !p); if (!open) load() }}
         aria-label="Notifications"
       >
-        🔔
+        <Icon name="bell" size={18} />
         {data.unread_count > 0 && (
           <span className="notif-badge">{data.unread_count > 99 ? '99+' : data.unread_count}</span>
         )}
       </button>
 
+      {/* Backdrop + Drawer */}
       {open && (
-        <div className="notif-dropdown">
-          <div className="notif-dropdown-header">
-            <span className="notif-dropdown-title">Notifications</span>
-            {data.unread_count > 0 && (
-              <button className="notif-mark-all" onClick={handleMarkAllRead}>
-                Mark all read
-              </button>
-            )}
-          </div>
+        <>
+          <div className="notif-backdrop" onClick={() => setOpen(false)} />
+          <div className="notif-drawer" ref={drawerRef}>
+            {/* Drawer Header */}
+            <div className="notif-drawer-header">
+              <h2 className="notif-drawer-title">Notifications</h2>
+              <div className="notif-drawer-actions">
+                {data.unread_count > 0 && (
+                  <button className="notif-mark-all" onClick={handleMarkAllRead}>
+                    Mark all read
+                  </button>
+                )}
+                <button className="notif-close-btn" onClick={() => setOpen(false)}>
+                  <Icon name="x" size={16} />
+                </button>
+              </div>
+            </div>
 
-          <div className="notif-list">
-            {data.notifications.length === 0 ? (
-              <div className="notif-empty">No notifications yet</div>
-            ) : (
-              data.notifications.map(n => (
-                <div
-                  key={n.id}
-                  className={`notif-item ${n.is_read ? '' : 'unread'}`}
-                  onClick={() => !n.is_read && handleMarkRead(n.id)}
-                >
-                  <span className="notif-item-icon">{ICONS[n.type] || '📌'}</span>
-                  <div className="notif-item-body">
-                    <div className="notif-item-title">{n.title}</div>
-                    <div className="notif-item-msg">{n.message}</div>
-                    <div className="notif-item-time">
-                      {new Date(n.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                  {!n.is_read && <span className="notif-unread-dot" />}
-                </div>
-              ))
+            {/* Unread count banner */}
+            {data.unread_count > 0 && (
+              <div className="notif-unread-banner">
+                {data.unread_count} unread notification{data.unread_count !== 1 ? 's' : ''}
+              </div>
             )}
+
+            {/* Grouped list */}
+            <div className="notif-drawer-body">
+              {data.notifications.length === 0 ? (
+                <div className="notif-empty">
+                  <Icon name="bell" size={32} style={{ opacity: 0.12 }} />
+                  <p>No notifications yet</p>
+                  <span>You're all caught up!</span>
+                </div>
+              ) : (
+                Object.entries(grouped).map(([type, items]) => {
+                  const meta = TYPE_META[type] || { icon: 'bell', label: type.replace(/_/g, ' '), color: '#64748B' }
+                  const unreadInGroup = items.filter(n => !n.is_read).length
+                  return (
+                    <div key={type} className="notif-group">
+                      <div className="notif-group-header">
+                        <span className="notif-group-icon" style={{ color: meta.color }}>
+                          <Icon name={meta.icon} size={13} />
+                        </span>
+                        <span className="notif-group-label">{meta.label}</span>
+                        {unreadInGroup > 0 && (
+                          <span className="notif-group-count">{unreadInGroup}</span>
+                        )}
+                      </div>
+                      {items.map(n => (
+                        <div
+                          key={n.id}
+                          className={`notif-item ${n.is_read ? '' : 'unread'}`}
+                          onClick={() => !n.is_read && handleMarkRead(n.id)}
+                        >
+                          <div className="notif-item-body">
+                            <div className="notif-item-title">{n.title}</div>
+                            <div className="notif-item-msg">{n.message}</div>
+                          </div>
+                          <div className="notif-item-meta">
+                            <span className="notif-item-time">{timeAgo(n.created_at)}</span>
+                            {!n.is_read && <span className="notif-unread-dot" />}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
-    </div>
+    </>
   )
 }
