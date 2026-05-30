@@ -5,6 +5,7 @@
  * Bell button → right drawer (not dropdown) → grouped by type → mark-read
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { notificationsApi } from '../../utils/api'
 import Icon from './Icon'
 import './NotificationBell.css'
@@ -109,7 +110,7 @@ export default function NotificationBell() {
       </button>
 
       {/* Backdrop + Drawer */}
-      {open && (
+      {open && createPortal(
         <>
           <div className="notif-backdrop" onClick={() => setOpen(false)} />
           <div className="notif-drawer" ref={drawerRef}>
@@ -180,7 +181,8 @@ export default function NotificationBell() {
               )}
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   )

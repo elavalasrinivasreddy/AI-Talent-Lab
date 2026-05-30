@@ -356,3 +356,16 @@ Errors occurred in `settings_service.py` across several lines:
 
 **Files Modified:**
 - `backend/services/settings_service.py`
+
+---
+
+## 29. Notification Bell Rendering Issue (Cut Off / Missing Background)
+
+**Problem Statement:**
+The Notifications drawer (which slides in from the right) appeared cut off vertically and its background was missing below the top header. Because the `<NotificationBell />` was rendered inside `.app-topbar` (which has a `backdrop-filter: blur()`), the topbar established a new containing block for `position: fixed` elements. Since the topbar is only 52px high, the drawer's height was restricted to 52px, causing the background to end abruptly and contents to clip visually.
+
+**Idea / Solution:**
+Imported `createPortal` from `react-dom` in `NotificationBell.jsx` and wrapped the rendering of the drawer and backdrop so that they mount directly into `document.body`. This escapes the CSS containing block created by the topbar's `backdrop-filter` and allows the drawer to correctly span 100% of the viewport height.
+
+**Files Modified:**
+- `frontend/src/components/common/NotificationBell.jsx`
