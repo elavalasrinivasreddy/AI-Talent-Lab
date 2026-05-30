@@ -32,7 +32,7 @@ All 10 critical/high/medium bugs fixed (16 commits on this branch).
 |---|---|---|
 | Phase A — design tokens (`globals.css`) | ✅ | Teal `#0D9488` + Plus Jakarta Sans tokens; all v3 pages consume via `var(--color-*)` |
 | Phase B — shared atoms `Icon` / `Chip` / `Stat` / `RoleGate` | ✅ | Adopted across all redesigned surfaces |
-| `StatusBadge` remap to v3 palette | 🟡 | Component exists; `constants.js` palette vs design-system palette not fully reconciled |
+| `StatusBadge` remap to v3 palette | ✅ | All hardcoded hex values replaced with `var(--color-*)` tokens + fallbacks across constants.js, StatusBadge.jsx, Badge.jsx, StageStatStrip.jsx, StageHealthHeader.jsx |
 | Role gates in router | ✅ | `/chat` (hr+org_head), `/analytics` (org_head+dept_admin+platform_admin) gated via `RoleGuard` |
 
 ---
@@ -69,11 +69,15 @@ All 19 surfaces are v3. Items below are incremental improvements beyond the curr
 
 | Item | Priority | Notes |
 |---|---|---|
-| Apply Chat richer stepper UX | LOW | Current multi-step chat flow works; spec envisions a more visual progress stepper |
-| Career page job-fit filter | LOW | Department + work-type filters live; AI fit-score filtering not yet built |
-| Status portal transparency URL | LOW | Progress strip live; shareable public URL for candidates not yet wired |
-| Platform Admin org management UI | LOW | Stats/orgs/activity tabs live; bulk ops and org detail views not yet built |
-| StatusBadge palette reconciliation | LOW | `constants.js` palette vs design-system `var(--color-*)` tokens |
-| Notification drawer (right-slide) | LOW | Bell dropdown live; animated right-slide drawer + grouping deferred |
-| C-MIG-04: AI behavior settings DB storage | LOW | Settings reset on restart; needs `org_settings` DB persistence |
-| C-APPLY-01: session persistence warning | LOW | Backend SSE change needed to emit warning when session can't be saved |
+| Apply Chat richer stepper UX | ✅ DONE | Numbered step circles, checkmarks, teal pulse on current, "Step N of M" fraction, mobile-responsive |
+| Career page sort by fit | ✅ DONE | Sort dropdown added (newest / fit score / title); client-side sort using available position fields |
+| Status portal shareable URL | ✅ DONE | "Share Status" button copies URL to clipboard with "Copied!" confirmation |
+| Platform Admin org management UI | ✅ DONE | Clickable org rows with expandable detail panel (website, HQ, contact, about); backend GET /orgs/:id |
+| StatusBadge palette reconciliation | ✅ DONE | All hardcoded hex → `var(--color-*)` tokens in constants.js, Badge, StageStatStrip, StageHealthHeader |
+| Notification drawer (right-slide) | ✅ DONE | Already implemented — right-slide drawer with grouped notifications and unread count |
+| C-MIG-04: AI behavior settings DB storage | ✅ DONE | `ai_behavior_settings` JSONB on orgs table; GET+PATCH `/api/v1/settings/ai-behavior`; SettingsPage load/save |
+| C-APPLY-01: session persistence warning | ✅ DONE | Backend emits `session_warning` on persist failure; frontend shows amber warning banner with dismiss |
+| Rate limiting on hire-request endpoints | ✅ DONE | `@limiter.limit("30/minute")` on POST, `60/minute` on PATCH |
+| Cursor pagination on GET /hire-requests/ | ✅ DONE | Seek pagination on `(created_at, id)`; `?cursor_created_at=&cursor_id=&limit=` params; returns `next_cursor` |
+| Cleanup of consumed_magic_links | ✅ DONE | Daily Celery task in `backend/tasks/auth_cleanup.py`; deletes rows older than 30 days |
+| Frontend bundle code splitting | ✅ DONE | 11 heavy pages converted to `React.lazy` + `Suspense`; Vite now emits per-page chunks |

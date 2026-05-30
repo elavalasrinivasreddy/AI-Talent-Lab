@@ -46,9 +46,21 @@ All critical/high/medium bugs from Opus 4.8 code review resolved.
 - [x] **Dev Console (18)** — v3 CSS, tabbed interface (commit `52879f0`)
 - [x] **GDPR / Privacy (19)** — v3 CSS, multi-step deletion, rate-limited, atomic transaction (commits `52879f0`, `16fa5a4`)
 - [x] **Code review** — Opus 4.8 multi-angle, all C1–C10 + GA findings fixed (commits `5dddb13`, `bf6f703`, `16fa5a4`)
-- [ ] **PR → merge `task/jd_chat_redesign` into `main`** ← START HERE
+- [x] **PR → merge `task/jd_chat_redesign` into `main`** — merged as PR #12 (commit `b52d48b`)
+- [x] **Apply Chat richer stepper UX** — numbered circles, checkmarks, "Step N of M", teal pulse
+- [x] **C-MIG-04: AI behavior settings DB persistence** — `ai_behavior_settings` JSONB + GET/PATCH `/settings/ai-behavior`
+- [x] **C-APPLY-01: session persistence warning** — `session_warning` SSE event + amber banner in frontend
+- [x] **Rate limiting on hire-request endpoints** — 30/min POST, 60/min PATCH
+- [x] **Cursor pagination on GET /hire-requests/** — seek pagination `(created_at, id)`, returns `next_cursor`
+- [x] **Cleanup consumed_magic_links** — daily Celery task `backend/tasks/auth_cleanup.py`
+- [x] **Frontend bundle code splitting** — 11 pages → React.lazy; Vite per-page chunks
+- [x] **StatusBadge palette reconciliation** — all hardcoded hex → `var(--color-*)` tokens
+- [x] **Career page sort by fit** — sort dropdown: newest / fit score / title
+- [x] **Status portal shareable URL** — Share button copies URL to clipboard
+- [x] **Platform Admin org management UI** — expandable rows, detail panel, GET /orgs/:id backend
+- [x] **gitignore chroma + backend/dist** — chroma DB and build artifacts suppressed
 
-## Post-v3 enhancements (all optional, none blocking PR)
+## Post-v3 enhancements (all completed)
 
 19/19 surfaces done. Items below are incremental improvements beyond the current v3 spec.
 
@@ -68,6 +80,7 @@ All critical/high/medium bugs from Opus 4.8 code review resolved.
 
 ## Log (newest first)
 
+- 2026-05-30 — Phase 1 enhancements complete. All 12 pending tasks + all post-v3 enhancements shipped. StatusBadge tokenized, bundle split, AI settings persisted, apply chat stepper upgraded, platform admin expandable, pagination + rate limits + cleanup Celery task added.
 - 2026-05-30 — Verified all 4 remaining surfaces (Apply/Career/Status/Platform) fully v3. 19/19 complete. All docs synced.
 - 2026-05-30 — Analytics field names aligned, DeptChipBar wired e2e + IDOR guard, GDPR/DevConsole marked ✅.
 - 2026-05-30 — Code review fixes committed: C7 (notification helpers), C-GDPR-01 (rate limit), C-GDPR-03 (transaction). STATUS.md updated. Commit `16fa5a4`.
