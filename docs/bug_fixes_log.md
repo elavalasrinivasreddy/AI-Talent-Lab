@@ -468,3 +468,19 @@ Whenever the application displayed a relative time using a `timeAgo` function (s
 - `frontend/src/components/Platform/PlatformPage.jsx`
 - `frontend/src/components/common/NotificationBell.jsx`
 - `frontend/src/components/Positions/PositionCard.jsx`
+
+---
+
+## 36. Remove Operational "Hire Requests" Scope from Org Head
+
+**Problem Statement:**
+The `org_head` role was seeing a massive badge count for all pending and approved hire requests across the organization. Since the Org Head is an oversight role and doesn't participate in the operational friction of individual hire request approvals (which are handled by Dept Admins and HR), the "Hire Requests" tab and its notification badge were creating unnecessary noise and fatigue.
+
+**Idea / Solution:**
+- Completely removed the `org_head` from the `roles` array for the "Hire Requests" navigation item in the Sidebar.
+- Removed `org_head` from the badge polling logic.
+- Logged a planned enhancement in `docs/ENHANCEMENTS_IDEAS.md` to build an Analytics Dashboard for the Org Head that will summarize hiring velocity, bottlenecks, and rejection insights instead of showing a list of tickets.
+
+**Files Modified:**
+- `frontend/src/components/Sidebar/Sidebar.jsx`
+- `docs/ENHANCEMENTS_IDEAS.md` (created)

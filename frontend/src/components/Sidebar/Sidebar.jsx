@@ -31,7 +31,7 @@ const ALL_NAV = [
   { section: 'Hiring', items: [
     { to: '/positions',     icon: Icons.briefcase, label: 'Positions' },
     { to: '/interviews',    icon: Icons.calendar,  label: 'Interviews' },
-    { to: '/hire-requests', icon: Icons.inbox,     label: 'Hire Requests', roles: ['org_head', 'dept_admin', 'hr', 'team_lead'], badge: 'hire_requests_pending' },
+    { to: '/hire-requests', icon: Icons.inbox,     label: 'Hire Requests', roles: ['dept_admin', 'hr', 'team_lead'], badge: 'hire_requests_pending' },
     { to: '/talent-pool',   icon: Icons.users,     label: 'Talent Pool',   roles: ['org_head', 'dept_admin', 'hr'] },
     { to: '/analytics',     icon: Icons.trending,  label: 'Analytics',     roles: ['org_head', 'dept_admin', 'hr'] },
   ]},
@@ -64,7 +64,7 @@ export default function Sidebar() {
     if (!role) return
     // team_lead doesn't need the org-wide pending count; their "Mine"
     // tab is the meaningful one and we don't have a count for that yet.
-    if (!['org_head', 'dept_admin', 'hr'].includes(role)) return
+    if (!['dept_admin', 'hr'].includes(role)) return
 
     let cancelled = false
     const refresh = async () => {
