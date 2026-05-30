@@ -80,21 +80,7 @@ export default function TeamTab() {
     } catch (e) { console.error(e) }
   }
 
-  const updateRole = async (userId, role) => {
-    try {
-      await api.patch(`/auth/users/${userId}`, { role })
-      fetchUsers()
-    } catch (e) { console.error(e) }
-  }
 
-  const updateDept = async (userId, deptId) => {
-    try {
-      await api.patch(`/auth/users/${userId}`, {
-        department_id: deptId ? Number(deptId) : null,
-      })
-      fetchUsers()
-    } catch (e) { console.error(e) }
-  }
 
   const roleBadge = (role) => {
     const map = {
@@ -146,30 +132,15 @@ export default function TeamTab() {
                       </td>
                       <td style={{color: 'var(--color-text-secondary)'}}>{u.email}</td>
                       <td>
-                        <select value={u.role} onChange={e => updateRole(u.id, e.target.value)} className="inline-select">
-                          {currentUser?.role === 'org_head' && (
-                            <>
-                              <option value="org_head">{roleBadge('org_head').icon} Org Head</option>
-                              <option value="dept_admin">{roleBadge('dept_admin').icon} Dept Admin</option>
-                            </>
-                          )}
-                          <option value="hr">{roleBadge('hr').icon} HR</option>
-                          <option value="team_lead">{roleBadge('team_lead').icon} Team Lead</option>
-                        </select>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <span>{roleBadge(u.role).icon}</span>
+                          <span>{roleBadge(u.role).label}</span>
+                        </span>
                       </td>
                       <td>
-                        <select 
-                          value={u.department_id || ''} 
-                          onChange={e => updateDept(u.id, e.target.value)} 
-                          className="inline-select"
-                          disabled={currentUser?.role === 'dept_admin'}
-                        >
-                          {currentUser?.role === 'org_head' && <option value="">—</option>}
-                          {depts
-                            .filter(d => currentUser?.role === 'org_head' || d.id === currentUser?.department_id)
-                            .map(d => <option key={d.id} value={d.id}>{d.name}</option>)
-                          }
-                        </select>
+                        <span style={{ color: 'var(--color-text-secondary)' }}>
+                          {getDeptName(u.department_id)}
+                        </span>
                       </td>
                       <td>
                         {u.is_active ? (

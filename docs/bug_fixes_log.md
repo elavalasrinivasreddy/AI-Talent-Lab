@@ -129,7 +129,9 @@ Department Admins were encountering an error when trying to add HRs, as the endp
    - Hid the `Departments` settings tab from `dept_admin` (only visible to `org_head`).
    - Hid `Team Members` and `Departments` completely from `hr` and `team_lead`.
    - In `TeamTab.jsx`, restricted the dropdown options so a `dept_admin` can only add HRs and Team Leads to their own department. Filtered the users list so `dept_admin` only sees downstream roles within their own department.
-3. **UI Polish:** Replaced the ugly status toggle buttons in the team directory with the standard `Chip` component, utilizing hover effects and tooltips for better UX.
+3. **UI Polish & Data Integrity:** 
+   - Replaced the ugly status toggle buttons in the team directory with the standard `Chip` component, utilizing hover effects and tooltips for better UX.
+   - Removed the inline dropdowns (`<select>`) for Role and Department in the Team Directory table. These are now immutable once a user is invited (rendered as static text). This prevents accidental or invalid reassignment and enforces a cleaner UX pattern where mistakes are corrected by deactivating and re-inviting.
 
 **Files Modified:**
 - `backend/routers/auth.py`
