@@ -31,8 +31,9 @@ export default function TeamTab() {
   useEffect(() => { fetchUsers(); fetchDepts() }, [fetchUsers, fetchDepts])
 
   const filtered = users.filter(u =>
-    u.name?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email?.toLowerCase().includes(search.toLowerCase())
+    u.id !== currentUser?.id &&
+    (u.name?.toLowerCase().includes(search.toLowerCase()) ||
+     u.email?.toLowerCase().includes(search.toLowerCase()))
   )
 
   const handleAdd = async () => {
@@ -121,16 +122,14 @@ export default function TeamTab() {
               </thead>
               <tbody>
                 {filtered.map(u => {
-                  const isCurrent = u.id === currentUser?.id;
                   return (
                     <tr key={u.id}>
                       <td>
                         <strong>{u.name}</strong>
-                        {isCurrent && <span className="dept-badge" style={{ marginLeft: 8 }}>You</span>}
                       </td>
                       <td style={{color: 'var(--color-text-secondary)'}}>{u.email}</td>
                       <td>
-                        <select value={u.role} onChange={e => updateRole(u.id, e.target.value)} className="inline-select" disabled={isCurrent}>
+                        <select value={u.role} onChange={e => updateRole(u.id, e.target.value)} className="inline-select">
                           <option value="org_head">{roleBadge('org_head').icon} Org Head</option>
                           <option value="dept_admin">{roleBadge('dept_admin').icon} Dept Admin</option>
                           <option value="hr">{roleBadge('hr').icon} HR</option>
@@ -138,7 +137,7 @@ export default function TeamTab() {
                         </select>
                       </td>
                       <td>
-                        <select value={u.department_id || ''} onChange={e => updateDept(u.id, e.target.value)} className="inline-select" disabled={isCurrent}>
+                        <select value={u.department_id || ''} onChange={e => updateDept(u.id, e.target.value)} className="inline-select">
                           <option value="">—</option>
                           {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>

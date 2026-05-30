@@ -153,6 +153,9 @@ class AuthService:
         from backend.services.settings_service import SettingsService
         await SettingsService.seed_defaults(conn, org["id"])
 
+        # Mark user as having logged in (sets last_login_at)
+        await UserRepository.reset_login_state(conn, user["id"])
+
         token = create_access_token(
             user_id=user["id"],
             org_id=org["id"],
