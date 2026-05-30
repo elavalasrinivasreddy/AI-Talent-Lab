@@ -510,3 +510,29 @@ Fixed the dictionary key references in `backend/routers/settings.py` to correctl
 
 **Files Modified:**
 - `backend/routers/settings.py`
+
+---
+
+## 39. Missing / Empty Filter Tabs in Hire Requests for HR & Dept Admin
+
+**Problem Statement:**
+When HR navigated to the Hire Requests page, they saw a "Pending pickup" tab that was filtering for `status: 'pending'`. However, `pending` means waiting for Department Admin approval. HR handles requests that are `status: 'approved'`. Thus, the list was always empty for HR despite having a notification badge. Furthermore, Department Admins were missing the `Pending approval` tab and other global tabs altogether in the UI.
+
+**Idea / Solution:**
+Refactored the `FILTERS` constant in `HireRequestListPage.jsx`. Split the queue into `queue_approval` (status: pending, visible to dept_admin) and `queue_pickup` (status: approved, visible to hr). Also expanded the visibility of general tabs (In progress, Fulfilled, Cancelled, All) to `dept_admin` so they have full visibility into their department's pipeline.
+
+**Files Modified:**
+- `frontend/src/components/HireRequests/HireRequestListPage.jsx`
+
+---
+
+## 40. Department Admin Forbidden from Listing Hire Requests
+
+**Problem Statement:**
+When a Department Admin navigated to the Hire Requests page and clicked on any tab (e.g., "Pending approval", "All", "In progress"), they received an error: "Only admins or recruiters can list all hire requests." This happened because the frontend was sending the query parameter `scope=all`. The backend strictly protects the `scope=all` query (which bypasses department isolation and fetches the whole organization) and restricts it to `org_head` and `hr` only.
+
+**Idea / Solution:**
+Updated the filter tabs in `frontend/src/components/HireRequests/HireRequestListPage.jsx` to pass `scope: 'default'` instead of `scope: 'all'`. The backend's `default` scope inherently handles department isolation, allowing a Department Admin to safely view "all" requests *within their own department* without triggering the unauthorized global search block.
+
+**Files Modified:**
+- `frontend/src/components/HireRequests/HireRequestListPage.jsx`
