@@ -300,3 +300,13 @@ The static analyzer flagged `is_auto_approved` and `created` as possibly unbound
 **Symptom:** The "Organization Profile" settings tab (managing global culture, benefits, and branding) was accessible to Department Admins.
 **Root Cause:** The `SettingsPage.jsx` UI routing had `adminOnly: true` on the `organization` tab, which allowed both Org Heads and Department Admins to access it.
 **Fix:** Updated the frontend rail config for `organization` from `adminOnly: true` to `orgHeadOnly: true`. Competitor intel was intentionally kept as `adminOnly: true` so both Org Heads and Dept Admins can contribute department-specific competitors to the global organizational pool.
+---
+### 23. Department-Scoped Competitor Intelligence
+**Symptom:** Competitor intelligence was previously scoped globally per organization, but the product required maintaining competitors specific to each department (limit 3 per department) with strict visibility boundaries.
+**Root Cause:** The `competitors` table and corresponding settings logic relied solely on `org_id`. The frontend `CompetitorsTab` simply listed all competitors without department boundaries.
+**Fix:** 
+- Added `department_id` to the `competitors` table in database schema.
+- Updated the backend `SettingsService` and `/api/v1/settings/competitors` endpoints to enforce a limit of 3 competitors per department.
+- Implemented automated cross-role notifications (Dept Admin adds competitor -> Org Head notified, and vice versa).
+- Redesigned `CompetitorsTab.jsx` frontend: Org Heads now see competitors grouped by department (with a dropdown to add), while Dept Admins only see and manage competitors strictly within their assigned department.
+
