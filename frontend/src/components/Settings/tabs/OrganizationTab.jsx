@@ -46,7 +46,7 @@ export default function OrganizationTab() {
 
   const addTag = () => {
     const val = tagInput.trim()
-    if (!val) return
+    if (!val || keywords.includes(val)) return
     const updated = [...keywords, val].join(', ')
     set('culture_keywords', updated)
     setTagInput('')

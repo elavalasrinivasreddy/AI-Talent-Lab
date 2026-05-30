@@ -46,7 +46,7 @@ export default function CompetitorsTab() {
         ...form,
         department_id: Number(form.department_id)
       })
-      setForm({ name: '', website: '', industry: '', notes: '', department_id: isOrgHead ? '' : user?.department_id })
+      setForm({ name: '', website: '', industry: '', notes: '', department_id: isOrgHead ? '' : (user?.dept_id ?? user?.department_id) })
       fetchData()
       setShowModal(false)
     } catch (e) {
@@ -66,7 +66,7 @@ export default function CompetitorsTab() {
   const openAddModal = () => {
     setForm({ 
       name: '', website: '', industry: '', notes: '', 
-      department_id: isOrgHead ? '' : user?.department_id 
+      department_id: isOrgHead ? '' : (user?.dept_id ?? user?.department_id) 
     })
     setMsg('')
     setShowModal(true)
@@ -84,9 +84,10 @@ export default function CompetitorsTab() {
   }, {})
 
   // If dept admin, they only see their own department
-  const displayDepts = isOrgHead 
-    ? Object.entries(compsByDept) 
-    : Object.entries(compsByDept).filter(([deptId]) => Number(deptId) === user?.department_id)
+  const myDeptId = user?.dept_id ?? user?.department_id
+  const displayDepts = isOrgHead
+    ? Object.entries(compsByDept)
+    : Object.entries(compsByDept).filter(([deptId]) => Number(deptId) === myDeptId)
 
   return (
     <div className="settings-form">

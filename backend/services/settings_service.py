@@ -432,7 +432,12 @@ class SettingsService:
                     val = json.loads(val)
                 except Exception:
                     val = {}
-            return dict(val) if not isinstance(val, dict) else val
+            if isinstance(val, dict):
+                return val
+            try:
+                return dict(val)
+            except (TypeError, ValueError):
+                return {}
         return {}
 
     @staticmethod
