@@ -196,3 +196,19 @@ Added the missing closing `</div>` tag immediately before the `)}` expression fo
 
 **Files Modified:**
 - `frontend/src/components/Settings/tabs/PrivacyTab.jsx`
+
+---
+
+## 14. Approval Rules UI Redesign & Toggle Switch Fix
+
+**Problem Statement:**
+The `ApprovalRulesTab.jsx` had a redundant top title/description, overly verbose explanations in the cards, and the toggle buttons were rendering as native HTML checkboxes because the `.st-toggle` CSS classes did not exist in the codebase.
+
+**Idea / Solution:**
+1. Appended the full CSS implementation for `.st-toggle` and `.st-slider` to `settings.css` to properly render animated, SaaS-style toggle switches.
+2. Removed the redundant top header from `ApprovalRulesTab.jsx`.
+3. Shortened and refined the descriptive text for both Approval rules to be more concise and role-appropriate.
+
+**Files Modified:**
+- `frontend/src/styles/settings.css`
+- `frontend/src/components/Settings/tabs/ApprovalRulesTab.jsx`
