@@ -39,7 +39,12 @@ Test the public onboarding flow to bootstrap the platform.
 
 ### Step 2: Configure Organization Profile & Departments
 1. As Sarah, navigate to **Settings > Organization Profile**.
-2. Fill out the company details (e.g., Size: enterprise, Segment: B2B, Culture: fast-paced, remote-friendly). These are used later by AI workflows.
+2. Fill out the company details exactly as follows:
+   - **Size**: `enterprise`
+   - **Segment**: `B2B SaaS`
+   - **Culture Keywords**: `fast-paced, remote-friendly, engineering-led`
+   - **Benefits**: `Unlimited PTO, Health Insurance, 401k Match`
+   These are used later by AI workflows.
 3. Navigate to **Settings > Departments**.
 4. Create the two departments:
    - `Engineering`
@@ -60,10 +65,16 @@ Test the platform's email invitation and RBAC assignment systems.
 ### Step 4: Add Competitor Intelligence (via App Settings)
 Test the department-scoped competitor grouping.
 1. As Sarah (`org_head`), navigate to **Settings > Competitor intel**.
-2. Click **+ Add Competitor**, select the **Engineering** department, and add a competitor (e.g., "Tech Innovators", techinnovators.com, Technology).
+2. Click **+ Add Competitor**, select the **Engineering** department, and add the following competitor:
+   - **Name**: `Tech Innovators`
+   - **Website**: `https://techinnovators.com`
+   - **Industry**: `Technology`
 3. Notice that Sarah sees competitors grouped by department. Wait for Marcus to add the next ones.
 4. Login as **Marcus Webb** (`elavalasrinivasreddy+eng_admin@gmail.com`), the Engineering Dept Admin.
-5. Navigate to **Settings > Competitor intel**. Marcus should only see the Engineering competitors and cannot select other departments when adding a new one. Add a second competitor (e.g., "CodeCrafters").
+5. Navigate to **Settings > Competitor intel**. Marcus should only see the Engineering competitors and cannot select other departments when adding a new one. Add a second competitor:
+   - **Name**: `CodeCrafters`
+   - **Website**: `https://codecrafters.io`
+   - **Industry**: `Technology`
 6. Verify that an internal notification is generated for these actions between the Dept Admin and Org Head.
 7. Note the hard limit: Attempting to add a 4th competitor to a single department should return an error.
 
@@ -77,8 +88,14 @@ Once the structure is set up, execute these workflows to test the core features 
 1. Login as **David Kim** (`elavalasrinivasreddy+eng_lead@gmail.com`).
 2. Navigate to **Hire Requests**.
 3. Click **New request** to raise a request for a **"Senior Frontend Engineer"**. 
-4. Fill in the basics (e.g., Headcount: 1, Exp: 5-8 yrs, Comp: 30-45 LPA, Work Type: Hybrid).
-5. In the **"Context for the AI"** field, provide the justification and requirements (e.g., "Replacing outgoing senior engineer. Must have deep expertise in React, performance optimization, and mentoring juniors.") and submit it.
+4. Fill in the basics exactly as follows:
+   - **Headcount**: `1`
+   - **Experience**: `5` to `8` years
+   - **Compensation**: `30` to `45` LPA
+   - **Work Type**: `Hybrid`
+5. In the **"Context for the AI"** field, paste exactly this text:
+   `Replacing outgoing senior engineer. Must have deep expertise in React, performance optimization, and mentoring juniors.`
+   Then click submit.
 
 ### Workflow B: HR Triage & JD Generation (HR)
 1. Login as **Emily Blunt** (`elavalasrinivasreddy+eng_hr@gmail.com`).
@@ -89,7 +106,9 @@ Once the structure is set up, execute these workflows to test the core features 
 ### Workflow C: The Candidate Experience (Public)
 1. Copy the public **Apply Magic Link** for the newly created Senior Frontend Engineer position.
 2. Open an Incognito window and navigate to the link.
-3. Complete the **Conversational Apply Chat** as a mock candidate (e.g., "Alex Hacker"). 
+3. Complete the **Conversational Apply Chat** as a mock candidate:
+   - **Name**: `Alex Hacker`
+   - **Email**: `alex.hacker@example.com`
 4. Check your email inbox to test the candidate application confirmation (if enabled).
 
 ### Workflow D: ATS Scoring & Pipeline Kanban (HR)
