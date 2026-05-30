@@ -802,6 +802,7 @@ async def run_migrations(conn) -> None:
         accepted_by      INTEGER REFERENCES users(id),
         role_name        TEXT NOT NULL,
         headcount        INTEGER DEFAULT 1,
+        priority         TEXT DEFAULT 'normal',
         work_type        TEXT DEFAULT 'onsite',
         experience_min   INTEGER,
         experience_max   INTEGER,
@@ -850,6 +851,15 @@ async def run_migrations(conn) -> None:
                 ADD COLUMN approved_by INTEGER REFERENCES users(id),
                 ADD COLUMN approved_at TIMESTAMP,
                 ADD COLUMN rejection_reason TEXT;
+        END IF;
+    END $$;
+
+    -- hire_requests: priority
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='priority') THEN
+            ALTER TABLE hire_requests ADD COLUMN priority TEXT DEFAULT 'normal';
         END IF;
     END $$;
 

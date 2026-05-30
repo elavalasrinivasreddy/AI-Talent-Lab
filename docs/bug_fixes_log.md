@@ -615,3 +615,25 @@ The JD generation workspace lacked a premium aesthetic and contained UI quirks. 
 - `frontend/src/components/Chat/PositionSetupModal.jsx`
 - `frontend/src/components/Chat/blocks/AgentBlockVariants.jsx`
 - `backend/routers/chat.py`
+
+### 47. Restore Hire Request Priority & Improve Position Detail Aesthetics
+**Date:** 2026-05-30
+**Status:** Fixed
+
+**Issue:**
+The `priority` field was recently removed from the 'Save and Find Candidates' modal in the chat UI, but it was also missing from the initial `HireRequestForm`, meaning priority could not be set at all. Furthermore, on the Position Details page, the Job Description was displayed in raw Markdown rather than a nicely formatted rendered view, and the breadcrumb header redundantly displayed the position name next to the back button even though it was already prominently featured as the main page title.
+
+**Idea / Solution:**
+1. **Restore Priority in Hire Request:** Added the `priority` select field (Urgent, High, Normal, Low) to the `HireRequestForm.jsx` so hiring managers can define priority upfront.
+2. **Backend Schema Updates:** Updated `HireRequestCreate` and `HireRequestUpdate` Pydantic models to accept `priority`, added a migration in `backend/db/migrations.py` to ensure the `hire_requests` table has a `priority` column, and updated `backend/db/repositories/hire_requests.py` to persist this field correctly.
+3. **Rendered Markdown JD:** Converted the raw `<pre>` tag display in `JDTab.jsx` to use `react-markdown` with `remark-gfm`, and added polished markdown typography styles (`.jd-markdown-render`) in `JDTab.css` to beautifully format headings, lists, quotes, and spacing.
+4. **Clean Breadcrumbs:** Removed the redundant `<span className="pd-breadcrumb-current">{position.role_name}</span>` and its separator from `PositionHero.jsx` to clean up the page header.
+
+**Files Modified:**
+- `backend/models/hire_request.py`
+- `backend/db/migrations.py`
+- `backend/db/repositories/hire_requests.py`
+- `frontend/src/components/HireRequests/HireRequestForm.jsx`
+- `frontend/src/components/Positions/PositionHero.jsx`
+- `frontend/src/components/Positions/tabs/JDTab.jsx`
+- `frontend/src/components/Positions/tabs/JDTab.css`

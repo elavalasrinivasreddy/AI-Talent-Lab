@@ -12,6 +12,7 @@ class HireRequestCreate(BaseModel):
     role_name: str
     department_id: Optional[int] = None
     headcount: int = Field(default=1, ge=1, le=100)
+    priority: str = "normal"
     work_type: str = "onsite"
     experience_min: Optional[int] = Field(default=None, ge=0)
     experience_max: Optional[int] = Field(default=None, ge=0)
@@ -38,11 +39,19 @@ class HireRequestCreate(BaseModel):
             raise ValueError(f"work_type must be one of {_WORK_TYPES}")
         return v
 
+    @field_validator("priority")
+    @classmethod
+    def priority_valid(cls, v: str) -> str:
+        if v not in ("low", "normal", "high", "urgent"):
+            raise ValueError("priority must be low, normal, high, or urgent")
+        return v
+
 
 class HireRequestUpdate(BaseModel):
     role_name: Optional[str] = None
     department_id: Optional[int] = None
     headcount: Optional[int] = Field(default=None, ge=1, le=100)
+    priority: Optional[str] = None
     work_type: Optional[str] = None
     experience_min: Optional[int] = Field(default=None, ge=0)
     experience_max: Optional[int] = Field(default=None, ge=0)
@@ -57,6 +66,13 @@ class HireRequestUpdate(BaseModel):
     def work_type_valid(cls, v: Optional[str]) -> Optional[str]:
         if v is not None and v not in _WORK_TYPES:
             raise ValueError(f"work_type must be one of {_WORK_TYPES}")
+        return v
+
+    @field_validator("priority")
+    @classmethod
+    def priority_valid(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("low", "normal", "high", "urgent"):
+            raise ValueError("priority must be low, normal, high, or urgent")
         return v
 
 

@@ -22,7 +22,7 @@ import asyncpg
 # wrappers, not the bare table.
 _BASE_RETURN = """
     hr.id, hr.org_id, hr.department_id, hr.requested_by, hr.accepted_by,
-    hr.role_name, hr.headcount, hr.work_type,
+    hr.role_name, hr.headcount, hr.priority, hr.work_type,
     hr.experience_min, hr.experience_max,
     hr.target_start, hr.requirements,
     hr.comp_min, hr.comp_max, hr.location,
@@ -163,6 +163,7 @@ class HireRequestRepository:
         role_name: str,
         department_id: Optional[int] = None,
         headcount: int = 1,
+        priority: str = "normal",
         work_type: str = "onsite",
         experience_min: Optional[int] = None,
         experience_max: Optional[int] = None,
@@ -176,15 +177,15 @@ class HireRequestRepository:
             """
             INSERT INTO hire_requests (
                 org_id, department_id, requested_by, role_name,
-                headcount, work_type, experience_min, experience_max,
+                headcount, priority, work_type, experience_min, experience_max,
                 target_start, requirements, comp_min, comp_max, location,
                 status
             )
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending')
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'pending')
             RETURNING id
             """,
             org_id, department_id, requested_by, role_name.strip(),
-            headcount, work_type, experience_min, experience_max,
+            headcount, priority, work_type, experience_min, experience_max,
             target_start, requirements, comp_min, comp_max, location,
         )
         return await HireRequestRepository.get_by_id(conn, row["id"], org_id)
@@ -199,7 +200,7 @@ class HireRequestRepository:
         """Partial update on caller-supplied fields, org-scoped."""
         # Restrict to known-safe columns. Anything else is silently dropped.
         allowed = {
-            "department_id", "role_name", "headcount", "work_type",
+            "department_id", "role_name", "headcount", "priority", "work_type",
             "experience_min", "experience_max", "target_start",
             "requirements", "comp_min", "comp_max", "location",
         }

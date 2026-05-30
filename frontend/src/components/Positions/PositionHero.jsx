@@ -69,8 +69,6 @@ export default function PositionHero({
         <Icon name="chevron-right" size={12} style={{ transform: 'rotate(180deg)' }} />
         Positions
       </Link>
-      <span className="pd-breadcrumb-sep">›</span>
-      <span className="pd-breadcrumb-current">{position.role_name}</span>
 
       <div className="pd-hero-main">
         <div className="pd-hero-left">

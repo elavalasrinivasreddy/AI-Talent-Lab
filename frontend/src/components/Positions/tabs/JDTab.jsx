@@ -2,6 +2,8 @@
  * JDTab.jsx – View + edit the final Job Description. Download as PDF/MD.
  */
 import React, { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { positionsApi } from '../../../utils/api'
 import './JDTab.css'
 
@@ -73,7 +75,11 @@ export default function JDTab({ position, onUpdate }) {
       ) : (
         <div className="jd-content">
           {content ? (
-            <pre className="jd-pre">{content}</pre>
+            <div className="jd-markdown-render">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {content}
+              </ReactMarkdown>
+            </div>
           ) : (
             <div className="jd-empty">No JD content yet.</div>
           )}

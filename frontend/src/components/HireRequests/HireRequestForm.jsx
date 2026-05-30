@@ -13,6 +13,7 @@ const BLANK = {
   role_name: '',
   department_id: '',
   headcount: 1,
+  priority: 'normal',
   work_type: 'onsite',
   location: '',
   experience_min: '',
@@ -70,6 +71,7 @@ export default function HireRequestForm({ mode }) {
           role_name: r.role_name || '',
           department_id: r.department_id ?? '',
           headcount: r.headcount ?? 1,
+          priority: r.priority || 'normal',
           work_type: r.work_type || 'onsite',
           location: r.location || '',
           experience_min: r.experience_min ?? '',
@@ -102,6 +104,7 @@ export default function HireRequestForm({ mode }) {
         role_name: form.role_name.trim(),
         department_id: form.department_id ? Number(form.department_id) : null,
         headcount: Number(form.headcount) || 1,
+        priority: form.priority,
         work_type: form.work_type,
         location: form.location.trim() || null,
         experience_min: toNum(form.experience_min),
@@ -212,6 +215,15 @@ export default function HireRequestForm({ mode }) {
                   value={form.headcount}
                   onChange={e => set('headcount', e.target.value)}
                 />
+              </div>
+              <div className="hr-field">
+                <label htmlFor="hr-priority">Priority</label>
+                <select id="hr-priority" value={form.priority} onChange={e => set('priority', e.target.value)}>
+                  <option value="urgent">Urgent</option>
+                  <option value="high">High</option>
+                  <option value="normal">Normal</option>
+                  <option value="low">Low</option>
+                </select>
               </div>
               <div className="hr-field">
                 <label htmlFor="hr-worktype">Work type</label>
