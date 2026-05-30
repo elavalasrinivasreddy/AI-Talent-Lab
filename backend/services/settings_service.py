@@ -175,18 +175,28 @@ class SettingsService:
             org_heads = await conn.fetch("SELECT id FROM users WHERE org_id=$1 AND role='org_head'", org_id)
             for head in org_heads:
                 await NotificationRepository.create(
-                    conn, org_id, head["id"], "competitor_added",
-                    f"New Competitor for {dept_name}",
-                    f"{creator['name']} added {name} to {dept_name} competitors."
+                    conn,
+                    {
+                        "org_id": org_id,
+                        "user_id": head["id"],
+                        "type": "competitor_added",
+                        "title": f"New Competitor for {dept_name}",
+                        "message": f"{creator['name']} added {name} to {dept_name} competitors."
+                    }
                 )
         elif creator["role"] == "org_head":
             # Notify dept admins
             dept_admins = await conn.fetch("SELECT id FROM users WHERE org_id=$1 AND role='dept_admin' AND department_id=$2", org_id, department_id)
             for admin in dept_admins:
                 await NotificationRepository.create(
-                    conn, org_id, admin["id"], "competitor_added",
-                    f"New Competitor for {dept_name}",
-                    f"{creator['name']} added {name} to your department's competitors."
+                    conn,
+                    {
+                        "org_id": org_id,
+                        "user_id": admin["id"],
+                        "type": "competitor_added",
+                        "title": f"New Competitor for {dept_name}",
+                        "message": f"{creator['name']} added {name} to your department's competitors."
+                    }
                 )
                 
         return comp
@@ -221,17 +231,27 @@ class SettingsService:
                 org_heads = await conn.fetch("SELECT id FROM users WHERE org_id=$1 AND role='org_head'", org_id)
                 for head in org_heads:
                     await NotificationRepository.create(
-                        conn, org_id, head["id"], "competitor_removed",
-                        f"Competitor Removed for {dept_name}",
-                        f"{creator['name']} removed {comp['name']} from {dept_name} competitors."
+                        conn,
+                        {
+                            "org_id": org_id,
+                            "user_id": head["id"],
+                            "type": "competitor_removed",
+                            "title": f"Competitor Removed for {dept_name}",
+                            "message": f"{creator['name']} removed {comp['name']} from {dept_name} competitors."
+                        }
                     )
             elif creator["role"] == "org_head":
                 dept_admins = await conn.fetch("SELECT id FROM users WHERE org_id=$1 AND role='dept_admin' AND department_id=$2", org_id, department_id)
                 for admin in dept_admins:
                     await NotificationRepository.create(
-                        conn, org_id, admin["id"], "competitor_removed",
-                        f"Competitor Removed for {dept_name}",
-                        f"{creator['name']} removed {comp['name']} from your department's competitors."
+                        conn,
+                        {
+                            "org_id": org_id,
+                            "user_id": admin["id"],
+                            "type": "competitor_removed",
+                            "title": f"Competitor Removed for {dept_name}",
+                            "message": f"{creator['name']} removed {comp['name']} from your department's competitors."
+                        }
                     )
 
     # ── Screening Questions ────────────────────────────────────────────────────

@@ -322,3 +322,9 @@ The static analyzer flagged `is_auto_approved` and `created` as possibly unbound
 **Root Cause:** The `.tag-input-container` and `.tag` classes were unstyled placeholders.
 **Fix:** Refactored the UI in `OrganizationTab.jsx` to use a premium chip design system. Applied inline styles utilizing standard CSS variables (`var(--color-primary-bg)`, `var(--radius-md)`, etc.) to present keywords as distinct, rounded tags with hover-enabled delete buttons and seamless input integration.
 
+---
+### 26. Fixed Internal Server Error on Competitor Creation
+**Symptom:** Adding a new competitor resulted in an unhandled 500 Internal Server Error due to a `TypeError` regarding `NotificationRepository.create()`.
+**Root Cause:** The `SettingsService` was invoking `NotificationRepository.create()` using positional arguments, whereas the repository method expects a single `data: dict` argument containing the payload.
+**Fix:** Updated `SettingsService.create_competitor` and `SettingsService.delete_competitor` to pass a correctly formatted dictionary to the `NotificationRepository.create()` function, resolving the 500 error.
+
