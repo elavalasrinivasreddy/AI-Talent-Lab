@@ -430,3 +430,20 @@ Updated `NotificationBell.jsx` to import and utilize `useNavigate` from `react-r
 **Files Modified:**
 - `frontend/src/components/common/NotificationBell.jsx`
 
+---
+
+## 34. Department Admin Hire Request Badge Leaking Org-wide Count
+
+**Problem Statement:**
+The "Hire Requests" sidebar badge was displaying the count of *all* pending and approved hire requests across the entire organization, even for Department Admins who are only supposed to manage their own department. For example, a Marketing Admin was seeing a badge count for a request raised in Engineering, causing confusion.
+
+**Idea / Solution:**
+Updated the `/pending-count` backend endpoint to be fully role and department aware. 
+- Modified `HireRequestRepository.count_pending_for_org` into a more generic `count_pending` that accepts optional `department_id` and `status` filters.
+- Added `get_pending_count_for_user` in `HireRequestService` that mimics the role-based scoping in the list view (e.g., Department Admins only see `pending` requests for their `department_id`, HR only sees `approved` requests for their department or org, etc.).
+- Wired the router to call this new service method.
+
+**Files Modified:**
+- `backend/db/repositories/hire_requests.py`
+- `backend/services/hire_request_service.py`
+- `backend/routers/hire_requests.py`

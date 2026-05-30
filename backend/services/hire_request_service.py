@@ -169,6 +169,34 @@ class HireRequestService:
             limit=limit,
         )
 
+    @staticmethod
+    async def get_pending_count_for_user(
+        conn: asyncpg.Connection,
+        *,
+        org_id: int,
+        user_id: int,
+        role: str,
+    ) -> int:
+        from backend.db.repositories.users import UserRepository
+        user = await UserRepository.get_by_id(conn, user_id, org_id)
+        department_id = (user or {}).get("department_id")
+
+        if role == "dept_admin":
+            return await HireRequestRepository.count_pending(
+                conn, org_id, department_id=department_id, status="pending"
+            )
+        elif role == "hr":
+            # HR sees approved requests for their dept (or all if no dept)
+            return await HireRequestRepository.count_pending(
+                conn, org_id, department_id=department_id, status="approved"
+            )
+        elif role == "org_head":
+            # org_head defaults to the approved work queue across the org
+            return await HireRequestRepository.count_pending(
+                conn, org_id, status="approved"
+            )
+        return 0
+
     # ── Get one ───────────────────────────────────────────────────────────
 
     @staticmethod

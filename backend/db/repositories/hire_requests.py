@@ -126,15 +126,31 @@ class HireRequestRepository:
         return result, next_cursor
 
     @staticmethod
-    async def count_pending_for_org(conn: asyncpg.Connection, org_id: int) -> int:
+    async def count_pending(
+        conn: asyncpg.Connection, 
+        org_id: int, 
+        department_id: Optional[int] = None,
+        status: Optional[str] = None
+    ) -> int:
         """Cheap counter for sidebar badge — counts requests needing action.
-
-        Returns approved (awaiting HR pickup) + pending (awaiting dept_admin approval).
+        
+        If status is not provided, defaults to 'pending' and 'approved'.
         """
-        return await conn.fetchval(
-            "SELECT COUNT(*) FROM hire_requests WHERE org_id = $1 AND status IN ('pending', 'approved')",
-            org_id,
-        )
+        where = ["org_id = $1"]
+        params = [org_id]
+        
+        if department_id is not None:
+            params.append(department_id)
+            where.append(f"department_id = ${len(params)}")
+            
+        if status is not None:
+            params.append(status)
+            where.append(f"status = ${len(params)}")
+        else:
+            where.append("status IN ('pending', 'approved')")
+            
+        sql = f"SELECT COUNT(*) FROM hire_requests WHERE {' AND '.join(where)}"
+        return await conn.fetchval(sql, *params)
 
     # ── Writes ────────────────────────────────────────────────────────────
 

@@ -77,8 +77,13 @@ async def pending_count(
     current_user=Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db),
 ):
-    """Count pending requests in this org — for sidebar badge."""
-    count = await HireRequestRepository.count_pending_for_org(db, current_user["org_id"])
+    """Count pending requests for this user's role/department — for sidebar badge."""
+    count = await HireRequestService.get_pending_count_for_user(
+        db, 
+        org_id=current_user["org_id"], 
+        user_id=current_user["user_id"], 
+        role=current_user["role"]
+    )
     return {"count": count}
 
 
