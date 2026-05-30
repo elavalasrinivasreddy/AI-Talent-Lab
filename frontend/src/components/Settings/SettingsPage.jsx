@@ -48,7 +48,7 @@ const RAIL_GROUPS = [
     icon: 'users',
     color: '#8B5CF6',
     items: [
-      { key: 'departments', icon: 'home', label: 'Departments', adminOnly: true },
+      { key: 'departments', icon: 'home', label: 'Departments', orgHeadOnly: true },
       { key: 'team', icon: 'users', label: 'Team members', adminOnly: true },
       { key: 'approval', icon: 'check', label: 'Approval rules', adminOnly: true, phase: 2 },
       { key: 'notifications', icon: 'bell', label: 'Notifications' },
@@ -114,7 +114,13 @@ export default function SettingsPage() {
 
   // If a non-admin lands on an admin-only section via direct URL, fall back to profile.
   const allAdminKeys = RAIL_GROUPS.flatMap(g => g.items.filter(i => i.adminOnly).map(i => i.key))
-  const resolvedTab = (!isAdmin && allAdminKeys.includes(tab)) ? 'profile' : (tab || 'profile')
+  const allOrgHeadKeys = RAIL_GROUPS.flatMap(g => g.items.filter(i => i.orgHeadOnly).map(i => i.key))
+  
+  let isAllowed = true;
+  if (allOrgHeadKeys.includes(tab) && user?.role !== 'org_head') isAllowed = false;
+  else if (allAdminKeys.includes(tab) && !isAdmin) isAllowed = false;
+
+  const resolvedTab = isAllowed ? (tab || 'profile') : 'profile'
   const [activeSection, setActiveSection] = useState(resolvedTab)
 
   // ── AI Behavior Settings persistence ──────────────────────────────────────
@@ -219,7 +225,11 @@ export default function SettingsPage() {
                 <Icon name={group.icon} size={13} />
                 {group.label}
               </div>
-              {group.items.filter(item => !item.adminOnly || isAdmin).map(item => {
+              {group.items.filter(item => {
+                if (item.orgHeadOnly && user?.role !== 'org_head') return false;
+                if (item.adminOnly && !isAdmin) return false;
+                return true;
+              }).map(item => {
                 return (
                   <button
                     key={item.key}
