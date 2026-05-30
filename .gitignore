@@ -18,4 +18,6 @@ old_frontend/
 .claude/
 graphify-out/
 backend/data/chroma/
+backend/db/chroma/
 backend/dist/
+.gstack/

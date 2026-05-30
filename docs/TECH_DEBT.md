@@ -23,8 +23,8 @@ Shipped 2026-05-19. The backend logic is sound — transactions, audit log, tena
 
 | Severity | Item | Notes |
 |---|---|---|
-| 🟠 High | **Rate limiting on hire-request endpoints** | `POST /` and `PATCH /:id` have no rate limit. Auth has `10/min`; hire-request should cap creates at `30/min` per user to prevent spam. Use the existing `@limiter.limit(...)` decorator pattern from `routers/auth.py`. |
-| 🟠 High | **Cursor pagination on `GET /hire-requests/`** | Hard `LIMIT 100` only — no offset/cursor. Will silently truncate above 100 requests per org. Add `?cursor=` + `?limit=` params; switch repo `list_for_org` to use seek pagination on `(created_at, id)`. |
+| ~~🟠 High~~ | ~~**Rate limiting on hire-request endpoints**~~ | ~~`POST /` and `PATCH /:id` have no rate limit. Auth has `10/min`; hire-request should cap creates at `30/min` per user to prevent spam. Use the existing `@limiter.limit(...)` decorator pattern from `routers/auth.py`.~~ Resolved (2026-05-30) |
+| ~~🟠 High~~ | ~~**Cursor pagination on `GET /hire-requests/`**~~ | ~~Hard `LIMIT 100` only — no offset/cursor. Will silently truncate above 100 requests per org. Add `?cursor=` + `?limit=` params; switch repo `list_for_org` to use seek pagination on `(created_at, id)`.~~ Resolved (2026-05-30) |
 | 🟡 Medium | **Unit + integration test coverage for `HireRequestService`** | Service logic is verified by manual live smoke tests only. Need: pytest for status-transition rules, validation edge cases, role gating, tenant isolation. Target: 80%+ coverage of `services/hire_request_service.py`. |
 
 ## Auth (`/api/v1/auth/*`)
@@ -47,8 +47,8 @@ Phase 1 of the redesign shipped 2026-05-20. Backend SSE emission was tightened; 
 | ~~🟡 Medium~~ | ~~**`emit_token` misnamed**~~ | ~~Same root cause — sends complete messages as one chunk, not real per-token streaming. Bundle with the LLM-streaming fix.~~ Resolved (2026-05-29) |
 | ~~🟡 Medium~~ | ~~**Greeting drift risk**~~ | ~~`chat_service.GREETING_MESSAGE` and `ChatContext.resetChat` both hardcode the same welcome text. Will drift on edit. Extract to a single source (config endpoint or shared constant).~~ Resolved — Bucket D2 (2026-05-29) |
 | ~~🟡 Medium~~ | ~~**Stage skip not emitted for `intake` / `final_jd` / `complete`**~~ | Resolved by design 2026-05-28 — HARD-STOP stages (intake, jd_variants, final_jd) cannot soft-skip; the orchestrator only emits `stage_skipped` for soft-skippable stages (internal_check, market_research, bias_check). Documented in `agents/orchestrator.py:_record_skip`. |
-| 🟢 Low | **Type-checker warnings in `agents/orchestrator.py`** | `state: dict` parameter vs `AgentState` TypedDict expected by nodes; `action_data` Optional[dict] hits `.get(...)` without a None guard. Runtime safe (Python doesn't enforce TypedDict); fix during a static-analysis sweep |
-| 🟢 Low | **Unused `AgentState` import** in `orchestrator.py` line 11 | Pre-existing — left alone in this PR to keep the diff focused |
+| ~~🟢 Low~~ | ~~**Type-checker warnings in `agents/orchestrator.py`**~~ | ~~`state: dict` parameter vs `AgentState` TypedDict expected by nodes; `action_data` Optional[dict] hits `.get(...)` without a None guard. Runtime safe (Python doesn't enforce TypedDict); fix during a static-analysis sweep~~ Resolved (2026-05-30) |
+| ~~🟢 Low~~ | ~~**Unused `AgentState` import** in `orchestrator.py` line 11~~ | ~~Pre-existing — left alone in this PR to keep the diff focused~~ Resolved (2026-05-30) |
 
 ## Pre-existing bugs surfaced during audits
 
@@ -63,9 +63,9 @@ These predate the redesign work — fix opportunistically during related page wo
 
 | Severity | Item | Notes |
 |---|---|---|
-| 🟠 High | **HTML injection in transactional email templates** | `backend/services/email_service.py` interpolates `candidate_name`, `role_name`, `org_name`, `round_name`, `meeting_link`, `apply_url`, `feedback_url`, etc. directly into f-strings. Escape with `html.escape()` and validate URL schemes (only `https://`). Better: move to Jinja2 with `autoescape=True`. Flagged by automated security review 2026-05-27. |
-| 🟠 High | **Notification IDOR within tenant** | `backend/services/notification_service.py:mark_read(org_id, notification_id)` scopes by tenant but not by user. Any user in the org can mark another user's notifications read. Add `user_id` to signature + WHERE clause. Flagged by automated security review 2026-05-27. |
-| 🟠 High | **`backend/dist/` and chroma binary noise in working tree** | `backend/data/chroma/*.sqlite3` shows as modified on every run. Either add to `.gitignore` or move to a runtime-only path. |
+| ~~🟠 High~~ | ~~**HTML injection in transactional email templates**~~ | ~~`backend/services/email_service.py` interpolates `candidate_name`, `role_name`, `org_name`, `round_name`, `meeting_link`, `apply_url`, `feedback_url`, etc. directly into f-strings. Escape with `html.escape()` and validate URL schemes (only `https://`). Better: move to Jinja2 with `autoescape=True`. Flagged by automated security review 2026-05-27.~~ Resolved (2026-05-30) |
+| ~~🟠 High~~ | ~~**Notification IDOR within tenant**~~ | ~~`backend/services/notification_service.py:mark_read(org_id, notification_id)` scopes by tenant but not by user. Any user in the org can mark another user's notifications read. Add `user_id` to signature + WHERE clause. Flagged by automated security review 2026-05-27.~~ Resolved (2026-05-30) |
+| ~~🟠 High~~ | ~~**`backend/dist/` and chroma binary noise in working tree**~~ | ~~`backend/data/chroma/*.sqlite3` shows as modified on every run. Either add to `.gitignore` or move to a runtime-only path.~~ Resolved (2026-05-30) |
 | 🟡 Medium | **Frontend bundle is >500KB after minify** | Vite warns. Code-split routes (especially `/dev`, `/platform`) via `React.lazy` + `Suspense`. |
 | 🟡 Medium | **No E2E tests** | Manual smoke tests cover auth + hire request today. Phase 1 cohort can ship without, but post-customer-1 we need Playwright or similar. |
 | 🟢 Low | **Cleanup of legacy `/positions/requests/*` shims** | Kept for backward compatibility with existing Dashboard widgets. Migrate Dashboard widgets to `hireRequestsApi` and delete the shims. |

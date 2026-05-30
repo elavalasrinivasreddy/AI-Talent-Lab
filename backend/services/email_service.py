@@ -96,8 +96,15 @@ def _wrap_html(content_html: str) -> str:
 </html>"""
 
 
+
+def _safe_url(url: str) -> str:
+    """Validate that a URL uses http/https and HTML-escape it."""
+    if url and not url.startswith(("http://", "https://")):
+        raise ValueError(f"Unsafe URL scheme: {url}")
+    return _safe_url(url)
+
 def _button(label: str, url: str) -> str:
-    _url = html.escape(url, quote=True)
+    _url = _safe_url(url)
     _label = html.escape(label)
     return f"""\
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
@@ -147,7 +154,7 @@ class EmailService:
     ) -> bool:
         _user_name = html.escape(user_name) if user_name else None
         _org_name = html.escape(org_name) if org_name else None
-        _magic_link_url = html.escape(magic_link_url, quote=True)
+        _magic_link_url = _safe_url(magic_link_url)
         greeting = f"Hi {_user_name}," if _user_name else "Hi,"
         org_line = (
             f"You're signing in to <strong>{_org_name}</strong> on AI Talent Lab."
@@ -189,7 +196,7 @@ class EmailService:
         expires_hours: int = 24,
     ) -> bool:
         _user_name = html.escape(user_name) if user_name else None
-        _reset_url = html.escape(reset_url, quote=True)
+        _reset_url = _safe_url(reset_url)
         greeting = f"Hi {_user_name}," if _user_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
@@ -237,7 +244,7 @@ class EmailService:
         _inviter_name = html.escape(inviter_name)
         _org_name = html.escape(org_name)
         _role_label = html.escape(role_label)
-        _set_password_url = html.escape(set_password_url, quote=True)
+        _set_password_url = _safe_url(set_password_url)
         greeting = f"Hi {_invitee_name},"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
@@ -292,7 +299,7 @@ class EmailService:
         _candidate_name = html.escape(candidate_name) if candidate_name else None
         _role_name = html.escape(role_name)
         _org_name = html.escape(org_name)
-        _apply_url = html.escape(apply_url, quote=True)
+        _apply_url = _safe_url(apply_url)
         greeting = f"Hi {_candidate_name}," if _candidate_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
@@ -333,7 +340,7 @@ class EmailService:
         _candidate_name = html.escape(candidate_name) if candidate_name else None
         _role_name = html.escape(role_name)
         _org_name = html.escape(org_name)
-        _apply_url = html.escape(apply_url, quote=True)
+        _apply_url = _safe_url(apply_url)
         greeting = f"Hi {_candidate_name}," if _candidate_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
@@ -386,7 +393,7 @@ class EmailService:
 
         meet_section = ""
         if meeting_link:
-            _meeting_link = html.escape(meeting_link, quote=True)
+            _meeting_link = _safe_url(meeting_link)
             meet_section = f"""
 <p style="margin:16px 0 8px;font-size:13px;color:#64748B;">Meeting link:</p>
 <p style="margin:0 0 16px;">
