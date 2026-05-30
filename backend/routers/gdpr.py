@@ -19,6 +19,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 from backend.dependencies import get_current_user, require_org_head
+from backend.middleware.rate_limiter import limiter
 from backend.services.gdpr_service import GDPRService
 
 router = APIRouter(prefix="/api/v1/gdpr", tags=["GDPR / Privacy"])
@@ -40,11 +41,13 @@ class ConsentRequest(BaseModel):
 # ── Public Endpoints (no auth) ────────────────────────────────────────────────
 
 @router.post("/delete-my-data")
-async def request_data_deletion(body: DeletionRequest):
+@limiter.limit("5/hour")
+async def request_data_deletion(request: Request, body: DeletionRequest):
     """
     Candidate requests deletion of all their data.
     Returns a neutral message regardless of whether the email exists (privacy).
     In production, a verification email is sent.
+    Rate-limited to 5 requests/hour per IP to prevent email spam abuse.
     """
     result = await GDPRService.request_deletion(body.email)
     return {

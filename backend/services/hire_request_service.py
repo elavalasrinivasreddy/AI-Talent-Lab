@@ -60,6 +60,30 @@ class _BadTransitionError(AppError):
 class HireRequestService:
     """All mutating + filtered-read operations for hire requests."""
 
+    # ── Notification helpers (in-transaction, share caller's connection) ────
+
+    @staticmethod
+    async def _notify(conn, *, org_id, user_id, type, title, message, action_url=None):
+        await conn.execute(
+            "INSERT INTO notifications (org_id, user_id, type, title, message, action_url) VALUES ($1,$2,$3,$4,$5,$6)",
+            org_id, user_id, type, title, message, action_url,
+        )
+
+    @staticmethod
+    async def _notify_role(conn, *, org_id, role, type, title, message, action_url=None, department_id=None):
+        """Notify all active users with the given role (optionally scoped to a department)."""
+        query = "SELECT id FROM users WHERE org_id=$1 AND role=$2 AND is_active=TRUE"
+        params = [org_id, role]
+        if department_id is not None:
+            query += " AND department_id=$3"
+            params.append(department_id)
+        users = await conn.fetch(query, *params)
+        for u in users:
+            await conn.execute(
+                "INSERT INTO notifications (org_id, user_id, type, title, message, action_url) VALUES ($1,$2,$3,$4,$5,$6)",
+                org_id, u["id"], type, title, message, action_url,
+            )
+
     # ── List ──────────────────────────────────────────────────────────────
 
     @staticmethod
@@ -192,32 +216,26 @@ class HireRequestService:
             action_url = f"/hire-requests/{created['id']}"
             msg = f"New hire request: {role_name} ({headcount} headcount)"
             if department_id:
-                await conn.execute(
-                    """
-                    INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                    SELECT $1, u.id, 'hire_request_pending',
-                           'New hire request awaiting approval', $2, $3
-                      FROM users u
-                     WHERE u.org_id = $1
-                       AND u.role = 'dept_admin'
-                       AND u.department_id = $4
-                       AND u.is_active = TRUE
-                    """,
-                    org_id, msg, action_url, department_id,
+                await HireRequestService._notify_role(
+                    conn,
+                    org_id=org_id,
+                    role="dept_admin",
+                    type="hire_request_pending",
+                    title="New hire request awaiting approval",
+                    message=msg,
+                    action_url=action_url,
+                    department_id=department_id,
                 )
             else:
                 # No dept — notify org_head
-                await conn.execute(
-                    """
-                    INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                    SELECT $1, u.id, 'hire_request_pending',
-                           'New hire request awaiting approval', $2, $3
-                      FROM users u
-                     WHERE u.org_id = $1
-                       AND u.role = 'org_head'
-                       AND u.is_active = TRUE
-                    """,
-                    org_id, msg, action_url,
+                await HireRequestService._notify_role(
+                    conn,
+                    org_id=org_id,
+                    role="org_head",
+                    type="hire_request_pending",
+                    title="New hire request awaiting approval",
+                    message=msg,
+                    action_url=action_url,
                 )
 
             await AuditLogRepository.create(
@@ -350,49 +368,27 @@ class HireRequestService:
 
             # Notify raiser
             if existing["requested_by"]:
-                await conn.execute(
-                    """
-                    INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                    VALUES ($1, $2, 'hire_request_approved',
-                            'Your hire request was approved',
-                            $3, $4)
-                    """,
-                    org_id, existing["requested_by"],
-                    f"Your request for {existing['role_name']} has been approved.",
-                    f"/hire-requests/{request_id}",
+                await HireRequestService._notify(
+                    conn,
+                    org_id=org_id,
+                    user_id=existing["requested_by"],
+                    type="hire_request_approved",
+                    title="Your hire request was approved",
+                    message=f"Your request for {existing['role_name']} has been approved.",
+                    action_url=f"/hire-requests/{request_id}",
                 )
 
             # Notify HR users (all HR in org; or dept-scoped if dept set)
-            dept_cond = "AND u.department_id = $5" if existing.get("department_id") else ""
-            params = [org_id, f"{existing['role_name']} hire request is ready for pickup.",
-                      f"/hire-requests/{request_id}"]
-            if existing.get("department_id"):
-                await conn.execute(
-                    f"""
-                    INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                    SELECT $1, u.id, 'hire_request_approved',
-                           'Hire request ready for pickup', $2, $3
-                      FROM users u
-                     WHERE u.org_id = $1
-                       AND u.role = 'hr'
-                       AND u.is_active = TRUE
-                       {dept_cond}
-                    """,
-                    *params, existing["department_id"],
-                )
-            else:
-                await conn.execute(
-                    """
-                    INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                    SELECT $1, u.id, 'hire_request_approved',
-                           'Hire request ready for pickup', $2, $3
-                      FROM users u
-                     WHERE u.org_id = $1
-                       AND u.role = 'hr'
-                       AND u.is_active = TRUE
-                    """,
-                    *params,
-                )
+            await HireRequestService._notify_role(
+                conn,
+                org_id=org_id,
+                role="hr",
+                type="hire_request_approved",
+                title="Hire request ready for pickup",
+                message=f"{existing['role_name']} hire request is ready for pickup.",
+                action_url=f"/hire-requests/{request_id}",
+                department_id=existing.get("department_id"),
+            )
 
             await AuditLogRepository.create(
                 conn,
@@ -491,16 +487,14 @@ class HireRequestService:
 
             # Notify raiser
             if existing["requested_by"]:
-                await conn.execute(
-                    """
-                    INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                    VALUES ($1, $2, 'hire_request_rejected',
-                            'Your hire request was not approved',
-                            $3, $4)
-                    """,
-                    org_id, existing["requested_by"],
-                    f"Your request for {existing['role_name']} was not approved.",
-                    f"/hire-requests/{request_id}",
+                await HireRequestService._notify(
+                    conn,
+                    org_id=org_id,
+                    user_id=existing["requested_by"],
+                    type="hire_request_rejected",
+                    title="Your hire request was not approved",
+                    message=f"Your request for {existing['role_name']} was not approved.",
+                    action_url=f"/hire-requests/{request_id}",
                 )
 
             await AuditLogRepository.create(
@@ -627,16 +621,14 @@ class HireRequestService:
             )
 
             if existing["requested_by"]:
-                await conn.execute(
-                    """
-                    INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                    VALUES ($1, $2, 'hire_request_accepted',
-                            'HR is now working on your hire request',
-                            $3, $4)
-                    """,
-                    org_id, existing["requested_by"],
-                    f"{existing['role_name']} is being processed by HR.",
-                    f"/hire-requests/{request_id}",
+                await HireRequestService._notify(
+                    conn,
+                    org_id=org_id,
+                    user_id=existing["requested_by"],
+                    type="hire_request_accepted",
+                    title="HR is now working on your hire request",
+                    message=f"{existing['role_name']} is being processed by HR.",
+                    action_url=f"/hire-requests/{request_id}",
                 )
 
             await AuditLogRepository.create(
@@ -699,16 +691,14 @@ class HireRequestService:
 
             # Notify the recruiter who had it (if accepted)
             if existing["status"] == "accepted" and existing["accepted_by"]:
-                await conn.execute(
-                    """
-                    INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                    VALUES ($1, $2, 'hire_request_cancelled',
-                            'Hire request cancelled',
-                            $3, $4)
-                    """,
-                    org_id, existing["accepted_by"],
-                    f"{existing['role_name']} was cancelled by the requester.",
-                    f"/hire-requests/{request_id}",
+                await HireRequestService._notify(
+                    conn,
+                    org_id=org_id,
+                    user_id=existing["accepted_by"],
+                    type="hire_request_cancelled",
+                    title="Hire request cancelled",
+                    message=f"{existing['role_name']} was cancelled by the requester.",
+                    action_url=f"/hire-requests/{request_id}",
                 )
 
             await AuditLogRepository.create(
@@ -770,16 +760,14 @@ class HireRequestService:
             )
 
             if existing["requested_by"]:
-                await conn.execute(
-                    """
-                    INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                    VALUES ($1, $2, 'jd_ready_for_approval',
-                            'JD ready for your review',
-                            $3, $4)
-                    """,
-                    org_id, existing["requested_by"],
-                    f"{existing['role_name']} job description is ready — review and approve.",
-                    f"/hire-requests/{request_id}",
+                await HireRequestService._notify(
+                    conn,
+                    org_id=org_id,
+                    user_id=existing["requested_by"],
+                    type="jd_ready_for_approval",
+                    title="JD ready for your review",
+                    message=f"{existing['role_name']} job description is ready — review and approve.",
+                    action_url=f"/hire-requests/{request_id}",
                 )
 
             await AuditLogRepository.create(

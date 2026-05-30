@@ -290,140 +290,138 @@ class GDPRService:
             if req["status"] not in ("verified", "processing"):
                 return {"error": f"Request is in status: {req['status']}"}
 
-            # Mark as processing
-            await conn.execute(
-                "UPDATE data_deletion_requests SET status='processing' WHERE id=$1",
-                request_id,
-            )
-
             candidate_id = req["candidate_id"]
             org_id = req["org_id"]
             deleted_summary = {}
 
-            # 1. Delete consent records
-            result = await conn.execute(
-                "DELETE FROM consent_records WHERE candidate_id=$1 AND org_id=$2",
-                candidate_id, org_id,
-            )
-            deleted_summary["consent_records"] = result.split()[-1] if result else "0"
-
-            # 2. Delete candidate session messages before sessions (FK order)
-            result = await conn.execute(
-                """
-                DELETE FROM candidate_session_messages
-                WHERE session_id IN (
-                    SELECT id FROM candidate_sessions
-                    WHERE candidate_id=$1 AND org_id=$2
+            # Wrap all PII erasure in a transaction — all-or-nothing so a
+            # mid-deletion failure never leaves partially anonymized records.
+            async with conn.transaction():
+                # Mark as processing inside the transaction so concurrent calls
+                # fail on the status check rather than double-executing.
+                await conn.execute(
+                    "UPDATE data_deletion_requests SET status='processing' WHERE id=$1",
+                    request_id,
                 )
-                """,
-                candidate_id, org_id,
-            )
-            deleted_summary["candidate_session_messages"] = result.split()[-1] if result else "0"
 
-            # 2b. Delete candidate session data (chat logs)
-            result = await conn.execute(
-                """
-                DELETE FROM candidate_sessions
-                WHERE candidate_id=$1 AND org_id=$2
-                """,
-                candidate_id, org_id,
-            )
-            deleted_summary["candidate_sessions"] = result.split()[-1] if result else "0"
+                # 1. Delete consent records
+                result = await conn.execute(
+                    "DELETE FROM consent_records WHERE candidate_id=$1 AND org_id=$2",
+                    candidate_id, org_id,
+                )
+                deleted_summary["consent_records"] = result.split()[-1] if result else "0"
 
-            # 3. Delete talent pool suggestions
-            result = await conn.execute(
-                """
-                DELETE FROM talent_pool_suggestions
-                WHERE candidate_id=$1 AND org_id=$2
-                """,
-                candidate_id, org_id,
-            )
-            deleted_summary["talent_pool_suggestions"] = result.split()[-1] if result else "0"
+                # 2. Delete candidate session messages before sessions (FK order)
+                result = await conn.execute(
+                    """
+                    DELETE FROM candidate_session_messages
+                    WHERE session_id IN (
+                        SELECT id FROM candidate_sessions
+                        WHERE candidate_id=$1 AND org_id=$2
+                    )
+                    """,
+                    candidate_id, org_id,
+                )
+                deleted_summary["candidate_session_messages"] = result.split()[-1] if result else "0"
 
-            # 4. Delete candidate tags
-            result = await conn.execute(
-                "DELETE FROM candidate_tags WHERE candidate_id=$1 AND org_id=$2",
-                candidate_id, org_id,
-            )
-            deleted_summary["candidate_tags"] = result.split()[-1] if result else "0"
+                # 2b. Delete candidate session data (chat logs)
+                result = await conn.execute(
+                    "DELETE FROM candidate_sessions WHERE candidate_id=$1 AND org_id=$2",
+                    candidate_id, org_id,
+                )
+                deleted_summary["candidate_sessions"] = result.split()[-1] if result else "0"
 
-            # 4b. Delete hiring notes (recruiter free-text — contains PII)
-            result = await conn.execute(
-                "DELETE FROM hiring_notes WHERE candidate_id=$1 AND org_id=$2",
-                candidate_id, org_id,
-            )
-            deleted_summary["hiring_notes"] = result.split()[-1] if result else "0"
+                # 3. Delete talent pool suggestions
+                result = await conn.execute(
+                    "DELETE FROM talent_pool_suggestions WHERE candidate_id=$1 AND org_id=$2",
+                    candidate_id, org_id,
+                )
+                deleted_summary["talent_pool_suggestions"] = result.split()[-1] if result else "0"
 
-            # 5. Anonymize pipeline events (keep for metrics, remove PII)
-            await conn.execute(
-                """
-                UPDATE pipeline_events
-                SET event_data='{"anonymized": true}'
-                WHERE candidate_id=$1 AND org_id=$2
-                """,
-                candidate_id, org_id,
-            )
-            deleted_summary["pipeline_events"] = "anonymized"
+                # 4. Delete candidate tags
+                result = await conn.execute(
+                    "DELETE FROM candidate_tags WHERE candidate_id=$1 AND org_id=$2",
+                    candidate_id, org_id,
+                )
+                deleted_summary["candidate_tags"] = result.split()[-1] if result else "0"
 
-            # 6. Anonymize scorecards (keep ratings, remove comments)
-            await conn.execute(
-                """
-                UPDATE scorecards
-                SET strengths=NULL, concerns=NULL, additional_comments=NULL,
-                    raw_notes_strengths=NULL, raw_notes_concerns=NULL
-                WHERE candidate_id=$1 AND org_id=$2
-                """,
-                candidate_id, org_id,
-            )
-            deleted_summary["scorecards"] = "anonymized"
+                # 4b. Delete hiring notes (recruiter free-text — contains PII)
+                result = await conn.execute(
+                    "DELETE FROM hiring_notes WHERE candidate_id=$1 AND org_id=$2",
+                    candidate_id, org_id,
+                )
+                deleted_summary["hiring_notes"] = result.split()[-1] if result else "0"
 
-            # 7. Anonymize candidate record (replace PII with anonymized placeholders)
-            anon_name = f"Anonymized Candidate #{candidate_id}"
-            await conn.execute(
-                """
-                UPDATE candidates SET
-                    name=$1, email=NULL, phone=NULL,
-                    current_title=NULL, current_company=NULL,
-                    location=NULL, resume_url=NULL,
-                    resume_text=NULL, resume_parsed=NULL, resume_embedding=NULL,
-                    source_profile_url=NULL, notes=NULL,
-                    data_anonymized_at=NOW(), updated_at=NOW()
-                WHERE id=$2 AND org_id=$3
-                """,
-                anon_name, candidate_id, org_id,
-            )
-            deleted_summary["candidate"] = "anonymized"
+                # 5. Anonymize pipeline events (keep for metrics, remove PII)
+                await conn.execute(
+                    """
+                    UPDATE pipeline_events
+                    SET event_data='{"anonymized": true}'
+                    WHERE candidate_id=$1 AND org_id=$2
+                    """,
+                    candidate_id, org_id,
+                )
+                deleted_summary["pipeline_events"] = "anonymized"
 
-            # 8. Nullify screening responses on applications
-            await conn.execute(
-                """
-                UPDATE candidate_applications
-                SET screening_responses=NULL, magic_link_token=NULL
-                WHERE candidate_id=$1 AND org_id=$2
-                """,
-                candidate_id, org_id,
-            )
-            deleted_summary["applications"] = "screening_data_removed"
+                # 6. Anonymize scorecards (keep ratings, remove comments)
+                await conn.execute(
+                    """
+                    UPDATE scorecards
+                    SET strengths=NULL, concerns=NULL, additional_comments=NULL,
+                        raw_notes_strengths=NULL, raw_notes_concerns=NULL
+                    WHERE candidate_id=$1 AND org_id=$2
+                    """,
+                    candidate_id, org_id,
+                )
+                deleted_summary["scorecards"] = "anonymized"
 
-            # Mark request as completed
-            await conn.execute(
-                """
-                UPDATE data_deletion_requests
-                SET status='completed', completed_at=NOW(), deleted_data=$1
-                WHERE id=$2
-                """,
-                json.dumps(deleted_summary), request_id,
-            )
+                # 7. Anonymize candidate record (replace PII with anonymized placeholders)
+                anon_name = f"Anonymized Candidate #{candidate_id}"
+                await conn.execute(
+                    """
+                    UPDATE candidates SET
+                        name=$1, email=NULL, phone=NULL,
+                        current_title=NULL, current_company=NULL,
+                        location=NULL, resume_url=NULL,
+                        resume_text=NULL, resume_parsed=NULL, resume_embedding=NULL,
+                        source_profile_url=NULL, notes=NULL,
+                        data_anonymized_at=NOW(), updated_at=NOW()
+                    WHERE id=$2 AND org_id=$3
+                    """,
+                    anon_name, candidate_id, org_id,
+                )
+                deleted_summary["candidate"] = "anonymized"
 
-            # Audit
-            await conn.execute(
-                """
-                INSERT INTO audit_log (org_id, action, entity_type, entity_id, details)
-                VALUES ($1, $2, $3, $4, $5)
-                """,
-                org_id, "data_deleted_gdpr", "candidate", str(candidate_id),
-                json.dumps(deleted_summary),
-            )
+                # 8. Nullify screening responses on applications
+                await conn.execute(
+                    """
+                    UPDATE candidate_applications
+                    SET screening_responses=NULL, magic_link_token=NULL
+                    WHERE candidate_id=$1 AND org_id=$2
+                    """,
+                    candidate_id, org_id,
+                )
+                deleted_summary["applications"] = "screening_data_removed"
+
+                # Mark request as completed
+                await conn.execute(
+                    """
+                    UPDATE data_deletion_requests
+                    SET status='completed', completed_at=NOW(), deleted_data=$1
+                    WHERE id=$2
+                    """,
+                    json.dumps(deleted_summary), request_id,
+                )
+
+                # Audit
+                await conn.execute(
+                    """
+                    INSERT INTO audit_log (org_id, action, entity_type, entity_id, details)
+                    VALUES ($1, $2, $3, $4, $5)
+                    """,
+                    org_id, "data_deleted_gdpr", "candidate", str(candidate_id),
+                    json.dumps(deleted_summary),
+                )
 
         return {
             "completed": True,
