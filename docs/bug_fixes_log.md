@@ -294,3 +294,9 @@ The static analyzer flagged `is_auto_approved` and `created` as possibly unbound
 **Symptom:** When a Hiring Manager opened the "New Hire Request" page, the progress relay visualizer incorrectly showed Step-1 ("Filed") as completed before the form was even submitted.
 **Root Cause:** The `HireRequestForm.jsx` passed a mock request with `status: 'pending'` to the visualizer. In the system logic, `pending` means the request is successfully filed and awaiting Dept Admin approval (i.e., Step-1 is done, Step-2 is active).
 **Fix:** Introduced a conceptual `draft` status in `helpers.js` that maps to Step-1 being the `current` state, and passed this `draft` status from the form when `existing` data is null.
+
+---
+### 22. Enforced Org Head Exclusivity for Organization Profile
+**Symptom:** The "Organization Profile" settings tab (managing global culture, benefits, and branding) was accessible to Department Admins.
+**Root Cause:** The `SettingsPage.jsx` UI routing had `adminOnly: true` on the `organization` tab, which allowed both Org Heads and Department Admins to access it.
+**Fix:** Updated the frontend rail config for `organization` from `adminOnly: true` to `orgHeadOnly: true`. Competitor intel was intentionally kept as `adminOnly: true` so both Org Heads and Dept Admins can contribute department-specific competitors to the global organizational pool.
