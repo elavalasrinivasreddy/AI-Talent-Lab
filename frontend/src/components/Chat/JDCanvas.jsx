@@ -104,15 +104,8 @@ function EmptyCanvas() {
         </span>
         <h2>Your job description will appear here.</h2>
         <p>
-          Start by telling the AI which role you&apos;re hiring for in the chat on
-          the right. The JD will build itself in this space as we go — skills,
-          variants, bias check, all inline.
+          Start chatting with the AI on the right to begin building your requirements. The JD will draft itself inline automatically.
         </p>
-        <ul className="jd-empty-points">
-          <li>The agent records intake fields as a captured-data block.</li>
-          <li>Internal + market skills appear as chip clouds you can toggle.</li>
-          <li>Variants render side-by-side; pick one and the full JD streams in.</li>
-        </ul>
       </div>
     </div>
   );

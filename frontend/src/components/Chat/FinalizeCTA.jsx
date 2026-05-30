@@ -26,7 +26,7 @@ export default function FinalizeCTA() {
     <>
       <button
         type="button"
-        className="btn btn--primary btn--sm"
+        className="btn btn-primary btn-sm"
         onClick={() => setOpen(true)}
         disabled={!canFinalize}
         style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '24px', padding: '6px 16px', fontWeight: 500, fontSize: '13px' }}

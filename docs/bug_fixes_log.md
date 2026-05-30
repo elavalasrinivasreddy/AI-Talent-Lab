@@ -683,3 +683,20 @@ During a UI/UX design validation of the v3 JD Chat (Document-first Canvas) inter
 - `frontend/src/components/Chat/MessageInput.jsx`
 - `frontend/src/context/ChatContext.jsx`
 - `frontend/src/styles/chat.css`
+
+### 49. JD Chat UI - Syntax Fixes & Canvas Cleanup
+**Date:** 2026-05-31
+**Issue:** 
+- A stray `}}}` was rendering on screen near the JD Stepper due to a duplicated JSX bracket.
+- The "Save & find candidates" CTA looked like plain text because it was using an undefined BEM class (`btn--primary`).
+- The empty state on the JD Canvas contained too much instructional text, cluttering the premium interface.
+
+**Idea / Solution:**
+1. **Cleaned up JDStepper:** Removed the duplicated `})}` closure.
+2. **Fixed Button Classes:** Reverted `btn--primary` back to the standard global `btn-primary` class to restore proper button styling and backgrounds (even in the disabled state).
+3. **Empty Canvas Minimalism:** Removed the verbose bullet points from `EmptyCanvas` in `JDCanvas.jsx`, opting for a single clean sentence directing the user to chat.
+
+**Files Modified:**
+- `frontend/src/components/Chat/JDStepper.jsx`
+- `frontend/src/components/Chat/FinalizeCTA.jsx`
+- `frontend/src/components/Chat/JDCanvas.jsx`

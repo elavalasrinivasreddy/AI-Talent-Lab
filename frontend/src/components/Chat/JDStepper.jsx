@@ -106,7 +106,6 @@ export default function JDStepper({ isRailOpen, onToggleRail }) {
             </li>
           );
         })}
-        })}
       </ol>
       <div className="jd-stepper-actions">
         <FinalizeCTA />
