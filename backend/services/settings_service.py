@@ -181,7 +181,8 @@ class SettingsService:
                         "user_id": head["id"],
                         "type": "competitor_added",
                         "title": f"New Competitor for {dept_name}",
-                        "message": f"{creator['name']} added {name} to {dept_name} competitors."
+                        "message": f"{creator['name']} added {name} to {dept_name} competitors.",
+                        "action_url": "/settings?tab=competitors"
                     }
                 )
         elif creator and creator["role"] == "org_head":
@@ -195,7 +196,8 @@ class SettingsService:
                         "user_id": admin["id"],
                         "type": "competitor_added",
                         "title": f"New Competitor for {dept_name}",
-                        "message": f"{creator['name']} added {name} to your department's competitors."
+                        "message": f"{creator['name']} added {name} to your department's competitors.",
+                        "action_url": "/settings?tab=competitors"
                     }
                 )
                 
@@ -238,7 +240,8 @@ class SettingsService:
                             "user_id": head["id"],
                             "type": "competitor_removed",
                             "title": f"Competitor Removed for {dept_name}",
-                            "message": f"{creator_name} removed {comp['name']} from {dept_name} competitors."
+                            "message": f"{creator_name} removed {comp['name']} from {dept_name} competitors.",
+                            "action_url": "/settings?tab=competitors"
                         }
                     )
             elif creator and creator.get("role") == "org_head":
@@ -251,7 +254,8 @@ class SettingsService:
                             "user_id": admin["id"],
                             "type": "competitor_removed",
                             "title": f"Competitor Removed for {dept_name}",
-                            "message": f"{creator_name} removed {comp['name']} from your department's competitors."
+                            "message": f"{creator_name} removed {comp['name']} from your department's competitors.",
+                            "action_url": "/settings?tab=competitors"
                         }
                     )
 

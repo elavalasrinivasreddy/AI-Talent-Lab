@@ -484,3 +484,16 @@ The `org_head` role was seeing a massive badge count for all pending and approve
 **Files Modified:**
 - `frontend/src/components/Sidebar/Sidebar.jsx`
 - `docs/ENHANCEMENTS_IDEAS.md` (created)
+
+---
+
+## 37. Missing Deep Links in Competitor Notifications
+
+**Problem Statement:**
+When a competitor was added or removed, the notification generated in the backend did not include an `action_url`. This meant that when users clicked on a competitor-related notification in the UI bell drawer, it was marked as read but did not actually navigate them to the Competitors tab in the settings page.
+
+**Idea / Solution:**
+Added `"action_url": "/settings?tab=competitors"` to the notification payload dictionary in the four places where competitor notifications are dispatched (org head / dept admin for addition/removal). Now, clicking the notification properly deep-links the user to the Settings page with the Competitors tab active.
+
+**Files Modified:**
+- `backend/services/settings_service.py`
