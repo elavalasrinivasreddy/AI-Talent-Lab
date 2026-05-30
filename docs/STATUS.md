@@ -13,12 +13,12 @@ Two axes per surface:
 
 ## Headline
 
-**13 of 19 surfaces redesigned to v3.** 6 partial/deferred. All surfaces are functionally live.
+**15 of 19 surfaces redesigned to v3.** 4 partial/deferred. All surfaces are functionally live.
 
 | | Count |
 |---|---|
-| ✅ Redesigned (v3) | 13 |
-| 🟡 Partial (CSS/structure updated, spec not fully met) | 6 |
+| ✅ Redesigned (v3) | 15 |
+| 🟡 Partial (CSS/structure updated, spec not fully met) | 4 |
 | ❌ Not started | 0 |
 
 **Code review:** Opus 4.8 multi-angle review completed 2026-05-30.
@@ -58,8 +58,8 @@ All 10 critical/high/medium bugs fixed (16 commits on this branch).
 | 15 | Interviews | Live | ✅ | Day selector strip, time-grouped timeline, skeleton loading, status chips. |
 | 16 | Notifications | Live | ✅ | Bell dropdown, unread count badge, mark-all-read, action links, 30s polling. |
 | 17 | Platform Admin | Live | 🟡 | Stats/orgs/activity endpoints + basic PlatformPage CSS. Full control-tower UI deferred. |
-| 18 | Dev Console | Live | 🟡 | CSS updated. Visual refresh deferred. `/dev` route allows unauthenticated access for seed ops. |
-| 19 | GDPR / Privacy | Live | 🟡 | CSS updated, 2-step deletion flow, table coverage fixed. Full v3 visual refresh deferred. |
+| 18 | Dev Console | Live | ✅ | v3 tokens throughout (teal active tab, `--color-*` vars). Tabbed interface: overview, users, sessions, reset, log. |
+| 19 | GDPR / Privacy | Live | ✅ | v3 tokens throughout. Multi-step deletion flow (form→sent→verifying→done), rate-limited, table coverage complete, atomic transaction. |
 
 ---
 
