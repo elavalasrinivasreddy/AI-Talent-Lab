@@ -94,6 +94,7 @@ class DepartmentResponse(BaseModel):
 
 class CompetitorCreate(BaseModel):
     name: str
+    department_id: int
     website: Optional[str] = None
     industry: Optional[str] = None
     notes: Optional[str] = None
@@ -102,6 +103,7 @@ class CompetitorCreate(BaseModel):
 class CompetitorResponse(BaseModel):
     id: int
     org_id: int
+    department_id: int
     name: str
     website: Optional[str] = None
     industry: Optional[str] = None

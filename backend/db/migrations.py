@@ -881,4 +881,17 @@ async def run_migrations(conn) -> None:
     await conn.execute(ai_behavior_sql)
     logger.info("  AI behavior settings column ensured.")
 
+    # ── Competitors department_id column ───────────────────────────────────────────
+    competitors_dept_sql = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='competitors' AND column_name='department_id') THEN
+            ALTER TABLE competitors ADD COLUMN department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE;
+        END IF;
+    END $$;
+    """
+    await conn.execute(competitors_dept_sql)
+    logger.info("  Competitors department_id column ensured.")
+
     logger.info("Database migrations complete.")

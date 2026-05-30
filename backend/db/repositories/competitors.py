@@ -14,6 +14,7 @@ class CompetitorRepository:
         conn: asyncpg.Connection,
         org_id: int,
         name: str,
+        department_id: int,
         website: Optional[str] = None,
         industry: Optional[str] = None,
         notes: Optional[str] = None,
@@ -21,11 +22,11 @@ class CompetitorRepository:
         """Create a new competitor."""
         row = await conn.fetchrow(
             """
-            INSERT INTO competitors (org_id, name, website, industry, notes)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, org_id, name, website, industry, notes, is_active
+            INSERT INTO competitors (org_id, department_id, name, website, industry, notes)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING id, org_id, department_id, name, website, industry, notes, is_active
             """,
-            org_id, name.strip(), website, industry, notes,
+            org_id, department_id, name.strip(), website, industry, notes,
         )
         return dict(row)
 
@@ -39,18 +40,21 @@ class CompetitorRepository:
         return dict(row) if row else None
 
     @staticmethod
-    async def list_by_org(conn: asyncpg.Connection, org_id: int, active_only: bool = True) -> List[dict]:
-        """List competitors for an org."""
+    async def list_by_org(conn: asyncpg.Connection, org_id: int, department_id: Optional[int] = None, active_only: bool = True) -> List[dict]:
+        """List competitors for an org, optionally filtered by department."""
+        query = "SELECT * FROM competitors WHERE org_id = $1"
+        args = [org_id]
+        
+        if department_id:
+            args.append(department_id)
+            query += f" AND department_id = ${len(args)}"
+            
         if active_only:
-            rows = await conn.fetch(
-                "SELECT * FROM competitors WHERE org_id = $1 AND is_active = TRUE ORDER BY name",
-                org_id,
-            )
-        else:
-            rows = await conn.fetch(
-                "SELECT * FROM competitors WHERE org_id = $1 ORDER BY name",
-                org_id,
-            )
+            query += " AND is_active = TRUE"
+            
+        query += " ORDER BY name"
+        
+        rows = await conn.fetch(query, *args)
         return [dict(r) for r in rows]
 
     @staticmethod

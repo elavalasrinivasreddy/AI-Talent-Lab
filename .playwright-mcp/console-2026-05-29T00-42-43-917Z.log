@@ -1,0 +1,2 @@
+[    1988ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/Auth/ResetPasswordPage.jsx:0
+[    1993ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:5173/src/components/Auth/SetPasswordPage.jsx:0

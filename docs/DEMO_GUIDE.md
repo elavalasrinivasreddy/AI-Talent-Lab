@@ -37,9 +37,11 @@ Test the public onboarding flow to bootstrap the platform.
    - Password: `Password123!`
 3. Complete the registration and log in. You are now the `org_head`.
 
-### Step 2: Create Departments (via App Settings)
-1. As Sarah, navigate to **Settings > Departments**.
-2. Create the two departments:
+### Step 2: Configure Organization Profile & Departments
+1. As Sarah, navigate to **Settings > Organization Profile**.
+2. Fill out the company details (e.g., Size: enterprise, Segment: B2B, Culture: fast-paced, remote-friendly). These are used later by AI workflows.
+3. Navigate to **Settings > Departments**.
+4. Create the two departments:
    - `Engineering`
    - `Marketing`
 
@@ -55,6 +57,16 @@ Test the platform's email invitation and RBAC assignment systems.
    - Sam Smith (Email: `elavalasrinivasreddy+mkt_hr@gmail.com`, Role: `HR / Recruiter`, Dept: `Marketing`)
 4. **Check your inbox (`elavalasrinivasreddy@gmail.com`)**. You should receive all the invitation emails. Click the links to set passwords for each user and verify the invite flow works.
 
+### Step 4: Add Competitor Intelligence (via App Settings)
+Test the department-scoped competitor grouping.
+1. As Sarah (`org_head`), navigate to **Settings > Competitor intel**.
+2. Click **+ Add Competitor**, select the **Engineering** department, and add a competitor (e.g., "Tech Innovators", techinnovators.com, Technology).
+3. Notice that Sarah sees competitors grouped by department. Wait for Marcus to add the next ones.
+4. Login as **Marcus Webb** (`elavalasrinivasreddy+eng_admin@gmail.com`), the Engineering Dept Admin.
+5. Navigate to **Settings > Competitor intel**. Marcus should only see the Engineering competitors and cannot select other departments when adding a new one. Add a second competitor (e.g., "CodeCrafters").
+6. Verify that an internal notification is generated for these actions between the Dept Admin and Org Head.
+7. Note the hard limit: Attempting to add a 4th competitor to a single department should return an error.
+
 ---
 
 ## 3. End-to-End Testing Workflows
@@ -64,7 +76,9 @@ Once the structure is set up, execute these workflows to test the core features 
 ### Workflow A: The Hire Request (Team Lead)
 1. Login as **David Kim** (`elavalasrinivasreddy+eng_lead@gmail.com`).
 2. Navigate to **Hire Requests**.
-3. Raise a new request for a **"Senior Frontend Engineer"**. Provide a realistic justification (e.g., "Replacing outgoing senior engineer, need React expertise") and submit it.
+3. Click **New request** to raise a request for a **"Senior Frontend Engineer"**. 
+4. Fill in the basics (e.g., Headcount: 1, Exp: 5-8 yrs, Comp: 30-45 LPA, Work Type: Hybrid).
+5. In the **"Context for the AI"** field, provide the justification and requirements (e.g., "Replacing outgoing senior engineer. Must have deep expertise in React, performance optimization, and mentoring juniors.") and submit it.
 
 ### Workflow B: HR Triage & JD Generation (HR)
 1. Login as **Emily Blunt** (`elavalasrinivasreddy+eng_hr@gmail.com`).

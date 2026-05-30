@@ -1,0 +1,119 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e7]
+      - generic [ref=e11]:
+        - text: AI
+        - generic [ref=e12]: Talent
+        - text: Lab
+    - navigation [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]: Main
+        - button "New Hire" [ref=e16] [cursor=pointer]:
+          - img [ref=e18]
+          - text: New Hire
+        - link "Dashboard" [ref=e20] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e22]
+          - generic [ref=e27]: Dashboard
+      - generic [ref=e28]:
+        - generic [ref=e29]: Hiring
+        - link "Positions" [ref=e30] [cursor=pointer]:
+          - /url: /positions
+          - img [ref=e32]
+          - generic [ref=e35]: Positions
+        - link "Interviews" [ref=e36] [cursor=pointer]:
+          - /url: /interviews
+          - img [ref=e38]
+          - generic [ref=e40]: Interviews
+        - link "Hire Requests" [ref=e41] [cursor=pointer]:
+          - /url: /hire-requests
+          - img [ref=e43]
+          - generic [ref=e46]: Hire Requests
+        - link "Talent Pool" [ref=e47] [cursor=pointer]:
+          - /url: /talent-pool
+          - img [ref=e49]
+          - generic [ref=e54]: Talent Pool
+        - link "Analytics" [ref=e55] [cursor=pointer]:
+          - /url: /analytics
+          - img [ref=e57]
+          - generic [ref=e60]: Analytics
+      - generic [ref=e61]:
+        - generic [ref=e62]: System
+        - link "Settings" [ref=e63] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e65]
+          - generic [ref=e68]: Settings
+    - generic [ref=e70]:
+      - generic [ref=e71]: SR
+      - generic [ref=e72]:
+        - generic [ref=e73]: Srinivas Reddy
+        - generic [ref=e74]: TechCorp Demo
+      - button "Logout" [ref=e75] [cursor=pointer]:
+        - img [ref=e76]
+  - button "Notifications" [ref=e81] [cursor=pointer]: 🔔
+  - main [ref=e82]:
+    - generic [ref=e83]:
+      - generic [ref=e84]:
+        - heading "Settings" [level=1] [ref=e85]:
+          - img [ref=e87]
+          - text: Settings
+        - paragraph [ref=e90]: Manage your account and organization
+      - generic [ref=e91]:
+        - navigation [ref=e92]:
+          - generic [ref=e93]:
+            - generic [ref=e94]: GENERAL
+            - button "My Profile" [ref=e95] [cursor=pointer]:
+              - img [ref=e97]
+              - text: My Profile
+            - button "Organization" [ref=e100] [cursor=pointer]:
+              - img [ref=e102]
+              - text: Organization
+            - button "Team Members" [ref=e105] [cursor=pointer]:
+              - img [ref=e107]
+              - text: Team Members
+            - button "Departments" [ref=e112] [cursor=pointer]:
+              - img [ref=e114]
+              - text: Departments
+          - generic [ref=e117]:
+            - generic [ref=e118]: HIRING & ATS
+            - button "Competitor Intel" [ref=e119] [cursor=pointer]:
+              - img [ref=e121]
+              - text: Competitor Intel
+            - button "Screening Qs" [ref=e123] [cursor=pointer]:
+              - img [ref=e125]
+              - text: Screening Qs
+            - button "Msg Templates" [ref=e128] [cursor=pointer]:
+              - img [ref=e130]
+              - text: Msg Templates
+            - button "Interview Tmpls" [ref=e133] [cursor=pointer]:
+              - img [ref=e135]
+              - text: Interview Tmpls
+          - generic [ref=e139]:
+            - generic [ref=e140]: WORKSPACE
+            - button "Integrations" [ref=e141] [cursor=pointer]:
+              - img [ref=e143]
+              - text: Integrations
+            - button "Appearance" [ref=e146] [cursor=pointer]:
+              - img [ref=e148]
+              - text: Appearance
+            - button "Security" [ref=e154] [cursor=pointer]:
+              - img [ref=e156]
+              - text: Security
+            - button "Privacy & GDPR" [ref=e159] [cursor=pointer]:
+              - img [ref=e161]
+              - text: Privacy & GDPR
+        - generic [ref=e165]:
+          - generic [ref=e166]:
+            - heading "🏗 Departments" [level=3] [ref=e167]
+            - button "+ Add Department" [ref=e168] [cursor=pointer]
+          - generic [ref=e197]:
+            - generic [ref=e199]: Engineering
+            - generic [ref=e200]:
+              - button "✏️" [ref=e201] [cursor=pointer]
+              - button "🗑️" [ref=e202] [cursor=pointer]
+          - generic [ref=e169]:
+            - generic [ref=e171]: General
+            - generic [ref=e172]:
+              - button "✏️" [ref=e173] [cursor=pointer]
+              - button "🗑️" [ref=e174] [cursor=pointer]

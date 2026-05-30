@@ -107,11 +107,16 @@ async def delete_department(
 
 @router.get("/competitors")
 async def list_competitors(
+    department_id: Optional[int] = None,
     user: dict = Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db),
 ):
-    """List all competitors."""
-    comps = await SettingsService.list_competitors(db, user["org_id"])
+    """List competitors. If org_head, they see all (or filtered). If dept_admin, they see only theirs unless specified otherwise, but service allows filtering."""
+    if user["role"] == "dept_admin":
+        # Dept admin can only see their department's competitors
+        department_id = user["department_id"]
+        
+    comps = await SettingsService.list_competitors(db, user["org_id"], department_id)
     return {"competitors": comps}
 
 
@@ -122,8 +127,13 @@ async def create_competitor(
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Add a competitor."""
+    # Ensure Dept Admin can only add to their department
+    dept_id = body.department_id
+    if user["role"] == "dept_admin" and dept_id != user["department_id"]:
+        raise InsufficientPermissionsError("Department Admin can only add competitors to their own department")
+        
     comp = await SettingsService.create_competitor(
-        db, user["org_id"], user["user_id"],
+        db, user["org_id"], user["user_id"], dept_id,
         name=body.name, website=body.website,
         industry=body.industry, notes=body.notes,
     )
@@ -137,6 +147,12 @@ async def delete_competitor(
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Delete a competitor."""
+    if user["role"] == "dept_admin":
+        from backend.db.repositories.competitors import CompetitorRepository
+        comp = await CompetitorRepository.get_by_id(db, competitor_id, user["org_id"])
+        if comp and comp.get("department_id") != user["department_id"]:
+            raise InsufficientPermissionsError("Department Admin can only delete competitors in their own department")
+            
     await SettingsService.delete_competitor(db, competitor_id, user["org_id"], user["user_id"])
     return {"message": "Competitor deleted"}
 

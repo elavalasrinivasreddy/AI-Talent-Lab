@@ -133,27 +133,63 @@ class SettingsService:
     # ── Competitors ────────────────────────────────────────────────────────────
 
     @staticmethod
-    async def list_competitors(conn: asyncpg.Connection, org_id: int) -> List[dict]:
-        return await CompetitorRepository.list_by_org(conn, org_id)
+    async def list_competitors(conn: asyncpg.Connection, org_id: int, department_id: Optional[int] = None) -> List[dict]:
+        return await CompetitorRepository.list_by_org(conn, org_id, department_id)
 
     @staticmethod
     async def create_competitor(
         conn: asyncpg.Connection,
         org_id: int,
         user_id: int,
+        department_id: int,
         name: str,
         website: Optional[str] = None,
         industry: Optional[str] = None,
         notes: Optional[str] = None,
     ) -> dict:
-        comp = await CompetitorRepository.create(conn, org_id, name, website, industry, notes)
+        # Check limit
+        comps = await CompetitorRepository.list_by_org(conn, org_id, department_id)
+        if len(comps) >= 3:
+            raise ValidationError("A maximum of 3 competitors is allowed per department.")
+            
+        comp = await CompetitorRepository.create(conn, org_id, name, department_id, website, industry, notes)
+        
+        # Audit log
         await AuditLogRepository.create(
             conn, org_id=org_id, user_id=user_id,
             action="competitor_created", entity_type="competitor",
             entity_id=str(comp["id"]),
         )
+        
+        # Notifications
+        from backend.db.repositories.users import UserRepository
+        from backend.db.repositories.notifications import NotificationRepository
+        from backend.db.repositories.departments import DeptRepository
+        
+        creator = await UserRepository.get_by_id(conn, user_id, org_id)
+        dept = await DeptRepository.get_by_id(conn, department_id, org_id)
+        dept_name = dept["name"] if dept else "Unknown Dept"
+        
+        if creator["role"] == "dept_admin":
+            # Notify org heads
+            org_heads = await conn.fetch("SELECT id FROM users WHERE org_id=$1 AND role='org_head'", org_id)
+            for head in org_heads:
+                await NotificationRepository.create(
+                    conn, org_id, head["id"], "competitor_added",
+                    f"New Competitor for {dept_name}",
+                    f"{creator['name']} added {name} to {dept_name} competitors."
+                )
+        elif creator["role"] == "org_head":
+            # Notify dept admins
+            dept_admins = await conn.fetch("SELECT id FROM users WHERE org_id=$1 AND role='dept_admin' AND department_id=$2", org_id, department_id)
+            for admin in dept_admins:
+                await NotificationRepository.create(
+                    conn, org_id, admin["id"], "competitor_added",
+                    f"New Competitor for {dept_name}",
+                    f"{creator['name']} added {name} to your department's competitors."
+                )
+                
         return comp
-
     @staticmethod
     async def delete_competitor(
         conn: asyncpg.Connection,
@@ -170,6 +206,33 @@ class SettingsService:
             action="competitor_deleted", entity_type="competitor",
             entity_id=str(competitor_id),
         )
+        
+        department_id = comp.get("department_id")
+        if department_id:
+            from backend.db.repositories.users import UserRepository
+            from backend.db.repositories.notifications import NotificationRepository
+            from backend.db.repositories.departments import DeptRepository
+            
+            creator = await UserRepository.get_by_id(conn, user_id, org_id)
+            dept = await DeptRepository.get_by_id(conn, department_id, org_id)
+            dept_name = dept["name"] if dept else "Unknown Dept"
+            
+            if creator["role"] == "dept_admin":
+                org_heads = await conn.fetch("SELECT id FROM users WHERE org_id=$1 AND role='org_head'", org_id)
+                for head in org_heads:
+                    await NotificationRepository.create(
+                        conn, org_id, head["id"], "competitor_removed",
+                        f"Competitor Removed for {dept_name}",
+                        f"{creator['name']} removed {comp['name']} from {dept_name} competitors."
+                    )
+            elif creator["role"] == "org_head":
+                dept_admins = await conn.fetch("SELECT id FROM users WHERE org_id=$1 AND role='dept_admin' AND department_id=$2", org_id, department_id)
+                for admin in dept_admins:
+                    await NotificationRepository.create(
+                        conn, org_id, admin["id"], "competitor_removed",
+                        f"Competitor Removed for {dept_name}",
+                        f"{creator['name']} removed {comp['name']} from your department's competitors."
+                    )
 
     # ── Screening Questions ────────────────────────────────────────────────────
 
@@ -401,15 +464,7 @@ class SettingsService:
              "options": "Yes (3 days/week),Yes (5 days/week),No (Remote only)", "is_required": True, "sort_order": 5},
         ]
         for q in default_questions:
-            await ScreeningQuestionRepository.create(
-                conn, org_id,
-                field_key=q["field_key"],
-                label=q["label"],
-                field_type=q.get("field_type", "text"),
-                options=q.get("options"),
-                is_required=q.get("is_required", False),
-                sort_order=q.get("sort_order", 0),
-            )
+            await ScreeningQuestionRepository.create(conn, org_id, **q)
 
         # 3. Default message templates
         default_templates = [
@@ -450,14 +505,7 @@ class SettingsService:
             },
         ]
         for t in default_templates:
-            await MessageTemplateRepository.create(
-                conn, org_id,
-                name=t["name"],
-                category=t["category"],
-                body=t["body"],
-                subject=t.get("subject"),
-                is_default=t.get("is_default", False),
-            )
+            await MessageTemplateRepository.create(conn, org_id, **t)
 
         # 4. Default scorecard template
         default_dimensions = json.dumps([

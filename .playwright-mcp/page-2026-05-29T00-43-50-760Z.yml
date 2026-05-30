@@ -1,0 +1,83 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - link "AI Talent Lab home" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img [ref=e8]
+        - generic [ref=e12]: AI Talent Lab
+      - generic [ref=e13]:
+        - heading "Hire is a verb. Let's make it your favorite." [level=1] [ref=e14]:
+          - text: Hire is a verb.
+          - text: Let's make it your favorite.
+        - paragraph [ref=e15]: AI sources, screens, scores and schedules. You make the call. Together you ship 10× more hires — without the busywork.
+        - list "Product highlights" [ref=e16]:
+          - listitem [ref=e17]:
+            - strong [ref=e18]: 200+
+            - generic [ref=e19]: Hiring teams onboard
+          - listitem [ref=e20]:
+            - strong [ref=e21]: 38d
+            - generic [ref=e22]: Avg time saved per req
+          - listitem [ref=e23]:
+            - strong [ref=e24]: 94%
+            - generic [ref=e25]: Candidate response NPS
+  - main [ref=e26]:
+    - generic [ref=e27]:
+      - navigation "Authentication mode" [ref=e28]:
+        - link "Sign in" [ref=e29] [cursor=pointer]:
+          - /url: /login
+        - link "Create workspace" [ref=e30] [cursor=pointer]:
+          - /url: /register
+      - generic [ref=e31]:
+        - heading "Create your workspace" [level=2] [ref=e32]
+        - paragraph [ref=e33]: 14 days free · no credit card · invite teammates anytime.
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - generic [ref=e36]: Organization name
+          - textbox "Organization name" [active] [ref=e37]:
+            - /placeholder: Acme Corp
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e40]: Industry
+            - textbox "Industry" [ref=e41]:
+              - /placeholder: e.g. SaaS, Fintech
+          - generic [ref=e42]:
+            - generic [ref=e43]: Company size
+            - combobox "Company size" [ref=e44]:
+              - option "Startup (1–50)" [selected]
+              - option "SMB (51–500)"
+              - option "Enterprise (500+)"
+        - generic [ref=e45]:
+          - generic [ref=e46]: Website (optional)
+          - textbox "Website (optional)" [ref=e47]:
+            - /placeholder: https://yourcompany.com
+        - generic [ref=e49]:
+          - generic [ref=e50]: Your name
+          - textbox "Your name" [ref=e51]:
+            - /placeholder: Jane Doe
+        - generic [ref=e52]:
+          - generic [ref=e53]: Work email
+          - textbox "Work email" [ref=e54]:
+            - /placeholder: jane@acme.com
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - generic [ref=e57]: Password
+            - generic [ref=e58]:
+              - textbox "Password" [ref=e59]:
+                - /placeholder: Create a strong password
+              - button "Show password" [ref=e60] [cursor=pointer]:
+                - img [ref=e61]
+            - generic [ref=e64]: 8+ chars · 1 uppercase · 1 number · 1 symbol
+          - generic [ref=e65]:
+            - generic [ref=e66]: Confirm password
+            - generic [ref=e67]:
+              - textbox "Confirm password" [ref=e68]:
+                - /placeholder: Repeat your password
+              - button "Show password" [ref=e69] [cursor=pointer]:
+                - img [ref=e70]
+        - button "Create workspace" [disabled] [ref=e73]:
+          - text: Create workspace
+          - img [ref=e74]
+      - paragraph [ref=e76]:
+        - text: Already have an account?
+        - link "Sign in" [ref=e77] [cursor=pointer]:
+          - /url: /login
