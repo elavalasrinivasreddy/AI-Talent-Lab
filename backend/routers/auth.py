@@ -185,8 +185,9 @@ async def list_users(
     user: dict = Depends(require_dept_admin),
     db: asyncpg.Connection = Depends(get_db),
 ):
-    """List all org users (dept admin or above)."""
-    users = await AuthService.list_users(db, user["org_id"])
+    """List org users. dept_admin sees only their own department; org_head sees all."""
+    dept_id = user.get("dept_id") if user["role"] == "dept_admin" else None
+    users = await AuthService.list_users(db, user["org_id"], department_id=dept_id)
     return {"users": [_user_response(u) for u in users]}
 
 

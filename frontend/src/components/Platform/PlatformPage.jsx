@@ -3,7 +3,7 @@
  * Route: /platform  (no sidebar — standalone page)
  * Requires role: platform_admin
  */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import './PlatformPage.css'
@@ -230,9 +230,8 @@ function OrgTable({ orgs, compact = false, expandable = false, token }) {
       </thead>
       <tbody>
         {orgs.map(org => (
-          <>
+          <Fragment key={org.id}>
             <tr
-              key={org.id}
               className={`${expandable ? 'plat-org-row-clickable' : ''} ${expandedId === org.id ? 'plat-org-row-expanded' : ''}`}
               onClick={expandable ? () => toggleRow(org.id) : undefined}
             >
@@ -253,7 +252,7 @@ function OrgTable({ orgs, compact = false, expandable = false, token }) {
               {!compact && <td>{org.created_at ? new Date(org.created_at).toLocaleDateString() : '—'}</td>}
             </tr>
             {expandable && expandedId === org.id && (
-              <tr key={`detail-${org.id}`} className="plat-org-detail-row">
+              <tr className="plat-org-detail-row">
                 <td colSpan={colCount}>
                   {loadingId === org.id ? (
                     <div className="plat-detail-loading">Loading details…</div>
@@ -265,7 +264,7 @@ function OrgTable({ orgs, compact = false, expandable = false, token }) {
                 </td>
               </tr>
             )}
-          </>
+          </Fragment>
         ))}
       </tbody>
     </table>

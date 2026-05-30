@@ -155,6 +155,9 @@ class AuthService:
 
         # Mark user as having logged in (sets last_login_at)
         await UserRepository.reset_login_state(conn, user["id"])
+        # Patch in-memory dict so the response reflects the real timestamp,
+        # not the NULL default from UserRepository.create.
+        user["last_login_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
 
         token = create_access_token(
             user_id=user["id"],
@@ -368,9 +371,13 @@ class AuthService:
         return {"user": user, "org": org}
 
     @staticmethod
-    async def list_users(conn: asyncpg.Connection, org_id: int) -> list:
-        """List all users in an org (admin only)."""
-        return await UserRepository.list_by_org(conn, org_id)
+    async def list_users(
+        conn: asyncpg.Connection,
+        org_id: int,
+        department_id: Optional[int] = None,
+    ) -> list:
+        """List users in an org; scoped to a department when dept_admin calls."""
+        return await UserRepository.list_by_org(conn, org_id, department_id=department_id)
 
     @staticmethod
     async def add_user(
