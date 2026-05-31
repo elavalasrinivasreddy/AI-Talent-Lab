@@ -1,11 +1,7 @@
-/**
- * TalentPoolPage.jsx – Org-wide talent pool with bulk upload and AI suggestions
- * Route: /talent-pool
- * Per docs/design/pages/08_talent_pool.md
- */
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { positionsApi } from '../../utils/api'
+import { useAuth } from '../../context/AuthContext'
 import './TalentPoolPage.css'
 
 const API = '/api/v1'
@@ -17,34 +13,39 @@ const REASON_COLORS = {
   manual: { color: '#0D9488', bg: 'rgba(13,148,136,0.1)', label: 'Manual' },
 }
 
+const CONTACT_STATUS_CFG = {
+  active: { label: 'Contactable', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+  unsubscribed: { label: 'Unsubscribed', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  employed: { label: 'Employed', color: '#0D9488', bg: 'rgba(13,148,136,0.1)' },
+}
+
 function authHeader() {
   const token = localStorage.getItem('token')
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 export default function TalentPoolPage() {
+  const { user } = useAuth()
   const navigate = useNavigate()
+  
   const [candidates, setCandidates] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
   const [loading, setLoading] = useState(true)
+  
+  // Filters
   const [search, setSearch] = useState('')
   const [filterLocation, setFilterLocation] = useState('')
   const [filterReason, setFilterReason] = useState('')
   const searchTimeout = useRef(null)
 
-  // Bulk upload
-  const [dragging, setDragging] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [uploadResult, setUploadResult] = useState(null)
-  const fileInputRef = useRef(null)
+  // Modals & Panels
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [showCopilotPanel, setShowCopilotPanel] = useState(false)
 
-  // AI Suggest
+  // Positions (for AI suggest)
   const [positions, setPositions] = useState([])
-  const [selectedPosition, setSelectedPosition] = useState('')
-  const [suggesting, setSuggesting] = useState(false)
-  const [suggestions, setSuggestions] = useState(null)
 
   const load = useCallback(async (p = 1, s = search, loc = filterLocation, rsn = filterReason) => {
     setLoading(true)
@@ -65,14 +66,14 @@ export default function TalentPoolPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [search, filterLocation, filterReason])
 
   useEffect(() => {
     load()
     positionsApi.list({ status: 'open' }).then(data => {
       setPositions(Array.isArray(data) ? data : data.positions || [])
     }).catch(() => { })
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = (val) => {
     setSearch(val)
@@ -80,248 +81,141 @@ export default function TalentPoolPage() {
     searchTimeout.current = setTimeout(() => load(1, val, filterLocation, filterReason), 400)
   }
 
-  // ── Bulk Upload ─────────────────────────────────────────────────────────────
+  // Filter positions based on user RBAC
+  const availablePositions = positions.filter(p => {
+    if (['org_head', 'platform_admin'].includes(user?.role)) return true
+    if (user?.department_id) return p.department_id === user.department_id
+    return true
+  })
 
-  const handleFiles = async (files) => {
-    if (!files?.length) return
-    setUploading(true)
-    setUploadResult(null)
-    const form = new FormData()
-    Array.from(files).slice(0, 50).forEach(f => form.append('files', f))
-    try {
-      const res = await fetch(`${API}/talent-pool/bulk-upload`, {
-        method: 'POST',
-        headers: authHeader(),
-        body: form,
-      })
-      const data = await res.json()
-      setUploadResult(data)
-      load(1)
-    } catch (e) {
-      setUploadResult({ error: e.message })
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const onDrop = (e) => {
-    e.preventDefault()
-    setDragging(false)
-    handleFiles(e.dataTransfer.files)
-  }
-
-  // ── AI Suggest ──────────────────────────────────────────────────────────────
-
-  const handleSuggest = async () => {
-    if (!selectedPosition) return
-    setSuggesting(true)
-    setSuggestions(null)
-    try {
-      const res = await fetch(`${API}/talent-pool/suggest/${selectedPosition}`, {
-        method: 'POST',
-        headers: { ...authHeader(), 'Content-Type': 'application/json' },
-      })
-      const data = await res.json()
-      setSuggestions(data.matches || [])
-    } catch (e) {
-      setSuggestions([])
-    } finally {
-      setSuggesting(false)
-    }
-  }
-
-  const addToPipeline = async (candidateId) => {
-    try {
-      await fetch(`${API}/talent-pool/${candidateId}/add-to-position`, {
-        method: 'POST',
-        headers: { ...authHeader(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ position_id: parseInt(selectedPosition) }),
-      })
-      setSuggestions(prev => prev?.filter(s => s.candidate_id !== candidateId))
-    } catch (e) {
-      alert('Failed to add to pipeline')
-    }
-  }
+  const isPoolEmpty = !loading && total === 0 && !search && !filterLocation && !filterReason
 
   return (
     <div className="tp-page">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="tp-header">
         <div>
           <h1 className="tp-title">🗃 Talent Pool</h1>
           <p className="tp-sub">{total > 0 ? `${total.toLocaleString()} candidates · Org-wide` : 'Your reusable candidate database'}</p>
         </div>
+        <button className="btn-primary" onClick={() => setShowUploadModal(true)}>
+          + Upload Resumes
+        </button>
       </div>
 
-      {/* ── Bulk Upload Zone ── */}
-      <div
-        className={`tp-upload-zone ${dragging ? 'dragging' : ''} ${uploading ? 'uploading' : ''}`}
-        onDragOver={e => { e.preventDefault(); setDragging(true) }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
-        onClick={() => !uploading && fileInputRef.current?.click()}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept=".pdf,.docx,.doc,.txt"
-          style={{ display: 'none' }}
-          onChange={e => handleFiles(e.target.files)}
-        />
-        {uploading ? (
-          <div className="tp-upload-processing">
-            <div className="tp-spinner" />
-            <p>Processing resumes… AI is extracting and deduplicating</p>
-          </div>
-        ) : (
-          <>
-            <div className="tp-upload-icon">📁</div>
-            <div className="tp-upload-text">
-              <strong>Drop resumes here to add offline candidates</strong>
-              <span>or</span>
-              <button className="tp-upload-btn" type="button">+ Upload Resumes</button>
+      {/* ── Main Content Area ── */}
+      {!isPoolEmpty ? (
+        <>
+          {/* Toolbar */}
+          <div className="tp-toolbar">
+            <div className="tp-search-wrap">
+              <span className="tp-search-icon">🔍</span>
+              <input
+                type="text"
+                className="tp-search-input"
+                placeholder="Search by name, title, skills…"
+                value={search}
+                onChange={e => handleSearch(e.target.value)}
+              />
             </div>
-            <div className="tp-upload-hint">PDF or DOCX · Up to 50 files · Max 5MB each</div>
-          </>
-        )}
-      </div>
+            
+            <select
+              className="tp-filter-select"
+              value={filterLocation}
+              onChange={e => { setFilterLocation(e.target.value); load(1, search, e.target.value, filterReason) }}
+            >
+              <option value="">All Locations</option>
+              <option value="Bangalore">Bangalore</option>
+              <option value="Mumbai">Mumbai</option>
+              <option value="Delhi">Delhi</option>
+              <option value="Remote">Remote</option>
+            </select>
+            
+            <select
+              className="tp-filter-select"
+              value={filterReason}
+              onChange={e => { setFilterReason(e.target.value); load(1, search, filterLocation, e.target.value) }}
+            >
+              <option value="">All Reasons</option>
+              <option value="rejected">Rejected</option>
+              <option value="position_closed">Position Closed</option>
+              <option value="position_archived">Position Archived</option>
+              <option value="manual">Manual</option>
+            </select>
 
-      {/* Upload Results */}
-      {uploadResult && <UploadResults result={uploadResult} onDone={() => setUploadResult(null)} />}
+            <div style={{ flex: 1 }} />
 
-      {/* ── AI Suggest Panel ── */}
-      <div className="tp-suggest-panel">
-        <div className="tp-suggest-header">
-          <h3>🤖 AI Match Suggestions</h3>
-          <p>Find pool candidates for a position before sourcing externally</p>
-        </div>
-        <div className="tp-suggest-controls">
-          <select
-            className="tp-suggest-select"
-            value={selectedPosition}
-            onChange={e => { setSelectedPosition(e.target.value); setSuggestions(null) }}
-          >
-            <option value="">Select open position…</option>
-            {positions.map(p => (
-              <option key={p.id} value={p.id}>{p.role_name}</option>
-            ))}
-          </select>
-          <button
-            className="tp-suggest-btn"
-            onClick={handleSuggest}
-            disabled={!selectedPosition || suggesting}
-          >
-            {suggesting ? '⏳ Finding…' : '🔍 Find Matches'}
-          </button>
-        </div>
+            <button 
+              className="btn-copilot" 
+              onClick={() => setShowCopilotPanel(true)}
+            >
+              ✨ AI Match to Position
+            </button>
+          </div>
 
-        {suggestions !== null && (
-          <div className="tp-suggest-results">
-            {suggestions.length === 0 ? (
-              <p className="tp-suggest-empty">No pool candidates above 55% match for this position.</p>
+          {/* Grid */}
+          <div className="tp-grid-container">
+            {loading ? (
+              <PoolSkeleton />
+            ) : candidates.length === 0 ? (
+              <PoolEmpty hasFilters={true} onClear={() => {
+                setSearch('')
+                setFilterLocation('')
+                setFilterReason('')
+                load(1, '', '', '')
+              }} />
             ) : (
               <>
-                <p className="tp-suggest-count">Found {suggestions.length} pool candidates above 55% match:</p>
-                <div className="tp-suggest-cards">
-                  {suggestions.map(s => (
-                    <div key={s.candidate_id} className="tp-suggest-card">
-                      <div className="tp-suggest-score">{s.match_score}%</div>
-                      <div className="tp-suggest-name">{s.name}</div>
-                      <div className="tp-suggest-title">{s.current_title}</div>
-                      {s.talent_pool_reason && (
-                        <span className="tp-suggest-reason"
-                          style={{ color: REASON_COLORS[s.talent_pool_reason]?.color }}>
-                          {REASON_COLORS[s.talent_pool_reason]?.label}
-                        </span>
-                      )}
-                      <button
-                        className="tp-suggest-add-btn"
-                        onClick={() => addToPipeline(s.candidate_id)}
-                      >
-                        + Add to Pipeline
-                      </button>
-                    </div>
+                <div className="tp-grid">
+                  {candidates.map(c => (
+                    <CandidateCard key={c.id} candidate={c} onNavigate={navigate} />
                   ))}
                 </div>
+                {pages > 1 && (
+                  <div className="tp-pagination">
+                    {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
+                      <button
+                        key={p}
+                        className={`tp-page-btn ${p === page ? 'active' : ''}`}
+                        onClick={() => load(p)}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>
-        )}
-      </div>
-
-      {/* ── Search + Filters ── */}
-      <div className="tp-filters">
-        <div className="tp-search-wrap">
-          <span className="tp-search-icon">🔍</span>
-          <input
-            type="text"
-            className="tp-search-input"
-            placeholder="Search by name, title, skills…"
-            value={search}
-            onChange={e => handleSearch(e.target.value)}
-          />
-        </div>
-        <select
-          className="tp-filter-select"
-          value={filterLocation}
-          onChange={e => { setFilterLocation(e.target.value); load(1, search, e.target.value, filterReason) }}
-        >
-          <option value="">All Locations</option>
-          <option value="Bangalore">Bangalore</option>
-          <option value="Mumbai">Mumbai</option>
-          <option value="Delhi">Delhi</option>
-          <option value="Remote">Remote</option>
-        </select>
-        <select
-          className="tp-filter-select"
-          value={filterReason}
-          onChange={e => { setFilterReason(e.target.value); load(1, search, filterLocation, e.target.value) }}
-        >
-          <option value="">All Reasons</option>
-          <option value="rejected">Rejected</option>
-          <option value="position_closed">Position Closed</option>
-          <option value="position_archived">Position Archived</option>
-          <option value="manual">Manual</option>
-        </select>
-      </div>
-
-      {/* ── Candidate Grid ── */}
-      {loading ? (
-        <PoolSkeleton />
-      ) : candidates.length === 0 ? (
-        <PoolEmpty hasFilters={!!(search || filterLocation || filterReason)} />
-      ) : (
-        <>
-          <div className="tp-grid">
-            {candidates.map(c => (
-              <CandidateCard key={c.id} candidate={c} onNavigate={navigate} />
-            ))}
-          </div>
-          {pages > 1 && (
-            <div className="tp-pagination">
-              {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
-                <button
-                  key={p}
-                  className={`tp-page-btn ${p === page ? 'active' : ''}`}
-                  onClick={() => load(p)}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          )}
         </>
+      ) : (
+        <PoolEmpty 
+          hasFilters={false} 
+          onUploadClick={() => setShowUploadModal(true)} 
+        />
+      )}
+
+      {/* ── Modals & Panels ── */}
+      {showUploadModal && (
+        <BulkUploadModal 
+          onClose={() => setShowUploadModal(false)} 
+          onSuccess={() => load(1)} 
+        />
+      )}
+
+      {showCopilotPanel && (
+        <CopilotMatchPanel 
+          onClose={() => setShowCopilotPanel(false)}
+          positions={availablePositions}
+        />
       )}
     </div>
   )
 }
 
-const CONTACT_STATUS_CFG = {
-  active: { label: 'Contactable', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
-  unsubscribed: { label: 'Unsubscribed', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-  employed: { label: 'Employed', color: '#0D9488', bg: 'rgba(13,148,136,0.1)' },
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Components
+// ─────────────────────────────────────────────────────────────────────────────
 
 function CandidateCard({ candidate: c, onNavigate }) {
   const reason = REASON_COLORS[c.talent_pool_reason] || REASON_COLORS.manual
@@ -378,47 +272,24 @@ function CandidateCard({ candidate: c, onNavigate }) {
   )
 }
 
-function UploadResults({ result, onDone }) {
-  if (result.error) return (
-    <div className="tp-upload-result error">
-      <span>⚠️</span> Upload failed: {result.error}
-      <button onClick={onDone}>✕</button>
-    </div>
-  )
-  return (
-    <div className="tp-upload-result">
-      <div className="tp-result-header">
-        <h4>Upload Results — Processed {result.processed || 0} resumes</h4>
-        <button className="tp-result-close" onClick={onDone}>✕ Done</button>
-      </div>
-      {result.added?.length > 0 && (
-        <p className="tp-result-added">✅ {result.added.length} new candidates added to pool</p>
-      )}
-      {result.duplicates?.length > 0 && (
-        <div className="tp-result-dups">
-          <p>⚠️ {result.duplicates.length} duplicates detected:</p>
-          {result.duplicates.map((d, i) => (
-            <div key={i} className="tp-dup-row">
-              <span>• {d.name} ({d.email})</span>
-              <span className="tp-dup-age">last updated {d.days_since_update}d ago</span>
-              {d.suggest_skip && <span className="tp-dup-skip">Auto-suggest: Skip — recent profile</span>}
-            </div>
-          ))}
-        </div>
-      )}
-      {result.errors?.length > 0 && (
-        <p className="tp-result-errors">❌ {result.errors.length} files could not be processed</p>
-      )}
-    </div>
-  )
-}
-
-function PoolEmpty({ hasFilters }) {
+function PoolEmpty({ hasFilters, onClear, onUploadClick }) {
   return (
     <div className="tp-empty">
-      <span>🗃</span>
+      <div className="tp-empty-icon">🗃</div>
       <h3>{hasFilters ? 'No candidates match your filters' : 'Your talent pool is empty'}</h3>
-      <p>{hasFilters ? 'Try a different search or filter.' : 'Upload resumes above to build your pool, or candidates are auto-added when rejected from positions.'}</p>
+      <p>{hasFilters 
+        ? 'Try adjusting your search terms or filters.' 
+        : 'Upload resumes to build your pool. Candidates are also auto-added when rejected from open positions.'}
+      </p>
+      {hasFilters ? (
+        <button className="btn-secondary" onClick={onClear} style={{ marginTop: 12 }}>
+          Clear Filters
+        </button>
+      ) : (
+        <button className="btn-primary" onClick={onUploadClick} style={{ marginTop: 12 }}>
+          + Upload Resumes
+        </button>
+      )}
     </div>
   )
 }
@@ -430,5 +301,256 @@ function PoolSkeleton() {
         <div key={i} className="skeleton-block" style={{ height: 200, borderRadius: 14 }} />
       ))}
     </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Modals & Panels
+// ─────────────────────────────────────────────────────────────────────────────
+
+function BulkUploadModal({ onClose, onSuccess }) {
+  const [dragging, setDragging] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [result, setResult] = useState(null)
+  const fileInputRef = useRef(null)
+
+  const handleFiles = async (files) => {
+    if (!files?.length) return
+    setUploading(true)
+    setResult(null)
+    const form = new FormData()
+    Array.from(files).slice(0, 50).forEach(f => form.append('files', f))
+    try {
+      const res = await fetch(`${API}/talent-pool/bulk-upload`, {
+        method: 'POST',
+        headers: authHeader(),
+        body: form,
+      })
+      const data = await res.json()
+      setResult(data)
+      if (!data.error) onSuccess()
+    } catch (e) {
+      setResult({ error: e.message })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const onDrop = (e) => {
+    e.preventDefault()
+    setDragging(false)
+    handleFiles(e.dataTransfer.files)
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 600 }}>
+        <div className="modal-header">
+          <h3>Bulk Upload Resumes</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        
+        <div className="modal-body" style={{ padding: '24px' }}>
+          {!result ? (
+            <div
+              className={`tp-upload-zone ${dragging ? 'dragging' : ''} ${uploading ? 'uploading' : ''}`}
+              onDragOver={e => { e.preventDefault(); setDragging(true) }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={onDrop}
+              onClick={() => !uploading && fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.docx,.doc,.txt"
+                style={{ display: 'none' }}
+                onChange={e => handleFiles(e.target.files)}
+              />
+              {uploading ? (
+                <div className="tp-upload-processing">
+                  <div className="tp-spinner" />
+                  <p>Processing resumes… AI is extracting and deduplicating</p>
+                </div>
+              ) : (
+                <>
+                  <div className="tp-upload-icon">📁</div>
+                  <div className="tp-upload-text">
+                    <strong>Drop resumes here</strong>
+                    <span>or</span>
+                    <button className="btn-primary" type="button" onClick={e => { e.stopPropagation(); fileInputRef.current?.click() }}>Browse Files</button>
+                  </div>
+                  <div className="tp-upload-hint">PDF or DOCX · Up to 50 files · Max 5MB each</div>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className={`tp-upload-result ${result.error ? 'error' : ''}`}>
+              {result.error ? (
+                <><span>⚠️</span> Upload failed: {result.error}</>
+              ) : (
+                <>
+                  <div className="tp-result-header">
+                    <h4>Processed {result.processed || 0} resumes</h4>
+                  </div>
+                  {result.added?.length > 0 && (
+                    <p className="tp-result-added">✅ {result.added.length} new candidates added to pool</p>
+                  )}
+                  {result.duplicates?.length > 0 && (
+                    <div className="tp-result-dups">
+                      <p>⚠️ {result.duplicates.length} duplicates detected (skipped):</p>
+                      {result.duplicates.map((d, i) => (
+                        <div key={i} className="tp-dup-row">
+                          <span>• {d.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {result.errors?.length > 0 && (
+                    <p className="tp-result-errors">❌ {result.errors.length} files failed</p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {result && (
+          <div className="modal-footer">
+            <button className="btn-primary" onClick={onClose}>Done</button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function CopilotMatchPanel({ onClose, positions }) {
+  const [selectedPosition, setSelectedPosition] = useState('')
+  const [suggesting, setSuggesting] = useState(false)
+  const [suggestions, setSuggestions] = useState(null)
+  
+  // Group positions by department
+  const groupedPositions = positions.reduce((acc, p) => {
+    const dept = p.department_name || 'Global'
+    if (!acc[dept]) acc[dept] = []
+    acc[dept].push(p)
+    return acc
+  }, {})
+
+  const handleSuggest = async () => {
+    if (!selectedPosition) return
+    setSuggesting(true)
+    setSuggestions(null)
+    try {
+      const res = await fetch(`${API}/talent-pool/suggest/${selectedPosition}`, {
+        method: 'POST',
+        headers: { ...authHeader(), 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      setSuggestions(data.matches || [])
+    } catch (e) {
+      setSuggestions([])
+    } finally {
+      setSuggesting(false)
+    }
+  }
+
+  const addToPipeline = async (candidateId) => {
+    try {
+      await fetch(`${API}/talent-pool/${candidateId}/add-to-position`, {
+        method: 'POST',
+        headers: { ...authHeader(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ position_id: parseInt(selectedPosition) }),
+      })
+      setSuggestions(prev => prev?.filter(s => s.candidate_id !== candidateId))
+    } catch (e) {
+      alert('Failed to add to pipeline')
+    }
+  }
+
+  return (
+    <>
+      <div className="panel-backdrop" onClick={onClose} />
+      <div className="copilot-panel">
+        <div className="copilot-panel-header">
+          <div className="copilot-panel-title">
+            <span>✨</span> AI Copilot Match
+          </div>
+          <button className="copilot-panel-close" onClick={onClose}>✕</button>
+        </div>
+        
+        <div className="copilot-panel-body">
+          <p className="copilot-panel-desc">
+            Select an open position to find the best candidates already in your talent pool.
+          </p>
+          
+          <div className="copilot-panel-controls">
+            <select
+              className="copilot-select"
+              value={selectedPosition}
+              onChange={e => { setSelectedPosition(e.target.value); setSuggestions(null) }}
+            >
+              <option value="">Select open position…</option>
+              {Object.entries(groupedPositions).map(([dept, posList]) => (
+                <optgroup key={dept} label={dept}>
+                  {posList.map(p => (
+                    <option key={p.id} value={p.id}>{p.role_name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <button
+              className="btn-copilot"
+              onClick={handleSuggest}
+              disabled={!selectedPosition || suggesting}
+              style={{ width: '100%', marginTop: '12px' }}
+            >
+              {suggesting ? '⏳ Scoring Pool...' : 'Run AI Match'}
+            </button>
+          </div>
+
+          <div className="copilot-panel-results">
+            {suggesting && (
+              <div className="copilot-loading">
+                <div className="tp-spinner" />
+                <p>Analyzing candidates...</p>
+              </div>
+            )}
+            
+            {suggestions !== null && !suggesting && (
+              <>
+                {suggestions.length === 0 ? (
+                  <div className="copilot-empty">
+                    <p>No pool candidates matched above 55% for this position.</p>
+                  </div>
+                ) : (
+                  <div className="copilot-match-list">
+                    <p className="copilot-match-count">Top matches from pool:</p>
+                    {suggestions.map(s => (
+                      <div key={s.candidate_id} className="copilot-match-card">
+                        <div className="cmc-header">
+                          <div className="cmc-score">{s.match_score}%</div>
+                          <div className="cmc-info">
+                            <div className="cmc-name">{s.name}</div>
+                            <div className="cmc-title">{s.current_title}</div>
+                          </div>
+                        </div>
+                        <button
+                          className="btn-secondary cmc-add-btn"
+                          onClick={() => addToPipeline(s.candidate_id)}
+                        >
+                          + Add to Pipeline
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
   )
 }

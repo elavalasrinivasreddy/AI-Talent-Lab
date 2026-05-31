@@ -1064,18 +1064,23 @@ When an Org Head invites a new team member and leaves their department empty, th
 **Files Modified:**
 - `frontend/src/components/Settings/tabs/TeamTab.jsx`
 
-### 68. Talent Pool UI/UX Overhaul & Scrolling Fix (Pending)
-**Date:** 2026-05-31
-**Status:** Planned
+### 68. Talent Pool UI/UX Overhaul & Contextual Copilot Match
+**Date:** 2026-06-01
+**Status:** Fixed
 
 **Issue / Validation:**
-The current Talent Pool screen is using the legacy "pre-v3" layout which is extremely messy and space-inefficient:
-1. **Scrolling Issue:** The page lacks the standard fixed layout wrapper (`app-content` / `scrollable-content`), causing the entire page to scroll top-to-bottom instead of just the content area.
-2. **Vertical Bloat:** The Bulk Upload dropzone, AI Match Suggestions, Search bar, and full-width Filter dropdowns are all stacked vertically. This pushes the actual candidate data (or the Empty State) entirely off the screen.
-3. **Illogical Empty State:** AI Match Suggestions and Filters are visible even when the talent pool is 100% empty, which makes no sense.
+The Talent Pool screen was using a legacy "pre-v3" layout that was messy, space-inefficient, and suffered from global scrolling issues. Additionally, the planned "V3 Matrix" design was identified as computationally expensive and prone to horizontal scrolling issues.
 
-**Proposed Solution (Aligning with v3 Design Docs):**
-- **Fix Shell:** Wrap the page in the standard fixed-header layout.
-- **Clean Empty State:** If the pool is empty, hide all filters and AI Match panels. Show only a beautiful, centered empty state with a primary `[+ Upload Resumes]` button.
-- **Move Bulk Upload:** Move the massive drag-and-drop zone into a Modal triggered by a top-right header button (`+ Upload Resumes`), aligning with the v3 spec and saving 30% of screen height.
-- **Horizontal Toolbar:** Refactor the Search, Location, and Reason filters into a compact, horizontal flex-row toolbar.
+**Idea / Solution:**
+- Transitioned directly to a **V4 Contextual Copilot Match** architecture.
+- **Routing & RBAC:** Added a `RoleGuard` in `router.jsx` to restrict access to `['org_head', 'dept_admin', 'hr']`, strictly preventing Team Leads from browsing the global pool.
+- **UI Layout:** Rewrote `TalentPoolPage.jsx` and `.css`. Added `calc(100vh - 84px)` with `overflow-y: auto` to fix the global page scrolling. Reorganized the layout to feature a clean horizontal toolbar and a sleek grid.
+- **Bulk Upload:** Moved the massive inline drag-and-drop zone into a dedicated `BulkUploadModal` triggered from the header.
+- **AI Magic:** Replaced the inline AI Match block with a `CopilotMatchPanel` (side-panel). 
+- **RBAC Enforcement (AI Match):** The Open Positions dropdown inside the AI Match panel dynamically filters based on the user's role and `department_id`, ensuring scoped admins can only match candidates against their own open roles, while still drawing from the global talent pool.
+
+**Files Modified:**
+- `frontend/src/router.jsx`
+- `frontend/src/components/TalentPool/TalentPoolPage.jsx`
+- `frontend/src/components/TalentPool/TalentPoolPage.css`
+- `docs/design/pages/08_talent_pool.md`

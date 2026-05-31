@@ -170,7 +170,12 @@ export const router = createBrowserRouter([
 
               // Other pages
               { path: '/dashboard', element: <DashboardPage /> },
-              { path: '/talent-pool', element: <TalentPoolPage /> },
+              {
+                element: <RoleGuard roles={['org_head', 'dept_admin', 'hr']} />,
+                children: [
+                  { path: '/talent-pool', element: <TalentPoolPage /> },
+                ],
+              },
               { path: '/interviews', element: <InterviewsListPage /> },
               { path: '/settings', element: <SettingsPage /> },
               { path: '/settings/:tab', element: <SettingsPage /> },
