@@ -854,13 +854,15 @@ The JD generation and approval workflow had UX inconsistencies:
 4. The JD Variant cards (Skill-Focused, Outcome-Focused, Hybrid) were stacking or constrained instead of displaying side-by-side naturally on smaller screens.
 
 **Idea / Solution:**
-- **Final JD Card Refinement:** Stripped the outer `.canvas-body` and `.canvas-doc` wrappers from `FinalJDCard.jsx`, allowing the card to expand to the natural width of the `.jd-doc` canvas. Removed the heavy background, border, and padding from `.jd-body` in `chat.css` to blend it seamlessly into the interface (retaining only the top gradient line).
-- **Inline Header:** Modified the header section in `FinalJDCard.jsx` to be a zero-padding inline flex container so the tools (Copy, Download, Edit) align naturally on the right.
-- **Chat Bubbles & Avatars:** Added `width: fit-content` to `.msg-content-wrapper` in `chat.css` so bubbles shrink-wrap their text. Integrated the Bot and User avatar SVG components into the message stream in `MessageList.jsx`.
-- **Variants Layout:** Updated `.variants` in `chat.css` to permanently use `grid-template-columns: repeat(3, 1fr)` regardless of screen width, forcing the cards side-by-side.
+- **Final JD Card Refinement:** Stripped the `.canvas-body` and `.canvas-doc` wrappers in `FinalJDCard.jsx` and updated `JDCanvas.jsx` to remove the extra spacing wrapper. Configured `.jd-body` in `chat.css` to act as an `.agent-block` natively without heavy padding, borders, or shadows, while keeping the gradient top line.
+- **Inline Header:** Stripped inline padding styles from the `.canvas-head` in `FinalJDCard.jsx`. Resized action icons to `20px` and centralized `.icon-btn` dimensions to `40px` inside `.canvas-head-tools`.
+- **Rail Chat Modernization:** Refactored `RailConversation.jsx` to include `IconUser` and `IconBot` avatars inside a new `.rail-msg-avatar` element, and wrapped message content in `.rail-msg-bubble`. Updated `chat.css` to change `.rail-msg` to a row-based layout and configured `.rail-msg-bubble` to shrink-wrap its content (`width: fit-content; max-width: 85%;`).
+- **Variants Layout:** Updated `.variant-grid` to enforce a 3-column row (`repeat(3, minmax(0, 1fr))`) breaking to 1 column below `960px`. Set `.variant-card` base border and background to `transparent` to avoid double-boxing within the agent block.
+- **Reliable Greeting:** Defined a static `GREETING` constant in `ChatContext.jsx` and seeded it during `resetChat`, the 200 OK path for empty sessions, the 404 fresh chat branch, and error boundaries.
 
 **Files Modified:**
 - `frontend/src/styles/chat.css`
+- `frontend/src/components/Chat/JDCanvas.jsx`
 - `frontend/src/components/Chat/cards/FinalJDCard.jsx`
-- `frontend/src/components/Chat/MessageList.jsx`
-- `frontend/src/components/Chat/icons.jsx`
+- `frontend/src/components/Chat/RailConversation.jsx`
+- `frontend/src/context/ChatContext.jsx`

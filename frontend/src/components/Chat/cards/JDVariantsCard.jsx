@@ -50,8 +50,8 @@ const JDVariantsCard = ({ data, previewVariantType, setPreviewVariantType }) => 
     if (!variants || variants.length === 0) return null;
 
     return (
-        <div className="stage-card" data-dismissed={isDismissed}>
-            <div className="stage-card-head">
+        <div className="jd-variants-wrapper" data-dismissed={isDismissed} style={{ opacity: isDismissed ? 0.6 : 1, padding: '16px 0', pointerEvents: isDismissed ? 'none' : 'auto' }}>
+            <div className="stage-card-head" style={{ marginBottom: '12px' }}>
                 <span className="stage-card-eyebrow">Step 4 · Choose a style</span>
                 {isDismissed && selectedType && (
                     <span className="stage-card-status stage-card-status--ok">
@@ -59,8 +59,8 @@ const JDVariantsCard = ({ data, previewVariantType, setPreviewVariantType }) => 
                     </span>
                 )}
             </div>
-            <h3 className="stage-card-title">Three drafts. Pick the one that fits this hire.</h3>
-            <p className="stage-card-desc">
+            <h3 className="stage-card-title" style={{ marginBottom: '8px' }}>Three drafts. Pick the one that fits this hire.</h3>
+            <p className="stage-card-desc" style={{ marginBottom: '24px' }}>
                 Hover to preview on the right. Click to lock it in and generate the final JD.
             </p>
 

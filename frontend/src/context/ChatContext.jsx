@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 
+const GREETING = { role: 'assistant', content: "Hi! Tell me about the role you're hiring for.", isComplete: true };
+
 const ChatContext = createContext();
 
 export const useChat = () => useContext(ChatContext);
@@ -36,8 +38,8 @@ export const ChatProvider = ({ children }) => {
     const resetChat = useCallback(() => {
         setCurrentSessionId(null);
         setSessionTitle('New Hire');
-        // Greeting comes from backend on first session fetch — no longer hardcoded here.
-        setMessages([]);
+        // Greeting comes from backend on first session fetch, but we seed it locally for reliability.
+        setMessages([GREETING]);
         setIsStreaming(false);
         setWorkflowStage('intake');
         setIsReadOnly(false);
@@ -105,7 +107,11 @@ export const ChatProvider = ({ children }) => {
                     content: m.content,
                     isComplete: true
                 }));
-                setMessages(dbMessages);
+                if (dbMessages.length === 0 && (!data.workflow_stage || data.workflow_stage === 'intake')) {
+                    setMessages([GREETING]);
+                } else {
+                    setMessages(dbMessages);
+                }
 
                 // Restore interactive cards from graph_state_parsed
                 // Show cards even if already acted upon (they render in dismissed state)
@@ -155,13 +161,14 @@ export const ChatProvider = ({ children }) => {
                 // Session doesn't exist yet — fresh chat.
                 // We seed the static greeting message locally immediately.
                 setCurrentSessionId(sessionId);
-                setMessages([{ role: 'assistant', content: "Hi! Tell me about the role you're hiring for.", isComplete: true }]);
+                setMessages([GREETING]);
                 setWorkflowStage('intake');
                 setSessionTitle('New Hire');
             }
         } catch (err) {
             console.error("Failed to load session", err);
             setCurrentSessionId(sessionId);
+            setMessages([GREETING]);
         }
     }, [token]);
 

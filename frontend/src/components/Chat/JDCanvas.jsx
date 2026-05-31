@@ -57,9 +57,7 @@ export default function JDCanvas() {
       {variantsCard && <AgentBlockVariants />}
 
       {jdBody && (
-          <div style={{ marginTop: '24px' }}>
-              <FinalJDCard />
-          </div>
+          <FinalJDCard />
       )}
     </div>
   );

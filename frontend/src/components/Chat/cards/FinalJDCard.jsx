@@ -280,11 +280,8 @@ const FinalJDCard = () => {
 
     return (
         <>
-
-            <div className="canvas-body" style={{ padding: '24px 40px' }}>
-                <div className="canvas-doc">
-                    <article className="jd-body" style={{ marginTop: '0' }}>
-                        <div className="canvas-head" style={{ padding: '0', height: 'auto', borderBottom: 'none', marginBottom: '24px' }}>
+            <article className="jd-body agent-block">
+                <div className="canvas-head" style={{ padding: '0', height: 'auto', borderBottom: 'none', marginBottom: '24px', background: 'transparent' }}>
                             <div className="canvas-head-meta">
                                 <IconFileText size={14} />
                                 <span>
@@ -293,28 +290,28 @@ const FinalJDCard = () => {
                                 {isJdStreaming && <span className="stream-cursor" aria-hidden="true" />}
                             </div>
                             <div className="canvas-head-tools">
-                                <button className="icon-btn" title={copyLabel} aria-label="Copy markdown" onClick={handleCopy} disabled={isBusy} style={{ width: '36px', height: '36px' }}>
-                                    <IconCopy size={18} />
+                                <button className="icon-btn" title={copyLabel} aria-label="Copy markdown" onClick={handleCopy} disabled={isBusy}>
+                                    <IconCopy size={20} />
                                 </button>
-                                <button className="icon-btn" title="Download .md" aria-label="Download markdown" onClick={handleDownloadMD} disabled={isBusy} style={{ width: '36px', height: '36px' }}>
-                                    <IconDownload size={18} />
+                                <button className="icon-btn" title="Download .md" aria-label="Download markdown" onClick={handleDownloadMD} disabled={isBusy}>
+                                    <IconDownload size={20} />
                                 </button>
-                                <button className="icon-btn" title="Download PDF" aria-label="Download PDF" onClick={handleDownloadPDF} disabled={isBusy} style={{ width: '36px', height: '36px' }}>
-                                    <IconFileText size={18} />
+                                <button className="icon-btn" title="Download PDF" aria-label="Download PDF" onClick={handleDownloadPDF} disabled={isBusy}>
+                                    <IconFileText size={20} />
                                 </button>
                                 {!isComplete && !isReadOnly && (
                                     isEditing ? (
                                         <>
-                                            <button className="icon-btn" title="Save changes" aria-label="Save changes" onClick={handleSaveEdit} style={{ width: '36px', height: '36px' }}>
-                                                <IconCheck size={18} />
+                                            <button className="icon-btn" title="Save changes" aria-label="Save changes" onClick={handleSaveEdit}>
+                                                <IconCheck size={20} />
                                             </button>
-                                            <button className="icon-btn" title="Cancel edit" aria-label="Cancel edit" onClick={handleCancelEdit} style={{ width: '36px', height: '36px' }}>
-                                                <IconX size={18} />
+                                            <button className="icon-btn" title="Cancel edit" aria-label="Cancel edit" onClick={handleCancelEdit}>
+                                                <IconX size={20} />
                                             </button>
                                         </>
                                     ) : (
-                                        <button className="icon-btn" title="Edit" aria-label="Edit JD" onClick={handleStartEdit} disabled={isBusy} style={{ width: '36px', height: '36px' }}>
-                                            <IconEdit size={18} />
+                                        <button className="icon-btn" title="Edit" aria-label="Edit JD" onClick={handleStartEdit} disabled={isBusy}>
+                                            <IconEdit size={20} />
                                         </button>
                                     )
                                 )}
@@ -343,7 +340,6 @@ const FinalJDCard = () => {
                             </div>
                         )}
                     </article>
-                </div>
 
                 {!isJdStreaming && !isComplete && !isReadOnly && (
                     <div className="canvas-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', marginTop: '32px', padding: '24px 0', borderTop: '1px solid var(--color-border)' }}>
@@ -391,8 +387,6 @@ const FinalJDCard = () => {
                         </span>
                     </div>
                 )}
-            </div>
-
             <PositionSetupModal show={showModal} onClose={() => setShowModal(false)} />
         </>
     );
