@@ -5,7 +5,7 @@ import AgentBlockIntake from './blocks/AgentBlockIntake';
 import AgentBlockInternal from './blocks/AgentBlockInternal';
 import AgentBlockMarket from './blocks/AgentBlockMarket';
 import AgentBlockVariants from './blocks/AgentBlockVariants';
-import AgentBlockBias from './blocks/AgentBlockBias';
+import FinalJDCard from './cards/FinalJDCard';
 import { IconFileText, IconSparkles } from './icons';
 
 /**
@@ -57,14 +57,10 @@ export default function JDCanvas() {
       {variantsCard && <AgentBlockVariants />}
 
       {jdBody && (
-        <article className="jd-body">
-          <ReactMarkdown>{jdBody}</ReactMarkdown>
-          {isJdStreaming && <span className="jd-stream-cursor" aria-hidden="true" />}
-        </article>
+          <div style={{ marginTop: '24px' }}>
+              <FinalJDCard />
+          </div>
       )}
-
-      {/* Bias block renders itself only when there's a final JD to check. */}
-      <AgentBlockBias />
     </div>
   );
 }

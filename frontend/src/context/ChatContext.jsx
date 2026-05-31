@@ -223,7 +223,7 @@ export const ChatProvider = ({ children }) => {
         }
 
         // Reset streaming JD text if we're generating a new one
-        if (payload.action === 'select_variant' || payload.action === 'rewrite_section') {
+        if (payload.action === 'select_variant' || payload.action === 'rewrite_section' || (workflowStage === 'final_jd' && payload.message)) {
             setStreamingJdText('');
             setFinalJdMarkdown(null);
             setIsJdStreaming(true);

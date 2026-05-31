@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import { useChat } from '../../../context/ChatContext';
 import AgentBlockShell from './AgentBlockShell';
 import ProvenanceChip from '../ProvenanceChip';
@@ -16,6 +17,7 @@ import { IconArrowRight } from '../icons';
  */
 export default function AgentBlockInternal() {
   const { internalCard, sendMessage, isStreaming, graphState } = useChat();
+  const { user } = useAuth();
   const [accepted, setAccepted] = useState(new Set());
   const isLocked = (graphState?.internal_skills_accepted?.length ?? 0) > 0
                 || graphState?.internal_skipped === true;
@@ -69,7 +71,7 @@ export default function AgentBlockInternal() {
       stage="internal_check"
       number={2}
       title="Internal skills check"
-      subtitle={`${skills.length} skill${skills.length === 1 ? '' : 's'} pulled from past TechCorp JDs`}
+      subtitle={`${skills.length} skill${skills.length === 1 ? '' : 's'} pulled from past ${user?.org_name || 'your company'} JDs`}
       status={isLocked ? 'done' : 'active'}
     >
       <div className="chip-cloud">

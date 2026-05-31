@@ -21,18 +21,17 @@ Return ONLY valid JSON:
 ```json
 {
   "skills": [
-    {"skill": "GraphQL", "sources": ["Flipkart", "Razorpay"], "frequency": 2, "context": "API layer modernization"},
-    {"skill": "gRPC", "sources": ["Google", "Flipkart"], "frequency": 2, "context": "Microservices communication"}
+    {"skill": "GraphQL", "sources": ["Industry Benchmark", "E-commerce Leaders"], "frequency": 2, "context": "API layer modernization"},
+    {"skill": "gRPC", "sources": ["Top-tier Tech"], "frequency": 2, "context": "Microservices communication"}
   ],
-  "competitors_analyzed": ["Google", "Flipkart", "Razorpay"],
   "market_summary": "Brief 1-2 sentence market analysis"
 }
 ```
 
 ## Rules
 - Maximum 8 skill suggestions
-- Rank by frequency (how many competitors mention it)
+- Rank by frequency (how many search results mention it)
 - Only include skills NOT already in current requirements
-- Include which competitors mention each skill
+- IMPORTANT: DO NOT include explicit competitor names in the output. Instead, generalize the "sources" (e.g., "Industry Benchmark", "Market Standard", "Top-tier Tech").
 - Provide brief context for why each skill matters
-- If search results are irrelevant or empty, return: {"skills": [], "competitors_analyzed": [], "market_summary": "No relevant market data found"}
+- If search results are irrelevant or empty, return: {"skills": [], "market_summary": "No relevant market data found"}

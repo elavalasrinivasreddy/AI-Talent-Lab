@@ -29,6 +29,7 @@ Return ONLY valid JSON:
     {
       "type": "skill_focused",
       "summary": "Technical stack-first approach emphasizing expertise requirements",
+      "preview_impact": "Will list technical tools as hard requirements immediately. Candidates missing 1-2 skills may self-reject.",
       "tone": "Technical",
       "skills_count": 12,
       "skills": ["Python", "AWS", "PostgreSQL", "..."],
@@ -37,6 +38,7 @@ Return ONLY valid JSON:
     {
       "type": "outcome_focused",
       "summary": "Impact-driven approach emphasizing what the candidate will achieve",
+      "preview_impact": "Attracts senior talent by focusing on business impact. Skills are framed as tools to achieve goals.",
       "tone": "Inspiring",
       "skills_count": 8,
       "skills": ["Leadership", "Stakeholder Management", "..."],
@@ -45,6 +47,7 @@ Return ONLY valid JSON:
     {
       "type": "hybrid",
       "summary": "Balanced approach combining skills and outcomes",
+      "preview_impact": "Safest default. Balances exciting outcomes with clear technical requirements to attract a broad pool.",
       "tone": "Modern",
       "skills_count": 10,
       "skills": ["React", "TypeScript", "Problem Solving", "..."],

@@ -101,6 +101,11 @@ const JDVariantsCard = ({ data, previewVariantType, setPreviewVariantType }) => 
                                 )}
                             </div>
                             <p className="variant-summary">{v.summary || meta.hint}</p>
+                            {v.preview_impact && (
+                                <div className="variant-impact" style={{ fontSize: '13px', color: '#64748b', marginTop: '8px', padding: '8px', backgroundColor: 'var(--surface-50)', borderRadius: '6px' }}>
+                                    <strong>Impact:</strong> {v.preview_impact}
+                                </div>
+                            )}
                             {v.skills && v.skills.length > 0 && (
                                 <div className="variant-skills">
                                     {v.skills.slice(0, 6).map((skill, si) => (

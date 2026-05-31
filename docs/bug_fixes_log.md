@@ -756,3 +756,34 @@ The JD generation and approval workflow had UX inconsistencies:
 - `frontend/src/components/Chat/cards/FinalJDCard.jsx`
 - `frontend/src/components/Positions/PositionsListPage.jsx`
 - `frontend/src/components/Positions/tabs/JDTab.jsx`
+
+### 51. JD Smart Revision Mode & UI Polish
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+1. Chat UI elements were forced full-width, making standard chat bubbles look stretched.
+2. The AI chatbots and user messages lacked clear visual distinction (avatars).
+3. The organization name was hardcoded in several agent blocks.
+4. Sending a revision request during the `final_jd` stage blindly regenerated the document, breaking the continuity of the original draft.
+5. Missing explicit state extraction for when recruiters mentioned new skills during their final review.
+
+**Idea / Solution:**
+- **UI Polish:** Re-engineered the chat styling (`.msg`, `.msg-body`) to enforce proper chat bubble width constraints and added user (👤) and bot (🤖) avatars to `MessageList.jsx`.
+- **Dynamic Names:** Integrated `AuthContext` into `AgentBlockInternal.jsx` and `RailStateCard.jsx` to swap the hardcoded "TechCorp" reference for the dynamic `org_name`.
+- **State Extraction:** Built an `extract_state_updates` LLM task within `drafting_final` to silently update `state["skills_required"]` when recruiters make explicit revision requests, keeping backend states synchronized.
+- **Smart Re-Compiler:** Modified the `drafting_final` prompt to act as a "Smart Re-Compiler", feeding the `CURRENT JD DRAFT` into the prompt to retain its structure, rather than generating blindly.
+- **JD Edit Lock Recovery:** Re-integrated `FinalJDCard.jsx` into `JDCanvas.jsx` to restore the manual inline Edit and Position setup buttons, properly guarded by the `isReadOnly` state.
+- **Market Privacy:** Adjusted the `market_intelligence.py` prompt to generalize sources like "Industry Benchmark" instead of revealing raw competitor names directly on the UI.
+
+**Files Modified:**
+- `frontend/src/components/Chat/MessageList.jsx`
+- `frontend/src/styles/chat.css`
+- `frontend/src/components/Chat/blocks/AgentBlockInternal.jsx`
+- `frontend/src/components/Chat/RailStateCard.jsx`
+- `frontend/src/components/Chat/JDCanvas.jsx`
+- `frontend/src/context/ChatContext.jsx`
+- `frontend/src/components/Chat/cards/JDVariantsCard.jsx`
+- `backend/agents/nodes/drafting.py`
+- `backend/agents/prompts/drafting.md`
+- `backend/agents/prompts/market_intelligence.md`

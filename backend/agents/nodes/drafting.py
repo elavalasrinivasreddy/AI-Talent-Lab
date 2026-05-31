@@ -21,6 +21,38 @@ def _load_prompt() -> str:
     with open(_PROMPT_PATH, "r") as f:
         return f.read()
 
+async def extract_state_updates(state: AgentState, feedback_text: str) -> dict:
+    """Quick LLM call to extract structured state updates (like new skills) from user feedback."""
+    try:
+        llm = get_llm(temperature=0.0)
+        current_skills = state.get("skills_required", [])
+        prompt = f"""You are an AI extracting state updates from user feedback on a Job Description.
+Current required skills: {', '.join(current_skills)}
+User Feedback: {feedback_text}
+
+Extract any new skills or core requirements explicitly requested by the user that are not in the current required skills list.
+Return a JSON object with:
+{{
+  "new_skills": ["Skill 1", "Skill 2"]
+}}
+If no new skills are mentioned, return an empty array. Do not include markdown formatting, just the raw JSON or wrapped in ```json.
+"""
+        response = await llm.ainvoke([{"role": "user", "content": prompt}])
+        content = response.content.strip()
+        if "```json" in content:
+            json_str = content.split("```json")[-1].split("```")[0].strip()
+        elif "```" in content:
+            json_str = content.split("```")[-2].split("```")[-1].strip()
+        else:
+            json_str = content
+            
+        return json.loads(json_str)
+    except Exception as e:
+        logger.error(f"State extraction failed: {e}")
+        return {"new_skills": []}
+
+
+
 
 async def run_drafting_variants(state: AgentState) -> AgentState:
     """
@@ -143,16 +175,38 @@ async def run_drafting_final(state: AgentState, token_queue=None) -> AgentState:
         # rewrite_section action handler.
         feedback = ""
         section_rewrite = state.get("section_rewrite")
+        current_jd = state.get("final_jd", "")
+        
         if section_rewrite and section_rewrite.get("instruction"):
             section = section_rewrite.get("section") or "the entire JD"
-            feedback = (
-                f"\n\nUSER REWRITE REQUEST for {section}:\n"
-                f"{section_rewrite['instruction']}"
-            )
+            if current_jd:
+                feedback = (
+                    f"\n\nCURRENT JD DRAFT:\n{current_jd}\n\nUSER REWRITE REQUEST for {section}:\n"
+                    f"{section_rewrite['instruction']}\n\nUpdate the current JD draft to address the request, preserving other existing content."
+                )
+            else:
+                feedback = (
+                    f"\n\nUSER REWRITE REQUEST for {section}:\n"
+                    f"{section_rewrite['instruction']}"
+                )
         else:
             user_msgs = [m for m in state.get("messages", []) if m["role"] == "user"]
             if user_msgs and state.get("user_action") == "message" and state.get("stage") == "final_jd":
-                feedback = f"\n\nUSER REFINEMENT REQUEST:\n{user_msgs[-1]['content']}"
+                feedback_text = user_msgs[-1]["content"]
+                
+                # 1. State Extraction
+                extracted = await extract_state_updates(state, feedback_text)
+                new_skills = extracted.get("new_skills", [])
+                if new_skills:
+                    state["skills_required"] = list(set(skills_required + new_skills))
+                    skills_required = state["skills_required"]
+                    all_skills = skills_required + internal_accepted + market_accepted
+                    
+                # 2. Smart Re-compiler prompt
+                if current_jd:
+                    feedback = f"\n\nCURRENT JD DRAFT:\n{current_jd}\n\nUSER REVISION REQUEST:\n{feedback_text}\n\nUpdate the current JD draft to address the user's request, preserving existing content where appropriate. Integrate any new requirements seamlessly."
+                else:
+                    feedback = f"\n\nUSER REFINEMENT REQUEST:\n{feedback_text}"
 
         user_content = f"""Mode: FINAL_GENERATION
 Selected Style: {selected_style}
