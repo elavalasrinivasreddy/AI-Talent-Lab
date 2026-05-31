@@ -2,6 +2,7 @@
  * JDTab.jsx – View + edit the final Job Description. Download as PDF/MD.
  */
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { positionsApi } from '../../../utils/api'
@@ -10,6 +11,7 @@ import './JDTab.css'
 
 export default function JDTab({ position, onUpdate }) {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [content, setContent] = useState(position?.jd_markdown || '')
   const [saving, setSaving] = useState(false)
@@ -60,8 +62,19 @@ export default function JDTab({ position, onUpdate }) {
     }
   }
 
-  const canEdit = user?.role === 'team_lead' || user?.role === 'org_head' || (user?.role === 'hr' && position.approval_status !== 'pending')
-  const isPendingApproval = position.approval_status === 'pending'
+  const isApproved = position?.status === 'open' || position?.approval_status === 'approved'
+  const isPendingApproval = position?.status === 'pending_approval' || position?.approval_status === 'pending'
+  const isDraftOrRejected = position?.status === 'draft' || position?.approval_status === 'rejected'
+
+  // Team Leads can only edit during pending_approval. Once approved, locked.
+  const canTeamLeadEdit = isPendingApproval && (user?.role === 'team_lead' || user?.role === 'org_head')
+  
+  // HR cannot use normal Edit if there's a session. They use Resume Chat.
+  const canHrEdit = isDraftOrRejected && user?.role === 'hr' && !position?.session_id
+  
+  const canEdit = canTeamLeadEdit || canHrEdit
+  
+  const canResumeChat = isDraftOrRejected && user?.role === 'hr' && !!position?.session_id
   const canApprove = isPendingApproval && (user?.role === 'team_lead' || user?.role === 'org_head')
 
   return (
@@ -97,7 +110,17 @@ export default function JDTab({ position, onUpdate }) {
           <button className="jd-btn" onClick={handleDownloadMd}>⬇ Markdown</button>
           <button className="jd-btn" onClick={handleDownloadPdf}>🖨 PDF</button>
           {!editing ? (
-            canEdit && <button className="jd-btn primary" onClick={() => setEditing(true)}>✏️ Edit</button>
+            <>
+              {canEdit && <button className="jd-btn primary" onClick={() => setEditing(true)}>✏️ Edit</button>}
+              {canResumeChat && (
+                <button 
+                  className="jd-btn primary" 
+                  onClick={() => navigate(`/chat/${position.session_id}`)}
+                >
+                  💬 Resume AI Chat
+                </button>
+              )}
+            </>
           ) : (
             <>
               <button className="jd-btn" onClick={() => setEditing(false)}>Cancel</button>

@@ -31,6 +31,7 @@ const FinalJDCard = () => {
         biasIssues,
         workflowStage,
         currentSessionId,
+        isReadOnly,
     } = useChat();
     const { token } = useAuth();
 
@@ -253,7 +254,7 @@ const FinalJDCard = () => {
                     <button className="icon-btn" title="Download PDF" aria-label="Download PDF" onClick={handleDownloadPDF} disabled={isBusy}>
                         <IconFileText size={15} />
                     </button>
-                    {!isComplete && (
+                    {!isComplete && !isReadOnly && (
                         isEditing ? (
                             <>
                                 <button className="icon-btn" title="Save changes" aria-label="Save changes" onClick={handleSaveEdit}>
@@ -311,7 +312,7 @@ const FinalJDCard = () => {
                                     <span className="bias-diff-arrow">→</span>
                                     <span className="bias-diff-new">{fix.suggestion}</span>
                                 </div>
-                                {fix.status === 'pending' ? (
+                                {fix.status === 'pending' && !isReadOnly ? (
                                     <div className="bias-diff-actions">
                                         <button className="icon-btn" title="Accept" aria-label="Accept suggestion" onClick={() => handleAcceptFix(idx)}>
                                             <IconCheck size={14} />
@@ -330,7 +331,7 @@ const FinalJDCard = () => {
                     </div>
                 )}
 
-                {!isJdStreaming && !isComplete && (
+                {!isJdStreaming && !isComplete && !isReadOnly && (
                     <div className="canvas-actions">
                         <button
                             className={`canvas-bias-link ${biasLink.cls}`}
@@ -359,7 +360,7 @@ const FinalJDCard = () => {
                             onClick={() => setShowModal(true)}
                             disabled={isBusy}
                         >
-                            Save & find candidates <IconArrowRight size={14} />
+                            Finalize JD <IconArrowRight size={14} />
                         </button>
                     </div>
                 )}

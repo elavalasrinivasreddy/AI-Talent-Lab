@@ -123,7 +123,6 @@ export default function PositionsListPage() {
             Pipeline Garden{openCount > 0 ? ` · ${openCount} active roles` : ''}
           </p>
         </div>
-        <Link to="/chat" className="btn-primary positions-new-btn">+ New Position</Link>
       </div>
 
       <PositionsToolbar
@@ -161,7 +160,7 @@ function EmptyPositions({ segment, onClear }) {
       <h3>{segment ? 'No positions in this filter.' : 'No positions found.'}</h3>
       {segment
         ? <button className="btn-ghost" onClick={onClear}>Clear filters</button>
-        : <Link to="/chat" className="btn-primary">+ Create New Position</Link>
+        : <p className="text-secondary">Positions are created via approved hire requests.</p>
       }
     </div>
   )

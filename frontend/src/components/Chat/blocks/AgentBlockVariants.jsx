@@ -10,14 +10,14 @@ const VARIANT_LABELS = {
 };
 
 export default function AgentBlockVariants() {
-  const { variantsCard, sendMessage, isStreaming, graphState } = useChat();
+  const { variantsCard, sendMessage, isStreaming, graphState, isReadOnly } = useChat();
   const [editing, setEditing] = useState(null);     // variant_type currently being edited
   const [draftSummary, setDraftSummary] = useState('');
   const [refinement, setRefinement] = useState('');
 
   const variants = variantsCard?.variants || [];
   const alreadySelected = graphState?.selected_variant || variantsCard?.selected || null;
-  const isLocked = Boolean(alreadySelected);
+  const isLocked = Boolean(alreadySelected) || isReadOnly;
 
   if (!variants.length) return null;
 

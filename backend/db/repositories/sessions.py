@@ -39,8 +39,10 @@ class ChatSessionRepository:
         async with get_connection() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT * FROM chat_sessions
-                WHERE id = $1 AND org_id = $2
+                SELECT cs.*, p.status as position_status, p.approval_status as position_approval_status
+                FROM chat_sessions cs
+                LEFT JOIN positions p ON cs.position_id = p.id
+                WHERE cs.id = $1 AND cs.org_id = $2
                 """,
                 session_id, org_id
             )

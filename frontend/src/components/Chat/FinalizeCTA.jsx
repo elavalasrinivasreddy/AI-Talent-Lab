@@ -32,7 +32,7 @@ export default function FinalizeCTA() {
         style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
       >
         {isComplete ? <IconCheck size={14} /> : null}
-        <span>Save & find candidates</span>
+        <span>Finalize JD</span>
       </button>
 
       <PositionSetupModal

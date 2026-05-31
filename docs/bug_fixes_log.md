@@ -725,3 +725,34 @@ Updated `ChatService.finish_and_save_position` to check if the current chat sess
 
 **Files Modified:**
 - `backend/services/chat_service.py`
+
+---
+
+### 53. UI/UX Workflow Refinements for JD Approval & Chat Read-Only State
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+The JD generation and approval workflow had UX inconsistencies:
+1. The "Save & find candidates" button label was misleading, as candidates are not found immediately.
+2. The "New Position" button on the Positions page circumvented the "New Hire Request" architecture.
+3. Chat sessions could still be edited by HR even after they were submitted for Team Lead approval.
+4. JDs could still be edited even after they were fully approved (`open`).
+5. Draft/Rejected JDs were difficult to resume from the Chat History.
+
+**Idea / Solution:**
+- **Finalize JD:** Renamed the chat action button to "Finalize JD".
+- **Remove Redundant Button:** Deleted the generic "New Position" button from the Positions page to enforce proper pipeline entry.
+- **Read-Only Chat:** Modified `ChatSessionRepository.get` to join the associated position's status. The Chat Context now tracks `isReadOnly`. If a position is `pending_approval` or `open`, the chat input, editing variants, and JD card editing are all disabled.
+- **Resume Chat Deep-link:** Modified `JDTab.jsx` on the Position Details page. Instead of a standard Markdown editor, HR users now see a "💬 Resume AI Chat" deep-link for Drafts or Rejected positions.
+- **JD Lockdown:** `JDTab.jsx` now strictly blocks all editing if a position is fully approved (`open`).
+
+**Files Modified:**
+- `backend/db/repositories/sessions.py`
+- `frontend/src/context/ChatContext.jsx`
+- `frontend/src/components/Chat/MessageInput.jsx`
+- `frontend/src/components/Chat/FinalizeCTA.jsx`
+- `frontend/src/components/Chat/blocks/AgentBlockVariants.jsx`
+- `frontend/src/components/Chat/cards/FinalJDCard.jsx`
+- `frontend/src/components/Positions/PositionsListPage.jsx`
+- `frontend/src/components/Positions/tabs/JDTab.jsx`

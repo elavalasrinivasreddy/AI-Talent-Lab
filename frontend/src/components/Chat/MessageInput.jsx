@@ -3,7 +3,7 @@ import { useChat } from '../../context/ChatContext';
 import { IconPaperclip, IconSend, IconLoader } from './icons';
 
 const MessageInput = () => {
-    const { sendMessage, isStreaming, workflowStage, currentSessionId, finalJdMarkdown } = useChat();
+    const { sendMessage, isStreaming, workflowStage, currentSessionId, finalJdMarkdown, isReadOnly } = useChat();
     const [input, setInput] = useState('');
     const [fileUploading, setFileUploading] = useState(false);
     const textareaRef = useRef(null);
@@ -17,9 +17,10 @@ const MessageInput = () => {
     }, [input]);
 
     const isComplete = workflowStage === 'complete';
-    const isDisabled = isStreaming || fileUploading;
+    const isDisabled = isStreaming || fileUploading || isReadOnly;
 
     const getPlaceholder = () => {
+        if (isReadOnly) return 'Chat is locked. Position is under review or open.';
         if (isComplete) return 'Position saved — manage it from the dashboard.';
         if (isStreaming) return 'AI is thinking…';
         if (workflowStage === 'intake') return 'Describe the role you want to hire for…';

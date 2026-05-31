@@ -17,6 +17,7 @@ export const ChatProvider = ({ children }) => {
     const [messages, setMessages] = useState([]);
     const [isStreaming, setIsStreaming] = useState(false);
     const [workflowStage, setWorkflowStage] = useState('intake');
+    const [isReadOnly, setIsReadOnly] = useState(false);
 
     // ── Interactive card states ────────────────────────────────
     const [internalCard, setInternalCard] = useState(null);
@@ -39,6 +40,7 @@ export const ChatProvider = ({ children }) => {
         setMessages([]);
         setIsStreaming(false);
         setWorkflowStage('intake');
+        setIsReadOnly(false);
         setInternalCard(null);
         setMarketCard(null);
         setVariantsCard(null);
@@ -89,6 +91,13 @@ export const ChatProvider = ({ children }) => {
                 setCurrentSessionId(data.id);
                 setSessionTitle(data.title || 'New Hire');
                 setWorkflowStage(data.workflow_stage || 'intake');
+                
+                // Read-only if linked position is pending approval or open
+                if (data.position_status && !['draft', 'rejected', 'draft_needs_revision'].includes(data.position_status)) {
+                    setIsReadOnly(true);
+                } else {
+                    setIsReadOnly(false);
+                }
 
                 // Restore messages from DB
                 const dbMessages = (data.messages || []).map(m => ({
@@ -397,7 +406,7 @@ export const ChatProvider = ({ children }) => {
         sessions, fetchSessions,
         currentSessionId, loadSession, setCurrentSessionId,
         sessionTitle, setSessionTitle, isTitleAnimating,
-        messages, workflowStage, isStreaming, error,
+        messages, workflowStage, isStreaming, error, isReadOnly,
         sendMessage, deleteSession, resetChat,
         internalCard, setInternalCard, dismissInternalCard,
         marketCard, setMarketCard, dismissMarketCard,
