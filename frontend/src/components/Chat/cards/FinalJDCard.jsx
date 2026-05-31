@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { marked } from 'marked';
 import { useChat } from '../../../context/ChatContext';
 import { useAuth } from '../../../context/AuthContext';
 import PositionSetupModal from '../PositionSetupModal';
@@ -242,9 +243,45 @@ const FinalJDCard = () => {
 
     const biasLink = biasLinkState();
 
+    const escapeRegExp = (string) => {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+
+    const renderDiffContent = () => {
+        let html = marked(editedMarkdown);
+        if (pendingFixes && pendingFixes.length > 0) {
+            pendingFixes.forEach((fix, idx) => {
+                if (fix.status === 'pending') {
+                    const regex = new RegExp(`\\b${escapeRegExp(fix.phrase)}\\b`, 'gi');
+                    const diffWidget = `
+                        <span class="inline-bias-widget" data-idx="${idx}" style="display:inline-block; border: 1px dashed var(--color-danger); border-radius: 4px; padding: 2px 4px; background: rgba(239, 68, 68, 0.05); white-space: nowrap; margin: 0 4px;">
+                            <del style="color: var(--color-danger); text-decoration: line-through;">${fix.phrase}</del>
+                            <ins style="color: var(--color-success); font-weight: 600; text-decoration: none; margin-left: 6px;">${fix.suggestion}</ins>
+                            <span style="margin-left: 8px;">
+                                <button onclick="window.acceptBiasFix(${idx})" style="background:var(--color-success); color:white; border:none; border-radius:3px; padding:2px 6px; cursor:pointer; font-size:11px;">✓</button>
+                                <button onclick="window.rejectBiasFix(${idx})" style="background:var(--color-danger); color:white; border:none; border-radius:3px; padding:2px 6px; cursor:pointer; font-size:11px; margin-left:4px;">✗</button>
+                            </span>
+                        </span>
+                    `;
+                    html = html.replace(regex, diffWidget);
+                }
+            });
+        }
+        return html;
+    };
+
+    useEffect(() => {
+        window.acceptBiasFix = (idx) => handleAcceptFix(idx);
+        window.rejectBiasFix = (idx) => handleRejectFix(idx);
+        return () => {
+            delete window.acceptBiasFix;
+            delete window.rejectBiasFix;
+        };
+    }, [pendingFixes]);
+
     return (
-        <>
-            <div className="canvas-head">
+        <div className="final-jd-card-container" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', background: 'var(--color-bg-primary)', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            <div className="canvas-head" style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <div className="canvas-head-meta">
                     <IconFileText size={14} />
                     <span>
@@ -284,96 +321,63 @@ const FinalJDCard = () => {
             <div className="canvas-body">
                 <div className="canvas-doc">
                     {isEditing ? (
-                        <article className="jd-body" style={{ border: '1px solid var(--border-200)', borderRadius: '8px', padding: '16px' }}>
+                        <article className="jd-body">
                             <div
                                 ref={editRef}
                                 className="jd-wysiwyg"
                                 contentEditable={true}
                                 dangerouslySetInnerHTML={{ __html: marked(tempMarkdown) }}
-                                style={{ outline: 'none' }}
+                                style={{ outline: 'none', border: '1px dashed var(--color-border)', padding: '16px', borderRadius: '8px', minHeight: '400px' }}
                                 onBlur={(e) => setTempMarkdown(turndownService.turndown(e.target.innerHTML))}
                             />
                         </article>
                     ) : (
                         <article className="jd-body">
-                            <ReactMarkdown>{editedMarkdown}</ReactMarkdown>
+                            {(pendingFixes && pendingFixes.some(f => f.status === 'pending')) ? (
+                                <div dangerouslySetInnerHTML={{ __html: renderDiffContent() }} />
+                            ) : (
+                                <ReactMarkdown>{editedMarkdown}</ReactMarkdown>
+                            )}
                             {isJdStreaming && <span className="stream-cursor" aria-hidden="true" />}
                         </article>
                     )}
                 </div>
 
-                {pendingFixes.length > 0 && !allResolved && (
-                    <div className="bias-diff" aria-label="Inclusivity suggestions">
-                        <div className="bias-diff-head">
-                            <span className="bias-diff-title">
-                                <IconShield size={14} /> Inclusivity review
-                            </span>
-                            <span className="bias-diff-count">
-                                {unresolvedCount} suggestion{unresolvedCount === 1 ? '' : 's'}
-                            </span>
-                            {unresolvedCount > 1 && (
-                                <button className="btn-ghost btn-sm" onClick={handleAcceptAll}>
-                                    <IconCheck size={12} /> Accept all
-                                </button>
-                            )}
-                        </div>
-                        {pendingFixes.map((fix, idx) => (
-                            <div key={idx} className="bias-diff-row" data-state={fix.status}>
-                                <div className="bias-diff-change">
-                                    <span className="bias-diff-cat">{(fix.category || '').replace(/_/g, ' ')}</span>
-                                    <span className="bias-diff-old">{fix.phrase}</span>
-                                    <span className="bias-diff-new">{fix.suggestion}</span>
-                                </div>
-                                {fix.status === 'pending' && !isReadOnly ? (
-                                    <div className="bias-diff-actions">
-                                        <button className="icon-btn" title="Accept" aria-label="Accept suggestion" onClick={() => handleAcceptFix(idx)}>
-                                            <IconCheck size={14} />
-                                        </button>
-                                        <button className="icon-btn" title="Reject" aria-label="Reject suggestion" onClick={() => handleRejectFix(idx)}>
-                                            <IconX size={14} />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <span className="bias-diff-tag">
-                                        {fix.status === 'accepted' ? 'Applied' : 'Skipped'}
-                                    </span>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-
                 {!isJdStreaming && !isComplete && !isReadOnly && (
-                    <div className="canvas-actions">
+                    <div className="canvas-actions" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', marginTop: '32px', padding: '24px 0', borderTop: '1px solid var(--color-border)' }}>
                         <button
                             className={`canvas-bias-link ${biasLink.cls}`}
                             onClick={handleCheckBias}
                             disabled={biasLink.disabled || isBusy}
+                            style={{ padding: '12px 24px', fontSize: '14px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'var(--color-bg-secondary)', fontWeight: '600' }}
                         >
                             {biasLink.icon}
                             <span>{biasLink.label}</span>
                         </button>
-                        <div className="canvas-actions-spacer" />
-                        <button
-                            className="btn-ghost"
-                            onClick={handleSaveDraft}
-                            disabled={isBusy || !hasUnsavedChanges}
-                        >
-                            {draftSaved || !hasUnsavedChanges ? (
-                                <>
-                                    <IconCheck size={14} /> Draft saved
-                                </>
-                            ) : (
-                                'Save draft'
-                            )}
-                        </button>
-                        <button
-                            className="btn-primary"
-                            onClick={() => setShowModal(true)}
-                            disabled={isBusy}
-                        >
-                            Finalize JD <IconArrowRight size={14} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', width: '100%' }}>
+                            <button
+                                className="btn-ghost"
+                                onClick={handleSaveDraft}
+                                disabled={isBusy || !hasUnsavedChanges}
+                                style={{ width: '180px', justifyContent: 'center' }}
+                            >
+                                {draftSaved || !hasUnsavedChanges ? (
+                                    <>
+                                        <IconCheck size={14} /> Draft saved
+                                    </>
+                                ) : (
+                                    'Save draft'
+                                )}
+                            </button>
+                            <button
+                                className="btn-primary"
+                                onClick={() => setShowModal(true)}
+                                disabled={isBusy}
+                                style={{ width: '180px', justifyContent: 'center' }}
+                            >
+                                Finalize JD <IconArrowRight size={14} />
+                            </button>
+                        </div>
                     </div>
                 )}
 

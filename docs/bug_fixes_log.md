@@ -825,3 +825,20 @@ The JD generation and approval workflow had UX inconsistencies:
 **Files Modified:**
 - `frontend/src/styles/chat.css`
 - `frontend/src/components/Chat/cards/FinalJDCard.jsx`
+
+### 54. JD Card Layout Unity & Inline Bias Diff
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+1. The JD card appeared as a "box inside a box" due to separate borders for the action headers and the editor body.
+2. Bias check diffs appeared at the bottom of the card, instead of inline like a modern IDE.
+3. The bottom buttons (Save Draft, Finalize) and the Bias Check button were misaligned and lacked a unified hierarchy.
+
+**Idea / Solution:**
+- **Card Unification:** Wrapped `FinalJDCard` in a unified `.final-jd-card-container` with a single outer border and moved the download/edit action items strictly to its header. Removed the nested `.jd-body` border.
+- **Inline Git Diffs:** Replaced the static bottom panel with an inline HTML rendering approach using `dangerouslySetInnerHTML`. The text replaces flagged phrases with Git-style `<del>` and `<ins>` widgets containing inline '✓' and '✗' action buttons bound to the React context.
+- **Triangle Action Layout:** Restyled the `.canvas-actions` flex container to stack vertically: the Bias Check button sits centered at the top, while "Save draft" and "Finalize JD" are centered horizontally side-by-side below it, forming the requested triangular hierarchy.
+
+**Files Modified:**
+- `frontend/src/components/Chat/cards/FinalJDCard.jsx`
