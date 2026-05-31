@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { useChat } from '../../context/ChatContext';
 import { IconCheck, IconX, IconLoader } from './icons';
-import FinalizeCTA from './FinalizeCTA';
 
 /**
  * Top stepper with one pill per LangGraph stage. Each pill shows:
@@ -112,7 +111,6 @@ export default function JDStepper({ isRailOpen, onToggleRail }) {
         })}
       </ol>
       <div className="jd-stepper-actions">
-        <FinalizeCTA />
         <button 
           onClick={onToggleRail} 
           className="icon-btn toggle-rail-btn" 

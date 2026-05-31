@@ -3,6 +3,8 @@ import ReactMarkdown from 'react-markdown';
 import { useChat } from '../../../context/ChatContext';
 import { useAuth } from '../../../context/AuthContext';
 import PositionSetupModal from '../PositionSetupModal';
+import { marked } from 'marked';
+import TurndownService from 'turndown';
 import {
     IconCopy, IconDownload, IconEdit, IconCheck, IconX,
     IconShield, IconFileText, IconLoader, IconArrowRight, IconSparkles,
@@ -39,6 +41,8 @@ const FinalJDCard = () => {
 
     const [isEditing, setIsEditing] = useState(false);
     const [editedMarkdown, setEditedMarkdown] = useState(liveMarkdown);
+    const editRef = useRef(null);
+    const turndownService = new TurndownService({ headingStyle: 'atx' });
     const [tempMarkdown, setTempMarkdown] = useState(liveMarkdown);
     const [copyLabel, setCopyLabel] = useState('Copy');
     const [showModal, setShowModal] = useState(false);
@@ -164,19 +168,23 @@ const FinalJDCard = () => {
     };
 
     const handleSaveEdit = () => {
-        setEditedMarkdown(tempMarkdown);
-        setFinalJdMarkdown(tempMarkdown);
-        setIsEditing(false);
-        setBiasCheckDone(false);
-        if (pendingFixes.length > 0) setPendingFixes([]);
-        if (currentSessionId && token) {
-            fetch(`/api/v1/chat/sessions/${currentSessionId}/save-draft`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ content: tempMarkdown }),
-            })
-                .then(() => setHasUnsavedChanges(false))
-                .catch((err) => console.error('Edit save failed:', err));
+        if (editRef.current) {
+            const html = editRef.current.innerHTML;
+            const md = turndownService.turndown(html);
+            setEditedMarkdown(md);
+            setFinalJdMarkdown(md);
+            setIsEditing(false);
+            setBiasCheckDone(false);
+            if (pendingFixes.length > 0) setPendingFixes([]);
+            if (currentSessionId && token) {
+                fetch(`/api/v1/chat/sessions/${currentSessionId}/save-draft`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ content: md }),
+                })
+                    .then(() => setHasUnsavedChanges(false))
+                    .catch((err) => console.error('Edit save failed:', err));
+            }
         }
     };
 
@@ -276,16 +284,21 @@ const FinalJDCard = () => {
             <div className="canvas-body">
                 <div className="canvas-doc">
                     {isEditing ? (
-                        <textarea
-                            className="jd-edit-textarea"
-                            value={tempMarkdown}
-                            onChange={(e) => setTempMarkdown(e.target.value)}
-                        />
+                        <article className="jd-body" style={{ border: '1px solid var(--border-200)', borderRadius: '8px', padding: '16px' }}>
+                            <div
+                                ref={editRef}
+                                className="jd-wysiwyg"
+                                contentEditable={true}
+                                dangerouslySetInnerHTML={{ __html: marked(tempMarkdown) }}
+                                style={{ outline: 'none' }}
+                                onBlur={(e) => setTempMarkdown(turndownService.turndown(e.target.innerHTML))}
+                            />
+                        </article>
                     ) : (
-                        <div className="jd-doc">
+                        <article className="jd-body">
                             <ReactMarkdown>{editedMarkdown}</ReactMarkdown>
                             {isJdStreaming && <span className="stream-cursor" aria-hidden="true" />}
-                        </div>
+                        </article>
                     )}
                 </div>
 

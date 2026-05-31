@@ -787,3 +787,23 @@ The JD generation and approval workflow had UX inconsistencies:
 - `backend/agents/nodes/drafting.py`
 - `backend/agents/prompts/drafting.md`
 - `backend/agents/prompts/market_intelligence.md`
+
+### 52. WYSIWYG Editor & CTA Layout Alignment
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+1. Users found it jarring to edit raw Markdown (`textarea`) instead of the rendered document in the JD Chat and Position Details tabs.
+2. The "Finalize JD" button appeared twice (once in the top stepper, and once at the bottom of the chat). The user requested it to be kept at the bottom for better flow after the bias check.
+3. The layout of `FinalJDCard` inside `JDCanvas` lost some of its padding and visual consistency after being moved.
+
+**Idea / Solution:**
+- **WYSIWYG Markdown Editing:** Installed `marked` and `turndown` libraries. Replaced raw `<textarea>` fields in `FinalJDCard.jsx` and `JDTab.jsx` with a `contentEditable` `<div className="jd-wysiwyg">`. The div initializes with HTML (via `marked`) and converts back to Markdown (via `turndown`) on save or blur. This allows users to edit the "rendered view" directly.
+- **Removed Duplicate CTA:** Removed `<FinalizeCTA />` from the top `JDStepper.jsx`. The existing "Save & find candidates" (finalize) and "Save draft" buttons are already correctly aligned side-by-side horizontally at the bottom of the `FinalJDCard`.
+- **Card Styling:** Adjusted `FinalJDCard` markup to use `<article className="jd-body">` to restore proper styling and spacing when viewed inside the chat window.
+
+**Files Modified:**
+- `frontend/package.json`
+- `frontend/src/components/Chat/cards/FinalJDCard.jsx`
+- `frontend/src/components/Positions/tabs/JDTab.jsx`
+- `frontend/src/components/Chat/JDStepper.jsx`

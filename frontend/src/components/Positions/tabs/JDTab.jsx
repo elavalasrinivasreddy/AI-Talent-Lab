@@ -5,6 +5,8 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { marked } from 'marked'
+import TurndownService from 'turndown'
 import { positionsApi } from '../../../utils/api'
 import { useAuth } from '../../../context/AuthContext'
 import './JDTab.css'
@@ -14,8 +16,11 @@ export default function JDTab({ position, onUpdate }) {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [content, setContent] = useState(position?.jd_markdown || '')
+  const editRef = React.useRef(null)
   const [saving, setSaving] = useState(false)
   const [processingDecision, setProcessingDecision] = useState(false)
+  
+  const turndownService = React.useMemo(() => new TurndownService({ headingStyle: 'atx' }), [])
 
   const handleSave = async () => {
     setSaving(true)
@@ -133,11 +138,13 @@ export default function JDTab({ position, onUpdate }) {
       </div>
 
       {editing ? (
-        <textarea
-          className="jd-editor"
-          value={content}
-          onChange={e => setContent(e.target.value)}
-          rows={30}
+        <div 
+          ref={editRef}
+          className="jd-wysiwyg" 
+          contentEditable={true}
+          dangerouslySetInnerHTML={{ __html: marked(content) }}
+          onBlur={(e) => setContent(turndownService.turndown(e.target.innerHTML))}
+          style={{ border: '1px solid var(--border-200)', borderRadius: '8px', padding: '24px', outline: 'none', minHeight: '400px' }}
         />
       ) : (
         <div className="jd-content">
