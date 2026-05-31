@@ -677,3 +677,18 @@ Updated the `get_suggestions` and `dismiss_all_suggestions` endpoints in `backen
 
 **Files Modified:**
 - `backend/routers/copilot.py`
+
+---
+
+### 50. Restrict Chat History Visibility for Leadership Roles
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+Org Heads and Department Admins were able to view all JD generation chat histories in their sidebars. In a standard B2B SaaS context, the JD generation chat is a workspace/scratchpad for recruiters (HR) to negotiate with the AI. Leadership only needs to see the finalized job description in the Positions view, not the back-and-forth prompt engineering. Showing this history creates unnecessary noise in the UI and enables micromanagement.
+
+**Idea / Solution:**
+Modified `ChatSessionRepository.list_visible` to ensure that only `hr` users can see department-wide chat sessions (allowing collaboration and hand-offs between recruiters). All other roles, including `org_head` and `dept_admin`, are now restricted to seeing only their own chat sessions (should they ever test the chat functionality).
+
+**Files Modified:**
+- `backend/db/repositories/sessions.py`
