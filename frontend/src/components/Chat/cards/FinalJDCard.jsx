@@ -4,7 +4,6 @@ import { marked } from 'marked';
 import { useChat } from '../../../context/ChatContext';
 import { useAuth } from '../../../context/AuthContext';
 import PositionSetupModal from '../PositionSetupModal';
-import { marked } from 'marked';
 import TurndownService from 'turndown';
 import {
     IconCopy, IconDownload, IconEdit, IconCheck, IconX,
