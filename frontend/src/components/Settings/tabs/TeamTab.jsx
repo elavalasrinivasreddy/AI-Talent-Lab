@@ -262,7 +262,9 @@ export default function TeamTab() {
                   onChange={e => setForm({...form, department_id: e.target.value})}
                   disabled={currentUser?.role === 'dept_admin'}
                 >
-                  {currentUser?.role === 'org_head' && <option value="">None</option>}
+                  {currentUser?.role === 'org_head' && (
+                    <option value="">{form.role === 'hr' ? 'Global (All Departments)' : 'None (Org Level)'}</option>
+                  )}
                   {depts
                     .filter(d => currentUser?.role === 'org_head' || d.id === currentUser?.department_id)
                     .map(d => <option key={d.id} value={d.id}>{d.name}</option>)

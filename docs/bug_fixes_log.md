@@ -1044,7 +1044,20 @@ The `platform_admin` role (SaaS operators) had implicit routing access to tenant
 HR users assigned to a specific department were still seeing the cross-department filter in the Positions page. This happened because the frontend `AuthContext` populates the user object with `department_id`, but the frontend filter check was incorrectly referencing `dept_id` (which is the property name used in the JWT payload on the backend, not the `/auth/me` frontend object).
 
 **Idea / Solution:**
-- Corrected the property accessor in `PositionsListPage.jsx` from `!user?.dept_id` to `!user?.department_id` to accurately read the user's department assignment and hide the filter when they are scoped to a specific department.
-
 **Files Modified:**
 - `frontend/src/components/Positions/PositionsListPage.jsx`
+
+### 67. UX Polish: Clarified Global Department Label in Team Invite
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+When an Org Head invites a new team member and leaves their department empty, the UI dropdown simply said "None". This was ambiguous for roles like HR, where "None" actually means they have cross-department (global) access.
+
+**Idea / Solution:**
+- Improved the UX for the Department dropdown in the Team Invite Modal (`TeamTab.jsx`). 
+- If the selected role is HR and no department is chosen, the label dynamically updates from "None" to "Global (All Departments)" to make the architectural intent completely obvious to the admin sending the invite.
+- For other org-level roles without a department, it shows "None (Org Level)".
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/TeamTab.jsx`
