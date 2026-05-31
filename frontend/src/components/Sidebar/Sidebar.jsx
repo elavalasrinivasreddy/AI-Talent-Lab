@@ -95,9 +95,9 @@ export default function Sidebar() {
   }
 
   const handleNewHire = () => {
-    // Only reset if current session is drafted/complete or empty
+    // Only reset if current session is drafted/complete or empty (only greeting message)
     // Or if user explicitly wants to start fresh
-    if (workflowStage === 'complete' || messages.length === 0) {
+    if (workflowStage === 'complete' || messages.length <= 1) {
       resetChat()
       navigate('/chat')
     } else {
@@ -166,6 +166,9 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-footer">
+        <div style={{ marginBottom: '12px', fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--color-primary)', textTransform: 'capitalize' }}>
+          Role: {role.replace('_', ' ')}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div className="sidebar-avatar">{initials}</div>
           <div className="sidebar-user-info" style={{ flex: 1, minWidth: 0 }}>

@@ -958,3 +958,16 @@ Updated the `<RoleGuard>` for the `/chat` route to include `dept_admin`, alignin
 - `frontend/src/components/Dashboard/DashboardPage.jsx`
 - `frontend/src/components/Dashboard/HealthStrip.jsx`
 - `frontend/src/styles/dashboard.css`
+
+### 61. Erroneous "Abandon JD" Popup on Fresh Sessions
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+Clicking the "New Hire" tab in the sidebar triggered an "Abandon current JD generation and start a new one?" confirmation popup, even when the user had just started a brand new, empty chat session.
+
+**Idea / Solution:**
+The sidebar navigation handler (`handleNewHire`) was checking `messages.length === 0` to determine if a session was empty. However, the `ChatContext` seeds a static initial greeting message (`Hi! Tell me about the role...`), meaning `messages.length` is always at least `1`. Updated the condition to `messages.length <= 1` so that a session with only the AI greeting is correctly treated as "empty."
+
+**Files Modified:**
+- `frontend/src/components/Sidebar/Sidebar.jsx`
