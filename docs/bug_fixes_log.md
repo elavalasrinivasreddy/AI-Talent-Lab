@@ -969,5 +969,21 @@ Clicking the "New Hire" tab in the sidebar triggered an "Abandon current JD gene
 **Idea / Solution:**
 The sidebar navigation handler (`handleNewHire`) was checking `messages.length === 0` to determine if a session was empty. However, the `ChatContext` seeds a static initial greeting message (`Hi! Tell me about the role...`), meaning `messages.length` is always at least `1`. Updated the condition to `messages.length <= 1` so that a session with only the AI greeting is correctly treated as "empty."
 
-**Files Modified:**
 - `frontend/src/components/Sidebar/Sidebar.jsx`
+
+### 62. Positions Tab UI Polish & Drafts Filter
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+1. Missing a "Drafts" filter in the Positions page. HR users had no distinct way to filter and find positions that were saved as drafts from the JD chat without digging through "All".
+2. The empty state ("No positions found. Positions are created via approved hire requests.") was a dead end for HR/Org Heads and visually bare, lacking a primary Call To Action (CTA).
+3. The department dropdown was correctly scoped only to roles that can see across departments (`org_head`, `admin`), which ensures `dept_admin` does not see an unnecessary filter (since they are isolated to their own department).
+
+**Idea / Solution:**
+- Added a `draft` segment filter in `PositionsToolbar.jsx` and the corresponding logic in `PositionsListPage.jsx` to filter by `status === 'draft'`.
+- Overhauled the `EmptyPositions` empty state component to feature a polished icon, better visual padding, and role-aware messaging. It now provides a "New Hire" button for HR/Admins, and a "File Hire Request" button for Team Leads.
+
+**Files Modified:**
+- `frontend/src/components/Positions/PositionsListPage.jsx`
+- `frontend/src/components/Positions/PositionsToolbar.jsx`

@@ -84,6 +84,7 @@ export default function PositionsListPage() {
     critical: positions.filter(p => p.priority === 'urgent' && p.status === 'open').length,
     active:   positions.filter(p => p.status === 'open').length,
     stable:   positions.filter(p => p.status === 'open' && !isStalled(p)).length,
+    draft:    positions.filter(p => p.status === 'draft').length,
     closed:   positions.filter(p => p.status === 'closed' || p.status === 'archived').length,
   }
 
@@ -94,6 +95,7 @@ export default function PositionsListPage() {
     if (segment === 'critical') return p.priority === 'urgent' && p.status === 'open'
     if (segment === 'active')   return p.status === 'open'
     if (segment === 'stable')   return p.status === 'open' && !isStalled(p)
+    if (segment === 'draft')    return p.status === 'draft'
     if (segment === 'closed')   return p.status === 'closed' || p.status === 'archived'
     return true
   })
@@ -142,7 +144,7 @@ export default function PositionsListPage() {
       )}
 
       {!loading && sorted.length === 0 && !error && (
-        <EmptyPositions segment={segment} onClear={() => setSegment('')} />
+        <EmptyPositions segment={segment} onClear={() => setSegment('')} role={user?.role} />
       )}
 
       <PositionGarden
@@ -154,14 +156,43 @@ export default function PositionsListPage() {
   )
 }
 
-function EmptyPositions({ segment, onClear }) {
+function EmptyPositions({ segment, onClear, role }) {
   return (
-    <div className="positions-empty">
-      <h3>{segment ? 'No positions in this filter.' : 'No positions found.'}</h3>
-      {segment
-        ? <button className="btn-ghost" onClick={onClear}>Clear filters</button>
-        : <p className="text-secondary">Positions are created via approved hire requests.</p>
-      }
+    <div className="positions-empty" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px', textAlign: 'center', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-lg)', marginTop: '24px' }}>
+      <div style={{ marginBottom: '16px', color: 'var(--color-text-tertiary)' }}>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+        </svg>
+      </div>
+      <h3 style={{ marginBottom: '8px', color: 'var(--color-text-primary)' }}>
+        {segment ? 'No positions in this filter.' : 'No positions found.'}
+      </h3>
+      {segment ? (
+        <button className="btn-ghost" onClick={onClear} style={{ marginTop: '12px' }}>Clear filters</button>
+      ) : (
+        <>
+          <p className="text-secondary" style={{ marginBottom: '24px', maxWidth: '400px' }}>
+            {role === 'team_lead' 
+              ? 'Positions are created via approved hire requests.' 
+              : 'Create your first position by starting a new hire conversation.'}
+          </p>
+          {role !== 'team_lead' && (
+            <Link to="/chat" className="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}>
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              New Hire
+            </Link>
+          )}
+          {role === 'team_lead' && (
+            <Link to="/hire-requests/new" className="btn btn-primary">
+              File Hire Request
+            </Link>
+          )}
+        </>
+      )}
     </div>
   )
 }

@@ -6,6 +6,7 @@ const SEGMENTS = [
   { key: 'critical', label: 'Critical' },
   { key: 'active',   label: 'Active' },
   { key: 'stable',   label: 'Stable' },
+  { key: 'draft',    label: 'Drafts' },
   { key: 'closed',   label: 'Closed' },
 ]
 
