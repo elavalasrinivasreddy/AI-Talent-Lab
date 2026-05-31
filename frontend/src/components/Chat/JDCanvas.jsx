@@ -56,7 +56,7 @@ export default function JDCanvas() {
       {marketCard && <AgentBlockMarket />}
       {variantsCard && <AgentBlockVariants />}
 
-      {jdBody && (
+      {(jdBody || isJdStreaming) && (
           <FinalJDCard />
       )}
     </div>

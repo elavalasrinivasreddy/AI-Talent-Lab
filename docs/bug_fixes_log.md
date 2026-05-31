@@ -866,3 +866,17 @@ The JD generation and approval workflow had UX inconsistencies:
 - `frontend/src/components/Chat/cards/FinalJDCard.jsx`
 - `frontend/src/components/Chat/RailConversation.jsx`
 - `frontend/src/context/ChatContext.jsx`
+
+### 56. Final JD Card Disappearing During Refinement
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+When a recruiter sent a message in the chatbot to refine the final JD (e.g., from Team Lead feedback), the JD card completely disappeared from the canvas until the new JD started streaming. The user also reported an HMR "Unterminated JSX contents" error in `FinalJDCard.jsx` masking this issue.
+
+**Idea / Solution:**
+- **State Continuity Fix:** Updated `JDCanvas.jsx` to render the `FinalJDCard` if `isJdStreaming` is true, even when the `jdBody` string itself is briefly empty (cleared out by `ChatContext.jsx` upon starting a refinement request). This prevents the component from unmounting, preserving its internal state and avoiding jarring visual disappearance.
+- **Syntax Error Clarification:** Verified that `FinalJDCard.jsx` is syntactically perfect. The "Unterminated JSX contents" error was a stale Vite HMR artifact triggered momentarily during the previous file replacement.
+
+**Files Modified:**
+- `frontend/src/components/Chat/JDCanvas.jsx`
