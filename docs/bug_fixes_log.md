@@ -1079,6 +1079,8 @@ The Talent Pool screen was using a legacy "pre-v3" layout that was messy, space-
 - **AI Magic:** Replaced the inline AI Match block with a `CopilotMatchPanel` (side-panel). 
 - **RBAC Enforcement (AI Match):** The Open Positions dropdown inside the AI Match panel dynamically filters based on the user's role and `department_id`, ensuring scoped admins can only match candidates against their own open roles, while still drawing from the global talent pool.
 
+**Update (2026-06-01):** Fixed residual double-scrollbars and global body scrolling. The `tp-page` height calculation was adjusted to `calc(100vh - 108px)` to perfectly accommodate the global `app-main` padding layout. Also isolated `.tp-btn-primary` CSS classes to prevent global `width: 100%` overrides from distorting the empty state and upload modal.
+
 **Files Modified:**
 - `frontend/src/router.jsx`
 - `frontend/src/components/TalentPool/TalentPoolPage.jsx`

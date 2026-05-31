@@ -8,7 +8,7 @@
   flex-direction: column;
   gap: 20px;
   /* Fix Scrolling! */
-  height: calc(100vh - 84px);
+  height: calc(100vh - 108px);
   overflow-y: auto;
 }
 
