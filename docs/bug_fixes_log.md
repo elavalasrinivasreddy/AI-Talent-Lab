@@ -1019,3 +1019,19 @@ The `isAdmin` variable used in the frontend to determine if the Department dropd
 
 **Files Modified:**
 - `frontend/src/components/Positions/PositionsListPage.jsx`
+
+### 65. Platform Admin Tenant Isolation
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+The `platform_admin` role (SaaS operators) had implicit routing access to tenant-specific workspaces (like the Dashboard, Positions, Candidates) via the `AppLayout`. This violates data privacy and tenant isolation principles, as platform admins should only see high-level aggregate usage data, not sensitive HR or candidate PII.
+
+**Idea / Solution:**
+- Created a new `OrgGuard` in `frontend/src/router.jsx`.
+- Wrapped the entire `AppLayout` (which contains `/dashboard`, `/positions`, `/candidates`, etc.) in `OrgGuard` to actively bounce `platform_admin` users to `/platform`.
+- Removed `platform_admin` from `canFilterByDept` in `PositionsListPage.jsx` since they can no longer reach that screen.
+
+**Files Modified:**
+- `frontend/src/router.jsx`
+- `frontend/src/components/Positions/PositionsListPage.jsx`
