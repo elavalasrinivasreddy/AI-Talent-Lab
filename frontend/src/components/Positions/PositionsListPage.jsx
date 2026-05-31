@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { positionsApi } from '../../utils/api'
+import { positionsApi, settingsApi } from '../../utils/api'
 import { useAuth } from '../../context/AuthContext'
 import PositionGarden from './PositionGarden'
 import PositionsToolbar from './PositionsToolbar'
@@ -27,7 +27,8 @@ function totalCount(p) {
 export default function PositionsListPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const isAdmin = ['admin', 'org_admin', 'org_head', 'hr'].includes(user?.role)
+  // Only show department filters if the user has cross-department visibility
+  const canFilterByDept = ['platform_admin', 'org_head'].includes(user?.role) || (user?.role === 'hr' && !user?.dept_id)
 
   const [positions, setPositions]     = useState([])
   const [loading, setLoading]         = useState(true)
@@ -42,8 +43,16 @@ export default function PositionsListPage() {
     setLoading(true)
     setError(null)
     try {
-      const raw = await positionsApi.list({})
-      const list = Array.isArray(raw) ? raw : (raw.positions || [])
+      const [rawPositions, rawDepts] = await Promise.all([
+        positionsApi.list({}),
+        canFilterByDept ? settingsApi.getDepartments() : Promise.resolve({ departments: [] })
+      ])
+      
+      const list = Array.isArray(rawPositions) ? rawPositions : (rawPositions.positions || [])
+      
+      if (canFilterByDept && rawDepts.departments) {
+        setDepartments(rawDepts.departments.map(d => ({ id: d.id, name: d.name })))
+      }
 
       // Enrich each card with sparkline + stage counts in parallel
       const enriched = await Promise.all(
@@ -60,21 +69,12 @@ export default function PositionsListPage() {
         })
       )
       setPositions(enriched)
-
-      // Extract unique departments for admin filter
-      const deptMap = {}
-      enriched.forEach(p => {
-        if (p.department_id && p.department_name) {
-          deptMap[p.department_id] = p.department_name
-        }
-      })
-      setDepartments(Object.entries(deptMap).map(([id, name]) => ({ id, name })))
     } catch (e) {
       setError('Failed to load positions.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [canFilterByDept])
 
   useEffect(() => { load() }, [load])
 
@@ -134,7 +134,7 @@ export default function PositionsListPage() {
         sort={sort}            onSort={setSort}
         segmentCounts={segmentCounts}
         departments={departments}
-        isAdmin={isAdmin}
+        isAdmin={canFilterByDept}
       />
 
       {error && (

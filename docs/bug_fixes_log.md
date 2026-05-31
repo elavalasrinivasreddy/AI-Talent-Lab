@@ -1005,3 +1005,17 @@ The sidebar navigation handler (`handleNewHire`) was checking `messages.length =
 - `backend/db/repositories/positions.py`
 - `frontend/src/components/Positions/PositionsListPage.jsx`
 - `frontend/src/components/Positions/PositionsToolbar.jsx`
+
+### 64. Dept Admin Visibility Enforcement (Positions Tab)
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+The `isAdmin` variable used in the frontend to determine if the Department dropdown should be visible was referencing legacy role strings (`admin`, `org_admin`) and could have caused confusion regarding `dept_admin` scope.
+
+**Idea / Solution:**
+- Cleaned up `canFilterByDept` in `PositionsListPage.jsx` to use the canonical roles from `backend/models/auth.py`. 
+- Explicitly ensured `dept_admin` does NOT see the department filter, as their access is inherently scoped to their assigned department. Only `platform_admin`, `org_head`, and global `hr` (without a `dept_id`) can filter across departments.
+
+**Files Modified:**
+- `frontend/src/components/Positions/PositionsListPage.jsx`
