@@ -98,7 +98,7 @@ export default function TalentPoolPage() {
           <h1 className="tp-title">🗃 Talent Pool</h1>
           <p className="tp-sub">{total > 0 ? `${total.toLocaleString()} candidates · Org-wide` : 'Your reusable candidate database'}</p>
         </div>
-        <button className="btn-primary" onClick={() => setShowUploadModal(true)}>
+        <button className="tp-btn-primary" onClick={() => setShowUploadModal(true)}>
           + Upload Resumes
         </button>
       </div>
@@ -146,7 +146,7 @@ export default function TalentPoolPage() {
             <div style={{ flex: 1 }} />
 
             <button 
-              className="btn-copilot" 
+              className="tp-btn-copilot" 
               onClick={() => setShowCopilotPanel(true)}
             >
               ✨ AI Match to Position
@@ -274,22 +274,24 @@ function CandidateCard({ candidate: c, onNavigate }) {
 
 function PoolEmpty({ hasFilters, onClear, onUploadClick }) {
   return (
-    <div className="tp-empty">
-      <div className="tp-empty-icon">🗃</div>
-      <h3>{hasFilters ? 'No candidates match your filters' : 'Your talent pool is empty'}</h3>
-      <p>{hasFilters 
-        ? 'Try adjusting your search terms or filters.' 
-        : 'Upload resumes to build your pool. Candidates are also auto-added when rejected from open positions.'}
-      </p>
-      {hasFilters ? (
-        <button className="btn-secondary" onClick={onClear} style={{ marginTop: 12 }}>
-          Clear Filters
-        </button>
-      ) : (
-        <button className="btn-primary" onClick={onUploadClick} style={{ marginTop: 12 }}>
-          + Upload Resumes
-        </button>
-      )}
+    <div className="tp-empty-wrapper">
+      <div className="tp-empty">
+        <div className="tp-empty-icon">🗃</div>
+        <h3>{hasFilters ? 'No candidates match your filters' : 'Your talent pool is empty'}</h3>
+        <p>{hasFilters 
+          ? 'Try adjusting your search terms or filters.' 
+          : 'Upload resumes to build your pool. Candidates are also auto-added when rejected from open positions.'}
+        </p>
+        {hasFilters ? (
+          <button className="tp-btn-secondary" onClick={onClear} style={{ marginTop: 12 }}>
+            Clear Filters
+          </button>
+        ) : (
+          <button className="tp-btn-primary" onClick={onUploadClick} style={{ marginTop: 12 }}>
+            + Upload Resumes
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -378,7 +380,7 @@ function BulkUploadModal({ onClose, onSuccess }) {
                   <div className="tp-upload-text">
                     <strong>Drop resumes here</strong>
                     <span>or</span>
-                    <button className="btn-primary" type="button" onClick={e => { e.stopPropagation(); fileInputRef.current?.click() }}>Browse Files</button>
+                    <button className="tp-btn-primary" type="button" onClick={e => { e.stopPropagation(); fileInputRef.current?.click() }}>Browse Files</button>
                   </div>
                   <div className="tp-upload-hint">PDF or DOCX · Up to 50 files · Max 5MB each</div>
                 </>
@@ -417,7 +419,7 @@ function BulkUploadModal({ onClose, onSuccess }) {
         
         {result && (
           <div className="modal-footer">
-            <button className="btn-primary" onClick={onClose}>Done</button>
+            <button className="tp-btn-primary" onClick={onClose}>Done</button>
           </div>
         )}
       </div>
@@ -501,7 +503,7 @@ function CopilotMatchPanel({ onClose, positions }) {
               ))}
             </select>
             <button
-              className="btn-copilot"
+              className="tp-btn-copilot"
               onClick={handleSuggest}
               disabled={!selectedPosition || suggesting}
               style={{ width: '100%', marginTop: '12px' }}
@@ -537,7 +539,7 @@ function CopilotMatchPanel({ onClose, positions }) {
                           </div>
                         </div>
                         <button
-                          className="btn-secondary cmc-add-btn"
+                          className="tp-btn-secondary cmc-add-btn"
                           onClick={() => addToPipeline(s.candidate_id)}
                         >
                           + Add to Pipeline

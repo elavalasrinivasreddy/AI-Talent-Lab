@@ -91,7 +91,7 @@
 }
 
 /* ── Common Buttons ── */
-.btn-primary {
+.tp-btn-primary {
   padding: 8px 16px;
   background: var(--color-primary, #0d9488);
   border: none;
@@ -103,11 +103,11 @@
   transition: all 150ms;
 }
 
-.btn-primary:hover {
+.tp-btn-primary:hover {
   background: #0f766e;
 }
 
-.btn-secondary {
+.tp-btn-secondary {
   padding: 8px 16px;
   background: var(--surface-2, rgba(255, 255, 255, 0.08));
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
@@ -119,11 +119,11 @@
   transition: all 150ms;
 }
 
-.btn-secondary:hover {
+.tp-btn-secondary:hover {
   background: var(--surface-3, rgba(255, 255, 255, 0.12));
 }
 
-.btn-copilot {
+.tp-btn-copilot {
   padding: 8px 16px;
   background: linear-gradient(135deg, #0d9488, #7c3aed);
   border: none;
@@ -135,11 +135,11 @@
   transition: opacity 150ms;
 }
 
-.btn-copilot:hover {
+.tp-btn-copilot:hover {
   opacity: 0.9;
 }
 
-.btn-copilot:disabled {
+.tp-btn-copilot:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -147,6 +147,8 @@
 /* ── Grid ── */
 .tp-grid-container {
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .tp-grid {
@@ -280,17 +282,26 @@
 }
 
 /* ── Empty & Skeletons ── */
+.tp-empty-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
 .tp-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 60px 24px;
+  padding: 48px 40px;
   background: var(--surface-1, #1e293b);
   border: 1px dashed var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 12px;
-  flex: 1;
+  border-radius: 16px;
+  max-width: 500px;
+  width: 100%;
 }
 
 .tp-empty-icon {
