@@ -130,9 +130,9 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          // Chat — hr and org_head only; team_lead enters via /hire-requests/new
+          // Chat — hr, org_head, and dept_admin only; team_lead enters via /hire-requests/new
           {
-            element: <RoleGuard roles={['hr', 'org_head']} />,
+            element: <RoleGuard roles={['hr', 'org_head', 'dept_admin']} />,
             children: [
               { path: '/chat', element: <ChatPage /> },
               { path: '/chat/:sessionId', element: <ChatPage /> },

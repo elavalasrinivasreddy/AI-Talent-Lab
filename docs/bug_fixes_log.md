@@ -907,3 +907,16 @@ Multiple static typing and runtime errors occurred in the backend AI orchestrato
 - `backend/agents/nodes/drafting.py`
 - `backend/agents/bias_checker.py`
 - `backend/agents/orchestrator.py`
+
+### 58. Dept Admin Access to JD Generation Chat
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+Department Admins (`dept_admin`) could see the "New Hire" button in the Sidebar but were unable to access the page (redirected to dashboard) because the RoleGuard on the `/chat` route in `router.jsx` did not include them.
+
+**Idea / Solution:**
+Updated the `<RoleGuard>` for the `/chat` route to include `dept_admin`, aligning the React Router permissions with the Sidebar visibility permissions.
+
+**Files Modified:**
+- `frontend/src/router.jsx`
