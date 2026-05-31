@@ -1130,3 +1130,16 @@ The V3 Positions List ("Pipeline Garden") frontend implementation perfectly mirr
 - `backend/services/position_service.py`
 - `backend/routers/positions.py`
 
+### 71. Dashboard Onboarding UX Cleanup (Redundant CTAs)
+**Date:** 2026-06-01
+**Status:** Fixed
+
+**Issue:**
+When a user had zero active positions, the Dashboard rendered multiple, competing "Empty State" widgets. Specifically, the large centralized `TodaysBriefing` hero banner would display a primary "Create your first position" CTA, while the `PositionPulse` widget in the bottom row simultaneously rendered a smaller "No positions yet -> Create a position" CTA, creating a messy and confusing onboarding layout.
+
+**Solution:**
+- Updated `DashboardPage.jsx` to conditionally hide the entire `dash-bottom-row` (containing `VelocitySparkline` and `PositionPulse`) when `isOnboarding` evaluates to true. This ensures the user is presented with a single, clean focal point for their next action.
+
+**Files Modified:**
+- `frontend/src/components/Dashboard/DashboardPage.jsx`
+

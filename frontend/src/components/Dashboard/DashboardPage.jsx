@@ -190,17 +190,19 @@ export default function DashboardPage() {
       />
 
       {/* ── Bottom row: Velocity + Position Pulse ── */}
-      <div className="dash-bottom-row">
-        <VelocitySparkline
-          activity={lanes.pulse.rows}
-          health={health}
-        />
-        <PositionPulse
-          positions={positions}
-          loading={loading.positions}
-          error={error.positions}
-        />
-      </div>
+      {!isOnboarding && (
+        <div className="dash-bottom-row">
+          <VelocitySparkline
+            activity={lanes.pulse.rows}
+            health={health}
+          />
+          <PositionPulse
+            positions={positions}
+            loading={loading.positions}
+            error={error.positions}
+          />
+        </div>
+      )}
 
     </div>
   )
