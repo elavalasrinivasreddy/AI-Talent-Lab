@@ -87,7 +87,7 @@ class ChatSessionRepository:
         session_id: str,
         org_id: int,
         workflow_stage: str,
-        graph_state: dict,
+        graph_state: Any,
     ) -> None:
         """Save the LangGraph state JSON."""
         state_json = json.dumps(graph_state)

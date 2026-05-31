@@ -38,7 +38,16 @@ Return a JSON object with:
 If no new skills are mentioned, return an empty array. Do not include markdown formatting, just the raw JSON or wrapped in ```json.
 """
         response = await llm.ainvoke([{"role": "user", "content": prompt}])
-        content = response.content.strip()
+        
+        content_raw = response.content
+        if isinstance(content_raw, list):
+            # Extract text blocks if the model returns a list (e.g. multimodal blocks)
+            content_raw = " ".join(
+                str(b.get("text", b)) if isinstance(b, dict) else b 
+                for b in content_raw
+            )
+        content = content_raw.strip()
+        
         if "```json" in content:
             json_str = content.split("```json")[-1].split("```")[0].strip()
         elif "```" in content:
@@ -46,7 +55,19 @@ If no new skills are mentioned, return an empty array. Do not include markdown f
         else:
             json_str = content
             
-        return json.loads(json_str)
+        try:
+            result = json.loads(json_str)
+        except json.JSONDecodeError:
+            result = {}
+            
+        if not isinstance(result, dict):
+            return {"new_skills": []}
+            
+        new_skills = result.get("new_skills", [])
+        if not isinstance(new_skills, list):
+            new_skills = [new_skills] if isinstance(new_skills, str) else []
+            
+        return {"new_skills": new_skills}
     except Exception as e:
         logger.error(f"State extraction failed: {e}")
         return {"new_skills": []}
@@ -64,9 +85,9 @@ async def run_drafting_variants(state: AgentState) -> AgentState:
         system_prompt = _load_prompt()
 
         role_name = state.get("role_name", "")
-        skills_required = state.get("skills_required", [])
-        internal_accepted = state.get("internal_skills_accepted", [])
-        market_accepted = state.get("market_skills_accepted", [])
+        skills_required = state.get("skills_required") or []
+        internal_accepted = state.get("internal_skills_accepted") or []
+        market_accepted = state.get("market_skills_accepted") or []
         
         all_skills = skills_required + internal_accepted + market_accepted
         
@@ -97,7 +118,14 @@ Generate the 3 JD variants now."""
 
         logger.info(f"Generating 3 JD variants for {role_name}")
         response = await llm.ainvoke(messages)
-        content = response.content.strip()
+        
+        content_raw = response.content
+        if isinstance(content_raw, list):
+            content_raw = " ".join(
+                str(b.get("text", b)) if isinstance(b, dict) else b 
+                for b in content_raw
+            )
+        content = content_raw.strip()
 
         if "```json" in content:
             json_str = content.split("```json")[-1].split("```")[0].strip()
@@ -128,7 +156,7 @@ Generate the 3 JD variants now."""
         state["retry_count"] = state.get("retry_count", 0) + 1
 
         if state["retry_count"] >= 2:
-            state["error_stage"] = "variants"
+            state["error_stage"] = "jd_variants"
             state["error_code"] = "VARIANTS_FAILED"
             state["error_message"] = "Trouble generating JD variants. Click Retry to try again."
             state["jd_variants"] = []
@@ -162,9 +190,9 @@ async def run_drafting_final(state: AgentState, token_queue=None) -> AgentState:
             (v.get("summary") for v in variants if v.get("type") == selected_style), ""
         )
 
-        skills_required = state.get("skills_required", [])
-        internal_accepted = state.get("internal_skills_accepted", [])
-        market_accepted = state.get("market_skills_accepted", [])
+        skills_required = state.get("skills_required") or []
+        internal_accepted = state.get("internal_skills_accepted") or []
+        market_accepted = state.get("market_skills_accepted") or []
         all_skills = skills_required + internal_accepted + market_accepted
 
         about_us = state.get("org_about_us", "An innovative tech company.")
@@ -238,7 +266,14 @@ Generate the final polished JD in markdown now."""
             content = "".join(parts).strip()
         else:
             response = await llm.ainvoke(messages)
-            content = response.content.strip()
+            
+            content_raw = response.content
+            if isinstance(content_raw, list):
+                content_raw = " ".join(
+                    str(b.get("text", b)) if isinstance(b, dict) else b 
+                    for b in content_raw
+                )
+            content = content_raw.strip()
 
         state["final_jd"] = content
         state["stage"] = "final_jd"

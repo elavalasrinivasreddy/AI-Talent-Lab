@@ -880,3 +880,30 @@ When a recruiter sent a message in the chatbot to refine the final JD (e.g., fro
 
 **Files Modified:**
 - `frontend/src/components/Chat/JDCanvas.jsx`
+
+### 57. Strict Typing and Multimodal Content Fixes in AI Workflow
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+Multiple static typing and runtime errors occurred in the backend AI orchestrator and agents:
+1. `variant_refinement`, `section_rewrite`, and `jd_saved_as_draft` were dynamically accessed or modified but missing from the `AgentState` TypedDict definition, causing `TypedDict` key errors.
+2. `final_jd` string operations (`.replace()`) and bias checker calls crashed because `.get("final_jd", "")` inferred a `str | None` type when the explicit value was `None`.
+3. The Bias Checker failed because the orchestrator expected a strict `list[BiasIssue]`, but `check_bias` returned a generic `list[dict]`.
+4. Multimodal response crashes: LangChain's `response.content` in both `drafting.py` (final JD generation) and `bias_checker.py` returned lists of dictionaries, causing `AttributeError: 'list' object has no attribute 'strip'`.
+5. Orchestrator dynamic assignments via a for-loop (`v[key] = action_data[key]`) failed because `JDVariant` TypedDict fields cannot be statically verified in a loop, and `description` was incorrectly used instead of `content`.
+
+**Idea / Solution:**
+- **State Schema Completeness:** Registered all missing fields (`variant_refinement`, `section_rewrite`, `jd_saved_as_draft`) and added `category` to `BiasIssue` in `backend/agents/state.py`.
+- **Robust Multimodal Parsing:** Ported the robust list-to-string conversion block from earlier drafting nodes into the final drafting node and bias checker to safely handle LangChain multimodal responses.
+- **Strict Typing Fixes:** 
+  - Unrolled dynamic dictionary key loops into explicit `if` statements matching `JDVariant` schema (`content`, `tone`, `skills_count`).
+  - Swapped `.get(..., "")` fallbacks to `.get(...) or ""` to mathematically prove string types.
+  - Initialized state message updates strictly via the `ChatMessage` constructor instead of generic dicts.
+  - Refactored `check_bias` to explicitly instantiate and return `BiasIssue` objects.
+
+**Files Modified:**
+- `backend/agents/state.py`
+- `backend/agents/nodes/drafting.py`
+- `backend/agents/bias_checker.py`
+- `backend/agents/orchestrator.py`

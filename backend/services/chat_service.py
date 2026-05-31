@@ -69,7 +69,10 @@ class ChatService:
         await ChatSessionRepository.add_message(session_id, "assistant", GREETING_MESSAGE)
 
         # Re-fetch full structured session
-        return await ChatSessionRepository.get(session_id, org_id)
+        new_session = await ChatSessionRepository.get(session_id, org_id)
+        if not new_session:
+            raise RuntimeError("Failed to retrieve session after creation")
+        return new_session
 
 
     @staticmethod
@@ -90,7 +93,7 @@ class ChatService:
 
         state = session_row.get("graph_state_parsed", {})
         if not state:
-            state = create_initial_state(session_id, org_id, session_row.get("user_id"))
+            state = create_initial_state(session_id, org_id, session_row["user_id"])
 
         # Save user message to DB message log immediately
         if user_message:
@@ -105,8 +108,8 @@ class ChatService:
             #   (b) we're already on final_jd and getting a refinement/rewrite.
             will_stream_final = (
                 action == "select_variant"
-                or action in {"rewrite_section", "regenerate_variants"}
-                or (state.get("stage") == "final_jd" and user_message)
+                or action == "rewrite_section"
+                or (state.get("stage") in ("final_jd", "bias_check", "complete") and user_message)
             )
 
             if will_stream_final:
@@ -142,7 +145,7 @@ class ChatService:
                     action_data=action_data,
                 )
 
-            current_stage = new_state.get("stage")
+            current_stage = new_state.get("stage", "intake")
 
             # ── Emit one stage_change per actual transition ──────────
             # Orchestrator stamps `_run_meta.transitions` with every stage it
@@ -167,8 +170,8 @@ class ChatService:
             # ── Emit errors ───────────────────────────────────────────
             if new_state.get("error_stage"):
                 yield StreamHandler.emit_error(
-                    new_state["error_code"],
-                    new_state["error_message"]
+                    new_state.get("error_code") or "UNKNOWN_ERROR",
+                    new_state.get("error_message") or "An unknown error occurred."
                 )
 
             # ── Title update (role extracted) ──────────────────────────
@@ -223,6 +226,13 @@ class ChatService:
                     yield StreamHandler.emit_metadata({
                         "final_jd": new_state.get("final_jd", "")
                     })
+            
+            # Emit metadata for the newly generated final_jd if we streamed it
+            # or if the stage is final_jd and it was just regenerated.
+            if will_stream_final or (current_stage == "final_jd" and new_state.get("final_jd")):
+                yield StreamHandler.emit_metadata({
+                    "final_jd": new_state.get("final_jd", "")
+                })
 
             # ── Persist state back to DB ──────────────────────────────
             await ChatSessionRepository.update_state(
@@ -283,6 +293,9 @@ class ChatService:
                     "search_interval_hours": setup_data.get("search_interval_hours", 24),
                     "location": state.get("location"),
                     "work_type": state.get("work_type", "onsite"),
+                    "employment_type": state.get("employment_type", "full_time"),
+                    "experience_min": state.get("experience_min"),
+                    "experience_max": state.get("experience_max")
                 }
                 position = await PositionRepository.update(
                     conn=conn, position_id=existing_position_id, org_id=org_id, data=update_data
@@ -352,13 +365,16 @@ class ChatService:
         # ── Generate JD embedding for ATS scoring (§15) ──────────────────────
         try:
             embedding_model = get_embedding_model()
-            jd_text_for_embedding = f"{role_name} {final_jd or ''}"
-            embedding = await embedding_model.aembed_query(jd_text_for_embedding[:8000])
-            async with get_connection() as conn:
-                await PositionRepository.update_embedding(
-                    conn, position_id, org_id, json.dumps(embedding)
-                )
-            logger.info(f"JD embedding stored for position {position_id}")
+            if embedding_model:
+                jd_text_for_embedding = f"{role_name} {final_jd or ''}"
+                embedding = await embedding_model.aembed_query(jd_text_for_embedding[:8000])
+                async with get_connection() as conn:
+                    await PositionRepository.update_embedding(
+                        conn, position_id, org_id, json.dumps(embedding)
+                    )
+                logger.info(f"JD embedding stored for position {position_id}")
+            else:
+                logger.info(f"No embedding model configured; skipping JD embedding for position {position_id}")
         except Exception as e:
             logger.warning(f"JD embedding (ATS) failed (non-blocking): {e}")
 

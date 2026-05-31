@@ -3,7 +3,7 @@ agents/state.py – AgentState TypedDict for LangGraph state machine.
 Exactly as documented in docs/architecture/03_backend.md §6 and §14.
 This is the single source of truth for all state flowing through the pipeline.
 """
-from typing import Optional, TypedDict
+from typing import Any, Optional, TypedDict
 
 
 class SkillItem(TypedDict, total=False):
@@ -27,6 +27,7 @@ class BiasIssue(TypedDict, total=False):
     """A single bias issue found in the JD."""
     phrase: str          # The problematic phrase
     suggestion: str      # Suggested replacement
+    category: str        # e.g., 'gender', 'age', 'other'
 
 
 class ChatMessage(TypedDict, total=False):
@@ -101,6 +102,12 @@ class AgentState(TypedDict, total=False):
 
     # ── Reference JD (uploaded file) ──────────────────────────────
     reference_jd_text: Optional[str]   # Extracted text from uploaded JD
+
+    # ── Transient Orchestrator State ──────────────────────────────
+    _run_meta: dict[str, list]         # Track transitions and skips per orchestrator turn
+    variant_refinement: Optional[str]  # One-shot user feedback applied to JD variants
+    section_rewrite: Optional[dict[str, Any]]  # Specific section rewrite instruction
+    jd_saved_as_draft: Optional[bool]  # Flag indicating JD was saved as draft without completing
 
 
 def create_initial_state(
