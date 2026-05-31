@@ -280,67 +280,69 @@ const FinalJDCard = () => {
 
     return (
         <>
-            <div className="final-jd-card-container" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', background: 'var(--color-bg-primary)', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-            <div className="canvas-head" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <div className="canvas-head-meta">
-                    <IconFileText size={14} />
-                    <span>
-                        {isJdStreaming ? 'Drafting · Streaming' : isComplete ? 'Document · Published' : 'Document · Draft'}
-                    </span>
-                    {isJdStreaming && <span className="stream-cursor" aria-hidden="true" />}
-                </div>
-                <div className="canvas-head-tools">
-                    <button className="icon-btn" title={copyLabel} aria-label="Copy markdown" onClick={handleCopy} disabled={isBusy}>
-                        <IconCopy size={15} />
-                    </button>
-                    <button className="icon-btn" title="Download .md" aria-label="Download markdown" onClick={handleDownloadMD} disabled={isBusy}>
-                        <IconDownload size={15} />
-                    </button>
-                    <button className="icon-btn" title="Download PDF" aria-label="Download PDF" onClick={handleDownloadPDF} disabled={isBusy}>
-                        <IconFileText size={15} />
-                    </button>
-                    {!isComplete && !isReadOnly && (
-                        isEditing ? (
-                            <>
-                                <button className="icon-btn" title="Save changes" aria-label="Save changes" onClick={handleSaveEdit}>
-                                    <IconCheck size={15} />
-                                </button>
-                                <button className="icon-btn" title="Cancel edit" aria-label="Cancel edit" onClick={handleCancelEdit}>
-                                    <IconX size={15} />
-                                </button>
-                            </>
-                        ) : (
-                            <button className="icon-btn" title="Edit" aria-label="Edit JD" onClick={handleStartEdit} disabled={isBusy}>
-                                <IconEdit size={15} />
-                            </button>
-                        )
-                    )}
-                </div>
-            </div>
 
-            <div className="canvas-body">
+            <div className="canvas-body" style={{ padding: '24px 40px' }}>
                 <div className="canvas-doc">
-                    {isEditing ? (
-                        <article className="jd-body">
-                            <div
-                                ref={editRef}
-                                className="jd-wysiwyg"
-                                contentEditable={true}
-                                dangerouslySetInnerHTML={{ __html: marked(tempMarkdown) }}
-                                style={{ outline: 'none', border: '1px dashed var(--color-border)', padding: '16px', borderRadius: '8px', minHeight: '400px' }}
-                                onBlur={(e) => setTempMarkdown(turndownService.turndown(e.target.innerHTML))}
-                            />
-                        </article>
-                    ) : (
-                        <article className="jd-body">
-                            {(pendingFixes && pendingFixes.some(f => f.status === 'pending')) ? (
-                                <div dangerouslySetInnerHTML={{ __html: renderDiffContent() }} />
-                            ) : (
-                                <ReactMarkdown>{editedMarkdown}</ReactMarkdown>
-                            )}
-                            {isJdStreaming && <span className="stream-cursor" aria-hidden="true" />}
-                        </article>
-                    )}
+                    <article className="jd-body" style={{ marginTop: '0' }}>
+                        <div className="canvas-head" style={{ padding: '0', height: 'auto', borderBottom: 'none', marginBottom: '24px' }}>
+                            <div className="canvas-head-meta">
+                                <IconFileText size={14} />
+                                <span>
+                                    {isJdStreaming ? 'Drafting · Streaming' : isComplete ? 'Document · Published' : 'Document · Draft'}
+                                </span>
+                                {isJdStreaming && <span className="stream-cursor" aria-hidden="true" />}
+                            </div>
+                            <div className="canvas-head-tools">
+                                <button className="icon-btn" title={copyLabel} aria-label="Copy markdown" onClick={handleCopy} disabled={isBusy} style={{ width: '36px', height: '36px' }}>
+                                    <IconCopy size={18} />
+                                </button>
+                                <button className="icon-btn" title="Download .md" aria-label="Download markdown" onClick={handleDownloadMD} disabled={isBusy} style={{ width: '36px', height: '36px' }}>
+                                    <IconDownload size={18} />
+                                </button>
+                                <button className="icon-btn" title="Download PDF" aria-label="Download PDF" onClick={handleDownloadPDF} disabled={isBusy} style={{ width: '36px', height: '36px' }}>
+                                    <IconFileText size={18} />
+                                </button>
+                                {!isComplete && !isReadOnly && (
+                                    isEditing ? (
+                                        <>
+                                            <button className="icon-btn" title="Save changes" aria-label="Save changes" onClick={handleSaveEdit} style={{ width: '36px', height: '36px' }}>
+                                                <IconCheck size={18} />
+                                            </button>
+                                            <button className="icon-btn" title="Cancel edit" aria-label="Cancel edit" onClick={handleCancelEdit} style={{ width: '36px', height: '36px' }}>
+                                                <IconX size={18} />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button className="icon-btn" title="Edit" aria-label="Edit JD" onClick={handleStartEdit} disabled={isBusy} style={{ width: '36px', height: '36px' }}>
+                                            <IconEdit size={18} />
+                                        </button>
+                                    )
+                                )}
+                            </div>
+                        </div>
+
+                        {isEditing ? (
+                            <div>
+                                <div
+                                    ref={editRef}
+                                    className="jd-wysiwyg"
+                                    contentEditable={true}
+                                    dangerouslySetInnerHTML={{ __html: marked(tempMarkdown) }}
+                                    style={{ outline: 'none', border: '1px dashed var(--color-border)', padding: '16px', borderRadius: '8px', minHeight: '400px' }}
+                                    onBlur={(e) => setTempMarkdown(turndownService.turndown(e.target.innerHTML))}
+                                />
+                            </div>
+                        ) : (
+                            <div>
+                                {(pendingFixes && pendingFixes.some(f => f.status === 'pending')) ? (
+                                    <div dangerouslySetInnerHTML={{ __html: renderDiffContent() }} />
+                                ) : (
+                                    <ReactMarkdown>{editedMarkdown}</ReactMarkdown>
+                                )}
+                                {isJdStreaming && <span className="stream-cursor" aria-hidden="true" />}
+                            </div>
+                        )}
+                    </article>
                 </div>
 
                 {!isJdStreaming && !isComplete && !isReadOnly && (
@@ -390,7 +392,6 @@ const FinalJDCard = () => {
                     </div>
                 )}
             </div>
-        </div>
 
             <PositionSetupModal show={showModal} onClose={() => setShowModal(false)} />
         </>

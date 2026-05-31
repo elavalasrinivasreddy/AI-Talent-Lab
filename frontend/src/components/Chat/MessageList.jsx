@@ -5,7 +5,7 @@ import InternalCheckCard from './cards/InternalCheckCard';
 import MarketResearchCard from './cards/MarketResearchCard';
 import JDVariantsCard from './cards/JDVariantsCard';
 import BiasCheckCard from './cards/BiasCheckCard';
-import { IconArrowRight, IconAlertCircle } from './icons';
+import { IconArrowRight, IconAlertCircle, IconUser, IconBot } from './icons';
 
 const SAMPLE_PROMPTS = [
     'I need a Senior Python Developer with FastAPI experience.',
@@ -50,16 +50,21 @@ const MessageBubble = ({ message }) => {
 
     return (
         <div className={`msg ${isUser ? 'msg--user' : 'msg--ai'}`}>
-            <div className="msg-meta">{isUser ? 'You' : 'AI Assistant'}</div>
-            <div className="msg-body">
-                {isUser ? (
-                    cleanContent
-                ) : (
-                    <>
-                        <ReactMarkdown>{cleanContent}</ReactMarkdown>
-                        {!message.isComplete && <span className="stream-cursor" aria-hidden="true" />}
-                    </>
-                )}
+            <div className="msg-avatar">
+                {isUser ? <IconUser size={16} /> : <IconBot size={16} />}
+            </div>
+            <div className="msg-content-wrapper">
+                <div className="msg-meta">{isUser ? 'You' : 'AI Assistant'}</div>
+                <div className="msg-body">
+                    {isUser ? (
+                        cleanContent
+                    ) : (
+                        <>
+                            <ReactMarkdown>{cleanContent}</ReactMarkdown>
+                            {!message.isComplete && <span className="stream-cursor" aria-hidden="true" />}
+                        </>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -67,12 +72,15 @@ const MessageBubble = ({ message }) => {
 
 const TypingRow = () => (
     <div className="msg msg--ai">
-        <div className="msg-meta">AI Assistant</div>
-        <div className="typing-row">
-            <span className="typing-dots" aria-hidden="true">
-                <span /><span /><span />
-            </span>
-            <span className="typing-label">Thinking</span>
+        <div className="msg-avatar"><IconBot size={16} /></div>
+        <div className="msg-content-wrapper">
+            <div className="msg-meta">AI Assistant</div>
+            <div className="typing-row">
+                <span className="typing-dots" aria-hidden="true">
+                    <span /><span /><span />
+                </span>
+                <span className="typing-label">Thinking</span>
+            </div>
         </div>
     </div>
 );
