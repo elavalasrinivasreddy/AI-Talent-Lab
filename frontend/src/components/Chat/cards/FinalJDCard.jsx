@@ -322,7 +322,6 @@ const FinalJDCard = () => {
                                 <div className="bias-diff-change">
                                     <span className="bias-diff-cat">{(fix.category || '').replace(/_/g, ' ')}</span>
                                     <span className="bias-diff-old">{fix.phrase}</span>
-                                    <span className="bias-diff-arrow">→</span>
                                     <span className="bias-diff-new">{fix.suggestion}</span>
                                 </div>
                                 {fix.status === 'pending' && !isReadOnly ? (

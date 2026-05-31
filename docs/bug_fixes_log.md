@@ -807,3 +807,21 @@ The JD generation and approval workflow had UX inconsistencies:
 - `frontend/src/components/Chat/cards/FinalJDCard.jsx`
 - `frontend/src/components/Positions/tabs/JDTab.jsx`
 - `frontend/src/components/Chat/JDStepper.jsx`
+
+### 53. Minor UI Adjustments: Chat Bubbles, Git-Style Diff & Alignment
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+1. User and AI chat bubbles took up full width instead of shrink-wrapping.
+2. The "Save draft" and "Finalize JD" buttons at the bottom of the JD Canvas wrapped awkwardly on some screen widths.
+3. The Bias Check suggestions were displayed inline with an arrow instead of a proper Git-style vertical diff.
+
+**Idea / Solution:**
+- **Chat Bubble Fix:** Added `width: fit-content;` to `.msg-body` in `chat.css` to ensure messages correctly shrink-wrap.
+- **Button Alignment:** Adjusted `.canvas-actions` in `chat.css` to use `flex-wrap: nowrap;` so the buttons remain horizontally aligned at the bottom right.
+- **Git-style Diff:** Re-styled `.bias-diff-change` to stack elements vertically. Applied red/green block background styles and `-`/`+` pseudo-elements to `.bias-diff-old` and `.bias-diff-new` to mimic Git patch layouts. Removed the inline arrow from `FinalJDCard.jsx`.
+
+**Files Modified:**
+- `frontend/src/styles/chat.css`
+- `frontend/src/components/Chat/cards/FinalJDCard.jsx`
