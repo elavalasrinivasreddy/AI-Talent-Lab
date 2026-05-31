@@ -20,7 +20,7 @@ function HealthSkeleton() {
   )
 }
 
-export default function HealthStrip({ health, loading, error }) {
+export default function HealthStrip({ health, loading, error, role }) {
   if (loading) return <HealthSkeleton />
 
   if (error) {
@@ -36,7 +36,7 @@ export default function HealthStrip({ health, loading, error }) {
 
   const cards = [
     {
-      label: 'Org Health',
+      label: role === 'dept_admin' ? 'Dept Health' : 'Org Health',
       value: health.org_health_score != null ? `${health.org_health_score}%` : '—',
       accent: 'var(--color-primary, #0D9488)',
       icon: <Icon name="bar-chart" size={16} />,

@@ -109,6 +109,10 @@ export default function DashboardPage() {
   const newHireLabel = role === 'team_lead' ? 'File Hire Request' : 'New Hire'
   const newHireTo    = role === 'team_lead' ? '/hire-requests/new' : '/chat'
 
+  const allLanesLoading = lanes.now.loading && lanes.next.loading && lanes.pulse.loading
+  const hasPositions = Array.isArray(positions) && positions.some(p => p.status === 'open' || p.status === 'active')
+  const isOnboarding = !allLanesLoading && !hasPositions && positions !== undefined && positions.length === 0
+
   if (legacyMode) {
     return (
       <Suspense fallback={<div style={{ padding: 'var(--space-8)', color: 'var(--color-text-secondary, #94A3B8)' }}>Loading…</div>}>
@@ -131,10 +135,12 @@ export default function DashboardPage() {
         </div>
 
         <div className="dash-topbar-actions">
-          <Link to={newHireTo} className="dash-new-hire-btn">
-            <Icon name="plus" size={14} />
-            {newHireLabel}
-          </Link>
+          {!isOnboarding && (
+            <Link to={newHireTo} className="dash-new-hire-btn">
+              <Icon name="plus" size={14} />
+              {newHireLabel}
+            </Link>
+          )}
           <div className="dash-period-switcher">
             {['today', 'week', 'month'].map(p => (
               <button
@@ -165,6 +171,7 @@ export default function DashboardPage() {
           health={health}
           loading={loading.health}
           error={error.health}
+          role={role}
         />
       </RoleGate>
 

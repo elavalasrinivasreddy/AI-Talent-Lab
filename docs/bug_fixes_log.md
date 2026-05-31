@@ -939,3 +939,22 @@ Updated the `<RoleGuard>` for the `/chat` route to include `dept_admin`, alignin
 - `frontend/src/styles/dashboard.css`
 - `frontend/src/components/Dashboard/DashboardPage.jsx`
 - `frontend/src/components/Dashboard/TodaysBriefing.jsx`
+
+### 60. Dashboard Empty State & Dept Admin Cleanup
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+1. Dept Admins saw "Org Health" on the 4-card health strip metric, conflicting with their actual scope.
+2. The bottom row (Pipeline Velocity) was getting squished vertically or hidden by half on screens where the top components (Health Strip, Dept Chip Bar) were rendered, because the middle section wasn't absorbing the layout pressure correctly.
+3. Redundant CTAs in the empty state: "Create your first position" existed both in the center placeholder and top-right header, causing confusion.
+
+**Idea / Solution:**
+- Plumbed `role` down to `HealthStrip.jsx` and dynamically rendered "Dept Health" vs "Org Health".
+- Hid the global top-right action button (`dash-new-hire-btn`) conditionally when the empty state placeholder (`isOnboarding`) is visible to reduce CTA redundancy.
+- Applied `flex: 1` and `min-height: 0` to the `.tb-onboarding` container, and `flex-shrink: 0` to `.dash-bottom-row` in `dashboard.css`, ensuring the bottom analytics row maintains its correct fixed height without getting cut off.
+
+**Files Modified:**
+- `frontend/src/components/Dashboard/DashboardPage.jsx`
+- `frontend/src/components/Dashboard/HealthStrip.jsx`
+- `frontend/src/styles/dashboard.css`
