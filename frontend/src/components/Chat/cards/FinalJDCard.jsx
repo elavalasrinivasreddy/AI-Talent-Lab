@@ -279,7 +279,8 @@ const FinalJDCard = () => {
     }, [pendingFixes]);
 
     return (
-        <div className="final-jd-card-container" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', background: 'var(--color-bg-primary)', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+        <>
+            <div className="final-jd-card-container" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', background: 'var(--color-bg-primary)', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
             <div className="canvas-head" style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <div className="canvas-head-meta">
                     <IconFileText size={14} />
@@ -389,6 +390,7 @@ const FinalJDCard = () => {
                     </div>
                 )}
             </div>
+        </div>
 
             <PositionSetupModal show={showModal} onClose={() => setShowModal(false)} />
         </>
