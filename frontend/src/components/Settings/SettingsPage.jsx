@@ -226,23 +226,49 @@ export default function SettingsPage() {
                 <Icon name={group.icon} size={13} />
                 {group.label}
               </div>
-              {group.items.filter(item => {
-                if (item.orgHeadOnly && user?.role !== 'org_head') return false;
-                if (item.adminOnly && !isAdmin) return false;
-                if (item.key === 'approval' && user?.role === 'hr') return false; // HR doesn't manage approvals
-                return true;
-              }).map(item => {
+              {group.items.map(item => {
+                const isOrgHeadLocked = item.orgHeadOnly && user?.role !== 'org_head';
+                
+                // Determine if read-only or fully locked
+                // Per spec: ATS and Email templates are read-only for HR. Sourcing is editable for HR.
+                let isFullyLocked = false;
+                let isReadOnly = false;
+                
+                if (item.adminOnly && !isAdmin) {
+                  if (user?.role === 'hr') {
+                    if (['ats-rules', 'templates'].includes(item.key)) {
+                      isReadOnly = true; // HR can view but not edit
+                    } else if (item.key === 'sourcing') {
+                      isFullyLocked = false; // HR can edit sourcing
+                    } else {
+                      isFullyLocked = true; // Everything else admin-only is locked for HR
+                    }
+                  } else {
+                    isFullyLocked = true; // For HM (team_lead), all admin-only is locked
+                  }
+                }
+                
+                if (item.key === 'approval' && user?.role === 'hr') {
+                  isFullyLocked = true;
+                }
+                
+                const isDisabled = isOrgHeadLocked || isFullyLocked;
+
                 return (
                   <button
                     key={item.key}
-                    className={`st-rail-item ${activeSection === item.key ? 'active' : ''}`}
-                    onClick={() => switchSection(item.key)}
-                    style={activeSection === item.key ? { '--rail-accent': group.color } : {}}
+                    className={`st-rail-item ${activeSection === item.key ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}
+                    onClick={() => {
+                      if (!isDisabled) switchSection(item.key);
+                    }}
+                    style={activeSection === item.key && !isDisabled ? { '--rail-accent': group.color } : {}}
+                    disabled={isDisabled}
                   >
                     <Icon name={item.icon} size={13} />
                     <span>{item.label}</span>
                     {item.phase && <Chip variant="neutral" size="xs">P{item.phase}</Chip>}
-                    {item.disabled && <span className="st-rail-lock"><Icon name="lock" size={10} /></span>}
+                    {isDisabled && <span className="st-rail-lock"><Icon name="lock" size={10} /></span>}
+                    {isReadOnly && !isDisabled && <span className="st-rail-readonly" style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>(Read-only)</span>}
                   </button>
                 )
               })}
@@ -252,7 +278,17 @@ export default function SettingsPage() {
 
         {/* Middle Form */}
         <div className="st-form-area">
-          <ActiveComponent />
+          {(() => {
+            // Re-evaluate readonly status for the active component to pass it down
+            let activeItemReadOnly = false;
+            const activeItem = RAIL_GROUPS.flatMap(g => g.items).find(i => i.key === activeSection);
+            if (activeItem && activeItem.adminOnly && !isAdmin && user?.role === 'hr') {
+               if (['ats-rules', 'templates'].includes(activeItem.key)) {
+                 activeItemReadOnly = true;
+               }
+            }
+            return <ActiveComponent isReadOnly={activeItemReadOnly} />
+          })()}
         </div>
 
         {/* Right Preview */}

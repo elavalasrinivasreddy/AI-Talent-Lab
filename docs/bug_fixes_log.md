@@ -1143,3 +1143,18 @@ When a user had zero active positions, the Dashboard rendered multiple, competin
 **Files Modified:**
 - `frontend/src/components/Dashboard/DashboardPage.jsx`
 
+### 72. Settings Page RBAC Left Rail Fix
+**Date:** 2026-06-01
+**Status:** Fixed
+
+**Issue / Validation:**
+During validation of the V3 AI Behavior Console, it was noted that the left navigation rail was incorrectly completely hiding restricted items for non-admins, violating Spec §7 which mandates they should be visible but greyed out with an "Admin-only" lock icon. Furthermore, Recruiter read-only access (for ATS Rules and Email Templates) wasn't being correctly managed.
+
+**Idea / Solution:**
+- Refactored the `SettingsPage.jsx` left rail mapping logic. Restricted items are now assigned an `isDisabled` state which applies visual greying and a lock icon instead of being filtered out.
+- Implemented an `isReadOnly` flag which propagates down to the active component, ensuring Recruiters can view but not edit sensitive AI rules (like ATS scoring threshold) as per the specification.
+
+**Files Modified:**
+- `frontend/src/components/Settings/SettingsPage.jsx`
+
+
