@@ -127,7 +127,9 @@ class PositionRepository:
         department_id: Optional[int] = None,
         status: Optional[str] = None,
         page: int = 1,
-        page_size: int = 20
+        page_size: int = 20,
+        assigned_to: Optional[int] = None,
+        created_by: Optional[int] = None,
     ) -> list[dict]:
         """List positions for an org with optional filters."""
         conditions = ["p.org_id = $1"]
@@ -141,6 +143,14 @@ class PositionRepository:
         if status:
             conditions.append(f"p.status = ${idx}")
             params.append(status)
+            idx += 1
+        if assigned_to:
+            conditions.append(f"p.assigned_to = ${idx}")
+            params.append(assigned_to)
+            idx += 1
+        if created_by:
+            conditions.append(f"p.created_by = ${idx}")
+            params.append(created_by)
             idx += 1
 
         offset = (page - 1) * page_size

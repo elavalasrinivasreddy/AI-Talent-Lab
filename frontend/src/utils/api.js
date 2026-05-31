@@ -137,6 +137,7 @@ export const candidatesApi = {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export const dashboardApi = {
+  getBriefing: (period = 'week', deptId = null) => _get(`/dashboard/briefing?period=${period}${deptId && deptId !== 'all' ? `&dept_id=${deptId}` : ''}`),
   getStats: (period = 'week', deptId = null) => _get(`/dashboard/stats?period=${period}${deptId && deptId !== 'all' ? `&dept_id=${deptId}` : ''}`),
   getPositions: (deptId = null) => _get(`/dashboard/positions${deptId && deptId !== 'all' ? `?dept_id=${deptId}` : ''}`),
   getPipeline: (positionId) => _get(`/dashboard/pipeline/${positionId}`),

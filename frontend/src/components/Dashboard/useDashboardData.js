@@ -127,87 +127,36 @@ export default function useDashboardData(role, period, dept = 'all') {
   const [positions, setPositions]     = useState([])
   const [health, setHealth]           = useState(null)
 
-  const [loadingSuggestions, setLoadingSuggestions] = useState(true)
-  const [loadingActivity, setLoadingActivity]       = useState(true)
-  const [loadingPositions, setLoadingPositions]     = useState(true)
-  const [loadingHealth, setLoadingHealth]           = useState(true)
+  const [loadingBriefing, setLoadingBriefing] = useState(true)
+  const [errorBriefing, setErrorBriefing]     = useState(null)
 
-  const [errorSuggestions, setErrorSuggestions] = useState(null)
-  const [errorActivity, setErrorActivity]       = useState(null)
-  const [errorPositions, setErrorPositions]     = useState(null)
-  const [errorHealth, setErrorHealth]           = useState(null)
+  const intervalRef = useRef(null)
 
-  const intervalRefs = useRef({})
-
-  const fetchSuggestions = useCallback(async () => {
-    setErrorSuggestions(null)
+  const fetchBriefing = useCallback(async () => {
+    setErrorBriefing(null)
     try {
-      const raw = await copilotApi.getSuggestions()
-      setSuggestions(normalizeSuggestions(raw))
+      const raw = await dashboardApi.getBriefing(period || 'week', dept)
+      setSuggestions(normalizeSuggestions(raw.suggestions))
+      setActivity(normalizeActivity(raw.activity))
+      setPositions(Array.isArray(raw.positions) ? raw.positions : [])
+      setHealth(raw.health || null)
     } catch (e) {
-      setErrorSuggestions(e.message || 'Failed to load suggestions')
+      setErrorBriefing(e.message || 'Failed to load dashboard data')
     } finally {
-      setLoadingSuggestions(false)
+      setLoadingBriefing(false)
     }
-  }, [])
+  }, [period, dept])
 
-  const fetchActivity = useCallback(async () => {
-    setErrorActivity(null)
-    try {
-      const raw = await dashboardApi.getActivity(null, 15)
-      setActivity(normalizeActivity(raw))
-    } catch (e) {
-      setErrorActivity(e.message || 'Failed to load activity')
-    } finally {
-      setLoadingActivity(false)
-    }
-  }, [])
+  // Initial fetch
+  useEffect(() => { fetchBriefing() }, [fetchBriefing])
 
-  const fetchPositions = useCallback(async () => {
-    setErrorPositions(null)
-    try {
-      const raw = await dashboardApi.getPositions(dept)
-      setPositions(Array.isArray(raw) ? raw : (raw?.positions || []))
-    } catch (e) {
-      setErrorPositions(e.message || 'Failed to load positions')
-    } finally {
-      setLoadingPositions(false)
-    }
-  }, [dept])
-
-  const fetchHealth = useCallback(async () => {
-    if (!ADMIN_ROLES.has(role)) {
-      setLoadingHealth(false)
-      return
-    }
-    setErrorHealth(null)
-    try {
-      const raw = await dashboardApi.getStats(period || 'week', dept)
-      setHealth(raw)
-    } catch (e) {
-      setErrorHealth(e.message || 'Failed to load health stats')
-    } finally {
-      setLoadingHealth(false)
-    }
-  }, [role, period, dept])
-
-  // Initial fetches
-  useEffect(() => { fetchSuggestions() }, [fetchSuggestions])
-  useEffect(() => { fetchActivity()    }, [fetchActivity])
-  useEffect(() => { fetchPositions()   }, [fetchPositions])
-  useEffect(() => { fetchHealth()      }, [fetchHealth])
-
-  // Polling: suggestions every 60s, activity/lanes every 30s
+  // Polling: refresh every 30s
   useEffect(() => {
-    intervalRefs.current.suggestions = setInterval(fetchSuggestions, 60_000)
-    intervalRefs.current.activity    = setInterval(fetchActivity,    30_000)
-    intervalRefs.current.positions   = setInterval(fetchPositions,   30_000)
+    intervalRef.current = setInterval(fetchBriefing, 30_000)
     return () => {
-      clearInterval(intervalRefs.current.suggestions)
-      clearInterval(intervalRefs.current.activity)
-      clearInterval(intervalRefs.current.positions)
+      clearInterval(intervalRef.current)
     }
-  }, [fetchSuggestions, fetchActivity, fetchPositions])
+  }, [fetchBriefing])
 
   // Derived lane data
   const { now, next } = splitSuggestionsToLanes(suggestions)
@@ -217,24 +166,24 @@ export default function useDashboardData(role, period, dept = 'all') {
 
   return {
     lanes: {
-      now:   { rows: now,   loading: loadingSuggestions, error: errorSuggestions,  retry: fetchSuggestions },
-      next:  { rows: next,  loading: loadingSuggestions, error: errorSuggestions,  retry: fetchSuggestions },
-      pulse: { rows: pulse, loading: loadingActivity,    error: errorActivity,     retry: fetchActivity    },
+      now:   { rows: now,   loading: loadingBriefing, error: errorBriefing,  retry: fetchBriefing },
+      next:  { rows: next,  loading: loadingBriefing, error: errorBriefing,  retry: fetchBriefing },
+      pulse: { rows: pulse, loading: loadingBriefing, error: errorBriefing,  retry: fetchBriefing },
     },
     suggestions,
     positions,
     health: isAdmin ? health : null,
     loading: {
-      suggestions: loadingSuggestions,
-      activity:    loadingActivity,
-      positions:   loadingPositions,
-      health:      isAdmin ? loadingHealth : false,
+      suggestions: loadingBriefing,
+      activity:    loadingBriefing,
+      positions:   loadingBriefing,
+      health:      isAdmin ? loadingBriefing : false,
     },
     error: {
-      suggestions: errorSuggestions,
-      activity:    errorActivity,
-      positions:   errorPositions,
-      health:      isAdmin ? errorHealth : null,
+      suggestions: errorBriefing,
+      activity:    errorBriefing,
+      positions:   errorBriefing,
+      health:      isAdmin ? errorBriefing : null,
     },
     // Dismiss helpers (keep suggestions in sync)
     dismiss: async (id) => {
@@ -246,10 +195,10 @@ export default function useDashboardData(role, period, dept = 'all') {
       try { await copilotApi.dismissAll() } catch { /* non-critical */ }
     },
     refetch: {
-      suggestions: fetchSuggestions,
-      activity:    fetchActivity,
-      positions:   fetchPositions,
-      health:      fetchHealth,
+      suggestions: fetchBriefing,
+      activity:    fetchBriefing,
+      positions:   fetchBriefing,
+      health:      fetchBriefing,
     },
   }
 }

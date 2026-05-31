@@ -1,0 +1,13 @@
+[Unit]
+Description=Graphify File Watcher for AI Talent Lab
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/media/elavala-srinivas-reddy/HDD/2026/AI Talent Lab
+ExecStart=/home/elavala-srinivas-reddy/.local/bin/graphify watch "/media/elavala-srinivas-reddy/HDD/2026/AI Talent Lab"
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

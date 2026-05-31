@@ -37,6 +37,24 @@ async def _resolve_dept_id(
     return requested
 
 
+@router.get("/briefing")
+async def get_briefing(
+    period: str = Query("week", pattern="^(today|week|month)$"),
+    dept_id: Optional[int] = Query(None),
+    current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Unified V3 dashboard briefing payload (stats, positions, activity, suggestions)."""
+    effective_dept = await _resolve_dept_id(dept_id, current_user, db)
+    return await DashboardService.get_briefing(
+        org_id=current_user["org_id"],
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+        department_id=effective_dept,
+        period=period
+    )
+
+
 @router.get("/stats")
 async def get_stats(
     period: str = Query("week", pattern="^(today|week|month)$"),

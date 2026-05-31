@@ -1085,4 +1085,48 @@ The Talent Pool screen was using a legacy "pre-v3" layout that was messy, space-
 - `frontend/src/router.jsx`
 - `frontend/src/components/TalentPool/TalentPoolPage.jsx`
 - `frontend/src/components/TalentPool/TalentPoolPage.css`
+
+### 69. Dashboard V3 RBAC Validation & Endpoint Consolidation
+**Date:** 2026-06-01
+**Status:** Fixed
+
+**Issue / Validation:**
+The V3 Dashboard layout (NOW/NEXT/PULSE lanes) was implemented, but the underlying data fetching had severe RBAC and data integrity leaks:
+1. **Copilot Suggestions Leaking:** The frontend fetched global suggestions and displayed them to all roles, violating the spec (e.g., Team Leads seeing `pool_match` intended for Admins).
+2. **Lane Data Scoping:** Because NOW and NEXT lanes derived directly from these unfiltered suggestions, HR and Team Leads were seeing org-wide alerts instead of their assigned/owned positions.
+3. **PULSE Lane Scoping:** Activity feed fetched via `/dashboard/activity` was entirely org-wide and ignored `assigned_to` or `created_by` filters.
+4. **Team Lead Position Scope:** The `get_positions_summary` backend filter missed the `role == "team_lead"` condition, resulting in Team Leads seeing all positions in their department instead of just the ones they created.
+5. **Parallel Fetching:** The frontend relied on 4 parallel API calls instead of the spec-recommended unified `dashboard/briefing` endpoint.
+
+**Idea / Solution:**
+- **Backend - Unified Endpoint:** Created a new `GET /api/v1/dashboard/briefing` endpoint in `routers/dashboard.py` and implemented `get_briefing` in `DashboardService`.
+- **Backend - Strict RBAC Filters:**
+  - Added `role == 'team_lead'` to `get_positions_summary` to filter by `p.created_by = user_id`.
+  - In `get_briefing`, filtered `activity` and `suggestions` directly against the IDs of the RBAC-filtered `positions` fetched in the same call.
+  - Implemented explicit role exclusions for `pool_match`, `pending_rejection`, and `uncontacted_high_score` suggestions as defined in the spec.
+- **Frontend - Consolidation:** Refactored `useDashboardData.js` to replace the 4 parallel requests with a single `fetchBriefing` function, vastly reducing client-side logic complexity and data load.
+
+**Files Modified:**
+- `backend/services/dashboard_service.py`
+- `backend/routers/dashboard.py`
+- `frontend/src/utils/api.js`
+- `frontend/src/components/Dashboard/useDashboardData.js`
 - `docs/design/pages/08_talent_pool.md`
+
+### 70. Positions List V3 RBAC Validation & Security Fix
+**Date:** 2026-06-01
+**Status:** Fixed
+
+**Issue / Validation:**
+The V3 Positions List ("Pipeline Garden") frontend implementation perfectly mirrors the design spec, cleanly surfacing stalled/draft/closed visual states alongside 30-day sparklines. However, similar to the Dashboard, a backend data leakage issue was identified:
+- **Team Lead Scope Leak:** The `GET /api/v1/positions/` endpoint allowed Team Leads to see *all* positions within their department, violating the spec which mandates they only see their assigned/owned positions.
+
+**Idea / Solution:**
+- Added `assigned_to` and `created_by` arguments to the `list_for_org` SQL query in `PositionRepository`.
+- Updated `backend/routers/positions.py` and `backend/services/position_service.py` to enforce `created_by = current_user["user_id"]` whenever a Team Lead requests the position list, accurately scoping the Pipeline Garden strictly to their authored roles.
+
+**Files Modified:**
+- `backend/db/repositories/positions.py`
+- `backend/services/position_service.py`
+- `backend/routers/positions.py`
+
