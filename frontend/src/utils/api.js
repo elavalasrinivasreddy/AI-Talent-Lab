@@ -237,6 +237,7 @@ export const authApi = {
 export const settingsApi = {
   getAiBehavior: () => _get('/settings/ai-behavior'),
   updateAiBehavior: (settings) => _patch('/settings/ai-behavior', settings),
+  getDepartments: () => _get('/settings/departments'),
 }
 
 // ── GDPR / Privacy ────────────────────────────────────────────────────────────

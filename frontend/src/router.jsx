@@ -152,34 +152,36 @@ export const router = createBrowserRouter([
                 ],
               },
 
-          // Analytics — admin tiers only; recruiters/team leads see no per-recruiter data
-          {
-            element: <RoleGuard roles={['org_head', 'dept_admin', 'platform_admin']} />,
-            children: [
-              { path: '/analytics', element: <AnalyticsPage /> },
+              // Analytics — admin tiers only; recruiters/team leads see no per-recruiter data
+              {
+                element: <RoleGuard roles={['org_head', 'dept_admin']} />,
+                children: [
+                  { path: '/analytics', element: <AnalyticsPage /> },
+                ],
+              },
+
+              // Positions
+              { path: '/positions', element: <PositionsListPage /> },
+              { path: '/positions/:id', element: <PositionDetailPage /> },
+              { path: '/positions/:id/:tab', element: <PositionDetailPage /> },
+
+              // Candidates
+              { path: '/candidates/:id', element: <CandidateDetailPage /> },
+
+              // Other pages
+              { path: '/dashboard', element: <DashboardPage /> },
+              { path: '/talent-pool', element: <TalentPoolPage /> },
+              { path: '/interviews', element: <InterviewsListPage /> },
+              { path: '/settings', element: <SettingsPage /> },
+              { path: '/settings/:tab', element: <SettingsPage /> },
+
+              // Hire requests
+              { path: '/hire-requests', element: <HireRequestListPage /> },
+              { path: '/hire-requests/new', element: <HireRequestForm mode="create" /> },
+              { path: '/hire-requests/:id', element: <HireRequestDetailPage /> },
+              { path: '/hire-requests/:id/edit', element: <HireRequestForm mode="edit" /> },
             ],
           },
-
-          // Positions
-          { path: '/positions', element: <PositionsListPage /> },
-          { path: '/positions/:id', element: <PositionDetailPage /> },
-          { path: '/positions/:id/:tab', element: <PositionDetailPage /> },
-
-          // Candidates
-          { path: '/candidates/:id', element: <CandidateDetailPage /> },
-
-          // Other pages
-          { path: '/dashboard', element: <DashboardPage /> },
-          { path: '/talent-pool', element: <TalentPoolPage /> },
-          { path: '/interviews', element: <InterviewsListPage /> },
-          { path: '/settings', element: <SettingsPage /> },
-          { path: '/settings/:tab', element: <SettingsPage /> },
-
-          // Hire requests
-          { path: '/hire-requests', element: <HireRequestListPage /> },
-          { path: '/hire-requests/new', element: <HireRequestForm mode="create" /> },
-          { path: '/hire-requests/:id', element: <HireRequestDetailPage /> },
-          { path: '/hire-requests/:id/edit', element: <HireRequestForm mode="edit" /> },
         ],
       },
     ],
