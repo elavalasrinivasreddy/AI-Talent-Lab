@@ -920,3 +920,22 @@ Updated the `<RoleGuard>` for the `/chat` route to include `dept_admin`, alignin
 
 **Files Modified:**
 - `frontend/src/router.jsx`
+
+### 59. Dashboard UI Refinements (Scroll & Roles)
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+1. Dashboard layout scrolled vertically off-screen rather than acting as a fixed Command Center.
+2. Department Admins saw "Org-wide health" instead of "Department health".
+3. Team Leads saw "Create your first position" routing to `/chat` in the empty state instead of "File Hire Request".
+
+**Idea / Solution:**
+- Locked `.dash-v3` to `height: calc(100vh - 108px)` and applied `overflow-y: auto` to `.tb-lane-rows` to make only the briefing lanes scroll.
+- Dynamically rendered "Department health" for `dept_admin` in `DashboardPage.jsx`.
+- Plumbed `role` prop down to `TodaysBriefing` to dynamically update the empty state text and routing for `team_lead`.
+
+**Files Modified:**
+- `frontend/src/styles/dashboard.css`
+- `frontend/src/components/Dashboard/DashboardPage.jsx`
+- `frontend/src/components/Dashboard/TodaysBriefing.jsx`

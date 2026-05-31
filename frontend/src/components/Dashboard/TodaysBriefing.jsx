@@ -23,7 +23,7 @@ const EMPTY_MESSAGES = {
   pulse: 'AI hasn’t run yet today. Background sourcing kicks in at 6 AM IST.',
 }
 
-export default function TodaysBriefing({ lanes, positions }) {
+export default function TodaysBriefing({ lanes, positions, role }) {
   // Onboarding hero: no active positions at all
   const hasPositions = Array.isArray(positions) && positions.some(p => p.status === 'open' || p.status === 'active')
   const allLanesLoading = lanes.now.loading && lanes.next.loading && lanes.pulse.loading
@@ -40,10 +40,12 @@ export default function TodaysBriefing({ lanes, positions }) {
           </div>
           <h2 className="tb-onboarding-title">No active positions yet</h2>
           <p className="tb-onboarding-desc">
-            Create your first position via the AI chat — it will source candidates, run bias checks, and build a JD in minutes.
+            {role === 'team_lead' 
+              ? 'File your first hire request to get the hiring process started.'
+              : 'Create your first position via the AI chat — it will source candidates, run bias checks, and build a JD in minutes.'}
           </p>
-          <Link to="/chat" className="btn-primary tb-onboarding-cta">
-            Create your first position
+          <Link to={role === 'team_lead' ? '/hire-requests/new' : '/chat'} className="btn-primary tb-onboarding-cta">
+            {role === 'team_lead' ? 'File Hire Request' : 'Create your first position'}
           </Link>
         </div>
       </div>

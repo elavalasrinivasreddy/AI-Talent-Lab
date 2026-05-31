@@ -10,9 +10,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-  padding: var(--space-6) var(--space-8) var(--space-12);
+  /* Use padding for top/bottom but remove huge bottom padding so it fits */
+  padding: 0 0 var(--space-4) 0;
   max-width: 1440px;
   margin: 0 auto;
+  height: calc(100vh - 108px); /* 108px is app-main top/bottom padding */
+  overflow: hidden;
   animation: rise 280ms ease-out both;
   font-family: var(--font-primary);
   color: var(--color-text-primary);
@@ -332,7 +335,10 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-4);
-  align-items: start;
+  /* stretch to fill available vertical space */
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
 }
 
 @media (max-width: 1024px) {
@@ -347,7 +353,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  /* Subtle top-color tint fading to transparent */
+  /* subtle top-color tint fading to transparent */
   background-image: linear-gradient(
     180deg,
     color-mix(in srgb, var(--lane-tint, transparent) 6%, transparent) 0%,
@@ -390,6 +396,9 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-2) 0;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 /* ── Single briefing row ───────────────────────────────────── */

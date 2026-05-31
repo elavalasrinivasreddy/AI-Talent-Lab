@@ -51,7 +51,8 @@ function greetingSuffix(role, data) {
   const pendingApprovalCount = 0 // not fetched at page level; can wire later
   if (role === 'org_head' || role === 'dept_admin') {
     const openReqs = health?.open_reqs ?? health?.active_positions ?? (positions?.length || 0)
-    return `Org-wide health · ${openReqs} open req${openReqs !== 1 ? 's' : ''}`
+    const scope = role === 'org_head' ? 'Org-wide' : 'Department'
+    return `${scope} health · ${openReqs} open req${openReqs !== 1 ? 's' : ''}`
   }
   if (role === 'hr') {
     const nowCount  = lanes?.now?.rows?.length  || 0
@@ -178,6 +179,7 @@ export default function DashboardPage() {
       <TodaysBriefing
         lanes={lanes}
         positions={positions}
+        role={role}
       />
 
       {/* ── Bottom row: Velocity + Position Pulse ── */}
