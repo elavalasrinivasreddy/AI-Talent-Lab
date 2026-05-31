@@ -149,13 +149,15 @@ class PositionRepository:
         rows = await conn.fetch(
             f"""
             SELECT p.*,
+                d.name AS department_name,
                 COUNT(a.id) AS total_candidates,
                 COUNT(a.id) FILTER (WHERE a.status = 'applied') AS applied_count,
                 COUNT(a.id) FILTER (WHERE a.status = 'interview') AS interview_count
             FROM positions p
+            LEFT JOIN departments d ON p.department_id = d.id
             LEFT JOIN candidate_applications a ON a.position_id = p.id
             WHERE {where}
-            GROUP BY p.id
+            GROUP BY p.id, d.name
             ORDER BY p.created_at DESC
             LIMIT {page_size} OFFSET {offset}
             """,

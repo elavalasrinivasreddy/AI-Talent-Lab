@@ -65,15 +65,18 @@ export default function PositionsToolbar({
         )}
 
         {/* Sort */}
-        <select
-          className="positions-select"
-          value={sort}
-          onChange={e => onSort(e.target.value)}
-        >
-          <option value="urgency">Urgency</option>
-          <option value="newest">Newest</option>
-          <option value="activity">Activity</option>
-        </select>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+          <span style={{ fontWeight: 500 }}>Sort:</span>
+          <select
+            className="positions-select"
+            value={sort}
+            onChange={e => onSort(e.target.value)}
+          >
+            <option value="urgency">Urgency</option>
+            <option value="newest">Newest</option>
+            <option value="activity">Activity</option>
+          </select>
+        </div>
       </div>
     </div>
   )

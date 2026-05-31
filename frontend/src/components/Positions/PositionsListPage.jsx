@@ -27,7 +27,7 @@ function totalCount(p) {
 export default function PositionsListPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const isAdmin = user?.role === 'admin' || user?.role === 'org_admin' || user?.role === 'org_head'
+  const isAdmin = ['admin', 'org_admin', 'org_head', 'hr'].includes(user?.role)
 
   const [positions, setPositions]     = useState([])
   const [loading, setLoading]         = useState(true)

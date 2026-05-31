@@ -987,3 +987,21 @@ The sidebar navigation handler (`handleNewHire`) was checking `messages.length =
 **Files Modified:**
 - `frontend/src/components/Positions/PositionsListPage.jsx`
 - `frontend/src/components/Positions/PositionsToolbar.jsx`
+
+### 63. Positions Tab Filter Visibility and Sorting Context
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+1. The Department dropdown filter was mysteriously missing for `org_head` and `hr` despite being functionally designed for them.
+2. The standalone dropdown on the top right ("Urgency", "Newest", "Activity") lacked context, leaving users confused about its purpose (Filtering vs. Sorting).
+
+**Idea / Solution:**
+- Discovered that the backend SQL query in `list_for_org` was failing to fetch `department_name` via a JOIN, causing the frontend's dynamic department list extraction to fail. Added the missing `LEFT JOIN departments d` and fetched `d.name AS department_name`.
+- Expanded the `isAdmin` boolean on the frontend to explicitly include the `hr` role, ensuring both HR and Org Heads can view and use the cross-department filter.
+- Added a "Sort:" label prefix to the top-right dropdown. This is a powerful sorting feature designed to bring "stalled" or "urgent" pipelines to the top of a recruiter's workflow, and labeling it clarifies its exact intent.
+
+**Files Modified:**
+- `backend/db/repositories/positions.py`
+- `frontend/src/components/Positions/PositionsListPage.jsx`
+- `frontend/src/components/Positions/PositionsToolbar.jsx`
