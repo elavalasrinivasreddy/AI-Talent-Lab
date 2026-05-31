@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/v1/copilot", tags=["AI Copilot"])
 @router.get("/suggestions")
 async def get_suggestions(user=Depends(get_current_user)):
     """Return active copilot suggestions for the current user's org."""
-    suggestions = await CopilotService.get_suggestions(user["org_id"], user["id"])
+    suggestions = await CopilotService.get_suggestions(user["org_id"], user["user_id"])
     return {"suggestions": suggestions}
 
 
@@ -28,7 +28,7 @@ async def dismiss_suggestion(suggestion_id: int, user=Depends(get_current_user))
 @router.patch("/suggestions/dismiss-all")
 async def dismiss_all_suggestions(user=Depends(get_current_user)):
     """Dismiss all active suggestions for this user."""
-    await CopilotService.dismiss_all(user["org_id"], user["id"])
+    await CopilotService.dismiss_all(user["org_id"], user["user_id"])
     return {"ok": True}
 
 

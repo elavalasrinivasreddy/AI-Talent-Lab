@@ -662,3 +662,18 @@ Team Leads could incorrectly see JD generation chat history in their sidebar. Ad
 - `frontend/src/utils/api.js`
 - `frontend/src/components/Sidebar/Sidebar.jsx`
 - `backend/services/position_service.py`
+
+---
+
+### 49. Fix 500 Error in Copilot Suggestions Endpoint
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+The `GET /api/v1/copilot/suggestions` and `PATCH /api/v1/copilot/suggestions/dismiss-all` endpoints were returning a 500 Internal Server Error due to a `KeyError: 'id'`. This occurred because the endpoint was attempting to access `user["id"]`, but the `get_current_user` dependency returns a dictionary with the key `"user_id"`.
+
+**Idea / Solution:**
+Updated the `get_suggestions` and `dismiss_all_suggestions` endpoints in `backend/routers/copilot.py` to correctly reference `user["user_id"]` instead of `user["id"]`.
+
+**Files Modified:**
+- `backend/routers/copilot.py`
