@@ -31,7 +31,7 @@ class ChatSessionRepository:
                 """,
                 session_id, org_id, department_id, user_id
             )
-            return dict(row)
+            return dict(row) if row else {}
 
     @staticmethod
     async def get(session_id: str, org_id: int) -> Optional[dict[str, Any]]:
@@ -189,7 +189,7 @@ class ChatSessionRepository:
                 """,
                 session_id, role, content, extras_json
             )
-            return dict(row)
+            return dict(row) if row else {}
 
     @staticmethod
     async def link_position(session_id: str, org_id: int, position_id: int) -> None:
