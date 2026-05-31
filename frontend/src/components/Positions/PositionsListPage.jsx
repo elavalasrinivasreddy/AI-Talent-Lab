@@ -28,7 +28,7 @@ export default function PositionsListPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   // Only show department filters if the user has cross-department visibility
-  const canFilterByDept = ['platform_admin', 'org_head'].includes(user?.role) || (user?.role === 'hr' && !user?.dept_id)
+  const canFilterByDept = user?.role === 'org_head' || (user?.role === 'hr' && !user?.dept_id)
 
   const [positions, setPositions]     = useState([])
   const [loading, setLoading]         = useState(true)

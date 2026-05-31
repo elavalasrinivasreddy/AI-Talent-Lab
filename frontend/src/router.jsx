@@ -65,6 +65,16 @@ function RoleGuard({ roles }) {
   return <Outlet />
 }
 
+// ── Org Guard (Tenant isolation) ─────────────────────────────────────────────
+
+function OrgGuard() {
+  const { user, loading } = useAuth()
+  if (loading) return null
+  // Platform admins (SaaS owners) should not access tenant-specific workspaces
+  if (user?.role === 'platform_admin') return <Navigate to="/platform" replace />
+  return <Outlet />
+}
+
 // ── Dev Guard (platform_admin only) ─────────────────────────────────────────
 
 function DevGuard() {
@@ -128,16 +138,19 @@ export const router = createBrowserRouter([
     element: <AuthGuard />,
     children: [
       {
-        element: <AppLayout />,
+        element: <OrgGuard />,
         children: [
-          // Chat — hr, org_head, and dept_admin only; team_lead enters via /hire-requests/new
           {
-            element: <RoleGuard roles={['hr', 'org_head', 'dept_admin']} />,
+            element: <AppLayout />,
             children: [
-              { path: '/chat', element: <ChatPage /> },
-              { path: '/chat/:sessionId', element: <ChatPage /> },
-            ],
-          },
+              // Chat — hr, org_head, and dept_admin only; team_lead enters via /hire-requests/new
+              {
+                element: <RoleGuard roles={['hr', 'org_head', 'dept_admin']} />,
+                children: [
+                  { path: '/chat', element: <ChatPage /> },
+                  { path: '/chat/:sessionId', element: <ChatPage /> },
+                ],
+              },
 
           // Analytics — admin tiers only; recruiters/team leads see no per-recruiter data
           {
