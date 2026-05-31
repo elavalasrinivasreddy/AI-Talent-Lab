@@ -267,31 +267,60 @@ class ChatService:
         final_jd = state.get("final_jd")
 
         async with get_connection() as conn:
-            position = await PositionRepository.create(
-                conn=conn,
-                org_id=org_id,
-                department_id=department_id,
-                session_id=session_id,
-                role_name=role_name,
-                jd_markdown=final_jd,
-                jd_variant_selected=state.get("selected_variant"),
-                status="draft",  # Stays draft until team_lead approves
-                headcount=setup_data.get("headcount", 1),
-                priority=setup_data.get("priority", "normal"),
-                ats_threshold=setup_data.get("ats_threshold", 80.0),
-                search_interval_hours=setup_data.get("search_interval_hours", 24),
-                created_by=user_id,
-                location=state.get("location"),
-                work_type=state.get("work_type", "onsite"),
-                employment_type=state.get("employment_type", "full_time"),
-                experience_min=state.get("experience_min"),
-                experience_max=state.get("experience_max")
-            )
-
-            position_id = position["id"]
-
-            # Link session -> position
-            await ChatSessionRepository.link_position(session_id, org_id, position_id)
+            existing_position_id = session_row.get("position_id")
+            
+            if existing_position_id:
+                # Update existing position
+                update_data = {
+                    "department_id": department_id,
+                    "role_name": role_name,
+                    "jd_markdown": final_jd,
+                    "jd_variant_selected": state.get("selected_variant"),
+                    "status": "draft",
+                    "headcount": setup_data.get("headcount", 1),
+                    "priority": setup_data.get("priority", "normal"),
+                    "ats_threshold": setup_data.get("ats_threshold", 80.0),
+                    "search_interval_hours": setup_data.get("search_interval_hours", 24),
+                    "location": state.get("location"),
+                    "work_type": state.get("work_type", "onsite"),
+                }
+                position = await PositionRepository.update(
+                    conn=conn, position_id=existing_position_id, org_id=org_id, data=update_data
+                )
+                if not position:
+                    raise ValueError("Position not found to update")
+                position_id = existing_position_id
+                
+                # Clear existing variants to replace them
+                await conn.execute("DELETE FROM jd_variants WHERE position_id = $1", position_id)
+                audit_action = "position_updated"
+            else:
+                position = await PositionRepository.create(
+                    conn=conn,
+                    org_id=org_id,
+                    department_id=department_id,
+                    session_id=session_id,
+                    role_name=role_name,
+                    jd_markdown=final_jd,
+                    jd_variant_selected=state.get("selected_variant"),
+                    status="draft",  # Stays draft until team_lead approves
+                    headcount=setup_data.get("headcount", 1),
+                    priority=setup_data.get("priority", "normal"),
+                    ats_threshold=setup_data.get("ats_threshold", 80.0),
+                    search_interval_hours=setup_data.get("search_interval_hours", 24),
+                    created_by=user_id,
+                    location=state.get("location"),
+                    work_type=state.get("work_type", "onsite"),
+                    employment_type=state.get("employment_type", "full_time"),
+                    experience_min=state.get("experience_min"),
+                    experience_max=state.get("experience_max")
+                )
+    
+                position_id = position["id"]
+    
+                # Link session -> position
+                await ChatSessionRepository.link_position(session_id, org_id, position_id)
+                audit_action = "position_created"
 
             # Insert variants
             variants = state.get("jd_variants", [])
@@ -301,12 +330,12 @@ class ChatService:
                         v["is_selected"] = True
                 await PositionRepository.insert_variants(conn, position_id, variants)
 
-            # Pipeline event: JD created
+            # Pipeline event: JD created or updated
             await PipelineEventRepository.create(conn, {
                 "org_id": org_id,
                 "position_id": position_id,
                 "user_id": user_id,
-                "event_type": "jd_generated",
+                "event_type": "jd_updated" if existing_position_id else "jd_generated",
                 "event_data": {"role_name": role_name, "variant": state.get("selected_variant")}
             })
 
@@ -314,7 +343,7 @@ class ChatService:
             await AuditLogRepository.create(conn, {
                 "org_id": org_id,
                 "user_id": user_id,
-                "action": "position_created",
+                "action": audit_action,
                 "entity_type": "position",
                 "entity_id": str(position_id),
                 "details": json.dumps({"role_name": role_name, "department_id": department_id})

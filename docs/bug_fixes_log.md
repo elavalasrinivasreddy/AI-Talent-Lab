@@ -707,3 +707,21 @@ Appended a fallback conditional `if row else {}` to the `dict(row)` returns insi
 
 **Files Modified:**
 - `backend/db/repositories/sessions.py`
+
+---
+
+### 52. Prevent Duplicate Positions from JD Chat Resubmission
+**Date:** 2026-05-31
+**Status:** Fixed
+
+**Issue:**
+When an HR recruiter finalized a JD and clicked "Save & find candidates", a new position was created successfully. However, if the recruiter later re-opened the same chat session (e.g., to revise the JD based on Team Lead feedback) and clicked the save button again, the backend would blindly create a completely new, duplicate position instead of updating the existing one.
+
+**Idea / Solution:**
+Updated `ChatService.finish_and_save_position` to check if the current chat session is already linked to a `position_id`. 
+- If a `position_id` exists, the backend now updates the existing position record, clears and re-inserts the variants, and fires an "updated" audit log instead of "created".
+- The status of the position is reset to `draft` so it correctly routes back into the Team Lead approval loop (if not auto-approved).
+- This prevents pipeline duplication and keeps the history clean.
+
+**Files Modified:**
+- `backend/services/chat_service.py`
