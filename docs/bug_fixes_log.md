@@ -1044,6 +1044,8 @@ The `platform_admin` role (SaaS operators) had implicit routing access to tenant
 HR users assigned to a specific department were still seeing the cross-department filter in the Positions page. This happened because the frontend `AuthContext` populates the user object with `department_id`, but the frontend filter check was incorrectly referencing `dept_id` (which is the property name used in the JWT payload on the backend, not the `/auth/me` frontend object).
 
 **Idea / Solution:**
+- Corrected the property accessor in `PositionsListPage.jsx` from `!user?.dept_id` to `!user?.department_id` to accurately read the user's department assignment and hide the filter when they are scoped to a specific department.
+
 **Files Modified:**
 - `frontend/src/components/Positions/PositionsListPage.jsx`
 
@@ -1061,3 +1063,19 @@ When an Org Head invites a new team member and leaves their department empty, th
 
 **Files Modified:**
 - `frontend/src/components/Settings/tabs/TeamTab.jsx`
+
+### 68. Talent Pool UI/UX Overhaul & Scrolling Fix (Pending)
+**Date:** 2026-05-31
+**Status:** Planned
+
+**Issue / Validation:**
+The current Talent Pool screen is using the legacy "pre-v3" layout which is extremely messy and space-inefficient:
+1. **Scrolling Issue:** The page lacks the standard fixed layout wrapper (`app-content` / `scrollable-content`), causing the entire page to scroll top-to-bottom instead of just the content area.
+2. **Vertical Bloat:** The Bulk Upload dropzone, AI Match Suggestions, Search bar, and full-width Filter dropdowns are all stacked vertically. This pushes the actual candidate data (or the Empty State) entirely off the screen.
+3. **Illogical Empty State:** AI Match Suggestions and Filters are visible even when the talent pool is 100% empty, which makes no sense.
+
+**Proposed Solution (Aligning with v3 Design Docs):**
+- **Fix Shell:** Wrap the page in the standard fixed-header layout.
+- **Clean Empty State:** If the pool is empty, hide all filters and AI Match panels. Show only a beautiful, centered empty state with a primary `[+ Upload Resumes]` button.
+- **Move Bulk Upload:** Move the massive drag-and-drop zone into a Modal triggered by a top-right header button (`+ Upload Resumes`), aligning with the v3 spec and saving 30% of screen height.
+- **Horizontal Toolbar:** Refactor the Search, Location, and Reason filters into a compact, horizontal flex-row toolbar.

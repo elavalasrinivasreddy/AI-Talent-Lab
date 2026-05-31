@@ -39,65 +39,44 @@ The fit-matrix endpoint runs the existing 2-step ATS scoring (`candidate_service
 
 ---
 
-## 3. Layout
+## 3. Layout (V4: Contextual Copilot Match)
 
 ```
-[ topbar: "Talent Pool" + sub · [Bulk upload] [Add candidate] ]
+[ topbar: "Talent Pool" + sub · [+ Upload Resumes] ]
 
-[ HERO ]
-  "47 candidates in pool. AI suggests 12 fit your 5 open positions."
-  "Auto-pooled on close or rejection · pool is a re-engagement engine, not a graveyard."
-                                         [47 In Pool] [12 AI Fits] [5 Open Reqs] [8 Re-engaged 90d]
+[ HERO (Optional based on scroll) ]
+  "47 candidates in pool."
 
 [ TOOLBAR ]
-  [Search skills/exp/tags] [All skills ▼] [All exp ▼] [Contact status ▼]
-                                     "Showing 6 of 47 · sorted by best-fit aggregate"
+  [Search skills/exp/tags] [Location ▼] [Reason ▼]  [ ✨ AI Match to Position ]
 
-[ MATRIX ]
-  ┌─────────────────────┬─────────┬──────────┬──────────┬──────────┬──────────┬──────────┐
-  │ Pool Candidate      │ Contact │ ML Eng   │ Backend  │ Designer │ Sales AE │ DevOps   │
-  ├─────────────────────┼─────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
-  │ Lin Kowalski        │ ● Active│ [92]     │ [81]     │ —        │ —        │ [73]     │
-  │ Yuki Lim            │ ● Active│ [71]     │ [85]     │ —        │ —        │ [89]     │
-  │ Fatima Bah          │ ● Active│ [62]     │ [84]     │ —        │ —        │ [71]     │
-  │ Jin Nguyen          │ ● Active│ —        │ —        │ [91]     │ —        │ —        │
-  │ Noah Roberts        │ ● Active│ —        │ —        │ —        │ [87]     │ —        │
-  │ Priya Tiwari (dim)  │ Employed│ —        │ [66]     │ —        │ —        │ —        │
-  └─────────────────────┴─────────┴──────────┴──────────┴──────────┴──────────┴──────────┘
-
-[ COPILOT SUGGESTION FOOTER ]
-  "Copilot suggests: Re-engage Lin K. for Senior ML Eng (92% fit · was offer-stage last cycle)
-   and Yuki L. for DevOps Eng (89% fit · we paused outreach 28d ago)."          [Re-engage 2 →]
+[ DATA TABLE / GRID ]
+  [ Avatar/Name ] [ Skills ] [ Location ] [ Experience ] [ Source/Reason ] [ Actions ]
+  (Clean standard list, no horizontal scrolling)
 ```
 
 ---
 
-## 4. Matrix cell semantics
+## 4. AI Match Side-Panel (Copilot)
 
-| Score | Color band | Visual |
-|---|---|---|
-| 85–100 | `--ok` saturated | `[NN]` with darker green bg + border |
-| 80–84 | `--ok` muted | green bg lighter |
-| 70–79 | `--warn` muted | amber bg |
-| 60–69 | `--warn` muted | amber bg lighter |
-| 50–59 | `--tx-3` | neutral bg |
-| no match (below threshold or scoring not run) | `—` | very faint |
+Triggered by the `[ ✨ AI Match to Position ]` button in the toolbar.
+Instead of a massive Matrix, this provides an on-demand, targeted vector search.
 
-**Cell click → drill-in:** opens `/candidates/:id` with `state.from='/talent-pool'` AND `state.activePositionId={col.positionId}` so the candidate detail page shows compare-to-ideal grid scoped to that position's JD.
-
-**Cell hover:** quick popover with top 2 matched skills + top 1 missing skill.
+1. **Position Selection:** 
+   - A searchable dropdown/list of Open Positions.
+   - **RBAC Enforcement:** Scoped HR and Dept Admins ONLY see positions in their department. Org Head and Global HR see all positions (grouped by department).
+2. **Match Compute:** Once selected, the backend scores the pool against that specific position's JD embedding and streams the top 5-10 matches.
+3. **Action:** Recruiter can click `[Add to Pipeline]` directly from the side-panel match results.
 
 ---
 
-## 5. Candidate row
+## 5. Candidate Row
 
 | Cell | Detail |
 |---|---|
-| Avatar + name | Initials, brand gradient. Click → candidate detail (no position context — uses last application) |
-| Sub line | "6 yrs · ML · Bangalore · pool 12d" — yrs / function / location / time-in-pool |
-| Contact status | chip — Active (`--ok`) / Unsubscribed (`--tx-3`) / Employed elsewhere (`--info`) |
-
-Employed candidates row is dimmed (62% opacity) — visible but de-prioritized.
+| Avatar + name | Initials, brand gradient. Click → candidate detail |
+| Sub line | yrs / function / location / time-in-pool |
+| Contact status | chip — Active / Unsubscribed / Employed elsewhere |
 
 ---
 
@@ -106,45 +85,25 @@ Employed candidates row is dimmed (62% opacity) — visible but de-prioritized.
 | Filter | Options | Default |
 |---|---|---|
 | Search | free-text across skills, name, email, tags | empty |
-| Skill | All skills · top 50 from pool · filtered to those present in pool | All |
-| Experience | All · 0–3 yrs · 3–7 yrs · 7+ yrs | All |
-| Contact status | All · Active · Unsubscribed · Employed | All |
-| Time in pool | All · <30d · 30–90d · 90d+ | All |
-
-Filters narrow the row list. Columns (positions) stay the same.
+| Location | All + unique locations in pool | All |
+| Pool Reason | All + Rejected, Position Closed, Manual | All |
 
 ---
 
-## 7. Copilot suggestion footer
+## 7. Bulk Actions & Uploads
 
-Pulls from `copilot_suggestions` table where `type='pool_match'`. Highlights the 1-2 best re-engagement opportunities with context ("was offer-stage last cycle" / "we paused outreach 28d ago").
-
-`[Re-engage 2 →]` button triggers bulk re-engagement: opens a confirmation modal listing the candidates, the outreach email template that will be used, and the position they'll be added to. On confirm, calls `POST /talent-pool/{id}/re-engage` for each.
+- **Bulk Upload:** Triggered via the `[+ Upload Resumes]` button in the topbar. Opens a modal with the drag-and-drop zone, completely removing it from the default page view.
 
 ---
 
-## 8. Bulk actions
-
-When user selects rows (checkbox column — optional, can ship without):
-- **Bulk re-engage** — send outreach to selected candidates for a chosen position
-- **Bulk add to position** — move selected candidates into a pipeline at status=sourced
-- **Bulk tag** — add a tag to all selected
-- **Bulk remove from pool** — archive permanently
-
----
-
-## 9. Components to build / refactor
+## 8. Components to build / refactor
 
 | Component | Path | Notes |
 |---|---|---|
-| `<TalentPoolPage>` | `frontend/src/components/TalentPool/TalentPoolPage.jsx` | Refactor |
-| `<PoolHero>` | `TalentPool/PoolHero.jsx` | New — stats + headline |
-| `<PoolToolbar>` | `TalentPool/PoolToolbar.jsx` | New — search + filters |
-| `<PoolMatrix>` | `TalentPool/PoolMatrix.jsx` | New — the main matrix component |
-| `<MatrixCell>` | `TalentPool/MatrixCell.jsx` | New — fit score cell with hover |
-| `<ContactStatusChip>` | `TalentPool/ContactStatusChip.jsx` | New |
-| `<CopilotPoolFooter>` | `TalentPool/CopilotPoolFooter.jsx` | New |
-| `<BulkUploadModal>` | `TalentPool/BulkUploadModal.jsx` | Keep existing |
+| `<TalentPoolPage>` | `frontend/src/components/TalentPool/TalentPoolPage.jsx` | Refactor (add scroll wrappers) |
+| `<PoolToolbar>` | `TalentPool/PoolToolbar.jsx` | Refactor to horizontal layout |
+| `<CopilotMatchPanel>`| `TalentPool/CopilotMatchPanel.jsx` | New — Sliding side panel for AI matching |
+| `<BulkUploadModal>` | `TalentPool/BulkUploadModal.jsx` | New — Move existing Dropzone here |
 
 ---
 
