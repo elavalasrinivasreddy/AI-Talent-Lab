@@ -1,44 +1,27 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import api from '../../../utils/api'
 import Icon from '../../common/Icon'
 import Toast from '../../common/Toast'
-import '../Settings.css'
-
-const NOTIFICATION_EVENTS = [
-  {
-    category: 'Hire Requests',
-    events: [
-      { id: 'hire_request_submitted', label: 'New hire request submitted (by HR)' },
-      { id: 'hire_request_decision', label: 'Hire request approved or rejected' },
-    ]
-  },
-  {
-    category: 'Job Descriptions',
-    events: [
-      { id: 'jd_drafted', label: 'JD draft ready for review' },
-    ]
-  },
-  {
-    category: 'Candidates',
-    events: [
-      { id: 'new_candidate', label: 'New candidate applied' },
-      { id: 'candidate_stage_change', label: 'Candidate stage changed' },
-    ]
-  },
-  {
-    category: 'Interviews & Feedback',
-    events: [
-      { id: 'interview_scheduled', label: 'Interview scheduled' },
-      { id: 'panel_feedback', label: 'Panel feedback submitted' },
-    ]
-  }
-]
 
 export default function NotificationsTab() {
   const { user, setUser } = useAuth()
-  const [preferences, setPreferences] = useState(user?.notification_preferences || {})
-  const [loading, setLoading] = useState(false)
+  
+  // Default values or parsed from user preferences
+  const defaultPrefs = user?.notification_preferences || {}
+  
+  const [preferences, setPreferences] = useState({
+    email_critical: defaultPrefs.email_critical ?? true,
+    email_digest: defaultPrefs.email_digest ?? false,
+    email_mentions: defaultPrefs.email_mentions ?? true,
+    email_ai_activity: defaultPrefs.email_ai_activity ?? false,
+    inapp_all_events: defaultPrefs.inapp_all_events ?? true,
+    inapp_status_changes: defaultPrefs.inapp_status_changes ?? false,
+    inapp_ai_grouped: defaultPrefs.inapp_ai_grouped ?? true,
+    quiet_start: defaultPrefs.quiet_start ?? '22:00',
+    quiet_end: defaultPrefs.quiet_end ?? '07:00'
+  })
+
   const [toast, setToast] = useState(null)
 
   const showToast = (message, type = 'success') => {
@@ -46,102 +29,199 @@ export default function NotificationsTab() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  const handleToggle = async (eventId, channel, currentVal) => {
-    const newVal = !currentVal
-    
-    // Optimistic update
-    const newPreferences = {
-      ...preferences,
-      [eventId]: {
-        ...(preferences[eventId] || { in_app: true, email: true }),
-        [channel]: newVal
-      }
-    }
-    setPreferences(newPreferences)
+  const updatePreferences = async (newPrefs) => {
+    const previous = { ...preferences }
+    setPreferences(newPrefs)
 
     try {
       const res = await api.patch('/auth/profile', {
-        notification_preferences: newPreferences
+        notification_preferences: newPrefs
       })
-      setUser(res.user) // Update global user state
-      showToast('Notification preferences updated')
+      setUser(res.data.user)
+      showToast('Notification preferences saved')
     } catch (err) {
-      setPreferences(preferences) // Rollback
-      showToast(err.message || 'Failed to update preferences', 'error')
+      setPreferences(previous)
+      showToast(err.message || 'Failed to save preferences', 'error')
     }
   }
 
-  const isChecked = (eventId, channel) => {
-    const pref = preferences[eventId]
-    if (!pref) return true // default to true if not set
-    return pref[channel] !== false
+  const handleToggle = (key) => {
+    const newPrefs = { ...preferences, [key]: !preferences[key] }
+    updatePreferences(newPrefs)
   }
+
+  const handleTimeChange = (key, value) => {
+    const newPrefs = { ...preferences, [key]: value }
+    updatePreferences(newPrefs)
+  }
+
+  const ToggleRow = ({ prefKey, label, desc }) => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid var(--color-border-light)' }}>
+      <div>
+        <h4 style={{ margin: '0 0 4px', fontSize: '15px', color: 'var(--color-text-primary)' }}>{label}</h4>
+        {desc && <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary)' }}>{desc}</p>}
+      </div>
+      <label className="toggle" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
+        <input 
+          type="checkbox" 
+          style={{ display: 'none' }}
+          checked={preferences[prefKey]}
+          onChange={() => handleToggle(prefKey)}
+        />
+        <div style={{
+          width: '44px',
+          height: '24px',
+          background: preferences[prefKey] ? 'var(--color-primary)' : 'var(--color-bg-alt)',
+          borderRadius: '12px',
+          position: 'relative',
+          transition: 'all var(--transition-base)'
+        }}>
+          <div style={{
+            width: '20px',
+            height: '20px',
+            background: 'white',
+            borderRadius: '50%',
+            position: 'absolute',
+            top: '2px',
+            left: preferences[prefKey] ? '22px' : '2px',
+            transition: 'all var(--transition-base)',
+            boxShadow: 'var(--shadow-sm)'
+          }} />
+        </div>
+      </label>
+    </div>
+  )
+
+  const timeOptions = [
+    { value: '18:00', label: '6 PM' },
+    { value: '19:00', label: '7 PM' },
+    { value: '20:00', label: '8 PM' },
+    { value: '21:00', label: '9 PM' },
+    { value: '22:00', label: '10 PM' },
+    { value: '23:00', label: '11 PM' },
+    { value: '00:00', label: '12 AM' },
+    { value: '01:00', label: '1 AM' },
+    { value: '06:00', label: '6 AM' },
+    { value: '07:00', label: '7 AM' },
+    { value: '08:00', label: '8 AM' },
+    { value: '09:00', label: '9 AM' },
+    { value: '10:00', label: '10 AM' }
+  ]
 
   return (
     <div className="settings-form relative">
-      <div className="settings-card">
-        <div className="settings-card-header">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        
+        {/* Email Settings */}
+        <div className="settings-card" style={{ padding: '24px', background: 'var(--color-bg-card)', borderRadius: 'var(--radius-lg)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="mail" size={18} />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Email</h3>
+          </div>
           <div>
-            <h2 className="settings-card-title">Notification Preferences</h2>
-            <p className="settings-card-desc">
-              Control how you receive updates for different events in the platform.
-            </p>
+            <ToggleRow 
+              prefKey="email_critical" 
+              label="Critical alerts" 
+              desc="Panel feedback overdue, candidate ghosts, etc." 
+            />
+            <ToggleRow 
+              prefKey="email_digest" 
+              label="Daily digest" 
+              desc="One email summarizing pulse and pending items" 
+            />
+            <ToggleRow 
+              prefKey="email_mentions" 
+              label="Mentions in notes" 
+              desc="When someone @tags you in a candidate note" 
+            />
+            <ToggleRow 
+              prefKey="email_ai_activity" 
+              label="AI activity summaries" 
+              desc="Summaries of candidates sourced by AI" 
+            />
           </div>
         </div>
 
-        <div className="p-6">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-[var(--color-border)]">
-                  <th className="pb-3 font-medium text-[var(--color-text-muted)] w-1/2">Event</th>
-                  <th className="pb-3 font-medium text-[var(--color-text-muted)] text-center w-1/4">In-App</th>
-                  <th className="pb-3 font-medium text-[var(--color-text-muted)] text-center w-1/4">Email</th>
-                </tr>
-              </thead>
-              <tbody>
-                {NOTIFICATION_EVENTS.map((category, idx) => (
-                  <React.Fragment key={idx}>
-                    <tr>
-                      <td colSpan={3} className="pt-6 pb-2 font-semibold text-[var(--color-text)]">
-                        {category.category}
-                      </td>
-                    </tr>
-                    {category.events.map(event => (
-                      <tr key={event.id} className="border-b border-[var(--color-border-light)] last:border-0 hover:bg-[var(--color-bg-subtle)] transition-colors">
-                        <td className="py-4 text-sm text-[var(--color-text-primary)]">
-                          {event.label}
-                        </td>
-                        <td className="py-4 text-center">
-                          <label className="toggle relative inline-block w-10 h-6 cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              className="sr-only peer"
-                              checked={isChecked(event.id, 'in_app')}
-                              onChange={() => handleToggle(event.id, 'in_app', isChecked(event.id, 'in_app'))}
-                            />
-                            <div className="w-10 h-6 bg-[var(--color-bg-alt)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
-                          </label>
-                        </td>
-                        <td className="py-4 text-center">
-                          <label className="toggle relative inline-block w-10 h-6 cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              className="sr-only peer"
-                              checked={isChecked(event.id, 'email')}
-                              onChange={() => handleToggle(event.id, 'email', isChecked(event.id, 'email'))}
-                            />
-                            <div className="w-10 h-6 bg-[var(--color-bg-alt)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)]"></div>
-                          </label>
-                        </td>
-                      </tr>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
+        {/* In-App Settings */}
+        <div className="settings-card" style={{ padding: '24px', background: 'var(--color-bg-card)', borderRadius: 'var(--radius-lg)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(236, 72, 153, 0.1)', color: '#EC4899', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="bell" size={18} />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>In-app (drawer)</h3>
+          </div>
+          <div>
+            <ToggleRow 
+              prefKey="inapp_all_events" 
+              label="All event types" 
+              desc="Receive notifications for major platform events" 
+            />
+            <ToggleRow 
+              prefKey="inapp_status_changes" 
+              label="Status changes" 
+              desc="Alerts for minor status transitions (Warning: can be very noisy)" 
+            />
+            <ToggleRow 
+              prefKey="inapp_ai_grouped" 
+              label="AI activity grouped" 
+              desc="Bundle multiple AI sourcing events into a single notification (Recommended)" 
+            />
           </div>
         </div>
+
+        {/* Quiet Hours */}
+        <div className="settings-card" style={{ padding: '24px', background: 'var(--color-bg-card)', borderRadius: 'var(--radius-lg)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="moon" size={18} />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Quiet hours</h3>
+          </div>
+          <p style={{ margin: '0 0 20px', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+            Mute all email and in-app notifications during these hours.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>from</span>
+              <select 
+                value={preferences.quiet_start} 
+                onChange={(e) => handleTimeChange('quiet_start', e.target.value)}
+                style={{ 
+                  padding: '8px 12px', 
+                  borderRadius: 'var(--radius-md)', 
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}
+              >
+                {timeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>to</span>
+              <select 
+                value={preferences.quiet_end} 
+                onChange={(e) => handleTimeChange('quiet_end', e.target.value)}
+                style={{ 
+                  padding: '8px 12px', 
+                  borderRadius: 'var(--radius-md)', 
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}
+              >
+                {timeOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
       </div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>

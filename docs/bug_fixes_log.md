@@ -1350,3 +1350,8 @@ The Notifications tab in Settings was merely a placeholder. Users (Hiring Manage
 ### Next Steps:
 - Apply database migrations by restarting the backend.
 - Hook up the `notification_preferences` context to actual Celery task email dispatchers (so emails respect the user's `false` flags).
+
+### Bug Fix: Logout on Toggle
+- **Issue:** Changing a notification toggle triggered an unintentional logout.
+- **Cause:** The `api.patch('/auth/profile')` call returned data wrapped in an Axios `res.data` object, but the frontend was trying to set the global user state via `setUser(res.user)`. This resulted in `undefined` being pushed to the AuthContext, which cleared the session and bounced the user to the login screen.
+- **Fix:** Corrected the path to `setUser(res.data.user)` in `NotificationsTab.jsx` to correctly apply the updated user profile without destroying the session.
