@@ -1186,9 +1186,10 @@ Remaining tabs in the Workspace Settings lacked the visual polish applied to the
 - **UX Destructive Safeguards:** Enforced `window.confirm()` barriers on all delete actions across `CompetitorsTab`, `PrivacyTab` (GDPR data anonymization processing), and `MessageTemplatesTab`.
 - **UI Component Standardization:** Replaced raw HTML checkboxes in `ApprovalRulesTab` with the standardized `<Toggle>` component for a tactile, premium feel.
 - **Premium List & Badges:** Restyled `MessageTemplatesTab` to use the `.premium-list` layout instead of basic cards. Standardized phase tags in `IntegrationsTab` and `SecurityTab` to utilize the circular `P2`/`P3` badges established in the global settings navigation.
+
 ### 75. Settings UI: Drag-and-Drop & Custom Modals
 **Date:** 2026-06-01
-**Status:** Implemented
+**Status:** Implemented (With Known Bug)
 
 **Issue / Validation:**
 - Screening questions reordering relied on crude "up" and "down" arrows instead of natural drag-and-drop.
@@ -1197,6 +1198,7 @@ Remaining tabs in the Workspace Settings lacked the visual polish applied to the
 
 **Idea / Solution:**
 - **HTML5 Drag and Drop:** Removed the up/down arrows from the `ScreeningQuestionsTab` and implemented a fully functional HTML5 Drag and Drop integration for sorting questions. The active drag row changes opacity, shows a grabbing cursor, and reorders seamlessly.
+  - **KNOWN BUG:** Drag and drop is visually working but currently failing to correctly swap or persist item positions due to a state indexing issue or drag event conflict in React. Needs fixing.
 - **Custom Application ConfirmModal:** Created a new, reusable `<ConfirmModal>` UI component. Replaced the jarring `window.confirm()` prompts in both `ScreeningQuestionsTab` (for question deletion) and `TeamTab` (for user activation/deactivation) with this new, native React modal featuring consistent glassmorphic styling, icon cues (⚠️/❓), and variant-colored action buttons.
 - **Visual Alignment:** Updated the `ScreeningQuestionsTab` department labels to utilize the existing `.item-col-dept` class so they exactly match the fixed-column layout seen in the `TeamTab`.
 

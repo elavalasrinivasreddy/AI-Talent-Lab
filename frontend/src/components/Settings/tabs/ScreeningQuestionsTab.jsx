@@ -22,7 +22,9 @@ export default function ScreeningQuestionsTab() {
   const fetchQs = useCallback(async () => {
     try {
       const res = await api.get('/settings/screening-questions')
-      setQuestions(res.data.questions || [])
+      const qs = res.data.questions || []
+      qs.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      setQuestions(qs)
     } catch (e) { console.error(e) }
     setLoading(false)
   }, [])
@@ -36,9 +38,9 @@ export default function ScreeningQuestionsTab() {
 
   useEffect(() => { fetchQs(); fetchDepts() }, [fetchQs, fetchDepts])
 
-  // Show all by default, filter optionally
+  // Show all by default, filter strictly by department if selected
   const filtered = deptFilter
-    ? questions.filter(q => String(q.department_id) === deptFilter || !q.department_id)
+    ? questions.filter(q => String(q.department_id) === deptFilter)
     : questions
 
   const getDeptName = (deptId) => {
@@ -93,27 +95,62 @@ export default function ScreeningQuestionsTab() {
     } catch (e) { console.error(e) }
   }
 
-  const handleDragSort = async () => {
-    if (dragIdx === null || dragOverIdx === null || dragIdx === dragOverIdx) {
-      setDragIdx(null)
-      setDragOverIdx(null)
-      return
+  const handleDragStart = (e, index) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index.toString());
+    setDragIdx(index);
+    // Delayed opacity change to ensure drag ghost is opaque
+    setTimeout(() => {
+      if (e.target && e.target.style) {
+        e.target.style.opacity = '0.4';
+      }
+    }, 0);
+  };
+
+  const handleDragEnter = (e, index) => {
+    e.preventDefault();
+    if (dragIdx !== null && dragIdx !== index) {
+      setDragOverIdx(index);
     }
-    const items = [...filtered]
-    const [moved] = items.splice(dragIdx, 1)
-    items.splice(dragOverIdx, 0, moved)
+  };
+
+  const handleDragEnd = async (e) => {
+    if (e.target && e.target.style) {
+      e.target.style.opacity = '1';
+    }
     
-    // Create new order mapping
-    const order = items.map((q, i) => ({ id: q.id, sort_order: i + 1 }))
+    if (dragIdx !== null && dragOverIdx !== null && dragIdx !== dragOverIdx) {
+      // Update in global questions array for immediate UI snap
+      const dragItem = filtered[dragIdx]
+      const targetItem = filtered[dragOverIdx]
+      
+      const globalDragIdx = questions.findIndex(q => q.id === dragItem.id)
+      
+      const newQuestions = [...questions]
+      newQuestions.splice(globalDragIdx, 1)
+      
+      const actualTargetIdx = newQuestions.findIndex(q => q.id === targetItem.id)
+      const insertIdx = dragIdx < dragOverIdx ? actualTargetIdx + 1 : actualTargetIdx
+      
+      newQuestions.splice(insertIdx, 0, dragItem)
+      
+      // Optimistic UI update
+      setQuestions([...newQuestions])
+      
+      // Create new order mapping
+      const order = newQuestions.map((q, i) => ({ id: q.id, sort_order: i + 1 }))
+      
+      try {
+        await api.patch('/settings/screening-questions/reorder', { order })
+      } catch (err) { 
+        console.error(err)
+        fetchQs() // Revert on failure
+      }
+    }
     
     setDragIdx(null)
     setDragOverIdx(null)
-    
-    try {
-      await api.patch('/settings/screening-questions/reorder', { order })
-      fetchQs()
-    } catch (e) { console.error(e) }
-  }
+  };
 
   const typeLabel = (t) => {
     const map = { text: '📝 Text', number: '🔢 Number', select: '📋 Select', date: '📅 Date', boolean: '✅ Yes/No' }
@@ -153,16 +190,19 @@ export default function ScreeningQuestionsTab() {
                   key={q.id} 
                   className={`premium-list-item ${dragOverIdx === i ? 'drag-over' : ''}`}
                   draggable
-                  onDragStart={() => setDragIdx(i)}
-                  onDragEnter={() => setDragOverIdx(i)}
-                  onDragEnd={handleDragSort}
-                  onDragOver={(e) => e.preventDefault()}
+                  onDragStart={(e) => handleDragStart(e, i)}
+                  onDragEnter={(e) => handleDragEnter(e, i)}
+                  onDragOver={(e) => {
+                    e.preventDefault(); // Crucial for allowing drop
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(e) => e.preventDefault()}
+                  onDragEnd={handleDragEnd}
                   style={{ 
                     cursor: dragIdx === i ? 'grabbing' : 'grab',
-                    opacity: dragIdx === i ? 0.5 : 1,
-                    transform: dragOverIdx === i && dragIdx !== i ? (dragIdx > i ? 'translateY(-4px)' : 'translateY(4px)') : 'none',
-                    transition: 'transform 0.2s ease',
-                    boxShadow: dragOverIdx === i ? '0 0 0 2px var(--color-primary)' : 'none'
+                    borderTop: dragOverIdx === i && dragIdx > i ? '2px solid var(--color-primary)' : '1px solid transparent',
+                    borderBottom: dragOverIdx === i && dragIdx < i ? '2px solid var(--color-primary)' : '1px solid transparent',
+                    transition: 'all 0.1s ease',
                   }}
                 >
                   <div className="premium-list-item-left">
@@ -199,6 +239,12 @@ export default function ScreeningQuestionsTab() {
                 </div>
               ))}
             </div>
+            
+            {filtered.length === 0 && deptFilter && (
+              <div className="premium-empty" style={{ marginTop: '16px', padding: '32px 16px' }}>
+                <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>No screening questions configured for this department.</p>
+              </div>
+            )}
           </>
         ) : (
           <div className="premium-empty">
