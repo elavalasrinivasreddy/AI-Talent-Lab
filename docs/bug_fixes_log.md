@@ -1216,7 +1216,7 @@ Remaining tabs in the Workspace Settings lacked the visual polish applied to the
 
 ### 76. Fix: Screening Questions Drag-and-Drop Not Persisting (resolves #75 known bug)
 **Date:** 2026-06-01
-**Status:** Fixed
+**Status:** Not Fixed
 
 **Issue:**
 Drag-and-drop reordering of screening questions was visually working but the new order was not being swapped or persisted (the known bug logged in #75).
@@ -1235,3 +1235,24 @@ Verified isolated to `ScreeningQuestionsTab.jsx` — no other Settings tab uses 
 
 **Files Modified:**
 - `frontend/src/components/Settings/tabs/ScreeningQuestionsTab.jsx`
+
+### 77. Fix: Scorecard Rubric (Interview Templates) UI & Backend Issues
+**Date:** 2026-06-01
+**Status:** Fixed
+
+**Issue / Validation:**
+- The delete action for scorecard templates was silently failing because the `DELETE` backend endpoint did not exist, and the frontend `<ConfirmModal>` was not opening due to missing `isOpen` and `onClose` props.
+- There was no way to edit an existing scorecard template (missing edit button and endpoint wiring).
+- There was no clear way to set a template as the default; the UI showed a subtle ghost button and lacked an intuitive indicator for the active default template.
+
+**Idea / Solution:**
+- **Backend API Update:** Implemented the `DELETE /api/v1/settings/scorecard-templates/{template_id}` endpoint and `ScorecardTemplateRepository.delete()` method. Added `POST /api/v1/settings/scorecard-templates/{template_id}/set-default` endpoint to handle toggling the default template globally.
+- **Frontend ConfirmModal Fix:** Correctly passed `isOpen` and `onClose` props to the native `<ConfirmModal>` in `InterviewTemplatesTab.jsx`, replacing the system-level popup and ensuring the modal actually renders and executes the delete action.
+- **Edit Functionality:** Added an `openEdit` handler and wired the "Edit" pencil icon to populate the existing `<SlideOver>` form, and updated the save action to `PATCH` existing templates.
+- **UI/UX Polish:** Upgraded the active default indicator to use a premium `.phase-tag` ("Active Default"), and changed the "Set Default" ghost button to a more prominent `.btn-secondary` ("Make Default") to improve usability.
+
+**Files Modified:**
+- `backend/routers/settings.py`
+- `backend/services/settings_service.py`
+- `backend/db/repositories/scorecard_templates.py`
+- `frontend/src/components/Settings/tabs/InterviewTemplatesTab.jsx`
