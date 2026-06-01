@@ -4,6 +4,7 @@ Thin HTTP layer — validates input via Pydantic, calls AuthService.
 See docs/architecture/03_backend.md §5 Auth section.
 """
 from fastapi import APIRouter, Depends, Request
+import json
 
 import asyncpg
 
@@ -49,6 +50,7 @@ def _user_response(user: dict) -> dict:
         "is_active": user.get("is_active", True),
         "department_id": user.get("department_id"),
         "auto_approve_jds": user.get("auto_approve_jds", False),
+        "notification_preferences": user.get("notification_preferences") if isinstance(user.get("notification_preferences"), dict) else (json.loads(user.get("notification_preferences", "{}")) if user.get("notification_preferences") else {}),
         "last_login_at": user.get("last_login_at"),
         "created_at": user.get("created_at"),
     }
@@ -286,6 +288,16 @@ async def update_profile(
 ):
     """Update own name, phone, avatar."""
     fields = body.model_dump(exclude_none=True)
+    
+    if "auto_approve_jds" in fields and fields["auto_approve_jds"]:
+        from backend.services.settings_service import SettingsService
+        org = await SettingsService.get_org(db, user["org_id"])
+        if org.get("allow_auto_approve_jds") is False:
+            raise InsufficientPermissionsError("Organization policy forbids auto-approving JDs.")
+
+    if "notification_preferences" in fields:
+        fields["notification_preferences"] = json.dumps(fields["notification_preferences"])
+
     updated = await AuthService.update_profile(
         conn=db,
         user_id=user["user_id"],

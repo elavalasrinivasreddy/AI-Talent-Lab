@@ -1328,3 +1328,25 @@ Verified isolated to `ScreeningQuestionsTab.jsx` — no other Settings tab uses 
 - `frontend/src/components/common/Toast.css` (New)
 - `backend/db/migrations.py`
 - `backend/models/settings.py`
+
+## Issue #82: Implementation of Notifications Tab
+
+### Problem:
+The Notifications tab in Settings was merely a placeholder. Users (Hiring Managers, HR, Team Leads) lacked the ability to customize their email and in-app alert preferences, which is critical to protecting domain reputation (preventing spam complaints) and minimizing notification fatigue.
+
+### Solution / Changes Made:
+- **Database Architecture:** Added `notification_preferences` column (`JSONB`, default `{}`) to the `users` table via an incremental schema migration in `backend/db/migrations.py`. This ensures a highly scalable structure where we can add endless new notification channels/events without modifying the schema.
+- **Backend Auth API:**
+  - Updated `UpdateProfileRequest` in `backend/models/auth.py` to accept `notification_preferences` as an `Optional[dict]`.
+  - Updated `_user_response` serialization logic to gracefully parse and return `notification_preferences`.
+  - Added JSON serialization logic in `backend/routers/auth.py` before passing data to the repository layer, avoiding data type mismatch issues with PostgreSQL.
+- **Data Access Layer:** Modified `UserRepository` queries (CRUD methods) to select and return `notification_preferences`.
+- **Frontend Matrix UI:** 
+  - Designed and built a robust `NotificationsTab.jsx` interface. 
+  - Created a clean grouped matrix UI (Y-Axis: Events grouped by category, X-Axis: In-App / Email channels).
+  - Wired the UI to the `PATCH /api/v1/auth/profile` endpoint with an optimistic update pattern. Errors elegantly roll back state and display a top-right Toast notification.
+- **Integration:** Registered `NotificationsTab` inside `SettingsPage.jsx`, replacing the `<PlaceholderSection />`.
+
+### Next Steps:
+- Apply database migrations by restarting the backend.
+- Hook up the `notification_preferences` context to actual Celery task email dispatchers (so emails respect the user's `false` flags).

@@ -89,7 +89,7 @@ export default function ApprovalRulesTab() {
       showToast('Department rules updated successfully')
     } catch (err) {
       setHrAutoApprove(prev)
-      showToast('Failed to update rule', 'error')
+      showToast(err.message || 'Failed to update rule', 'error')
     }
   }
 
@@ -103,7 +103,7 @@ export default function ApprovalRulesTab() {
       showToast('Your JD approval rule was updated')
     } catch (err) {
       setJdAutoApprove(prev)
-      showToast('Failed to update rule', 'error')
+      showToast(err.message || 'Failed to update rule', 'error')
     }
   }
 
@@ -117,7 +117,7 @@ export default function ApprovalRulesTab() {
       showToast('Organization policies updated successfully')
     } catch (err) {
       setAllowAutoApproveJds(prev)
-      showToast('Failed to update organization policies', 'error')
+      showToast(err.message || 'Failed to update organization policies', 'error')
     }
   }
 

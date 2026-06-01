@@ -22,6 +22,7 @@ import ScreeningQuestionsTab from './tabs/ScreeningQuestionsTab'
 import AtsRulesTab from './tabs/AtsRulesTab'
 import MessageTemplatesTab from './tabs/MessageTemplatesTab'
 import ApprovalRulesTab from './tabs/ApprovalRulesTab'
+import NotificationsTab from './tabs/NotificationsTab'
 import InterviewTemplatesTab from './tabs/InterviewTemplatesTab'
 import IntegrationsTab from './tabs/IntegrationsTab'
 import AppearanceTab from './tabs/AppearanceTab'
@@ -95,7 +96,7 @@ const SECTION_COMPONENTS = {
   'departments': DepartmentsTab,
   'team': TeamTab,
   'approval': ApprovalRulesTab,
-  'notifications': () => <PlaceholderSection title="Notifications" desc="Configure email and in-app notification preferences per event type." icon="bell" />,
+  'notifications': NotificationsTab,
   'organization': OrganizationTab,
   'competitors': CompetitorsTab,
   'templates': MessageTemplatesTab,

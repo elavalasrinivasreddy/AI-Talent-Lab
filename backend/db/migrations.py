@@ -551,6 +551,10 @@ async def run_migrations(conn) -> None:
                        WHERE table_name='users' AND column_name='auto_approve_jds') THEN
             ALTER TABLE users ADD COLUMN auto_approve_jds BOOLEAN DEFAULT FALSE;
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='users' AND column_name='notification_preferences') THEN
+            ALTER TABLE users ADD COLUMN notification_preferences JSONB DEFAULT '{}'::jsonb;
+        END IF;
     END $$;
 
     DO $$
