@@ -130,7 +130,9 @@ async def run_market_intelligence(state: AgentState) -> AgentState:
 
 def _generate_market_fallback(role_lower: str, competitors: list[str]) -> list[dict]:
     """Generate contextual fallback market skills."""
-    comp_str = ", ".join(competitors[:2])
+    # Generalize the source label — never surface raw competitor names on the
+    # card (item 51 generalized the LLM prompt; the fallback path must match).
+    comp_str = "Industry Benchmark"
     
     base_skills = [
         {"skill": "System Design", "source": comp_str, "frequency": 2, "context": "Architecture skills", "selected": True},
@@ -138,11 +140,11 @@ def _generate_market_fallback(role_lower: str, competitors: list[str]) -> list[d
     ]
 
     if "python" in role_lower or "backend" in role_lower:
-        base_skills.append({"skill": "Microservices Architecture", "source": competitors[0] if competitors else "Industry", "frequency": 1, "context": "Distributed systems", "selected": True})
+        base_skills.append({"skill": "Microservices Architecture", "source": comp_str, "frequency": 1, "context": "Distributed systems", "selected": True})
     elif "frontend" in role_lower or "react" in role_lower:
-        base_skills.append({"skill": "Performance Optimization", "source": competitors[0] if competitors else "Industry", "frequency": 1, "context": "Web vitals", "selected": True})
+        base_skills.append({"skill": "Performance Optimization", "source": comp_str, "frequency": 1, "context": "Web vitals", "selected": True})
     else:
-        base_skills.append({"skill": "CI/CD & DevOps", "source": competitors[0] if competitors else "Industry", "frequency": 1, "context": "Engineering best practices", "selected": True})
+        base_skills.append({"skill": "CI/CD & DevOps", "source": comp_str, "frequency": 1, "context": "Engineering best practices", "selected": True})
 
     return base_skills
 

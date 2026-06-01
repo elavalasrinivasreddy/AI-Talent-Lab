@@ -78,6 +78,32 @@ Next manual test: **JD generation via chat window**.
 
 ---
 
+## Batch E — Code review of items 42–75 (S68, 2026-06-01)
+
+Parallel Sonnet review subagents over the JD-chat / Settings / Dashboard / Positions / Talent-Pool batch. Each finding verified by Opus against the motivating line before action.
+
+### Fixed
+| Severity | File:line | Bug | Fix |
+|---|---|---|---|
+| P1 | `routers/positions.py:58` | `/pending-count` read `current_user["department_id"]` but JWT dict uses `dept_id`, so team_lead/dept_admin always fell through to the org-wide count (badge leak). | Read `dept_id`. |
+| P1 | `agents/nodes/{market_intelligence,interviewer,internal_analyst,benchmarking}.py` | Bare `response.content.strip()` with no multimodal list→str guard (item 57 only patched `drafting.py`/`bias_checker.py`). `interviewer` is the first-turn HARD STOP node → a list response blocked every new session. | Added the same `isinstance(content_raw, list)` guard. |
+| P2 | `components/Sidebar/Sidebar.jsx:36` | Analytics nav shown to `hr`, but `/analytics` RoleGuard is `['org_head','dept_admin']` → hr clicked it and got bounced to /dashboard. | Removed `'hr'` from the nav entry. |
+| P2 | `agents/nodes/market_intelligence.py:133+` | Fallback market-skill `source` stamped raw competitor names ("Google, Microsoft"); item 51 only generalized the LLM prompt, not the fallback path. | Source label → "Industry Benchmark". |
+
+### Flagged (judgment / needs decision — NOT auto-fixed)
+| Severity | File:line | Concern | Why deferred |
+|---|---|---|---|
+| P2 | `chat_service.py:207-211` | SSE `competitors` field still ships raw `competitors_used` names to the market card. | Changing the stream contract needs verifying how the frontend renders it; own-org data, low severity. |
+| P2 | `routers/positions.py:~248` | Inline `submit-for-approval` notifies `org_head/team_lead/dept_admin` org-wide with no dept scoping, unlike the dept-scoped `PositionService.submit_for_approval`. | Two submit paths exist; which is live + correct scope is a product call. |
+| P2 | `db/repositories/positions.py:181` | `update()` `allowed` set omits `role_name`, `jd_variant_selected`, `employment_type`, `experience_*` → those fields silently don't persist on a JD resubmit (item 52 update path). | Depends on whether resubmit actually changes them; `jd_markdown` (the main field) IS allowed. |
+| P2 | `routers/chat.py:273` | `department_id` fallback `setup.get() or session.get()` fails for an org_head with no dept → save raises 400. | org_head doing JD chats is non-standard (item 50); may be intended that positions require a dept. |
+| P2 | `agents/orchestrator.py:242` | Empty streamed `final_jd` with `retry_count==0` can re-enter drafting up to max_iterations (6 wasted LLM calls, no error surfaced). | Edge case (filtered/empty LLM response); defensive only. |
+| P3 | frontend dead code | `platform_admin` listed in TalentPool filter / `useDashboardData.ADMIN_ROLES` / DashboardPage `RoleGate` — all unreachable since `OrgGuard` bounces platform_admin. | Dead code, not a live bug; cosmetic cleanup. |
+
+**Verdict on others reviewed:** sessions.py `list_visible` (items 48/50), positions `list_for_org` (item 70), dashboard `_resolve_dept_id` (item 69), copilot key fix (item 49), TypedDict completeness (item 57), and frontend items 58/61/64/65/66/67/72 verified clean. The `isOnboarding` double-guard (DashboardPage:114) is redundant but behaves correctly (onboarding = truly empty) — left as-is.
+
+---
+
 ## JD Chat Flow (to test after item 41)
 
 | Step | Description | Status | Notes |
@@ -99,3 +125,4 @@ Next manual test: **JD generation via chat window**.
 |---|---|---|
 | 2026-05-30 | S67 | All 41 items validated (Batches A–D). 11 edge cases found and fixed. 4 commits on phase_1_testing/bug-fix. JD Chat flow validation is next. |
 | 2026-06-01 | S68 | Reviewed Settings UI batch (items 42–75). Fixed the #75 KNOWN BUG: screening-questions drag-and-drop not persisting (stale-closure no-op in `onDragEnd`); reworked to standard `onDrop` + `dataTransfer` pattern. Backend reorder chain verified correct. Pattern confirmed isolated to ScreeningQuestionsTab. Logged as fix #76. |
+| 2026-06-01 | S68 | Code-reviewed items 42–75 via 3 parallel Sonnet subagents (backend RBAC, AI pipeline, frontend RBAC). 6 confirmed bugs fixed across 2 commits (dept_id badge leak, 4 AI-node multimodal crash guards, Analytics nav gate, competitor-name fallback leak). 6 findings flagged for product decision. See Batch E section above. |
