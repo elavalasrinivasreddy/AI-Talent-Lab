@@ -1271,3 +1271,19 @@ Verified isolated to `ScreeningQuestionsTab.jsx` — no other Settings tab uses 
 **Files Modified:**
 - `frontend/src/components/Settings/SettingsPage.jsx`
 - `frontend/src/components/Settings/tabs/IntegrationsTab.jsx`
+
+### 79. Fix: Departments Tab Confirmation Modal & Department Head Redundancy
+**Date:** 2026-06-01
+**Status:** Fixed
+
+**Issue / Validation:**
+- Deleting a department triggered a system-level `window.confirm()` popup instead of the app's premium native modal.
+- While creating a new department, the form asked for a "Department Head" user via a massive dropdown of all users, which is hard to pick from in large organizations. Furthermore, conceptually, department admins function as heads, rendering this hardcoded column redundant.
+
+**Idea / Solution:**
+- **Product Owner Validation:** Agreed with the architecture decision. A "Department" is just an organizational unit. The "head" should be dynamically resolved by identifying users with the `dept_admin` (or `team_lead`) role in that department, rather than hardcoding a `head_user_id` at creation time.
+- Removed the `head_user_id` select input from the `SlideOver` creation form and removed its display from the list item subtitle.
+- Replaced the jarring `window.confirm()` prompt with the standard React `<ConfirmModal>` component to ensure a consistent, premium user experience.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/DepartmentsTab.jsx`

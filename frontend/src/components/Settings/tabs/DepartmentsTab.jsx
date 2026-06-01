@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../../utils/api'
 import SlideOver from '../../common/SlideOver'
+import ConfirmModal from '../../common/ConfirmModal'
 import Icon from '../../common/Icon'
 
 export default function DepartmentsTab() {
@@ -12,6 +13,8 @@ export default function DepartmentsTab() {
   const [editing, setEditing] = useState(null)
   const [msg, setMsg] = useState('')
   const [formMsg, setFormMsg] = useState('')
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [deptToDelete, setDeptToDelete] = useState(null)
 
   const fetchDepts = useCallback(async () => {
     try {
@@ -59,9 +62,8 @@ export default function DepartmentsTab() {
         name: form.name,
         description: form.description || null,
         parent_dept_id: form.parent_dept_id ? Number(form.parent_dept_id) : null,
-        head_user_id: form.head_user_id ? Number(form.head_user_id) : null,
       })
-      setForm({ name: '', description: '', parent_dept_id: '', head_user_id: '' })
+      setForm({ name: '', description: '', parent_dept_id: '' })
       fetchDepts()
       setShowModal(false)
     } catch (e) {
@@ -69,14 +71,23 @@ export default function DepartmentsTab() {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this department?")) return;
+  const confirmDelete = (id) => {
+    setDeptToDelete(id)
+    setShowConfirm(true)
+  }
+
+  const executeDelete = async () => {
+    if (!deptToDelete) return
     setMsg('')
     try {
-      await api.delete(`/settings/departments/${id}`)
+      await api.delete(`/settings/departments/${deptToDelete}`)
+      setShowConfirm(false)
+      setDeptToDelete(null)
       fetchDepts()
     } catch (e) {
       setMsg(e.message || 'Cannot delete — has dependencies')
+      setShowConfirm(false)
+      setDeptToDelete(null)
     }
   }
 
@@ -125,8 +136,7 @@ export default function DepartmentsTab() {
                       </span>
                     )}
                     <span className="item-subtitle">
-                      {d.head_user_id ? `👤 ${getUserName(d.head_user_id)}` : 'No Dept Head'}
-                      {d.user_count > 0 && ` · ${d.user_count} members`}
+                      {d.user_count > 0 ? `${d.user_count} members` : 'No members yet'}
                     </span>
                   </div>
                 </div>
@@ -142,7 +152,7 @@ export default function DepartmentsTab() {
                       <button className="action-menu-btn" onClick={() => setEditing({id: d.id, name: d.name})} title="Edit">
                         <Icon name="edit-2" size={16} />
                       </button>
-                      <button className="action-menu-btn" onClick={() => handleDelete(d.id)} title="Delete">
+                      <button className="action-menu-btn" onClick={() => confirmDelete(d.id)} title="Delete">
                         <Icon name="trash" size={16} />
                       </button>
                     </div>
@@ -191,21 +201,27 @@ export default function DepartmentsTab() {
             </select>
           </div>
         </div>
-        <div className="form-row">
-          <div className="form-group full-width">
-            <label>Department Head</label>
-            <select value={form.head_user_id} onChange={e => setForm({...form, head_user_id: e.target.value})}>
-              <option value="">Select user</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-          </div>
-        </div>
         {formMsg && <p className="form-msg error">{formMsg}</p>}
         <div className="btn-row" style={{ marginTop: 'var(--space-6)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--color-border)' }}>
           <button className="btn btn-primary" onClick={handleAdd}>Add Department</button>
           <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
         </div>
       </SlideOver>
+
+      {showConfirm && (
+        <ConfirmModal
+          isOpen={showConfirm}
+          title="Delete Department?"
+          message="Are you sure you want to delete this department? This action cannot be undone."
+          confirmText="Yes, Delete"
+          confirmVariant="danger"
+          onConfirm={executeDelete}
+          onClose={() => {
+            setShowConfirm(false)
+            setDeptToDelete(null)
+          }}
+        />
+      )}
     </div>
   )
 }
