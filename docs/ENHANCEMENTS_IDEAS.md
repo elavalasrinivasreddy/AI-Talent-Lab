@@ -35,3 +35,40 @@ Currently, the entire organization shares a single set of culture keywords and b
 **Enhancement:**
 - Update the `departments` database schema to allow defining localized "About Us" and "Benefits" texts.
 - Implement hierarchical fallback logic: If a department lacks an override, inherit from the Organization Profile. Otherwise, use the localized data for sourcing and JD generation.
+
+## 4. Team Members Tab Polish
+
+**Context:**
+During our initial settings review, we noticed some UX issues on the Team Members tab regarding the `org_head` role.
+
+**Enhancement:**
+- **Role Filters:** Remove `org_head` from the standard role filters so it doesn't crash to the first-time view page when filtering.
+- **Invite Modal:** Keep `org_head` available in the "Invite Member" modal to allow for a smooth transition of ownership if the current Org Head leaves.
+- **Action Menus:** Make the "More Options" (`...`) menu functional on member cards to support Editing roles and Deactivating/Deleting users.
+
+## 5. Real-Time Client State Synchronization
+
+**Context:**
+When an Org Head modifies a global setting (e.g., locking the "Team Lead JD Review" rule in Approval Rules), the changes are saved to the database. However, if a Team Lead is currently working in another tab, they won't see this rule enforced until they refresh their browser.
+
+**Enhancement:**
+- Implement **Server-Sent Events (SSE)** or **WebSockets** (via FastAPI + Redis PubSub) to push global state changes to active clients immediately.
+- This ensures that administrative overrides take effect in real-time without requiring a browser refresh, preventing users from performing actions that were just revoked.
+
+## 6. Organization Profile: Preview CTA
+
+**Context:**
+The Organization Profile acts as the brand hub, but users cannot currently visualize how this data will look to candidates.
+
+**Enhancement:**
+- Add a "Preview Career Page" CTA button to the Organization tab.
+- This should open a modal or new tab showing a live rendering of the external Public Career Page / Magic Link apply screen, populated with their newly drafted culture keywords and about us data.
+
+## 7. AI "Live Feedback" (Shimmering UI)
+
+**Context:**
+Currently, when the AI is auto-drafting from the web or a PDF, we show a center-screen loading overlay. 
+
+**Enhancement:**
+- Instead of a static overlay blocking the form, build an `AutoResizingTextarea` component that supports "skeleton shimmering" *inside* the text inputs.
+- When drafting, the text boxes themselves should pulse with a skeleton gradient, making the AI's action feel natively integrated into the form fields.
