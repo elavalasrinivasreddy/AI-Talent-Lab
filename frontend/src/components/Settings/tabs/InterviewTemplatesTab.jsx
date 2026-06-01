@@ -126,14 +126,18 @@ export default function InterviewTemplatesTab() {
               return (
                 <div key={t.id} className="premium-list-item" style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <h4 style={{ margin: 0 }}>{t.name}</h4>
-                      {t.is_default && <span className="dept-badge" style={{ background: 'var(--color-primary-bg)', color: 'var(--color-primary)' }}>Default ✅</span>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <h4 style={{ margin: 0, fontSize: '16px' }}>{t.name}</h4>
+                      {t.is_default && (
+                        <span className="phase-tag" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', border: '1px solid var(--color-success-border)' }}>
+                          Active Default
+                        </span>
+                      )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       {!t.is_default && (
-                        <button className="btn btn-sm btn-ghost" onClick={() => handleSetDefault(t.id)} style={{ fontSize: '12px' }}>
-                          Set Default
+                        <button className="btn btn-sm btn-secondary" onClick={() => handleSetDefault(t.id)} style={{ fontSize: '12px', padding: '4px 8px' }}>
+                          Make Default
                         </button>
                       )}
                       <button className="action-menu-btn" onClick={() => openEdit(t)} title="Edit">
@@ -210,14 +214,13 @@ export default function InterviewTemplatesTab() {
 
       {showConfirm && (
         <ConfirmModal
+          isOpen={showConfirm}
           title="Delete Template?"
           message="Are you sure you want to delete this scorecard template? This cannot be undone."
           confirmText="Yes, Delete"
-          cancelText="Cancel"
-          icon="trash"
-          variant="danger"
+          confirmVariant="danger"
           onConfirm={handleDelete}
-          onCancel={() => {
+          onClose={() => {
             setShowConfirm(false)
             setTemplateToDelete(null)
           }}
