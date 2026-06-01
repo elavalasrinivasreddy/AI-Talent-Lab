@@ -381,6 +381,30 @@ async def update_scorecard_template(
     )
     return {"template": t}
 
+@router.delete("/scorecard-templates/{template_id}")
+async def delete_scorecard_template(
+    template_id: int,
+    user: dict = Depends(require_org_head),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Delete a scorecard template (admin only)."""
+    await SettingsService.delete_scorecard_template(
+        db, template_id, user["org_id"], user["user_id"],
+    )
+    return {"message": "Template deleted"}
+
+@router.post("/scorecard-templates/{template_id}/set-default")
+async def set_default_scorecard_template(
+    template_id: int,
+    user: dict = Depends(require_org_head),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Set a scorecard template as default (admin only)."""
+    t = await SettingsService.set_default_scorecard_template(
+        db, template_id, user["org_id"], user["user_id"],
+    )
+    return {"template": t}
+
 
 # ── AI Behavior Settings ──────────────────────────────────────────────────────
 

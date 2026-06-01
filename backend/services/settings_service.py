@@ -415,6 +415,39 @@ class SettingsService:
             raise NotFoundError("Scorecard template not found")
         return t
 
+    @staticmethod
+    async def delete_scorecard_template(
+        conn: asyncpg.Connection,
+        template_id: int,
+        org_id: int,
+        user_id: int,
+    ) -> None:
+        t = await ScorecardTemplateRepository.get_by_id(conn, template_id, org_id)
+        if not t:
+            raise NotFoundError("Scorecard template not found")
+        await ScorecardTemplateRepository.delete(conn, template_id, org_id)
+
+    @staticmethod
+    async def set_default_scorecard_template(
+        conn: asyncpg.Connection,
+        template_id: int,
+        org_id: int,
+        user_id: int,
+    ) -> dict:
+        t = await ScorecardTemplateRepository.get_by_id(conn, template_id, org_id)
+        if not t:
+            raise NotFoundError("Scorecard template not found")
+        
+        # Unset default on all other templates
+        await conn.execute(
+            "UPDATE scorecard_templates SET is_default = FALSE WHERE org_id = $1",
+            org_id
+        )
+        
+        # Set default on the target template
+        t = await ScorecardTemplateRepository.update(conn, template_id, org_id, is_default=True)
+        return t
+
     # ── AI Behavior Settings ───────────────────────────────────────────────────
 
     @staticmethod

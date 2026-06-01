@@ -84,3 +84,12 @@ class ScorecardTemplateRepository:
         """
         row = await conn.fetchrow(query, *values)
         return dict(row) if row else None
+
+    @staticmethod
+    async def delete(conn: asyncpg.Connection, template_id: int, org_id: int) -> bool:
+        """Delete scorecard template."""
+        result = await conn.execute(
+            "DELETE FROM scorecard_templates WHERE id = $1 AND org_id = $2",
+            template_id, org_id,
+        )
+        return "DELETE 1" in result
