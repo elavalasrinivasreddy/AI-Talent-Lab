@@ -98,10 +98,15 @@ def _wrap_html(content_html: str) -> str:
 
 
 def _safe_url(url: str) -> str:
-    """Validate that a URL uses http/https and HTML-escape it."""
-    if url and not url.startswith(("http://", "https://")):
+    """Resolve a relative path to a full URL using FRONTEND_URL and HTML-escape it."""
+    if not url:
+        return ""
+    # Auto-resolve relative paths (e.g. /hire-requests/8) to absolute URLs.
+    if url.startswith("/"):
+        url = f"{settings.FRONTEND_URL}{url}"
+    if not url.startswith(("http://", "https://")):
         raise ValueError(f"Unsafe URL scheme: {url}")
-    return _safe_url(url)
+    return html.escape(url, quote=True)
 
 def _button(label: str, url: str) -> str:
     _url = _safe_url(url)

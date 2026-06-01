@@ -252,22 +252,36 @@ const FinalJDCard = () => {
             pendingFixes.forEach((fix, idx) => {
                 if (fix.status === 'pending') {
                     const regex = new RegExp(`\\b${escapeRegExp(fix.phrase)}\\b`, 'gi');
-                    const diffWidget = `
-                        <span class="inline-bias-widget" data-idx="${idx}" style="display:inline-block; border: 1px dashed var(--color-danger); border-radius: 4px; padding: 2px 4px; background: rgba(239, 68, 68, 0.05); white-space: nowrap; margin: 0 4px;">
-                            <del style="color: var(--color-danger); text-decoration: line-through;">${fix.phrase}</del>
-                            <ins style="color: var(--color-success); font-weight: 600; text-decoration: none; margin-left: 6px;">${fix.suggestion}</ins>
-                            <span style="margin-left: 8px;">
-                                <button onclick="window.acceptBiasFix(${idx})" style="background:var(--color-success); color:white; border:none; border-radius:3px; padding:2px 6px; cursor:pointer; font-size:11px;">✓</button>
-                                <button onclick="window.rejectBiasFix(${idx})" style="background:var(--color-danger); color:white; border:none; border-radius:3px; padding:2px 6px; cursor:pointer; font-size:11px; margin-left:4px;">✗</button>
-                            </span>
-                        </span>
-                    `;
+                    const categoryColor = fix.category === 'gender' ? '#8B5CF6' :
+                                         fix.category === 'age' ? '#F59E0B' :
+                                         fix.category === 'ability' ? '#3B82F6' :
+                                         '#EF4444'; // default / language bias
+                    const diffWidget = `<span class="bias-diff-widget" data-idx="${idx}" style="display:inline-flex; align-items:center; gap:2px; border-radius:6px; overflow:hidden; margin:0 3px; font-size:inherit; vertical-align:middle; border: 1px solid rgba(239,68,68,0.3); background:rgba(239,68,68,0.04);">
+  <span style="display:inline-flex; align-items:center; padding:1px 6px; gap:3px; background:rgba(239,68,68,0.12);">
+    <span style="color:#EF4444; font-weight:700; font-family:monospace; font-size:0.85em;">−</span>
+    <del style="color:#EF4444; text-decoration:line-through; font-weight:500;">${fix.phrase}</del>
+  </span>
+  <span style="display:inline-flex; align-items:center; padding:1px 6px; gap:3px; background:rgba(16,185,129,0.12);">
+    <span style="color:#10B981; font-weight:700; font-family:monospace; font-size:0.85em;">+</span>
+    <ins style="color:#10B981; font-weight:600; text-decoration:none;">${fix.suggestion}</ins>
+  </span>
+  <span style="display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-left:1px solid rgba(239,68,68,0.2);">
+    <span style="font-size:10px; padding:1px 5px; border-radius:3px; background:${categoryColor}22; color:${categoryColor}; font-weight:600; letter-spacing:0.02em; text-transform:uppercase;">${fix.category || 'bias'}</span>
+    <button onclick="window.acceptBiasFix(${idx})" title="Accept fix" style="background:#10B981; color:white; border:none; border-radius:3px; padding:2px 8px; cursor:pointer; font-size:11px; font-weight:600; line-height:1.4;">✓</button>
+    <button onclick="window.rejectBiasFix(${idx})" title="Dismiss" style="background:transparent; color:#94A3B8; border:1px solid #334155; border-radius:3px; padding:2px 8px; cursor:pointer; font-size:11px; font-weight:600; line-height:1.4; margin-left:2px;">✕</button>
+  </span>
+</span>`;
                     html = html.replace(regex, diffWidget);
+                } else if (fix.status === 'accepted') {
+                    // Show accepted fix in green, no controls
+                    const regex = new RegExp(`\\b${escapeRegExp(fix.suggestion)}\\b`, 'gi');
+                    html = html.replace(regex, `<span style="background:rgba(16,185,129,0.12); color:#10B981; border-radius:3px; padding:1px 4px; font-weight:500;">${fix.suggestion}</span>`);
                 }
             });
         }
         return html;
     };
+
 
     useEffect(() => {
         window.acceptBiasFix = (idx) => handleAcceptFix(idx);
@@ -331,6 +345,32 @@ const FinalJDCard = () => {
                             </div>
                         ) : (
                             <div>
+                                {(pendingFixes && pendingFixes.some(f => f.status === 'pending')) && (
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: '10px',
+                                        padding: '8px 14px', marginBottom: '16px',
+                                        borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)',
+                                        background: 'rgba(239,68,68,0.04)',
+                                        fontSize: '13px',
+                                    }}>
+                                        <span style={{ fontFamily: 'monospace', fontSize: '11px', background: 'rgba(239,68,68,0.15)', color: '#EF4444', padding: '2px 7px', borderRadius: '4px', fontWeight: 700 }}>diff</span>
+                                        <span style={{ flex: 1, color: 'var(--color-text-secondary)' }}>
+                                            <strong style={{ color: 'var(--color-text-primary)' }}>{unresolvedCount}</strong> inclusivity suggestion{unresolvedCount !== 1 ? 's' : ''} found — review inline changes below
+                                        </span>
+                                        {unresolvedCount > 1 && (
+                                            <button
+                                                onClick={handleAcceptAll}
+                                                style={{
+                                                    fontSize: '12px', padding: '3px 10px', borderRadius: '5px',
+                                                    background: '#10B981', color: 'white', border: 'none',
+                                                    cursor: 'pointer', fontWeight: 600,
+                                                }}
+                                            >
+                                                Accept all ({unresolvedCount})
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                                 {(pendingFixes && pendingFixes.some(f => f.status === 'pending')) ? (
                                     <div dangerouslySetInnerHTML={{ __html: renderDiffContent() }} />
                                 ) : (

@@ -273,6 +273,8 @@ async def approval_decision(
         raise HTTPException(status_code=422, detail={"error": {"code": "INVALID_DECISION", "message": "decision must be 'approved' or 'changes_requested'", "details": None}})
 
     notes = body.get("notes", "") or ""
+    if decision == "changes_requested" and not notes.strip():
+        raise HTTPException(status_code=422, detail={"error": {"code": "NOTES_REQUIRED", "message": "A feedback note is required when requesting changes. Please explain what needs to be updated.", "details": None}})
     try:
         await PositionService.record_approval_decision(
             position_id=position_id,

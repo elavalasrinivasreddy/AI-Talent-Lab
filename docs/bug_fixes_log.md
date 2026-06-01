@@ -1474,3 +1474,76 @@ The Competitors Intel settings tab lacked the ability to edit existing competito
 - `frontend/src/components/Careers/CareersIndexPage.jsx`
 - `frontend/src/components/Careers/CareerPage.jsx`
 - `backend/routers/careers.py`
+
+---
+
+### 89. Critical: Email Service 500 Error on Hire Request Creation
+**Date:** 2026-06-02
+**Status:** Fixed
+
+**Issue:**
+Every hire request creation call returned a `500 Internal Server Error`. Root cause: `EmailService._safe_url()` had two bugs — it raised `ValueError` for relative paths (e.g. `/hire-requests/8`) instead of resolving them, and it called itself recursively (`return _safe_url(url)`) causing infinite recursion before ever raising the ValueError.
+
+**Solution:**
+Rewrote `_safe_url` in `backend/services/email_service.py`:
+1. Returns `""` immediately for empty input.
+2. Auto-prepends `settings.FRONTEND_URL` for any path that starts with `/`, converting relative paths to absolute URLs before validation.
+3. Raises `ValueError` only for genuinely unsafe schemes (not `http://` or `https://`).
+4. Returns `html.escape(url, quote=True)` — the correct HTML-escaped URL, not a recursive self-call.
+
+**Files Modified:**
+- `backend/services/email_service.py`
+
+---
+
+### 90. JD Rejection Requires Mandatory Feedback Note
+**Date:** 2026-06-02
+**Status:** Fixed
+
+**Issue:**
+Team Leads could click "Request Changes" on a JD without providing any written feedback. HR then received a silent rejection with no actionable guidance on what to fix, creating a communication dead-end.
+
+**Solution:**
+- **Backend:** Added validation in `POST /api/v1/positions/{id}/approval-decision`. When `decision == 'changes_requested'`, an empty `notes` field now returns `422 NOTES_REQUIRED`.
+- **Frontend (Dashboard):** Updated `MyHireRequests` in `LegacyDashboard.jsx`. "Request Changes" now shows an inline textarea (red-bordered) with an autofocus. The "Send Feedback" button stays disabled until a note is typed. On success, the inline form closes and the requests reload. The `positionsApi.approvalDecision()` already accepted a `notes` parameter, so no API util change was needed.
+
+**Files Modified:**
+- `backend/routers/positions.py`
+- `frontend/src/components/Dashboard/legacy/LegacyDashboard.jsx`
+
+---
+
+### 91. Premium Git-Diff Style Bias Checker UI
+**Date:** 2026-06-02
+**Status:** Improved
+
+**Issue:**
+The bias checker in `FinalJDCard.jsx` rendered inline changes with a basic dashed border and plain text. It lacked the visual clarity needed to quickly distinguish what was being removed vs. suggested, and there was no way to batch-accept all fixes at once.
+
+**Solution:**
+Upgraded `renderDiffContent()` in `FinalJDCard.jsx`:
+1. **Git-diff layout:** Each suggestion now renders as an inline pill with two color-coded halves — a red panel (`−` prefix, strikethrough text) and a green panel (`+` prefix, underline-free insertion).
+2. **Category badges:** A small color-coded label (`gender`, `age`, `ability`, or `bias`) appears per suggestion so reviewers know *why* a phrase is flagged.
+3. **Accepted state rendering:** Accepted fixes now show the replacement text with a subtle green background instead of disappearing.
+4. **Summary banner:** A `diff` badge banner above the content shows the pending count and an "Accept all (N)" shortcut button when there are ≥ 2 suggestions.
+
+**Files Modified:**
+- `frontend/src/components/Chat/cards/FinalJDCard.jsx`
+
+---
+
+### 92. Drag-and-Drop Screening Questions: Stale Closure Fix
+**Date:** 2026-06-02
+**Status:** Fixed
+
+**Issue:**
+Drag-and-drop reordering of Screening Questions silently no-oped on fast drags. The `handleDrop` function was reading `dragIdx` from React state, which could be stale by the time the async drop event fired — causing `dragIdx === dropIdx` checks to incorrectly bail out.
+
+**Solution:**
+- Replaced `dragIdx` useState with `dragIdxRef = useRef(null)` so the drag source index is always current regardless of render cycles.
+- All drag handlers (`handleDragStart`, `handleDragEnter`, `handleDrop`, `handleDragEnd`) now read/write `dragIdxRef.current` instead of calling `setDragIdx`.
+- Added `onDragLeave` handler to clear the `dragOverIdx` highlight only when the cursor leaves the row boundary (not when entering child elements), preventing visual flickering.
+- Added `useRef` to the React import.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/ScreeningQuestionsTab.jsx`

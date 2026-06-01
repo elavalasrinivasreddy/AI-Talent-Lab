@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '../../../utils/api'
 import SlideOver from '../../common/SlideOver'
 import Icon from '../../common/Icon'
@@ -15,8 +15,8 @@ export default function ScreeningQuestionsTab() {
     id: null, field_key: '', label: '', field_type: 'text', options: '', is_required: false, department_id: '',
   })
   const [msg, setMsg] = useState('')
-  const [dragIdx, setDragIdx] = useState(null)
   const [dragOverIdx, setDragOverIdx] = useState(null)
+  const dragIdxRef = useRef(null)
   const [deleteId, setDeleteId] = useState(null)
 
   const fetchQs = useCallback(async () => {
@@ -98,7 +98,7 @@ export default function ScreeningQuestionsTab() {
   const handleDragStart = (e, index) => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', index.toString());
-    setDragIdx(index);
+    dragIdxRef.current = index;
     // Delayed opacity change to ensure drag ghost is opaque
     setTimeout(() => {
       if (e.target && e.target.style) {
@@ -109,7 +109,7 @@ export default function ScreeningQuestionsTab() {
 
   const handleDragEnter = (e, index) => {
     e.preventDefault();
-    if (dragIdx !== null && dragIdx !== index) {
+    if (dragIdxRef.current !== null && dragIdxRef.current !== index) {
       setDragOverIdx(index);
     }
   };
@@ -121,7 +121,7 @@ export default function ScreeningQuestionsTab() {
   const handleDrop = async (e, dropIdx) => {
     e.preventDefault()
     const sourceIdx = Number(e.dataTransfer.getData('text/plain'))
-    setDragIdx(null)
+    dragIdxRef.current = null;
     setDragOverIdx(null)
 
     if (Number.isNaN(sourceIdx) || sourceIdx === dropIdx) return
@@ -158,9 +158,10 @@ export default function ScreeningQuestionsTab() {
     if (e.target && e.target.style) {
       e.target.style.opacity = '1';
     }
-    setDragIdx(null)
+    dragIdxRef.current = null;
     setDragOverIdx(null)
   };
+
 
   const typeLabel = (t) => {
     const map = { text: '📝 Text', number: '🔢 Number', select: '📋 Select', date: '📅 Date', boolean: '✅ Yes/No' }
@@ -206,12 +207,18 @@ export default function ScreeningQuestionsTab() {
                     e.preventDefault(); // Crucial for allowing drop
                     e.dataTransfer.dropEffect = 'move';
                   }}
+                  onDragLeave={(e) => {
+                    // Only clear if we're leaving the row entirely (not entering a child)
+                    if (!e.currentTarget.contains(e.relatedTarget)) {
+                      setDragOverIdx(null);
+                    }
+                  }}
                   onDrop={(e) => handleDrop(e, i)}
                   onDragEnd={handleDragEnd}
                   style={{ 
-                    cursor: dragIdx === i ? 'grabbing' : 'grab',
-                    borderTop: dragOverIdx === i && dragIdx > i ? '2px solid var(--color-primary)' : '1px solid transparent',
-                    borderBottom: dragOverIdx === i && dragIdx < i ? '2px solid var(--color-primary)' : '1px solid transparent',
+                    cursor: dragIdxRef.current === i ? 'grabbing' : 'grab',
+                    borderTop: dragOverIdx === i && dragIdxRef.current > i ? '2px solid var(--color-primary)' : '1px solid transparent',
+                    borderBottom: dragOverIdx === i && dragIdxRef.current < i ? '2px solid var(--color-primary)' : '1px solid transparent',
                     transition: 'all 0.1s ease',
                   }}
                 >
