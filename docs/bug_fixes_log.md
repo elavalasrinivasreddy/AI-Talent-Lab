@@ -1355,3 +1355,21 @@ The Notifications tab in Settings was merely a placeholder. Users (Hiring Manage
 - **Issue:** Changing a notification toggle triggered an unintentional logout.
 - **Cause:** The `api.patch('/auth/profile')` call returned data wrapped in an Axios `res.data` object, but the frontend was trying to set the global user state via `setUser(res.user)`. This resulted in `undefined` being pushed to the AuthContext, which cleared the session and bounced the user to the login screen.
 - **Fix:** Corrected the path to `setUser(res.data.user)` in `NotificationsTab.jsx` to correctly apply the updated user profile without destroying the session.
+
+## Issue #83: Upgrading Organization Auto-draft Capabilities
+
+### Problem:
+The Organization Profile acts as the "Brain" of the platform for AI outputs (JDs, emails). The existing `Auto-draft from Website` feature was brittle (failed when encountering bot protections) and limited (only scraped websites, whereas companies often have rich Employee Handbook PDFs).
+
+### Solution / Changes Made:
+- **Tavily Fallback Integration:** Updated `backend/routers/settings.py` so that if the naive `httpx` scrape of the website fails (e.g. 403 Forbidden due to Cloudflare), the system silently falls back to the `TavilySearchResults` API to query public web data about the company's culture and benefits.
+- **Frontend Fallback UI:** Updated `OrganizationTab.jsx` to parse the new `fallback_used` boolean from the backend response. If true, it displays a warning: "⚠️ Direct scrape failed. Generated draft using public web data."
+- **PDF Extraction Support:** 
+  - Added a new `POST /settings/org/upload-handbook` endpoint in `backend/routers/settings.py`.
+  - Used `pdfplumber` to extract text from the first 10 pages of the uploaded PDF in memory, preventing massive token consumption while still capturing core culture data.
+  - Plumbed the extracted text into the same Groq LLM pipeline to generate structured JSON.
+- **Frontend File Upload:** Added an invisible `<input type="file" accept="application/pdf" />` and a visible "📄 Upload PDF" button next to the Auto-draft button in `OrganizationTab.jsx` to handle the `FormData` submission seamlessly.
+
+**Files Modified:**
+- `backend/routers/settings.py`
+- `frontend/src/components/Settings/tabs/OrganizationTab.jsx`

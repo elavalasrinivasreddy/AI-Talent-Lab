@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import api from '../../../utils/api'
 
@@ -10,6 +10,7 @@ export default function OrganizationTab() {
   const [isDrafting, setIsDrafting] = useState(false)
   const [msg, setMsg] = useState('')
   const [tagInput, setTagInput] = useState('')
+  const fileInputRef = useRef(null)
 
   const fetchOrg = useCallback(async () => {
     try {
@@ -57,13 +58,48 @@ export default function OrganizationTab() {
           culture_keywords: res.data.culture_keywords || prev.culture_keywords,
           benefits_text: res.data.benefits_text || prev.benefits_text,
         }))
-        setMsg('✨ Profile auto-drafted from website!')
+        if (res.data.fallback_used) {
+          setMsg('⚠️ Direct scrape failed. Generated draft using public web data.')
+        } else {
+          setMsg('✨ Profile auto-drafted from website!')
+        }
       }
     } catch (err) {
       console.error('Auto-draft failed:', err)
       setMsg('Failed to auto-draft from website.')
     } finally {
       setIsDrafting(false)
+    }
+  }
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsDrafting(true)
+    setMsg('')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await api.post('/settings/org/upload-handbook', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      if (res.data && res.data.error) {
+        setMsg(`❌ Error: ${res.data.error}`)
+      } else if (res.data) {
+        setOrg(prev => ({
+          ...prev,
+          about_us: res.data.about_us || prev.about_us,
+          culture_keywords: res.data.culture_keywords || prev.culture_keywords,
+          benefits_text: res.data.benefits_text || prev.benefits_text,
+        }))
+        setMsg('✨ Profile drafted from Handbook PDF!')
+      }
+    } catch (err) {
+      console.error('PDF extraction failed:', err)
+      setMsg('Failed to extract from PDF.')
+    } finally {
+      setIsDrafting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -92,15 +128,33 @@ export default function OrganizationTab() {
         <div className="section-header">
           <h3>🏢 Organization</h3>
           {isAdmin && (
-            <button 
-              className="btn btn-secondary btn-sm" 
-              onClick={handleAutoDraft} 
-              disabled={isDrafting}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <span className={isDrafting ? 'spin-anim' : ''}>✨</span>
-              {isDrafting ? 'Extracting from website...' : 'Auto-draft from Website'}
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <input 
+                type="file" 
+                accept="application/pdf" 
+                ref={fileInputRef} 
+                style={{ display: 'none' }} 
+                onChange={handleFileUpload} 
+              />
+              <button 
+                className="btn btn-secondary btn-sm" 
+                onClick={() => fileInputRef.current?.click()} 
+                disabled={isDrafting}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span className={isDrafting ? 'spin-anim' : ''}>📄</span>
+                {isDrafting ? 'Extracting...' : 'Upload PDF'}
+              </button>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                onClick={handleAutoDraft} 
+                disabled={isDrafting}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <span className={isDrafting ? 'spin-anim' : ''}>✨</span>
+                {isDrafting ? 'Extracting from website...' : 'Auto-draft from Website'}
+              </button>
+            </div>
           )}
         </div>
 

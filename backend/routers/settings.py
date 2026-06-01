@@ -3,7 +3,7 @@ routers/settings.py – /api/v1/settings/* endpoints.
 Org profile, departments, competitors, screening questions,
 message templates, scorecard templates. Admin-only where required.
 """
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from typing import Optional
 
 import asyncpg
@@ -59,25 +59,101 @@ async def auto_draft_org_profile(
     user: dict = Depends(require_org_head),
 ):
     """Extract company details from a given URL using LLM."""
+    fallback_used = False
     try:
         # 1. Fetch HTML
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(body.url)
-            html = resp.text
+        try:
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+                resp = await client.get(body.url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+                resp.raise_for_status()
+                html = resp.text
+                
+            # 2. Naive HTML to text
+            text = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.IGNORECASE | re.DOTALL)
+            text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
+            text = re.sub(r'<[^>]+>', ' ', text)
+            text = re.sub(r'\s+', ' ', text).strip()
             
-        # 2. Naive HTML to text
-        text = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.IGNORECASE | re.DOTALL)
-        text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
-        text = re.sub(r'<[^>]+>', ' ', text)
-        text = re.sub(r'\s+', ' ', text).strip()
-        
-        # Limit text length to avoid token limits
-        text = text[:15000]
+            # Limit text length to avoid token limits
+            text = text[:15000]
+            if len(text) < 100:
+                raise ValueError("Insufficient text content extracted.")
+                
+        except Exception as scrape_err:
+            print(f"Direct scrape failed for {body.url}: {scrape_err}. Falling back to Tavily.")
+            fallback_used = True
+            from langchain_community.tools.tavily_search import TavilySearchResults
+            tavily = TavilySearchResults(max_results=3)
+            results = tavily.invoke({"query": f"What is the company culture, benefits, and about us for {body.url}?"})
+            text = str(results)
         
         # 3. LLM Extraction
         llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
-        sys_prompt = "You are an expert corporate researcher. Extract details from the provided website text and return a valid JSON object strictly matching this schema: {\"about_us\": \"String, 1-2 paragraphs\", \"culture_keywords\": \"String, comma-separated list of 3-6 keywords\", \"benefits_text\": \"String, short description of benefits or perks mentioned\"}. If not found, make an educated guess or leave empty."
-        human_prompt = f"Website URL: {body.url}\n\nWebsite Content:\n{text}"
+        sys_prompt = "You are an expert corporate researcher. Extract details from the provided website text or search results and return a valid JSON object strictly matching this schema: {\"about_us\": \"String, 1-2 paragraphs\", \"culture_keywords\": \"String, comma-separated list of 3-6 keywords\", \"benefits_text\": \"String, short description of benefits or perks mentioned\"}. If not found, make an educated guess or leave empty."
+        human_prompt = f"Website URL: {body.url}\n\nContent:\n{text}"
+        
+        res = await llm.ainvoke([
+            SystemMessage(content=sys_prompt),
+            HumanMessage(content=human_prompt)
+        ])
+        
+        # Parse JSON
+        content = res.content
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].strip()
+            
+        data = json.loads(content)
+        
+        return {
+            "about_us": data.get("about_us", ""),
+            "culture_keywords": data.get("culture_keywords", ""),
+            "benefits_text": data.get("benefits_text", ""),
+            "fallback_used": fallback_used
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "about_us": "Could not automatically fetch details from the provided website.",
+            "culture_keywords": "Innovation, Collaboration, Excellence",
+            "benefits_text": "Please manually enter your benefits.",
+            "fallback_used": fallback_used
+        }
+
+
+@router.post("/org/upload-handbook")
+async def extract_from_handbook(
+    file: UploadFile = File(...),
+    user: dict = Depends(require_org_head)
+):
+    """Extract company details from a PDF handbook using LLM."""
+    if not file.filename.lower().endswith(".pdf"):
+        return {"error": "Only PDF files are supported."}
+        
+    try:
+        content = await file.read()
+        import io
+        import pdfplumber
+        
+        pdf_file = io.BytesIO(content)
+        text = ""
+        with pdfplumber.open(pdf_file) as pdf:
+            # Only read up to 10 pages to avoid massive token consumption
+            for page in pdf.pages[:10]:
+                extracted = page.extract_text()
+                if extracted:
+                    text += extracted + "\n"
+        
+        if not text.strip():
+            return {"error": "No extractable text found in the PDF."}
+            
+        text = text[:15000]
+        
+        # LLM Extraction
+        llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
+        sys_prompt = "You are an expert corporate researcher. Extract details from the provided company handbook/document and return a valid JSON object strictly matching this schema: {\"about_us\": \"String, 1-2 paragraphs\", \"culture_keywords\": \"String, comma-separated list of 3-6 keywords\", \"benefits_text\": \"String, short description of benefits or perks mentioned\"}. If not found, make an educated guess or leave empty."
+        human_prompt = f"Handbook Content:\n{text}"
         
         res = await llm.ainvoke([
             SystemMessage(content=sys_prompt),
@@ -100,12 +176,8 @@ async def auto_draft_org_profile(
         }
     except Exception as e:
         return {
-            "error": str(e),
-            "about_us": "Could not automatically fetch details from the provided website.",
-            "culture_keywords": "Innovation, Collaboration, Excellence",
-            "benefits_text": "Please manually enter your benefits."
+            "error": f"Failed to extract text from PDF: {str(e)}"
         }
-
 
 # ── Departments ────────────────────────────────────────────────────────────────
 
