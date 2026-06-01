@@ -370,6 +370,32 @@ class SettingsService:
             action="message_template_created", entity_type="message_template",
             entity_id=str(t["id"]),
         )
+        
+        # Notifications
+        from backend.db.repositories.users import UserRepository
+        from backend.db.repositories.notifications import NotificationRepository
+        
+        creator = await UserRepository.get_by_id(conn, user_id, org_id)
+        creator_name = creator["name"] if creator else "System"
+        
+        users_to_notify = await conn.fetch(
+            "SELECT id FROM users WHERE org_id=$1 AND role IN ('hr', 'org_head', 'dept_admin') AND id != $2",
+            org_id, user_id
+        )
+        
+        for u in users_to_notify:
+            await NotificationRepository.create(
+                conn,
+                {
+                    "org_id": org_id,
+                    "user_id": u["id"],
+                    "type": "template_added",
+                    "title": "New Message Template",
+                    "message": f"{creator_name} created a new message template: {name}",
+                    "action_url": "/settings/templates"
+                }
+            )
+            
         return t
 
     @staticmethod
@@ -383,6 +409,32 @@ class SettingsService:
         t = await MessageTemplateRepository.update(conn, template_id, org_id, **fields)
         if not t:
             raise NotFoundError("Message template not found")
+            
+        # Notifications
+        from backend.db.repositories.users import UserRepository
+        from backend.db.repositories.notifications import NotificationRepository
+        
+        creator = await UserRepository.get_by_id(conn, user_id, org_id)
+        creator_name = creator["name"] if creator else "System"
+        
+        users_to_notify = await conn.fetch(
+            "SELECT id FROM users WHERE org_id=$1 AND role IN ('hr', 'org_head', 'dept_admin') AND id != $2",
+            org_id, user_id
+        )
+        
+        for u in users_to_notify:
+            await NotificationRepository.create(
+                conn,
+                {
+                    "org_id": org_id,
+                    "user_id": u["id"],
+                    "type": "template_updated",
+                    "title": "Message Template Updated",
+                    "message": f"{creator_name} updated the message template: {t['name']}",
+                    "action_url": "/settings/templates"
+                }
+            )
+            
         return t
 
     @staticmethod

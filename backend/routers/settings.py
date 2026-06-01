@@ -8,7 +8,7 @@ from typing import Optional
 
 import asyncpg
 
-from backend.dependencies import get_db, get_current_user, require_org_head, require_dept_admin
+from backend.dependencies import get_db, get_current_user, require_org_head, require_dept_admin, require_hr
 from backend.services.settings_service import SettingsService
 from backend.models.settings import (
     OrgProfileUpdate, AutoDraftRequest,
@@ -19,12 +19,13 @@ from backend.models.settings import (
     ScorecardTemplateCreate,
     AiBehaviorBody,
 )
+from pydantic import BaseModel
 from backend.exceptions import InsufficientPermissionsError
 import httpx
 import re
-from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 import json
+from backend.adapters.llm.factory import get_llm
 
 router = APIRouter(prefix="/api/v1/settings", tags=["Settings"])
 
@@ -88,7 +89,7 @@ async def auto_draft_org_profile(
             text = str(results)
         
         # 3. LLM Extraction
-        llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
+        llm = get_llm(temperature=0)
         sys_prompt = "You are an expert corporate researcher. Extract details from the provided website text or search results and return a valid JSON object strictly matching this schema: {\"about_us\": \"String, 1-2 paragraphs\", \"culture_keywords\": \"String, comma-separated list of 3-6 keywords\", \"benefits_text\": \"String, short description of benefits or perks mentioned\"}. If not found, make an educated guess or leave empty."
         human_prompt = f"Website URL: {body.url}\n\nContent:\n{text}"
         
@@ -151,7 +152,7 @@ async def extract_from_handbook(
         text = text[:15000]
         
         # LLM Extraction
-        llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
+        llm = get_llm(temperature=0)
         sys_prompt = "You are an expert corporate researcher. Extract details from the provided company handbook/document and return a valid JSON object strictly matching this schema: {\"about_us\": \"String, 1-2 paragraphs\", \"culture_keywords\": \"String, comma-separated list of 3-6 keywords\", \"benefits_text\": \"String, short description of benefits or perks mentioned\"}. If not found, make an educated guess or leave empty."
         human_prompt = f"Handbook Content:\n{text}"
         
@@ -394,7 +395,7 @@ async def list_message_templates(
 @router.post("/message-templates")
 async def create_message_template(
     body: MessageTemplateCreate,
-    user: dict = Depends(require_org_head),
+    user: dict = Depends(require_hr),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Create a message template (admin only)."""
@@ -410,7 +411,7 @@ async def create_message_template(
 async def update_message_template(
     template_id: int,
     body: MessageTemplateUpdate,
-    user: dict = Depends(require_org_head),
+    user: dict = Depends(require_hr),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Update a message template (admin only)."""
@@ -424,7 +425,7 @@ async def update_message_template(
 @router.delete("/message-templates/{template_id}")
 async def delete_message_template(
     template_id: int,
-    user: dict = Depends(require_org_head),
+    user: dict = Depends(require_hr),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Delete a message template (admin only)."""
@@ -432,6 +433,76 @@ async def delete_message_template(
         db, template_id, user["org_id"], user["user_id"],
     )
     return {"message": "Template deleted"}
+
+
+class AutoDraftTemplateRequest(BaseModel):
+    category: str
+    tone: str
+    scenario: str
+
+@router.post("/message-templates/auto-draft")
+async def auto_draft_message_template(
+    body: AutoDraftTemplateRequest,
+    user: dict = Depends(require_hr),
+):
+    """Generate a message template subject and body based on tone and scenario."""
+    llm = get_llm(temperature=0.7)
+    sys_prompt = (
+        "You are an expert HR copywriter. Draft an email template based on the given category, tone, and scenario. "
+        "You MUST use the following variables exactly as shown where appropriate: "
+        "{{candidate_name}}, {{role_name}}, {{org_name}}, {{magic_link}}, {{interview_date}}, {{interview_time}}, {{round_name}}. "
+        "IMPORTANT: Always include a professional signature block at the end of the email body (e.g., Best regards, [Sender Name] / {{org_name}}). "
+        "Return a valid JSON object strictly matching this schema: {\"name\": \"String (A short title for this template)\", \"subject\": \"String\", \"body\": \"String\"}."
+    )
+    human_prompt = f"Category: {body.category}\nTone: {body.tone}\nScenario: {body.scenario}"
+    
+    try:
+        res = await llm.ainvoke([
+            SystemMessage(content=sys_prompt),
+            HumanMessage(content=human_prompt)
+        ])
+        content = res.content
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].strip()
+            
+        data = json.loads(content)
+        return {
+            "name": data.get("name", "Generated Template"),
+            "subject": data.get("subject", ""),
+            "body": data.get("body", "")
+        }
+    except Exception as e:
+        return {"error": f"Failed to draft template: {str(e)}"}
+
+
+class AnalyzeToneRequest(BaseModel):
+    subject: str
+    body: str
+
+@router.post("/message-templates/analyze-tone")
+async def analyze_message_tone(
+    body: AnalyzeToneRequest,
+    user: dict = Depends(require_hr),
+):
+    """Analyze the tone and potential bias of a message template."""
+    llm = get_llm(temperature=0.2)
+    sys_prompt = (
+        "You are an HR communications expert. Analyze the provided email subject and body for tone and potential bias. "
+        "Return a very concise 1-2 sentence assessment. Point out if it's too cold, aggressive, or contains biased language. "
+        "If it is good, say it is professional and appropriate."
+    )
+    human_prompt = f"Subject: {body.subject}\n\nBody:\n{body.body}"
+    
+    try:
+        res = await llm.ainvoke([
+            SystemMessage(content=sys_prompt),
+            HumanMessage(content=human_prompt)
+        ])
+        return {"analysis": res.content.strip()}
+    except Exception as e:
+        return {"error": f"Analysis failed: {str(e)}"}
 
 
 # ── Scorecard Templates ───────────────────────────────────────────────────────

@@ -65,7 +65,7 @@ const RAIL_GROUPS = [
     items: [
       { key: 'organization', icon: 'briefcase', label: 'Organization profile' },
       { key: 'competitors', icon: 'trending-up', label: 'Competitor intel', adminOnly: true },
-      { key: 'templates', icon: 'mail', label: 'Email templates', adminOnly: true },
+      { key: 'templates', icon: 'mail', label: 'Email templates' },
       { key: 'appearance', icon: 'palette', label: 'Appearance' },
       { key: 'career-brand', icon: 'home', label: 'Career page brand', adminOnly: true, phase: 2 },
     ],
@@ -180,7 +180,7 @@ export default function SettingsPage() {
       </div>
 
       {/* 2-column or 3-column layout */}
-      <div className={`st-layout ${!['ats-rules', 'sourcing', 'screening', 'scorecards', 'bias', 'career-brand', 'templates'].includes(activeSection) ? 'no-right-rail' : ''}`}>
+      <div className={`st-layout ${!['ats-rules', 'sourcing', 'screening', 'scorecards', 'bias', 'career-brand'].includes(activeSection) ? 'no-right-rail' : ''}`}>
         {/* Left Rail */}
         <nav className="st-rail">
           {/* Profile shortcut */}
@@ -274,7 +274,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Right Preview - Conditionally rendered */}
-        {['ats-rules', 'sourcing', 'screening', 'scorecards', 'bias', 'career-brand', 'templates'].includes(activeSection) && (
+        {['ats-rules', 'sourcing', 'screening', 'scorecards', 'bias', 'career-brand'].includes(activeSection) && (
           <SettingsLivePreview activeSection={activeSection} />
         )}
       </div>

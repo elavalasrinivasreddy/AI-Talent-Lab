@@ -1404,3 +1404,49 @@ The Competitors Intel settings tab lacked the ability to edit existing competito
 - `backend/services/settings_service.py`
 - `backend/routers/settings.py`
 - `frontend/src/components/Settings/tabs/CompetitorsTab.jsx`
+
+### 86. Message Templates: Magic Draft, Tone Analyzer, and Live Preview
+**Date:** 2026-06-01
+**Status:** Implemented
+
+**Issue / Validation:**
+- The Message Templates tab was a basic CRUD form. It lacked the planned "AI Auto-Draft" functionality, making it tedious for recruiters to author emails.
+- Users had to manually copy-paste variables like `{{candidate_name}}`, risking syntax errors.
+- There was no way to preview what the parsed email would look like.
+- Duplicating templates wasn't possible, slowing down the creation of slight variations (e.g., Senior vs Junior rejection emails).
+
+**Idea / Solution:**
+- **Magic Draft (AI):** Added an "✨ Auto-Draft" feature. Recruiters can input a scenario and select a tone. The backend calls Groq LLM via `POST /api/v1/settings/message-templates/auto-draft` to instantly draft the subject and body using the required variables.
+- **Tone Analyzer (AI):** Added a "🔍 Analyze Tone" button that evaluates the text for warmth, professionalism, and potential bias, powered by `POST /api/v1/settings/message-templates/analyze-tone`.
+- **Live Preview:** Introduced a split-pane toggle (Edit / Preview) in the SlideOver. The Preview pane renders the email as it would look in a client (like Gmail), replacing raw variables with distinct styled pill badges (e.g., `Jane Doe`) to confirm syntax correctness.
+- **Variable Quick Insert:** Added clickable variable buttons below the textarea that safely insert the exact variable string at the current cursor position.
+- **Duplicate Action:** Added a duplicate button to the template list to rapidly clone an existing configuration.
+
+**Files Modified:**
+- `backend/routers/settings.py`
+- `frontend/src/components/Settings/tabs/MessageTemplatesTab.jsx`
+
+---
+
+### 87. Message Templates: Role Access, UI Cleanup, and Notifications
+**Date:** 2026-06-01
+**Status:** Fixed
+
+**Issue:**
+- HR and Department Admins were blocked from accessing the Message Templates tab due to improper `adminOnly` UI routing and restricted backend permissions.
+- The UI had basic alerts instead of the application-level `ConfirmModal`.
+- After saving edits, the editor panel remained open.
+- When users added or modified a template, other stakeholders (HR, Admins) were not notified.
+- The Live Preview, AI Draft, and Tone Analyzer functionality had minor glitches (e.g., missing signature block, layout issues).
+
+**Solution:**
+- **Role Permissions (RBAC):** Removed `adminOnly: true` from the `RAIL_GROUPS` configuration in `SettingsPage.jsx` and updated `backend/routers/settings.py` endpoints to use `require_hr` (which allows Org Head, Dept Admin, and HR).
+- **UI Modernization & Fixes:** Integrated `ConfirmModal` for deletion. Fixed the save edit workflow to automatically call `setEditing(null)` and `fetchTemplates()` to cleanly close the UI and refresh the data.
+- **Cross-Role Notifications Fan-out:** Updated `SettingsService.create_message_template` and `update_message_template` to generate system notifications for all other HR, Dept Admin, and Org Head users. Deep-linked the notifications to `/settings/templates`.
+- **Duplicate Action:** Added the missing copy icon to `Icon.jsx` and ensured duplicate logic works.
+
+**Files Modified:**
+- `backend/routers/settings.py`
+- `backend/services/settings_service.py`
+- `frontend/src/components/Settings/SettingsPage.jsx`
+- `frontend/src/components/Settings/tabs/MessageTemplatesTab.jsx`
