@@ -196,11 +196,8 @@ class ChatService:
                 market_skills = new_state.get("market_skills_found", [])
                 jd_variants = new_state.get("jd_variants", [])
 
-                if internal_skills and current_stage in ("internal_check", "market_research"):
-                    # Internal card — stage may have already been set to market_research
-                    # but we still need to show the card if awaiting
-                    if not new_state.get("internal_skipped") and not new_state.get("internal_skills_accepted"):
-                        yield StreamHandler.emit_card_internal(internal_skills)
+                if current_stage == "internal_check" and not new_state.get("internal_skills_accepted"):
+                    yield StreamHandler.emit_card_internal(internal_skills)
 
                 if market_skills and current_stage == "market_research":
                     if not new_state.get("market_skipped") and not new_state.get("market_skills_accepted"):

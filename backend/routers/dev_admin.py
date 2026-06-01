@@ -242,18 +242,20 @@ async def reset_chat_sessions(org_id: Optional[int] = Query(None, description="O
 
 @router.delete("/reset/positions")
 async def reset_positions(org_id: Optional[int] = Query(None)):
-    """Hard-delete ALL positions (cascade: applications, pipeline events) for an org or globally."""
+    """Hard-delete ALL positions and hire requests (cascade: applications, pipeline events) for an org or globally."""
     _require_dev_mode()
     async with get_connection() as conn:
         if org_id:
             await conn.execute("DELETE FROM candidate_applications WHERE org_id = $1", org_id)
             await conn.execute("DELETE FROM pipeline_events WHERE org_id = $1", org_id)
+            await conn.execute("DELETE FROM hire_requests WHERE org_id = $1", org_id)
             await conn.execute("DELETE FROM positions WHERE org_id = $1", org_id)
         else:
             await conn.execute("DELETE FROM candidate_applications")
             await conn.execute("DELETE FROM pipeline_events")
+            await conn.execute("DELETE FROM hire_requests")
             await conn.execute("DELETE FROM positions")
-    logger.warning(f"[DEV] Reset positions for org {org_id or 'ALL'}")
+    logger.warning(f"[DEV] Reset positions and hire requests for org {org_id or 'ALL'}")
     return {"ok": True}
 
 
@@ -283,6 +285,7 @@ async def reset_all_org_data(org_id: Optional[int] = Query(None)):
             await conn.execute("DELETE FROM pipeline_events WHERE org_id = $1", org_id)
             await conn.execute("DELETE FROM candidate_applications WHERE org_id = $1", org_id)
             await conn.execute("DELETE FROM candidates WHERE org_id = $1", org_id)
+            await conn.execute("DELETE FROM hire_requests WHERE org_id = $1", org_id)
             await conn.execute("DELETE FROM positions WHERE org_id = $1", org_id)
             await conn.execute("DELETE FROM chat_sessions WHERE org_id = $1", org_id)
             msg = "Org data cleared. Org, users, and departments preserved."

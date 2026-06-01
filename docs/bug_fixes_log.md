@@ -615,7 +615,7 @@ The JD generation workspace lacked a premium aesthetic and contained UI quirks. 
 - `frontend/src/components/Chat/PositionSetupModal.jsx`
 - `frontend/src/components/Chat/blocks/AgentBlockVariants.jsx`
 - `backend/routers/chat.py`
-
+---
 ### 47. Restore Hire Request Priority & Improve Position Detail Aesthetics
 **Date:** 2026-05-30
 **Status:** Fixed
@@ -1547,3 +1547,114 @@ Drag-and-drop reordering of Screening Questions silently no-oped on fast drags. 
 
 **Files Modified:**
 - `frontend/src/components/Settings/tabs/ScreeningQuestionsTab.jsx`
+
+---
+
+## 93. Resume Chat Starts Blank Instead of Pre-seeding JD Context
+
+**Problem Statement:**
+When HR deleted a draft JD chat session and then clicked "Resume AI Chat" from the Position Detail page (JD tab), the chat opened completely blank — no role name, no department, no requirements pre-filled. The agent asked HR to describe the role from scratch, even though all the hire request data was already known. This was inconsistent with the "Pick up & start JD chat" flow from the Hire Request Detail page, which correctly auto-seeds the context.
+
+**Idea / Solution:**
+Three-part fix to close the gap:
+
+1. **`JDTab.jsx`**: The "Resume AI Chat" button was navigating to `/chat/${session_id}` with no `location.state`. Updated to pass position fields (`role_name`, `department_name`, `headcount`, `work_type`, `location`, `experience_min`, `experience_max`) as `hireRequest` in router state — matching the shape the chat page already expects.
+
+2. **`ChatContext.jsx`**: Added a `sessionLoaded` boolean flag (default `false`). `loadSession` sets it to `false` at start and `true` in a `finally` block (covers success, 404, and errors). `resetChat` also sets it to `true` (fresh chat counts as immediately loaded).
+
+3. **`ChatPage.jsx`**: The auto-seed effect previously used `messages.length > 0` as a guard, which fired prematurely on the first render (before `loadSession` completed) — causing a race where sessions with real history could receive a spurious seed message. New logic: (a) gate on `sessionId && !sessionLoaded` to wait for load completion, (b) check `messages.some(m => m.role === 'user')` instead of total count so the GREETING message doesn't block seeding on empty sessions.
+
+**Files Modified:**
+- `frontend/src/components/Positions/tabs/JDTab.jsx`
+- `frontend/src/context/ChatContext.jsx`
+- `frontend/src/components/Chat/ChatPage.jsx`
+
+---
+
+## 94. Internal Skills Check Card Silently Skipped When No Past JDs Found
+
+**Problem Statement:**
+When the internal analyst found no matching past JDs for the role, the entire Stage 2 ("Internal skills check") card was silently skipped — `awaiting_user_input` was set to `false`, the stage auto-advanced to `market_research`, and `card_internal` was never emitted. HR experienced an inconsistent flow: some runs showed the card, others jumped straight to market research with no explanation. The stepper also skipped Stage 2 entirely in these cases.
+
+**Idea / Solution:**
+
+1. **`internal_analyst.py`**: Removed the auto-advance logic for the empty-skills path. When no skills are found, the node now sets `stage = "internal_check"` and `awaiting_user_input = True` — same as the non-empty path. The `internal_skipped` flag is no longer set by the backend; it's only set later by the user's explicit `skip_internal` action.
+
+2. **`chat_service.py`**: The card emission guard was `if internal_skills and ...` — an empty Python list is falsy, so the card was never emitted. Changed to `if current_stage == "internal_check" and not internal_skills_accepted` — emits `card_internal` with an empty array when applicable.
+
+3. **`ChatContext.jsx`**: The graph_state restore on session load used `?.length` to conditionally restore `internalCard`, so empty-array results were silently ignored. Changed to `Array.isArray(gs.internal_skills_found) && !gs.internal_skipped && !gs.internal_skills_accepted?.length` — restores the card even when the list is empty (provided the user hasn't already acted).
+
+4. **`AgentBlockInternal.jsx`**: Removed the early `return null` guard. When skills are empty, renders an `AgentBlockShell` with subtitle "No similar past roles found" and a "Continue" button (fires `skip_internal`) instead of nothing.
+
+**Files Modified:**
+- `backend/agents/nodes/internal_analyst.py`
+- `backend/services/chat_service.py`
+- `frontend/src/context/ChatContext.jsx`
+- `frontend/src/components/Chat/blocks/AgentBlockInternal.jsx`
+
+---
+
+## 95. JD Variants Refine Bar Visually Broken on Dark Theme
+
+**Problem Statement:**
+The "regenerate variants" input row below the JD variant cards was using `var(--border, #e5e7eb)` with a light-mode hex fallback. On the dark-themed UI, the input rendered with a washed-out light border and the wrong background, looking like a generic HTML form element disconnected from the rest of the product design.
+
+**Idea / Solution:**
+Replaced the `.variant-regenerate` / `.variant-regenerate-input` styles with a new `.variant-refine-bar` command-bar component:
+- Pill-shaped container with `var(--color-bg-tertiary)` background and `var(--border-100)` border, glowing teal on `:focus-within`
+- Input is fully transparent with correct `var(--color-text-primary)` and muted placeholder
+- Compact "Regenerate" button with icon, correct dark-theme border, teal hover transition
+- Enter-key submit added to the input
+- Variant cards updated to have a visible default border (`var(--border-100)`) and `var(--color-bg-tertiary)` background instead of transparent, giving them visual presence at rest
+
+**Files Modified:**
+- `frontend/src/styles/chat.css`
+- `frontend/src/components/Chat/blocks/AgentBlockVariants.jsx`
+
+---
+
+## 96. Bias Diff: Stale Counter, No Navigation, and Stale Closure on Handlers
+
+**Problem Statement:**
+Three related issues with the inclusivity (bias) diff UI in the Final JD card:
+
+1. **No navigation**: When bias check returned multiple suggestions, there was no way to jump between them — users had to manually scroll through the entire document to find pending inline diffs, which was easy to miss.
+2. **Phantom counter**: The "1 suggestion found" banner could persist after accepting items because `window.acceptBiasFix` and `window.rejectBiasFix` were registered once with `[pendingFixes]` as the dependency. This created a stale closure when multiple fixes existed — accepting fix N updated state, but the DOM-injected buttons still called the old handler which had the pre-accept `pendingFixes` snapshot.
+3. **No auto-advance**: After accepting or rejecting a suggestion, focus stayed at the same position rather than moving to the next pending item.
+
+**Idea / Solution:**
+
+1. **Navigation**: Added `focusedDiffIdx` state and `pendingIndices` memo. The diff banner now shows "X / N" position counter plus ↑ / ↓ arrow buttons (`goToPrevFix` / `goToNextFix`). The focused widget gets a teal outline ring (`outline: 2px solid #0D9488`). A `useEffect` scrolls to `[data-idx="${focusedDiffIdx}"]` with smooth behavior on focus change.
+
+2. **Stale closure fix**: Replaced the `[pendingFixes]`-dependent `useEffect` for `window.acceptBiasFix` with the "latest-ref" pattern — `acceptFixRef` and `rejectFixRef` are updated every render via bare `useEffect(() => { ref.current = handler })`, and `window.acceptBiasFix` calls `ref.current` instead of the captured closure. The global registration effect now runs only once (`[]` deps).
+
+3. **Auto-advance**: `handleAcceptFix` and `handleRejectFix` are now `useCallback` functions. Inside the `setPendingFixes` updater, they compute the remaining pending indices from the updated array and call `advanceFocus` to move to the next (or previous if at the end) pending item.
+
+**Files Modified:**
+- `frontend/src/components/Chat/cards/FinalJDCard.jsx`
+
+---
+
+## 97. Dev Admin: Reset Positions Leaving Orphaned Hire Requests
+
+**Problem Statement:**
+The `/dev/reset/positions` endpoint deleted positions and applications but did not delete hire requests. After a reset, hire requests remained in the database referencing non-existent positions, causing referential noise in testing sessions and skewed counts in the HR pipeline.
+
+**Idea / Solution:**
+Added `DELETE FROM hire_requests` to both the org-scoped and global paths in the `reset_positions` endpoint. Also added `hire_requests` deletion to the full org data wipe endpoint for consistency. Updated log message to reflect both entities.
+
+**Files Modified:**
+- `backend/routers/dev_admin.py`
+
+---
+
+## 98. HireRequestService Missing `priority` Parameter in Position Creation
+
+**Problem Statement:**
+The `create_position_from_session` method in `HireRequestService` was not forwarding the `priority` field when creating a position. The `priority` parameter was accepted in the method signature but was not being passed to the repository call, so positions always got the default priority regardless of what was set on the hire request.
+
+**Idea / Solution:**
+Added `priority=priority` to the `PositionRepository.create()` call inside `HireRequestService.create_position_from_session`.
+
+**Files Modified:**
+- `backend/services/hire_request_service.py`

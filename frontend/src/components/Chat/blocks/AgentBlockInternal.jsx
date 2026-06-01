@@ -64,7 +64,36 @@ export default function AgentBlockInternal() {
   };
 
   const skills = useMemo(() => internalCard || [], [internalCard]);
-  if (!skills.length) return null;
+
+  if (!skills.length) {
+    return (
+      <AgentBlockShell
+        stage="internal_check"
+        number={2}
+        title="Internal skills check"
+        subtitle={`No similar past roles found in ${user?.org_name || 'your org'}`}
+        status={isLocked ? 'done' : 'active'}
+      >
+        {!isLocked && (
+          <>
+            <p style={{ margin: '0 0 16px', color: 'var(--text-400)', fontSize: '0.875rem', lineHeight: 1.5 }}>
+              No past JDs matched this role — the JD will be built fresh from market research.
+            </p>
+            <div className="agent-block-actions">
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={onSkip}
+                disabled={isStreaming}
+              >
+                Continue <IconArrowRight size={14} />
+              </button>
+            </div>
+          </>
+        )}
+      </AgentBlockShell>
+    );
+  }
 
   return (
     <AgentBlockShell

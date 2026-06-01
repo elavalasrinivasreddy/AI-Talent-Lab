@@ -28,6 +28,7 @@ const ChatPage = () => {
         sendMessage,
         workflowStage,
         messages,
+        sessionLoaded,
     } = useChat();
 
     const loadedRef = useRef(null);
@@ -85,15 +86,20 @@ const ChatPage = () => {
     }, [sessionId, setCurrentSessionId, loadSession, resetChat]);
 
     // Auto-send hire-request context to the chat when the user picked up a
-    // request from /hire-requests/:id. Builds a single intake message that
-    // the agent uses to skip ahead.
+    // request from /hire-requests/:id, OR resumed a chat whose session was
+    // deleted (position detail → Resume Chat). Builds a single intake message
+    // that the agent uses to skip ahead.
     useEffect(() => {
         const req = location.state?.hireRequest;
-        
-        // If there are already messages, we shouldn't send an auto-seed message
-        // This prevents duplicate sends during React Strict Mode remounts.
-        if (hireRequestSentRef.current || workflowStage !== 'intake' || messages.length > 0) return;
-        
+
+        // For sessionId routes, wait until loadSession has fully completed so we
+        // know whether the session has real history before deciding to seed.
+        if (sessionId && !sessionLoaded) return;
+
+        // Only seed if there are no real user messages yet (GREETING-only is fine).
+        const hasUserMessages = messages.some(m => m.role === 'user');
+        if (hireRequestSentRef.current || workflowStage !== 'intake' || hasUserMessages) return;
+
         hireRequestSentRef.current = true;
 
         if (!req) {
@@ -120,7 +126,7 @@ const ChatPage = () => {
         if (req.requested_by_name) lines.push(`\nRequested by: ${req.requested_by_name}`);
 
         sendMessage({ message: lines.join('\n') });
-    }, [location.state, workflowStage, sendMessage, messages.length]);
+    }, [sessionId, sessionLoaded, location.state, workflowStage, sendMessage, messages]);
 
     // Link the created position back to the hire request once JD generation completes.
     useEffect(() => {

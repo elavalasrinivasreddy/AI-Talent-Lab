@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { marked } from 'marked';
 import { useChat } from '../../../context/ChatContext';
@@ -52,6 +52,13 @@ const FinalJDCard = () => {
 
     const [pendingFixes, setPendingFixes] = useState([]);
     const [biasCheckDone, setBiasCheckDone] = useState(false);
+    const [focusedDiffIdx, setFocusedDiffIdx] = useState(null);
+
+    const pendingIndices = useMemo(
+        () => pendingFixes.map((f, i) => (f.status === 'pending' ? i : -1)).filter((i) => i >= 0),
+        [pendingFixes],
+    );
+    const focusedPendingPos = pendingIndices.indexOf(focusedDiffIdx);
 
     const isComplete = workflowStage === 'complete';
     const isDraft = workflowStage === 'final_jd';
@@ -67,10 +74,12 @@ const FinalJDCard = () => {
             })));
             setBiasCheckRunning(false);
             setBiasCheckDone(false);
+            setFocusedDiffIdx(0); // focus first issue
         } else if (biasCard && (biasCard.clean || (biasCard.issues && biasCard.issues.length === 0))) {
             setPendingFixes([]);
             setBiasCheckRunning(false);
             setBiasCheckDone(true);
+            setFocusedDiffIdx(null);
         }
     }, [biasCard]);
 
@@ -88,19 +97,53 @@ const FinalJDCard = () => {
         if (!isEditing) setEditedMarkdown(liveMarkdown);
     }, [liveMarkdown, isEditing]);
 
-    // ── Bias fix actions ──
-    const handleAcceptFix = (idx) => {
-        const fix = pendingFixes[idx];
-        if (!fix || fix.status !== 'pending') return;
-        setEditedMarkdown((prev) => prev.replace(fix.phrase, fix.suggestion));
-        setPendingFixes((prev) => prev.map((f, i) => (i === idx ? { ...f, status: 'accepted' } : f)));
-        setHasUnsavedChanges(true);
-    };
+    // ── Scroll to focused diff widget ──
+    useEffect(() => {
+        if (focusedDiffIdx == null) return;
+        const t = setTimeout(() => {
+            const el = document.querySelector(`[data-idx="${focusedDiffIdx}"]`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 60);
+        return () => clearTimeout(t);
+    }, [focusedDiffIdx]);
 
-    const handleRejectFix = (idx) => {
-        setPendingFixes((prev) => prev.map((f, i) => (i === idx ? { ...f, status: 'rejected' } : f)));
+    const advanceFocus = useCallback((currentIdx, currentPendingIndices) => {
+        const pos = currentPendingIndices.indexOf(currentIdx);
+        const next = currentPendingIndices[pos + 1] ?? currentPendingIndices[pos - 1] ?? null;
+        setFocusedDiffIdx(next);
+    }, []);
+
+    const goToPrevFix = useCallback(() => {
+        if (focusedPendingPos > 0) setFocusedDiffIdx(pendingIndices[focusedPendingPos - 1]);
+    }, [focusedPendingPos, pendingIndices]);
+
+    const goToNextFix = useCallback(() => {
+        if (focusedPendingPos < pendingIndices.length - 1) setFocusedDiffIdx(pendingIndices[focusedPendingPos + 1]);
+    }, [focusedPendingPos, pendingIndices]);
+
+    // ── Bias fix actions ──
+    const handleAcceptFix = useCallback((idx) => {
+        setPendingFixes((prev) => {
+            const fix = prev[idx];
+            if (!fix || fix.status !== 'pending') return prev;
+            setEditedMarkdown((md) => md.replace(fix.phrase, fix.suggestion));
+            const updated = prev.map((f, i) => (i === idx ? { ...f, status: 'accepted' } : f));
+            const remaining = updated.map((f, i) => (f.status === 'pending' ? i : -1)).filter((i) => i >= 0);
+            advanceFocus(idx, remaining.length ? remaining : []);
+            return updated;
+        });
         setHasUnsavedChanges(true);
-    };
+    }, [advanceFocus]);
+
+    const handleRejectFix = useCallback((idx) => {
+        setPendingFixes((prev) => {
+            const updated = prev.map((f, i) => (i === idx ? { ...f, status: 'rejected' } : f));
+            const remaining = updated.map((f, i) => (f.status === 'pending' ? i : -1)).filter((i) => i >= 0);
+            advanceFocus(idx, remaining.length ? remaining : []);
+            return updated;
+        });
+        setHasUnsavedChanges(true);
+    }, [advanceFocus]);
 
     const handleAcceptAll = () => {
         let updated = editedMarkdown;
@@ -255,8 +298,10 @@ const FinalJDCard = () => {
                     const categoryColor = fix.category === 'gender' ? '#8B5CF6' :
                                          fix.category === 'age' ? '#F59E0B' :
                                          fix.category === 'ability' ? '#3B82F6' :
-                                         '#EF4444'; // default / language bias
-                    const diffWidget = `<span class="bias-diff-widget" data-idx="${idx}" style="display:inline-flex; align-items:center; gap:2px; border-radius:6px; overflow:hidden; margin:0 3px; font-size:inherit; vertical-align:middle; border: 1px solid rgba(239,68,68,0.3); background:rgba(239,68,68,0.04);">
+                                         '#EF4444';
+                    const isFocused = focusedDiffIdx === idx;
+                    const focusRing = isFocused ? 'outline:2px solid #0D9488; outline-offset:2px;' : '';
+                    const diffWidget = `<span class="bias-diff-widget" data-idx="${idx}" style="display:inline-flex; align-items:center; gap:2px; border-radius:6px; overflow:hidden; margin:0 3px; font-size:inherit; vertical-align:middle; border: 1px solid rgba(239,68,68,0.3); background:rgba(239,68,68,0.04); ${focusRing}">
   <span style="display:inline-flex; align-items:center; padding:1px 6px; gap:3px; background:rgba(239,68,68,0.12);">
     <span style="color:#EF4444; font-weight:700; font-family:monospace; font-size:0.85em;">−</span>
     <del style="color:#EF4444; text-decoration:line-through; font-weight:500;">${fix.phrase}</del>
@@ -283,14 +328,19 @@ const FinalJDCard = () => {
     };
 
 
+    // Latest-ref pattern: the innerHTML buttons always call the current handler
+    const acceptFixRef = useRef(handleAcceptFix);
+    const rejectFixRef = useRef(handleRejectFix);
+    useEffect(() => { acceptFixRef.current = handleAcceptFix; });
+    useEffect(() => { rejectFixRef.current = handleRejectFix; });
     useEffect(() => {
-        window.acceptBiasFix = (idx) => handleAcceptFix(idx);
-        window.rejectBiasFix = (idx) => handleRejectFix(idx);
+        window.acceptBiasFix = (idx) => acceptFixRef.current(idx);
+        window.rejectBiasFix = (idx) => rejectFixRef.current(idx);
         return () => {
             delete window.acceptBiasFix;
             delete window.rejectBiasFix;
         };
-    }, [pendingFixes]);
+    }, []);
 
     return (
         <>
@@ -355,8 +405,16 @@ const FinalJDCard = () => {
                                     }}>
                                         <span style={{ fontFamily: 'monospace', fontSize: '11px', background: 'rgba(239,68,68,0.15)', color: '#EF4444', padding: '2px 7px', borderRadius: '4px', fontWeight: 700 }}>diff</span>
                                         <span style={{ flex: 1, color: 'var(--color-text-secondary)' }}>
-                                            <strong style={{ color: 'var(--color-text-primary)' }}>{unresolvedCount}</strong> inclusivity suggestion{unresolvedCount !== 1 ? 's' : ''} found — review inline changes below
+                                            <strong style={{ color: 'var(--color-text-primary)' }}>{unresolvedCount}</strong> suggestion{unresolvedCount !== 1 ? 's' : ''} — review inline
                                         </span>
+                                        {/* Prev / Next navigation */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', minWidth: '36px', textAlign: 'center' }}>
+                                                {focusedPendingPos >= 0 ? `${focusedPendingPos + 1} / ${pendingIndices.length}` : `0 / ${pendingIndices.length}`}
+                                            </span>
+                                            <button onClick={goToPrevFix} disabled={focusedPendingPos <= 0} title="Previous suggestion" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px', color: 'var(--color-text-secondary)', padding: '2px 7px', cursor: focusedPendingPos <= 0 ? 'not-allowed' : 'pointer', opacity: focusedPendingPos <= 0 ? 0.35 : 1, fontSize: '13px', lineHeight: 1 }}>↑</button>
+                                            <button onClick={goToNextFix} disabled={focusedPendingPos >= pendingIndices.length - 1} title="Next suggestion" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '4px', color: 'var(--color-text-secondary)', padding: '2px 7px', cursor: focusedPendingPos >= pendingIndices.length - 1 ? 'not-allowed' : 'pointer', opacity: focusedPendingPos >= pendingIndices.length - 1 ? 0.35 : 1, fontSize: '13px', lineHeight: 1 }}>↓</button>
+                                        </div>
                                         {unresolvedCount > 1 && (
                                             <button
                                                 onClick={handleAcceptAll}
@@ -366,7 +424,7 @@ const FinalJDCard = () => {
                                                     cursor: 'pointer', fontWeight: 600,
                                                 }}
                                             >
-                                                Accept all ({unresolvedCount})
+                                                Accept all
                                             </button>
                                         )}
                                     </div>

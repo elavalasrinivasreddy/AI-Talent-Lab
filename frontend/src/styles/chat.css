@@ -2255,10 +2255,10 @@
 }
 
 .variant-card {
-  border: 1px solid transparent;
+  border: 1px solid var(--border-100, rgba(255,255,255,0.07));
   border-radius: var(--radius-lg);
   padding: 18px;
-  background: transparent;
+  background: var(--color-bg-tertiary);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2850,20 +2850,62 @@
   margin-top: 6px;
 }
 
-.variant-regenerate {
+.variant-refine-bar {
   display: flex;
+  align-items: center;
   gap: 8px;
   margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border, #e5e7eb);
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--border-100, rgba(255,255,255,0.07));
+  transition: border-color 140ms ease;
 }
 
-.variant-regenerate-input {
+.variant-refine-bar:focus-within {
+  border-color: var(--color-primary);
+}
+
+.variant-refine-input {
   flex: 1;
-  padding: 6px 10px;
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 6px;
+  background: transparent;
+  border: none;
+  outline: none;
   font: inherit;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  min-width: 0;
+}
+
+.variant-refine-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.variant-refine-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--border-100, rgba(255,255,255,0.07));
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease;
+  white-space: nowrap;
+}
+
+.variant-refine-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.variant-refine-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* --- C3: retry card -------------------------------------------------- */

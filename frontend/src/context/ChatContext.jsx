@@ -33,6 +33,7 @@ export const ChatProvider = ({ children }) => {
     const [stageSkipped, setStageSkipped] = useState([]); // stages soft-skipped during this session
     const [graphState, setGraphState] = useState({});     // mirror of backend graph_state_parsed (for intake block etc.)
     const [error, setError] = useState(null);
+    const [sessionLoaded, setSessionLoaded] = useState(false);
 
     // ── Reset all chat state ──────────────────────────────────
     const resetChat = useCallback(() => {
@@ -54,6 +55,7 @@ export const ChatProvider = ({ children }) => {
         setStageSkipped([]);
         setGraphState({});
         setError(null);
+        setSessionLoaded(true); // fresh chat counts as loaded immediately
     }, []);
 
     // ── Fetch sessions list ───────────────────────────────────
@@ -75,6 +77,7 @@ export const ChatProvider = ({ children }) => {
     // ── Load a specific session ───────────────────────────────
     const loadSession = useCallback(async (sessionId) => {
         if (!token) return;
+        setSessionLoaded(false);
         // Reset all card states on load
         setInternalCard(null);
         setMarketCard(null);
@@ -118,8 +121,8 @@ export const ChatProvider = ({ children }) => {
                 const gs = data.graph_state_parsed || {};
                 setGraphState(gs);
 
-                // Internal check card — show if data exists
-                if (gs.internal_skills_found?.length) {
+                // Internal check card — show if stage reached and user hasn't acted yet
+                if (Array.isArray(gs.internal_skills_found) && !gs.internal_skipped && !(gs.internal_skills_accepted?.length)) {
                     setInternalCard(gs.internal_skills_found);
                 }
 
@@ -169,6 +172,8 @@ export const ChatProvider = ({ children }) => {
             console.error("Failed to load session", err);
             setCurrentSessionId(sessionId);
             setMessages([GREETING]);
+        } finally {
+            setSessionLoaded(true);
         }
     }, [token]);
 
@@ -411,7 +416,7 @@ export const ChatProvider = ({ children }) => {
 
     const value = {
         sessions, fetchSessions,
-        currentSessionId, loadSession, setCurrentSessionId,
+        currentSessionId, loadSession, setCurrentSessionId, sessionLoaded,
         sessionTitle, setSessionTitle, isTitleAnimating,
         messages, workflowStage, isStreaming, error, isReadOnly,
         sendMessage, deleteSession, resetChat,

@@ -118,9 +118,21 @@ export default function JDTab({ position, onUpdate }) {
             <>
               {canEdit && <button className="jd-btn primary" onClick={() => setEditing(true)}>✏️ Edit</button>}
               {canResumeChat && (
-                <button 
-                  className="jd-btn primary" 
-                  onClick={() => navigate(`/chat/${position.session_id}`)}
+                <button
+                  className="jd-btn primary"
+                  onClick={() => navigate(`/chat/${position.session_id}`, {
+                    state: {
+                      hireRequest: {
+                        role_name: position.role_name,
+                        department_name: position.department_name,
+                        headcount: position.headcount,
+                        work_type: position.work_type,
+                        location: position.location,
+                        experience_min: position.experience_min,
+                        experience_max: position.experience_max,
+                      },
+                    },
+                  })}
                 >
                   💬 Resume AI Chat
                 </button>

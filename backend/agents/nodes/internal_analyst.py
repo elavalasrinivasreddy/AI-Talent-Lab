@@ -108,10 +108,9 @@ async def run_internal_analyst(state: AgentState) -> AgentState:
             state["stage"] = "internal_check"
             state["awaiting_user_input"] = True
         else:
-            state["internal_skipped"] = True
             state["internal_skills_found"] = []
-            state["stage"] = "market_research"
-            state["awaiting_user_input"] = False
+            state["stage"] = "internal_check"
+            state["awaiting_user_input"] = True
 
         return state
 
