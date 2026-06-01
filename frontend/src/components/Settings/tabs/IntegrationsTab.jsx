@@ -58,10 +58,14 @@ export default function IntegrationsTab() {
                           borderRadius: '50%',
                           width: '24px',
                           height: '24px',
+                          minWidth: '24px',
+                          minHeight: '24px',
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          letterSpacing: '0.05em'
+                          letterSpacing: '0.05em',
+                          padding: 0,
+                          lineHeight: 1
                         }}>
                           {item.phase}
                         </span>

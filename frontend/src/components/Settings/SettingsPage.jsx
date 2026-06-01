@@ -242,9 +242,10 @@ export default function SettingsPage() {
                       <span style={{ 
                         marginLeft: 'auto', background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)',
                         color: 'var(--color-text-muted)', fontSize: '10px', 
-                        width: '22px', height: '22px', borderRadius: '50%', 
+                        width: '24px', height: '24px', minWidth: '24px', minHeight: '24px',
+                        borderRadius: '50%', 
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 'bold', flexShrink: 0 
+                        fontWeight: 'bold', flexShrink: 0, padding: 0, lineHeight: 1
                       }}>
                         P{item.phase}
                       </span>
