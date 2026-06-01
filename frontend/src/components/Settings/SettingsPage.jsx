@@ -240,12 +240,10 @@ export default function SettingsPage() {
                     <span>{item.label}</span>
                     {item.phase && (
                       <span style={{ 
-                        marginLeft: 'auto', background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)',
-                        color: 'var(--color-text-muted)', fontSize: '10px', 
-                        width: '24px', height: '24px', minWidth: '24px', minHeight: '24px',
-                        borderRadius: '50%', 
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 'bold', flexShrink: 0, padding: 0, lineHeight: 1
+                        marginLeft: 'auto',
+                        color: 'var(--color-primary)', 
+                        fontSize: '11px', 
+                        fontWeight: 'bold'
                       }}>
                         P{item.phase}
                       </span>

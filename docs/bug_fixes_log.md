@@ -1256,3 +1256,18 @@ Verified isolated to `ScreeningQuestionsTab.jsx` — no other Settings tab uses 
 - `backend/services/settings_service.py`
 - `backend/db/repositories/scorecard_templates.py`
 - `frontend/src/components/Settings/tabs/InterviewTemplatesTab.jsx`
+
+### 78. Fix: Remove Unwanted Shape from Phase Badges (P2/P3)
+**Date:** 2026-06-01
+**Status:** Fixed
+
+**Issue / Validation:**
+- The "P2" (Phase 2) badges in the Settings navigation rail and Integrations tab were displaying as an inconsistent egg/pill shape despite fixed dimensions due to flexbox container constraints.
+
+**Idea / Solution:**
+- Removed the background, border, and fixed dimensions entirely.
+- Converted the badges to display as simple, bold, colored text (`var(--color-primary)` in the rail, `var(--color-warning)` in integrations) without any bounding box.
+
+**Files Modified:**
+- `frontend/src/components/Settings/SettingsPage.jsx`
+- `frontend/src/components/Settings/tabs/IntegrationsTab.jsx`

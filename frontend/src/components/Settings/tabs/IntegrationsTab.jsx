@@ -51,21 +51,10 @@ export default function IntegrationsTab() {
                     <div className="int-status">
                       {item.phase ? (
                         <span style={{
-                          background: item.phase === 'P2' ? 'var(--color-primary-bg)' : 'var(--color-bg-elevated)',
-                          color: item.phase === 'P2' ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                          fontSize: '10px',
-                          fontWeight: '800',
-                          borderRadius: '50%',
-                          width: '24px',
-                          height: '24px',
-                          minWidth: '24px',
-                          minHeight: '24px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          letterSpacing: '0.05em',
-                          padding: 0,
-                          lineHeight: 1
+                          color: item.phase === 'P2' ? 'var(--color-warning)' : 'var(--color-text-secondary)',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          letterSpacing: '0.05em'
                         }}>
                           {item.phase}
                         </span>
