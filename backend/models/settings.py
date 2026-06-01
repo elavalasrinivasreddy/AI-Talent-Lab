@@ -26,6 +26,7 @@ class OrgProfileUpdate(BaseModel):
     career_primary_color: Optional[str] = None
     career_banner_url: Optional[str] = None
     career_tagline: Optional[str] = None
+    allow_auto_approve_jds: Optional[bool] = None
 
     @field_validator("size")
     @classmethod
@@ -50,6 +51,7 @@ class OrgProfileResponse(BaseModel):
     glassdoor_url: Optional[str] = None
     hiring_contact_email: Optional[str] = None
     logo_url: Optional[str] = None
+    allow_auto_approve_jds: bool = True
     created_at: Optional[datetime] = None
 
 

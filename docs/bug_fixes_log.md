@@ -1305,3 +1305,26 @@ Verified isolated to `ScreeningQuestionsTab.jsx` — no other Settings tab uses 
 
 **Files Modified:**
 - `frontend/src/components/Settings/tabs/TeamTab.jsx`
+
+### 81. Enhancement: Approval Rules Modernization & Org Head Policies
+**Date:** 2026-06-01
+**Status:** Implemented
+
+**Issue / Validation:**
+- The Org Head was completely locked out of the Approval Rules tab, seeing a dead-end message. They had no way to configure policies globally.
+- The UI relied on primitive browser `alert()` popups for success/error handling instead of a modern notification system.
+- The `auto_approve_jds` toggle was a personal setting for Team Leads without any global compliance override to enforce manual JD reviews.
+- A bug briefly occurred (`Cannot read properties of undefined (reading 'map')`) due to incorrect parsing of the Axios-style API wrapper response (`res.departments` vs `res.data.departments`).
+
+**Idea / Solution:**
+- **Org Head Access & Global Overrides:** Added a Department Selector dropdown for Org Heads to configure "Auto-Approve Hire Requests" for any specific department.
+- **Global JD Approval Policy:** Introduced a new `allow_auto_approve_jds` column in the `organizations` table. Org Heads can now toggle this setting to enforce a global mandate that Team Leads must manually review AI-generated JDs. If disabled, the Team Lead's personal toggle is locked out with a warning message.
+- **Toast Notifications:** Built a new `Toast` component and CSS module to replace native browser `alert()` calls, providing sleek, auto-dismissing inline notifications for success and error actions.
+- **API Response Fix:** Corrected the data extraction paths in the frontend to properly read from the `res.data` wrapper object, preventing render crashes on data initialization.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/ApprovalRulesTab.jsx`
+- `frontend/src/components/common/Toast.jsx` (New)
+- `frontend/src/components/common/Toast.css` (New)
+- `backend/db/migrations.py`
+- `backend/models/settings.py`

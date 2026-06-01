@@ -559,6 +559,10 @@ async def run_migrations(conn) -> None:
                        WHERE table_name='organizations' AND column_name='hiring_contact_email') THEN
             ALTER TABLE organizations ADD COLUMN hiring_contact_email TEXT;
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='organizations' AND column_name='allow_auto_approve_jds') THEN
+            ALTER TABLE organizations ADD COLUMN allow_auto_approve_jds BOOLEAN DEFAULT TRUE;
+        END IF;
     END $$;
 
     DO $$
