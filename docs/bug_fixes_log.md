@@ -1287,3 +1287,21 @@ Verified isolated to `ScreeningQuestionsTab.jsx` — no other Settings tab uses 
 
 **Files Modified:**
 - `frontend/src/components/Settings/tabs/DepartmentsTab.jsx`
+
+### 80. Fix: Team Directory UI & Role Filter Logic
+**Date:** 2026-06-01
+**Status:** Fixed
+
+**Issue / Validation:**
+- In the Team Members tab, selecting "Org Head" from the Role Filter dropdown would filter out all users (since the current org head is excluded from the view), triggering the global "No team members yet" empty state unexpectedly.
+- The "More Options" (vertical dots) button on each team member row was just a visual placeholder and didn't provide edit or delete actions as expected.
+
+**Idea / Solution:**
+- **Role Filter Fix:** Removed the "Org Head" option from the Role Filter dropdown entirely, as org heads typically manage other roles, not themselves. The option remains in the "Invite Member" modal as requested for transition purposes (e.g., handing over org ownership).
+- **Action Buttons:** Replaced the non-functional vertical dots menu with explicit, dedicated action icons for each row:
+  - An **Edit** (pencil) icon that opens the `SlideOver` to modify a user's role and department.
+  - A **Deactivate/Activate** (user-minus/user-check) icon that safely toggles their access without hard-deleting the user from the ATS database.
+- **Edit Functionality Implementation:** Upgraded the "Invite Member" `SlideOver` form to also function as an "Edit Member" form, automatically populating the targeted user's data and sending a `PATCH` request to the backend.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/TeamTab.jsx`

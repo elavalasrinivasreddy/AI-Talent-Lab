@@ -22,6 +22,7 @@ export default function TeamTab() {
     department_id: currentUser?.role === 'dept_admin' ? (currentUser.department_id || '') : '' 
   })
   const [adding, setAdding] = useState(false)
+  const [editingUser, setEditingUser] = useState(null)
   const [msg, setMsg] = useState('')
   const [confirmToggleUser, setConfirmToggleUser] = useState(null)
 
@@ -60,14 +61,22 @@ export default function TeamTab() {
   const handleAdd = async () => {
     setAdding(true); setMsg('')
     try {
-      const payload = {
-        name: form.name,
-        email: form.email,
-        role: form.role,
-        department_id: form.department_id ? Number(form.department_id) : null,
+      if (editingUser) {
+        await api.patch(`/auth/users/${editingUser.id}`, {
+          role: form.role,
+          department_id: form.department_id ? Number(form.department_id) : null,
+        })
+        setMsg(`User ${form.name} updated successfully.`)
+      } else {
+        const payload = {
+          name: form.name,
+          email: form.email,
+          role: form.role,
+          department_id: form.department_id ? Number(form.department_id) : null,
+        }
+        await api.post('/auth/add-user', payload)
+        setMsg(`Invite email sent to ${form.email}`)
       }
-      await api.post('/auth/add-user', payload)
-      setMsg(`Invite email sent to ${form.email}`)
       setForm({ 
         name: '', 
         email: '', 
@@ -77,9 +86,21 @@ export default function TeamTab() {
       fetchUsers()
       setTimeout(() => setShowModal(false), 800)
     } catch (e) {
-      setMsg(e.message || 'Failed to add user')
+      setMsg(e.message || 'Failed to process user')
     }
     setAdding(false)
+  }
+
+  const openEdit = (user) => {
+    setForm({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      department_id: user.department_id || ''
+    })
+    setEditingUser(user)
+    setShowModal(true)
+    setMsg('')
   }
 
   const confirmToggle = async () => {
@@ -115,7 +136,7 @@ export default function TeamTab() {
       <div className="settings-form-section">
         <div className="section-header">
           <h3>👥 Team Directory</h3>
-          <button className="btn btn-primary btn-sm" onClick={() => { setShowModal(true); setMsg('') }}>
+          <button className="btn btn-primary btn-sm" onClick={() => { setEditingUser(null); setForm({ name: '', email: '', role: 'hr', department_id: currentUser?.role === 'dept_admin' ? (currentUser.department_id || '') : '' }); setShowModal(true); setMsg('') }}>
             + Invite Member
           </button>
         </div>
@@ -139,10 +160,7 @@ export default function TeamTab() {
               >
                 <option value="">All Roles</option>
                 {currentUser?.role === 'org_head' && (
-                  <>
-                    <option value="org_head">Org Head</option>
-                    <option value="dept_admin">Dept Admin</option>
-                  </>
+                  <option value="dept_admin">Dept Admin</option>
                 )}
                 <option value="team_lead">Team Lead</option>
                 <option value="hr">HR</option>
@@ -209,9 +227,12 @@ export default function TeamTab() {
                         )}
                       </div>
 
-                      {/* Hover action menu placeholder */}
-                      <button className="action-menu-btn" title="More actions">
-                        <Icon name="more-vertical" size={16} />
+                      {/* Action buttons */}
+                      <button className="action-menu-btn" title="Edit" onClick={() => openEdit(u)}>
+                        <Icon name="edit-2" size={16} />
+                      </button>
+                      <button className="action-menu-btn" title={u.is_active ? "Deactivate" : "Activate"} onClick={() => setConfirmToggleUser(u)}>
+                        <Icon name={u.is_active ? "user-minus" : "user-check"} size={16} />
                       </button>
                     </div>
                   </div>
@@ -229,7 +250,7 @@ export default function TeamTab() {
             </div>
             <h4>No team members yet</h4>
             <p>Add your first team member to get started collaborating on hiring pipelines.</p>
-            <button className="btn btn-primary" onClick={() => { setShowModal(true); setMsg('') }}>
+            <button className="btn btn-primary" onClick={() => { setEditingUser(null); setForm({ name: '', email: '', role: 'hr', department_id: currentUser?.role === 'dept_admin' ? (currentUser.department_id || '') : '' }); setShowModal(true); setMsg('') }}>
               + Invite Member
             </button>
           </div>
@@ -240,18 +261,18 @@ export default function TeamTab() {
       <SlideOver 
         isOpen={showModal} 
         onClose={() => setShowModal(false)} 
-        title="Invite Team Member"
+        title={editingUser ? "Edit Team Member" : "Invite Team Member"}
       >
         <div className="form-row">
           <div className="form-group full-width">
             <label>Name</label>
-            <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Jane Doe" />
+            <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Jane Doe" disabled={!!editingUser} />
           </div>
         </div>
         <div className="form-row">
           <div className="form-group full-width">
             <label>Email</label>
-            <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="jane@company.com" />
+            <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="jane@company.com" disabled={!!editingUser} />
           </div>
         </div>
 
@@ -295,7 +316,7 @@ export default function TeamTab() {
         )}
         <div className="btn-row" style={{ marginTop: 'var(--space-6)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--color-border)' }}>
           <button className="btn btn-primary" onClick={handleAdd} disabled={adding}>
-            {adding ? 'Sending...' : 'Send Invite'}
+            {adding ? 'Saving...' : (editingUser ? 'Save Changes' : 'Send Invite')}
           </button>
           <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
         </div>
