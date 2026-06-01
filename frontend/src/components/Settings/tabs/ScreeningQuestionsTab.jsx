@@ -114,40 +114,50 @@ export default function ScreeningQuestionsTab() {
     }
   };
 
-  const handleDragEnd = async (e) => {
+  // Reorder is computed on drop using the source index carried in dataTransfer
+  // (reliably set at drag start) and the drop target's bound index. This avoids
+  // depending on async React state (dragIdx/dragOverIdx) which can be stale on
+  // fast drags and silently no-op the reorder.
+  const handleDrop = async (e, dropIdx) => {
+    e.preventDefault()
+    const sourceIdx = Number(e.dataTransfer.getData('text/plain'))
+    setDragIdx(null)
+    setDragOverIdx(null)
+
+    if (Number.isNaN(sourceIdx) || sourceIdx === dropIdx) return
+
+    const dragItem = filtered[sourceIdx]
+    const targetItem = filtered[dropIdx]
+    if (!dragItem || !targetItem) return
+
+    // Map filtered-view indices back to the global questions array by id
+    const newQuestions = [...questions]
+    const globalDragIdx = newQuestions.findIndex(q => q.id === dragItem.id)
+    if (globalDragIdx === -1) return
+    newQuestions.splice(globalDragIdx, 1)
+
+    const actualTargetIdx = newQuestions.findIndex(q => q.id === targetItem.id)
+    const insertIdx = sourceIdx < dropIdx ? actualTargetIdx + 1 : actualTargetIdx
+    newQuestions.splice(insertIdx, 0, dragItem)
+
+    // Optimistic UI update
+    setQuestions(newQuestions)
+
+    // Persist new order
+    const order = newQuestions.map((q, i) => ({ id: q.id, sort_order: i + 1 }))
+    try {
+      await api.patch('/settings/screening-questions/reorder', { order })
+    } catch (err) {
+      console.error(err)
+      fetchQs() // Revert on failure
+    }
+  };
+
+  const handleDragEnd = (e) => {
+    // Cleanup only — the reorder itself happens in handleDrop.
     if (e.target && e.target.style) {
       e.target.style.opacity = '1';
     }
-    
-    if (dragIdx !== null && dragOverIdx !== null && dragIdx !== dragOverIdx) {
-      // Update in global questions array for immediate UI snap
-      const dragItem = filtered[dragIdx]
-      const targetItem = filtered[dragOverIdx]
-      
-      const globalDragIdx = questions.findIndex(q => q.id === dragItem.id)
-      
-      const newQuestions = [...questions]
-      newQuestions.splice(globalDragIdx, 1)
-      
-      const actualTargetIdx = newQuestions.findIndex(q => q.id === targetItem.id)
-      const insertIdx = dragIdx < dragOverIdx ? actualTargetIdx + 1 : actualTargetIdx
-      
-      newQuestions.splice(insertIdx, 0, dragItem)
-      
-      // Optimistic UI update
-      setQuestions([...newQuestions])
-      
-      // Create new order mapping
-      const order = newQuestions.map((q, i) => ({ id: q.id, sort_order: i + 1 }))
-      
-      try {
-        await api.patch('/settings/screening-questions/reorder', { order })
-      } catch (err) { 
-        console.error(err)
-        fetchQs() // Revert on failure
-      }
-    }
-    
     setDragIdx(null)
     setDragOverIdx(null)
   };
@@ -196,7 +206,7 @@ export default function ScreeningQuestionsTab() {
                     e.preventDefault(); // Crucial for allowing drop
                     e.dataTransfer.dropEffect = 'move';
                   }}
-                  onDrop={(e) => e.preventDefault()}
+                  onDrop={(e) => handleDrop(e, i)}
                   onDragEnd={handleDragEnd}
                   style={{ 
                     cursor: dragIdx === i ? 'grabbing' : 'grab',

@@ -98,3 +98,4 @@ Next manual test: **JD generation via chat window**.
 | Date | Session | Work done |
 |---|---|---|
 | 2026-05-30 | S67 | All 41 items validated (Batches A–D). 11 edge cases found and fixed. 4 commits on phase_1_testing/bug-fix. JD Chat flow validation is next. |
+| 2026-06-01 | S68 | Reviewed Settings UI batch (items 42–75). Fixed the #75 KNOWN BUG: screening-questions drag-and-drop not persisting (stale-closure no-op in `onDragEnd`); reworked to standard `onDrop` + `dataTransfer` pattern. Backend reorder chain verified correct. Pattern confirmed isolated to ScreeningQuestionsTab. Logged as fix #76. |

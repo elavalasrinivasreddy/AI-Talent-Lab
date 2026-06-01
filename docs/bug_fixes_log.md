@@ -1189,7 +1189,7 @@ Remaining tabs in the Workspace Settings lacked the visual polish applied to the
 
 ### 75. Settings UI: Drag-and-Drop & Custom Modals
 **Date:** 2026-06-01
-**Status:** Implemented (With Known Bug)
+**Status:** Implemented (Known bug resolved in #76)
 
 **Issue / Validation:**
 - Screening questions reordering relied on crude "up" and "down" arrows instead of natural drag-and-drop.
@@ -1213,3 +1213,25 @@ Remaining tabs in the Workspace Settings lacked the visual polish applied to the
 - `frontend/src/components/Settings/tabs/CompetitorsTab.jsx`
 - `backend/routers/settings.py`
 - `backend/models/settings.py`
+
+### 76. Fix: Screening Questions Drag-and-Drop Not Persisting (resolves #75 known bug)
+**Date:** 2026-06-01
+**Status:** Fixed
+
+**Issue:**
+Drag-and-drop reordering of screening questions was visually working but the new order was not being swapped or persisted (the known bug logged in #75).
+
+**Root Cause:**
+The reorder computation lived in the `onDragEnd` handler and was gated on the React state values `dragIdx`/`dragOverIdx`. `handleDragEnter` only set `dragOverIdx` when `dragIdx !== null`, but `dragIdx` was read from a **stale render closure** — on fast drags it had just been set by `setDragIdx` in `dragStart` and the component hadn't re-rendered yet, so `dragOverIdx` frequently never got set. When that happened, the `dragIdx !== null && dragOverIdx !== null` guard in `onDragEnd` failed and the reorder silently no-opped. Meanwhile `onDrop` merely called `e.preventDefault()` and discarded the reliable source index already stored in `dataTransfer` at drag start. The backend chain (router → service → repo `UPDATE screening_questions SET sort_order ...`) was verified correct — the failure was entirely client-side.
+
+**Idea / Solution:**
+Moved the reorder computation into the standard HTML5 `onDrop` handler:
+- Source index is read from `e.dataTransfer.getData('text/plain')` (reliably set in `handleDragStart`).
+- Drop-target index comes from the dropped element's bound `i`.
+- This removes all dependence on async React state for the computation, eliminating the stale-closure no-op. Filtered-view indices are still mapped back to the global `questions` array by `id`, so reordering works correctly under an active department filter.
+- `onDragEnd` is now cleanup-only (resets opacity + drag state); `dragOverIdx` is retained purely for the visual drop-target highlight.
+
+Verified isolated to `ScreeningQuestionsTab.jsx` — no other Settings tab uses the drag-reorder pattern. JSX transform verified clean via esbuild.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/ScreeningQuestionsTab.jsx`
