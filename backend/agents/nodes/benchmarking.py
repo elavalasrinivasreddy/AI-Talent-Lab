@@ -50,7 +50,14 @@ async def run_benchmarking(state: AgentState) -> AgentState:
         ]
 
         response = await llm.ainvoke(messages)
-        content = response.content.strip()
+        content_raw = response.content
+        if isinstance(content_raw, list):
+            # Model may return a list of content blocks (multimodal); join their text
+            content_raw = " ".join(
+                str(b.get("text", b)) if isinstance(b, dict) else b
+                for b in content_raw
+            )
+        content = content_raw.strip()
 
         if "```json" in content:
             json_str = content.split("```json")[-1].split("```")[0].strip()

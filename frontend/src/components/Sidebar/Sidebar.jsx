@@ -33,7 +33,7 @@ const ALL_NAV = [
     { to: '/interviews',    icon: Icons.calendar,  label: 'Interviews' },
     { to: '/hire-requests', icon: Icons.inbox,     label: 'Hire Requests', roles: ['dept_admin', 'hr', 'team_lead'], badge: 'hire_requests_pending' },
     { to: '/talent-pool',   icon: Icons.users,     label: 'Talent Pool',   roles: ['org_head', 'dept_admin', 'hr'] },
-    { to: '/analytics',     icon: Icons.trending,  label: 'Analytics',     roles: ['org_head', 'dept_admin', 'hr'] },
+    { to: '/analytics',     icon: Icons.trending,  label: 'Analytics',     roles: ['org_head', 'dept_admin'] },
   ]},
   { section: 'System', items: [
     { to: '/settings', icon: Icons.settings, label: 'Settings' },

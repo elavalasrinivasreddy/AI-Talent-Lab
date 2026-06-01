@@ -55,7 +55,9 @@ async def pending_count(current_user=Depends(get_current_user)):
     from backend.db.connection import get_connection
     org_id = current_user["org_id"]
     role = current_user.get("role")
-    dept_id = current_user.get("department_id")
+    # JWT user dict uses key "dept_id" (not "department_id"); reading the wrong key
+    # made team_lead/dept_admin always fall through to the org-wide count.
+    dept_id = current_user.get("dept_id")
     
     async with get_connection() as conn:
         if role == "org_head":

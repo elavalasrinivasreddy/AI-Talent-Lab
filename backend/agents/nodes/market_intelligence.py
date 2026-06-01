@@ -77,7 +77,14 @@ async def run_market_intelligence(state: AgentState) -> AgentState:
         ]
 
         response = await llm.ainvoke(messages)
-        content = response.content.strip()
+        content_raw = response.content
+        if isinstance(content_raw, list):
+            # Model may return a list of content blocks (multimodal); join their text
+            content_raw = " ".join(
+                str(b.get("text", b)) if isinstance(b, dict) else b
+                for b in content_raw
+            )
+        content = content_raw.strip()
 
         json_str = _extract_json(content)
         result = json.loads(json_str)

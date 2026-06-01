@@ -60,7 +60,14 @@ async def run_interviewer(state: AgentState) -> AgentState:
 
         # Call LLM
         response = await llm.ainvoke(llm_messages)
-        ai_content = response.content.strip()
+        content_raw = response.content
+        if isinstance(content_raw, list):
+            # Model may return a list of content blocks (multimodal); join their text
+            content_raw = " ".join(
+                str(b.get("text", b)) if isinstance(b, dict) else b
+                for b in content_raw
+            )
+        ai_content = content_raw.strip()
 
         # Try to extract role name from conversation if not yet set
         if not state.get("role_name"):
