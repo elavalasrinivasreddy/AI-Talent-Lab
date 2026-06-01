@@ -83,7 +83,7 @@ export default function TalentPoolPage() {
 
   // Filter positions based on user RBAC
   const availablePositions = positions.filter(p => {
-    if (['org_head', 'platform_admin'].includes(user?.role)) return true
+    if (user?.role === 'org_head') return true
     if (user?.department_id) return p.department_id === user.department_id
     return true
   })

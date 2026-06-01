@@ -90,15 +90,15 @@ Parallel Sonnet review subagents over the JD-chat / Settings / Dashboard / Posit
 | P2 | `components/Sidebar/Sidebar.jsx:36` | Analytics nav shown to `hr`, but `/analytics` RoleGuard is `['org_head','dept_admin']` → hr clicked it and got bounced to /dashboard. | Removed `'hr'` from the nav entry. |
 | P2 | `agents/nodes/market_intelligence.py:133+` | Fallback market-skill `source` stamped raw competitor names ("Google, Microsoft"); item 51 only generalized the LLM prompt, not the fallback path. | Source label → "Industry Benchmark". |
 
-### Flagged (judgment / needs decision — NOT auto-fixed)
-| Severity | File:line | Concern | Why deferred |
-|---|---|---|---|
-| P2 | `chat_service.py:207-211` | SSE `competitors` field still ships raw `competitors_used` names to the market card. | Changing the stream contract needs verifying how the frontend renders it; own-org data, low severity. |
-| P2 | `routers/positions.py:~248` | Inline `submit-for-approval` notifies `org_head/team_lead/dept_admin` org-wide with no dept scoping, unlike the dept-scoped `PositionService.submit_for_approval`. | Two submit paths exist; which is live + correct scope is a product call. |
-| P2 | `db/repositories/positions.py:181` | `update()` `allowed` set omits `role_name`, `jd_variant_selected`, `employment_type`, `experience_*` → those fields silently don't persist on a JD resubmit (item 52 update path). | Depends on whether resubmit actually changes them; `jd_markdown` (the main field) IS allowed. |
-| P2 | `routers/chat.py:273` | `department_id` fallback `setup.get() or session.get()` fails for an org_head with no dept → save raises 400. | org_head doing JD chats is non-standard (item 50); may be intended that positions require a dept. |
-| P2 | `agents/orchestrator.py:242` | Empty streamed `final_jd` with `retry_count==0` can re-enter drafting up to max_iterations (6 wasted LLM calls, no error surfaced). | Edge case (filtered/empty LLM response); defensive only. |
-| P3 | frontend dead code | `platform_admin` listed in TalentPool filter / `useDashboardData.ADMIN_ROLES` / DashboardPage `RoleGate` — all unreachable since `OrgGuard` bounces platform_admin. | Dead code, not a live bug; cosmetic cleanup. |
+### Flagged findings — all resolved (user approved fixing all 6)
+| Severity | File | Fix applied |
+|---|---|---|
+| P2 | `chat_service.py:207` | Market card SSE now ships `["Industry Benchmark"]` (or `[]`) instead of raw `competitors_used` — names never reach the client (`AgentBlockMarket.jsx` rendered them verbatim). Matches item 51's generalization. |
+| P2 | `routers/positions.py:222` | Inline `submit-for-approval` now **delegates to the dept-scoped `PositionService.submit_for_approval`** (notifies only the position's department's team leads + org-level, and honors JD auto-approval). Returns the real post-call `approval_status`. |
+| P2 | `db/repositories/positions.py:181` | Added `role_name`, `jd_variant_selected`, `employment_type`, `experience_min`, `experience_max` to the `update()` allowed-set so they persist on a JD resubmit. |
+| P2 | `Chat/PositionSetupModal.jsx` + `chat_service.py` | org_head can now finish a JD chat: modal shows a **Department selector only when the user has no department of their own** (`!user?.department_id`); submit/draft disabled until chosen. Also fixed a latent bug — the modal previously auto-sent `departments[0]`, silently overriding the hire request's department for HR; now it only sends a department when the selector is shown, so the backend uses the session's (hire request's) department otherwise. |
+| P2 | `agents/nodes/drafting.py:278` | Empty model completion now raises (routes into the existing retry path that sets `error_stage` at retry ≥2) instead of being stored as the JD and re-looping to `max_iterations`. |
+| P3 | TalentPool / useDashboardData / DashboardPage | Removed the dead `platform_admin` entries (unreachable behind `OrgGuard`). |
 
 **Verdict on others reviewed:** sessions.py `list_visible` (items 48/50), positions `list_for_org` (item 70), dashboard `_resolve_dept_id` (item 69), copilot key fix (item 49), TypedDict completeness (item 57), and frontend items 58/61/64/65/66/67/72 verified clean. The `isOnboarding` double-guard (DashboardPage:114) is redundant but behaves correctly (onboarding = truly empty) — left as-is.
 
@@ -126,3 +126,4 @@ Parallel Sonnet review subagents over the JD-chat / Settings / Dashboard / Posit
 | 2026-05-30 | S67 | All 41 items validated (Batches A–D). 11 edge cases found and fixed. 4 commits on phase_1_testing/bug-fix. JD Chat flow validation is next. |
 | 2026-06-01 | S68 | Reviewed Settings UI batch (items 42–75). Fixed the #75 KNOWN BUG: screening-questions drag-and-drop not persisting (stale-closure no-op in `onDragEnd`); reworked to standard `onDrop` + `dataTransfer` pattern. Backend reorder chain verified correct. Pattern confirmed isolated to ScreeningQuestionsTab. Logged as fix #76. |
 | 2026-06-01 | S68 | Code-reviewed items 42–75 via 3 parallel Sonnet subagents (backend RBAC, AI pipeline, frontend RBAC). 6 confirmed bugs fixed across 2 commits (dept_id badge leak, 4 AI-node multimodal crash guards, Analytics nav gate, competitor-name fallback leak). 6 findings flagged for product decision. See Batch E section above. |
+| 2026-06-01 | S68 | User approved fixing all 6 flagged items. Implemented correct solutions: SSE competitor generalization, dept-scoped submit delegation (+ auto-approve), resubmit allowed-set fields, org_head department selector in PositionSetupModal (+ fixed latent HR wrong-dept override), empty-JD retry guard, platform_admin dead-code removal. All Python `py_compile` + JSX transform clean. |

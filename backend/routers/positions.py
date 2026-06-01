@@ -222,7 +222,11 @@ async def generate_interview_kit(
 async def submit_for_approval(position_id: int, current_user=Depends(get_current_user)):
     """
     Recruiter submits a position for hiring manager approval.
-    Sets approval_status = 'pending'.
+
+    Delegates to PositionService.submit_for_approval, which scopes the notification
+    to the position's department (only that department's team leads, plus org-level
+    team leads) and also honours JD auto-approval. The previous inline version
+    notified every org_head/team_lead/dept_admin org-wide regardless of department.
     """
     from backend.db.connection import get_connection
     async with get_connection() as conn:
@@ -234,24 +238,20 @@ async def submit_for_approval(position_id: int, current_user=Depends(get_current
             raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": "Position not found", "details": None}})
         if not row["requires_approval"]:
             raise HTTPException(status_code=400, detail={"error": {"code": "APPROVAL_NOT_REQUIRED", "message": "This position does not require approval", "details": None}})
-        await conn.execute(
-            "UPDATE positions SET approval_status='pending', updated_at=NOW() WHERE id=$1",
-            position_id,
+
+    await PositionService.submit_for_approval(
+        position_id=position_id,
+        org_id=current_user["org_id"],
+        submitted_by_user_id=current_user["user_id"],
+    )
+
+    # Reflect the real status — the service may have auto-approved the JD.
+    async with get_connection() as conn:
+        final_status = await conn.fetchval(
+            "SELECT approval_status FROM positions WHERE id=$1 AND org_id=$2",
+            position_id, current_user["org_id"],
         )
-        # Notify hiring managers in the org
-        await conn.execute(
-            """
-            INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-            SELECT $1, u.id, 'approval_requested',
-                   'Position approval requested',
-                   (SELECT role_name FROM positions WHERE id=$2) || ' is pending your approval',
-                   '/positions/' || $2
-            FROM users u
-            WHERE u.org_id=$1 AND u.role IN ('org_head', 'team_lead', 'dept_admin')
-            """,
-            current_user["org_id"], position_id,
-        )
-    return {"ok": True, "approval_status": "pending"}
+    return {"ok": True, "approval_status": final_status or "pending"}
 
 
 @router.post("/{position_id}/approval-decision")

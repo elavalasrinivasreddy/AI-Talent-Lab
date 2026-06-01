@@ -182,7 +182,11 @@ class PositionRepository:
             "status", "priority", "headcount", "ats_threshold", "search_interval_hours",
             "deadline", "is_on_career_page", "assigned_to", "location", "work_type",
             "jd_markdown", "jd_embedding", "last_search_at", "next_search_at",
-            "closed_at", "department_id", "followup_delay_hours"
+            "closed_at", "department_id", "followup_delay_hours",
+            # JD-chat resubmit fields (item 52 update path) — without these they were
+            # silently dropped, leaving stale values on the position.
+            "role_name", "jd_variant_selected", "employment_type",
+            "experience_min", "experience_max",
         }
         fields = {k: v for k, v in data.items() if k in allowed}
         if not fields:

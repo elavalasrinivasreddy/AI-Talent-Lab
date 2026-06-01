@@ -204,11 +204,13 @@ class ChatService:
 
                 if market_skills and current_stage == "market_research":
                     if not new_state.get("market_skipped") and not new_state.get("market_skills_accepted"):
-                        competitors = new_state.get("competitors_used", [])
+                        # Generalize: never surface raw competitor names on the card
+                        # (item 51 — the LLM prompt was generalized; the SSE payload must match).
+                        scanned = ["Industry Benchmark"] if new_state.get("competitors_used") else []
                         yield StreamHandler.emit_card_market(
                             market_skills,
                             "Market Analysis Complete.",
-                            competitors
+                            scanned
                         )
 
                 if jd_variants and current_stage == "jd_variants":

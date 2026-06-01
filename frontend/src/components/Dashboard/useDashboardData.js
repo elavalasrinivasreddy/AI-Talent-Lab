@@ -32,7 +32,7 @@ const PULSE_TYPES = new Set([
 ])
 
 // Admin roles — matches backend/models/auth.py
-const ADMIN_ROLES = new Set(['org_head', 'dept_admin', 'platform_admin'])
+const ADMIN_ROLES = new Set(['org_head', 'dept_admin'])
 
 // Map suggestion type → icon name (Icon.jsx PATHS keys) + kind (bad|warn|ok)
 export const SUGGESTION_META = {

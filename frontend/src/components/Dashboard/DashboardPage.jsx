@@ -157,7 +157,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Dept Chip Bar — admin only ── */}
-      <RoleGate roles={['org_head', 'dept_admin', 'platform_admin']}>
+      <RoleGate roles={['org_head', 'dept_admin']}>
         <DeptChipBar
           departments={depts}
           selected={selectedDept}
@@ -166,7 +166,7 @@ export default function DashboardPage() {
       </RoleGate>
 
       {/* ── Health Strip — admin only ── */}
-      <RoleGate roles={['org_head', 'dept_admin', 'platform_admin']}>
+      <RoleGate roles={['org_head', 'dept_admin']}>
         <HealthStrip
           health={health}
           loading={loading.health}

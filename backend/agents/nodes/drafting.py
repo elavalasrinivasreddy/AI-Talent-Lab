@@ -275,6 +275,12 @@ Generate the final polished JD in markdown now."""
                 )
             content = content_raw.strip()
 
+        # An empty completion (e.g. a filtered/blank model response) must be treated
+        # as a failure, not stored as the JD — otherwise the orchestrator re-enters
+        # this node every loop until max_iterations with no error surfaced.
+        if not (content or "").strip():
+            raise ValueError("Model returned an empty final JD")
+
         state["final_jd"] = content
         state["stage"] = "final_jd"
         state["awaiting_user_input"] = False

@@ -10,9 +10,14 @@ import { IconX, IconCheck, IconArrowRight } from './icons';
  * Calm two-column layout, no emoji, restrained success state.
  */
 const PositionSetupModal = ({ show, onClose }) => {
-    const { token } = useAuth();
+    const { token, user } = useAuth();
     const { currentSessionId, fetchSessions } = useChat();
     const navigate = useNavigate();
+
+    // Most recruiters chat off an accepted hire request, so the session already
+    // carries a department and the backend uses it. Only users without a department
+    // of their own (e.g. an org_head starting a fresh JD chat) must pick one here.
+    const needsDept = !user?.department_id;
 
     const [departments, setDepartments] = useState([]);
     const [formData, setFormData] = useState({
@@ -41,7 +46,10 @@ const PositionSetupModal = ({ show, onClose }) => {
                 if (res.ok) {
                     const data = await res.json();
                     setDepartments(data.departments || []);
-                    if (data.departments?.length > 0) {
+                    // Only pre-select a department when the user actually needs to
+                    // choose one. Pre-filling it for everyone silently overrode the
+                    // session's (hire request's) department on save.
+                    if (needsDept && data.departments?.length > 0) {
                         setFormData((prev) => ({ ...prev, department_id: data.departments[0].id }));
                     }
                 }
@@ -50,7 +58,7 @@ const PositionSetupModal = ({ show, onClose }) => {
             }
         };
         fetchDeps();
-    }, [show, token]);
+    }, [show, token, needsDept]);
 
     const _savePosition = async (asDraft) => {
 
@@ -166,6 +174,27 @@ const PositionSetupModal = ({ show, onClose }) => {
 
 
 
+                            {needsDept && (
+                                <div className="pmodal-row">
+                                    <div className="pfield">
+                                        <label className="pfield-label" htmlFor="pf-dept">Department</label>
+                                        <select
+                                            id="pf-dept"
+                                            className="pfield-select"
+                                            value={formData.department_id}
+                                            onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
+                                            required
+                                        >
+                                            <option value="" disabled>Select a department…</option>
+                                            {departments.map((d) => (
+                                                <option key={d.id} value={d.id}>{d.name}</option>
+                                            ))}
+                                        </select>
+                                        <span className="pfield-hint">Which department this role belongs to</span>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="pmodal-row">
                                 <div className="pfield">
                                     <label className="pfield-label" htmlFor="pf-ats">ATS threshold (%)</label>
@@ -201,7 +230,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                             <button
                                 type="button"
                                 className="btn-ghost"
-                                disabled={isDraftLoading || isLoading}
+                                disabled={isDraftLoading || isLoading || (needsDept && !formData.department_id)}
                                 onClick={handleSaveAsDraft}
                             >
                                 {isDraftLoading ? 'Saving…' : 'Save as draft'}
@@ -209,7 +238,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                             <button
                                 type="submit"
                                 className="btn-primary"
-                                disabled={isLoading || isDraftLoading}
+                                disabled={isLoading || isDraftLoading || (needsDept && !formData.department_id)}
                             >
                                 {isLoading ? 'Submitting…' : (
                                     <>Submit for approval <IconArrowRight size={14} /></>
