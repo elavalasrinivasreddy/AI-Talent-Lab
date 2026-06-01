@@ -105,6 +105,13 @@ class CompetitorCreate(BaseModel):
     notes: Optional[str] = None
 
 
+class CompetitorUpdate(BaseModel):
+    name: Optional[str] = None
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class CompetitorResponse(BaseModel):
     id: int
     org_id: int

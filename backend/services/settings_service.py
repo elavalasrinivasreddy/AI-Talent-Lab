@@ -202,6 +202,24 @@ class SettingsService:
                 )
                 
         return comp
+
+    @staticmethod
+    async def update_competitor(
+        conn: asyncpg.Connection,
+        competitor_id: int,
+        org_id: int,
+        user_id: int,
+        **fields,
+    ) -> dict:
+        comp = await CompetitorRepository.update(conn, competitor_id, org_id, **fields)
+        if not comp:
+            raise NotFoundError("Competitor not found")
+        await AuditLogRepository.create(
+            conn, org_id=org_id, user_id=user_id,
+            action="competitor_updated", entity_type="competitor",
+            entity_id=str(competitor_id), details=fields,
+        )
+        return comp
     @staticmethod
     async def delete_competitor(
         conn: asyncpg.Connection,

@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import api from '../../../utils/api'
 import { useAuth } from '../../../context/AuthContext'
 import SlideOver from '../../common/SlideOver'
+import Chip from '../../common/Chip'
 import Icon from '../../common/Icon'
+import ConfirmModal from '../../common/ConfirmModal'
 
 export default function CompetitorsTab() {
   const { user } = useAuth()
@@ -10,8 +12,11 @@ export default function CompetitorsTab() {
   const [departments, setDepartments] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState({ name: '', website: '', industry: '', notes: '', department_id: '' })
   const [msg, setMsg] = useState('')
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null })
+  const [expandedDepts, setExpandedDepts] = useState({})
 
   const isOrgHead = user?.role === 'org_head'
 
@@ -29,7 +34,7 @@ export default function CompetitorsTab() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const handleAdd = async () => {
+  const handleSave = async () => {
     setMsg('')
     if (!form.department_id) {
       setMsg('Please select a department.')
@@ -37,42 +42,74 @@ export default function CompetitorsTab() {
     }
 
     // Enforce 3 limit client-side for UX
-    const deptComps = comps.filter(c => c.department_id === Number(form.department_id))
+    const deptComps = comps.filter(c => c.department_id === Number(form.department_id) && c.id !== editingId)
     if (deptComps.length >= 3) {
       setMsg('Maximum of 3 competitors allowed per department.')
       return
     }
 
     try {
-      await api.post('/settings/competitors', {
-        ...form,
-        department_id: Number(form.department_id)
-      })
+      if (editingId) {
+        await api.patch(`/settings/competitors/${editingId}`, {
+          name: form.name,
+          website: form.website,
+          industry: form.industry,
+          notes: form.notes
+        })
+      } else {
+        await api.post('/settings/competitors', {
+          ...form,
+          department_id: Number(form.department_id)
+        })
+      }
       setForm({ name: '', website: '', industry: '', notes: '', department_id: isOrgHead ? '' : (user?.dept_id ?? user?.department_id) })
+      setEditingId(null)
       fetchData()
       setShowModal(false)
     } catch (e) {
-      setMsg(e.response?.data?.error?.message || e.message || 'Failed to add')
+      setMsg(e.response?.data?.error?.message || e.message || 'Failed to save')
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this competitor?')) return
+  const handleDeleteClick = (id) => {
+    setConfirmModal({ isOpen: true, id })
+  }
+
+  const confirmDelete = async () => {
     try {
-      await api.delete(`/settings/competitors/${id}`)
+      await api.delete(`/settings/competitors/${confirmModal.id}`)
       fetchData()
     } catch (e) {
       alert(e.response?.data?.error?.message || 'Failed to delete competitor')
     }
+    setConfirmModal({ isOpen: false, id: null })
   }
 
   const openAddModal = () => {
+    setEditingId(null)
     setForm({
       name: '', website: '', industry: '', notes: '',
       department_id: isOrgHead ? '' : (user?.dept_id ?? user?.department_id)
     })
     setMsg('')
     setShowModal(true)
+  }
+
+  const openEditModal = (comp) => {
+    setEditingId(comp.id)
+    setForm({
+      name: comp.name || '',
+      website: comp.website || '',
+      industry: comp.industry || '',
+      notes: comp.notes || '',
+      department_id: comp.department_id || ''
+    })
+    setMsg('')
+    setShowModal(true)
+  }
+
+  const toggleDept = (deptId) => {
+    setExpandedDepts(prev => ({ ...prev, [deptId]: !prev[deptId] }))
   }
 
   if (loading) return <div className="skeleton-card" style={{ height: 200 }} />
@@ -108,38 +145,63 @@ export default function CompetitorsTab() {
         {displayDepts.length > 0 ? (
           <div className="department-groups">
             {displayDepts.map(([deptId, data]) => (
-              <div key={deptId} className="settings-group-block" style={{ marginBottom: '2rem' }}>
-                <h4 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--color-text-secondary)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {data.deptName}
-                </h4>
-                {data.competitors.length > 0 ? (
-                  <div className="premium-list">
-                    {data.competitors.map(c => (
-                      <div key={c.id} className="premium-list-item">
-                        <div className="premium-list-item-left">
-                          <div className="avatar-placeholder" style={{ background: 'var(--color-bg-elevated)', color: 'var(--color-text-primary)' }}>
-                            <Icon name="briefcase" size={16} />
-                          </div>
-                          <div>
-                            <span className="item-title">{c.name}</span>
-                            <span className="item-subtitle">
-                              {c.industry || 'No industry'}
-                              {c.website && ` · ${c.website}`}
-                            </span>
-                            {c.notes && <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px' }}>{c.notes}</div>}
-                          </div>
-                        </div>
-                        <div className="premium-list-item-right">
-                          <button className="action-menu-btn" onClick={() => handleDelete(c.id)} title="Delete">
-                            <Icon name="trash" size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+              <div key={deptId} className="settings-group-block" style={{ marginBottom: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden' }}>
+                <div 
+                  onClick={() => toggleDept(deptId)}
+                  style={{ 
+                    padding: '12px 16px', 
+                    background: 'var(--color-bg-card)', 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    borderBottom: expandedDepts[deptId] ? '1px solid var(--color-border)' : 'none'
+                  }}
+                >
+                  <h4 style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {data.deptName}
+                    <Chip variant="neutral" size="xs">{data.competitors.length} / 3</Chip>
+                  </h4>
+                  <div style={{ color: 'var(--color-text-muted)' }}>
+                    <Icon name={expandedDepts[deptId] ? 'chevron-up' : 'chevron-down'} size={16} />
                   </div>
-                ) : (
-                  <div className="premium-empty" style={{ padding: 'var(--space-4)', minHeight: '120px' }}>
-                    <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>No competitors added for this department.</p>
+                </div>
+
+                {expandedDepts[deptId] && (
+                  <div style={{ padding: '16px', background: 'var(--color-bg-elevated)' }}>
+                    {data.competitors.length > 0 ? (
+                      <div className="premium-list">
+                        {data.competitors.map(c => (
+                          <div key={c.id} className="premium-list-item">
+                            <div className="premium-list-item-left">
+                              <div className="avatar-placeholder" style={{ background: 'var(--color-bg-card)', color: 'var(--color-text-primary)' }}>
+                                <Icon name="briefcase" size={16} />
+                              </div>
+                              <div>
+                                <span className="item-title">{c.name}</span>
+                                <span className="item-subtitle" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                  <Chip variant="neutral" size="xs">{c.industry || 'No industry'}</Chip>
+                                  {c.website && <span style={{ color: 'var(--color-primary)' }}>{c.website}</span>}
+                                </span>
+                                {c.notes && <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px' }}>{c.notes}</div>}
+                              </div>
+                            </div>
+                            <div className="premium-list-item-right" style={{ display: 'flex', gap: '8px' }}>
+                              <button className="action-menu-btn" onClick={() => openEditModal(c)} title="Edit">
+                                <Icon name="pencil" size={16} />
+                              </button>
+                              <button className="action-menu-btn" onClick={() => handleDeleteClick(c.id)} title="Delete">
+                                <Icon name="trash" size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="premium-empty" style={{ padding: 'var(--space-4)', minHeight: '120px' }}>
+                        <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>No competitors added for this department.</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -159,9 +221,9 @@ export default function CompetitorsTab() {
       <SlideOver
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title="Add Competitor"
+        title={editingId ? "Edit Competitor" : "Add Competitor"}
       >
-        {isOrgHead && (
+        {isOrgHead && !editingId && (
           <div className="form-row">
             <div className="form-group full-width">
               <label>Department</label>
@@ -206,10 +268,23 @@ export default function CompetitorsTab() {
         {msg && <p className="form-msg error">{msg}</p>}
 
         <div className="btn-row" style={{ marginTop: 'var(--space-6)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--color-border)' }}>
-          <button className="btn btn-primary" onClick={handleAdd}>Add Competitor</button>
+          <button className="btn btn-primary" onClick={handleSave}>
+            {editingId ? 'Save Changes' : 'Add Competitor'}
+          </button>
           <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
         </div>
       </SlideOver>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title="Delete Competitor"
+        message="Are you sure you want to delete this competitor? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmModal({ isOpen: false, id: null })}
+        variant="danger"
+      />
     </div>
   )
 }

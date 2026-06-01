@@ -1385,3 +1385,22 @@ During the implementation of the Auto-Draft and PDF handbook parsing, the user f
 
 **Files Modified:**
 - `frontend/src/components/Settings/tabs/OrganizationTab.jsx`
+
+## Issue #85: Competitors Intel Tab CRUD and Premium UI Upgrades
+
+### Problem:
+The Competitors Intel settings tab lacked the ability to edit existing competitors and relied on naive frontend-only limits to prevent abuse (3 competitors max). The user interface felt clunky and basic, utilizing brutalist system `window.confirm` dialogues and vertically stacking all departments, which created unnecessary cognitive load and scrolling for Org Heads managing multiple departments.
+
+### Solution / Changes Made:
+- **Backend API & Data Layer:** Added `CompetitorUpdate` Pydantic model and a robust `PATCH /api/v1/settings/competitors/{competitor_id}` endpoint.
+- **Server-Side Validation:** Enforced the 3 competitors per department limit within `SettingsService.update_competitor` and `create_competitor` to ensure strict platform data integrity.
+- **Application-Level Confirmation:** Replaced `window.confirm` with a polished, application-wide `ConfirmModal` component (`variant="danger"`) for all deletion events.
+- **Inline Editing (SlideOver):** Integrated the existing right-side `<SlideOver>` drawer to serve as the edit interface, pre-populating fields and submitting `PATCH` requests on save.
+- **Premium Accordion UI:** Transformed the vertically stacked department list into sleek, collapsible accordions. Departments are minimized by default, feature interactive headers with a quick-look capacity `Chip` (e.g. `2 / 3`), and use `chevron` icons to convey state, dramatically reducing screen real estate issues for Org Heads.
+- **Visual Polish:** Enhanced the inner list rendering by encasing the "Industry" label inside a `<Chip>` component.
+
+**Files Modified:**
+- `backend/models/settings.py`
+- `backend/services/settings_service.py`
+- `backend/routers/settings.py`
+- `frontend/src/components/Settings/tabs/CompetitorsTab.jsx`

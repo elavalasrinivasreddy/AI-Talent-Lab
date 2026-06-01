@@ -13,7 +13,7 @@ from backend.services.settings_service import SettingsService
 from backend.models.settings import (
     OrgProfileUpdate, AutoDraftRequest,
     DepartmentCreate, DepartmentUpdate,
-    CompetitorCreate,
+    CompetitorCreate, CompetitorUpdate,
     ScreeningQuestionCreate, ScreeningQuestionUpdate, ReorderRequest,
     MessageTemplateCreate, MessageTemplateUpdate,
     ScorecardTemplateCreate,
@@ -267,6 +267,27 @@ async def create_competitor(
         db, user["org_id"], user["user_id"], dept_id,
         name=body.name, website=body.website,
         industry=body.industry, notes=body.notes,
+    )
+    return {"competitor": comp}
+
+
+@router.patch("/competitors/{competitor_id}")
+async def update_competitor(
+    competitor_id: int,
+    body: CompetitorUpdate,
+    user: dict = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Update a competitor."""
+    if user["role"] == "dept_admin":
+        from backend.db.repositories.competitors import CompetitorRepository
+        comp = await CompetitorRepository.get_by_id(db, competitor_id, user["org_id"])
+        if comp and comp.get("department_id") != user.get("dept_id"):
+            raise InsufficientPermissionsError("Department Admin can only edit competitors in their own department")
+            
+    fields = body.model_dump(exclude_none=True)
+    comp = await SettingsService.update_competitor(
+        db, competitor_id, user["org_id"], user["user_id"], **fields,
     )
     return {"competitor": comp}
 
