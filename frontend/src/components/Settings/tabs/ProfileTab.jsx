@@ -1,24 +1,33 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import api from '../../../utils/api'
+import Icon from '../../common/Icon'
 
-function EyeIcon({ visible, onClick }) {
-  return (
-    <button type="button" className="password-toggle" onClick={onClick} tabIndex={-1}>
-      {visible ? '🙈' : '👁️'}
-    </button>
-  )
-}
-
-function PasswordInput({ value, onChange, placeholder }) {
+function PasswordInput({ value, onChange }) {
   const [show, setShow] = useState(false)
   return (
-    <div className="password-field">
-      <input type={show ? 'text' : 'password'} value={value} onChange={onChange} placeholder={placeholder} />
-      <EyeIcon visible={show} onClick={() => setShow(!show)} />
+    <div className="password-field" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+      <input 
+        type={show ? 'text' : 'password'} 
+        value={value} 
+        onChange={onChange} 
+        style={{ paddingRight: '40px', width: '100%' }}
+      />
+      <button 
+        type="button" 
+        onClick={() => setShow(!show)} 
+        tabIndex={-1}
+        style={{ 
+          position: 'absolute', right: '12px', background: 'none', border: 'none', 
+          cursor: 'pointer', color: 'var(--color-text-muted)', padding: 0, display: 'flex'
+        }}
+      >
+        <Icon name={show ? 'eye-off' : 'eye'} size={18} />
+      </button>
     </div>
   )
 }
+
 
 export default function ProfileTab() {
   const { user, refreshUser } = useAuth()
@@ -80,7 +89,7 @@ export default function ProfileTab() {
         <div className="form-row">
           <div className="form-group">
             <label>Full Name</label>
-            <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
           </div>
           <div className="form-group">
             <label>Email</label>
@@ -94,14 +103,14 @@ export default function ProfileTab() {
           </div>
           <div className="form-group">
             <label>Phone</label>
-            <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
-                   placeholder="+91 XXXXX XXXXX" />
+            <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
+              placeholder="+91 XXXXX XXXXX" />
           </div>
         </div>
         <div className="form-row">
           <div className="form-group">
             <label>Timezone</label>
-            <select value={form.timezone} onChange={e => setForm({...form, timezone: e.target.value})}>
+            <select value={form.timezone} onChange={e => setForm({ ...form, timezone: e.target.value })}>
               <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
               <option value="America/New_York">America/New_York (EST)</option>
               <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
@@ -121,22 +130,28 @@ export default function ProfileTab() {
       <div className="settings-form-section">
         <h3>🔑 Change Password</h3>
         <div className="form-row">
-          <div className="form-group">
+          <div className="form-group full-width">
             <label>Current Password</label>
-            <PasswordInput value={pwForm.current}
-                   onChange={e => setPwForm({...pwForm, current: e.target.value})} />
+            <PasswordInput 
+              value={pwForm.current}
+              onChange={e => setPwForm({ ...pwForm, current: e.target.value })} 
+            />
           </div>
         </div>
         <div className="form-row">
           <div className="form-group">
             <label>New Password</label>
-            <PasswordInput value={pwForm.new_password}
-                   onChange={e => setPwForm({...pwForm, new_password: e.target.value})} />
+            <PasswordInput 
+              value={pwForm.new_password}
+              onChange={e => setPwForm({ ...pwForm, new_password: e.target.value })} 
+            />
           </div>
           <div className="form-group">
             <label>Confirm Password</label>
-            <PasswordInput value={pwForm.confirm}
-                   onChange={e => setPwForm({...pwForm, confirm: e.target.value})} />
+            <PasswordInput 
+              value={pwForm.confirm}
+              onChange={e => setPwForm({ ...pwForm, confirm: e.target.value })} 
+            />
           </div>
         </div>
         {pwMsg && <p className={`form-msg ${pwMsg.includes('changed') ? 'success' : 'error'}`}>{pwMsg}</p>}

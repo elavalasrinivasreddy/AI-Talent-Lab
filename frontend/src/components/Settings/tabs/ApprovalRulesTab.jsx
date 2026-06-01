@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import Icon from '../../common/Icon'
+import Toggle from '../../common/Toggle'
 import api from '../../../utils/api'
 
 export default function ApprovalRulesTab() {
@@ -101,10 +102,9 @@ export default function ApprovalRulesTab() {
                 </p>
               </div>
             </div>
-            <label className="st-toggle" style={{ marginTop: '10px' }}>
-              <input type="checkbox" checked={hrAutoApprove} onChange={e => handleHrToggle(e.target.checked)} />
-              <span className="st-slider"></span>
-            </label>
+            <div style={{ marginTop: '10px' }}>
+              <Toggle checked={hrAutoApprove} onChange={checked => handleHrToggle(checked)} />
+            </div>
           </div>
         )}
 
@@ -151,10 +151,9 @@ export default function ApprovalRulesTab() {
                 </p>
               </div>
             </div>
-            <label className="st-toggle" style={{ marginTop: '10px' }}>
-              <input type="checkbox" checked={jdAutoApprove} onChange={e => handleJdToggle(e.target.checked)} />
-              <span className="st-slider"></span>
-            </label>
+            <div style={{ marginTop: '10px' }}>
+              <Toggle checked={jdAutoApprove} onChange={checked => handleJdToggle(checked)} />
+            </div>
           </div>
         )}
 

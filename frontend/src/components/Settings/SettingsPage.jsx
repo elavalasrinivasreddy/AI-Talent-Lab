@@ -19,6 +19,7 @@ import TeamTab from './tabs/TeamTab'
 import DepartmentsTab from './tabs/DepartmentsTab'
 import CompetitorsTab from './tabs/CompetitorsTab'
 import ScreeningQuestionsTab from './tabs/ScreeningQuestionsTab'
+import AtsRulesTab from './tabs/AtsRulesTab'
 import MessageTemplatesTab from './tabs/MessageTemplatesTab'
 import ApprovalRulesTab from './tabs/ApprovalRulesTab'
 import InterviewTemplatesTab from './tabs/InterviewTemplatesTab'
@@ -85,7 +86,7 @@ const RAIL_GROUPS = [
 
 const SECTION_COMPONENTS = {
   'profile': ProfileTab,
-  'ats-rules': ScreeningQuestionsTab, // Reuse screening as ATS placeholder
+  'ats-rules': AtsRulesTab,
   'sourcing': () => <PlaceholderSection title="Sourcing Schedule" desc="Configure AI sourcing frequency, daily caps, and talent-pool-first settings." icon="search" />,
   'screening': ScreeningQuestionsTab,
   'scorecards': InterviewTemplatesTab,
@@ -116,7 +117,7 @@ export default function SettingsPage() {
   // If a non-admin lands on an admin-only section via direct URL, fall back to profile.
   const allAdminKeys = RAIL_GROUPS.flatMap(g => g.items.filter(i => i.adminOnly).map(i => i.key))
   const allOrgHeadKeys = RAIL_GROUPS.flatMap(g => g.items.filter(i => i.orgHeadOnly).map(i => i.key))
-  
+
   let isAllowed = true;
   if (allOrgHeadKeys.includes(tab) && user?.role !== 'org_head') isAllowed = false;
   else if (allAdminKeys.includes(tab) && !isAdmin) isAllowed = false;
@@ -171,43 +172,14 @@ export default function SettingsPage() {
             <Icon name="settings" size={18} />
           </div>
           <div>
-            <h1 className="st-header-title">AI Behavior Console</h1>
-            <p className="st-header-sub">Configure how AI agents work on your behalf</p>
+            <h1 className="st-header-title">Workspace Settings</h1>
+            <p className="st-header-sub">Manage your organization and configure how AI agents work</p>
           </div>
-        </div>
-        <div className="st-header-actions">
-          {aiSaveStatus === 'saved' && (
-            <span className="st-save-badge st-save-badge--ok">
-              <Icon name="check" size={12} /> Saved
-            </span>
-          )}
-          {aiSaveStatus === 'error' && (
-            <span className="st-save-badge st-save-badge--err">
-              <Icon name="alert-circle" size={12} /> Save failed
-            </span>
-          )}
-          <button
-            className="st-btn st-btn-ghost"
-            onClick={() => {
-              setAiSettings({})
-              setAiSaveStatus(null)
-            }}
-          >
-            <Icon name="rotate-ccw" size={13} /> Reset section
-          </button>
-          <button
-            className="st-btn st-btn-primary"
-            disabled={aiSaveStatus === 'saving'}
-            onClick={handleSaveAiBehavior}
-          >
-            <Icon name="check" size={13} />
-            {aiSaveStatus === 'saving' ? 'Saving…' : 'Save changes'}
-          </button>
         </div>
       </div>
 
-      {/* 3-column layout */}
-      <div className="st-layout">
+      {/* 2-column or 3-column layout */}
+      <div className={`st-layout ${!['ats-rules', 'sourcing', 'screening', 'scorecards', 'bias', 'career-brand', 'templates'].includes(activeSection) ? 'no-right-rail' : ''}`}>
         {/* Left Rail */}
         <nav className="st-rail">
           {/* Profile shortcut */}
@@ -228,12 +200,12 @@ export default function SettingsPage() {
               </div>
               {group.items.map(item => {
                 const isOrgHeadLocked = item.orgHeadOnly && user?.role !== 'org_head';
-                
+
                 // Determine if read-only or fully locked
                 // Per spec: ATS and Email templates are read-only for HR. Sourcing is editable for HR.
                 let isFullyLocked = false;
                 let isReadOnly = false;
-                
+
                 if (item.adminOnly && !isAdmin) {
                   if (user?.role === 'hr') {
                     if (['ats-rules', 'templates'].includes(item.key)) {
@@ -247,11 +219,11 @@ export default function SettingsPage() {
                     isFullyLocked = true; // For HM (team_lead), all admin-only is locked
                   }
                 }
-                
+
                 if (item.key === 'approval' && user?.role === 'hr') {
                   isFullyLocked = true;
                 }
-                
+
                 const isDisabled = isOrgHeadLocked || isFullyLocked;
 
                 return (
@@ -266,7 +238,17 @@ export default function SettingsPage() {
                   >
                     <Icon name={item.icon} size={13} />
                     <span>{item.label}</span>
-                    {item.phase && <Chip variant="neutral" size="xs">P{item.phase}</Chip>}
+                    {item.phase && (
+                      <span style={{ 
+                        marginLeft: 'auto', background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-muted)', fontSize: '10px', 
+                        width: '22px', height: '22px', borderRadius: '50%', 
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 'bold', flexShrink: 0 
+                      }}>
+                        P{item.phase}
+                      </span>
+                    )}
                     {isDisabled && <span className="st-rail-lock"><Icon name="lock" size={10} /></span>}
                     {isReadOnly && !isDisabled && <span className="st-rail-readonly" style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>(Read-only)</span>}
                   </button>
@@ -283,16 +265,18 @@ export default function SettingsPage() {
             let activeItemReadOnly = false;
             const activeItem = RAIL_GROUPS.flatMap(g => g.items).find(i => i.key === activeSection);
             if (activeItem && activeItem.adminOnly && !isAdmin && user?.role === 'hr') {
-               if (['ats-rules', 'templates'].includes(activeItem.key)) {
-                 activeItemReadOnly = true;
-               }
+              if (['ats-rules', 'templates'].includes(activeItem.key)) {
+                activeItemReadOnly = true;
+              }
             }
             return <ActiveComponent isReadOnly={activeItemReadOnly} />
           })()}
         </div>
 
-        {/* Right Preview */}
-        <SettingsLivePreview activeSection={activeSection} />
+        {/* Right Preview - Conditionally rendered */}
+        {['ats-rules', 'sourcing', 'screening', 'scorecards', 'bias', 'career-brand', 'templates'].includes(activeSection) && (
+          <SettingsLivePreview activeSection={activeSection} />
+        )}
       </div>
     </div>
   )

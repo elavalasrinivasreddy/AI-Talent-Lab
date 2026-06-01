@@ -1157,4 +1157,57 @@ During validation of the V3 AI Behavior Console, it was noted that the left navi
 **Files Modified:**
 - `frontend/src/components/Settings/SettingsPage.jsx`
 
+### 73. Settings UI: Premium SaaS Upgrades (V3.1)
+**Date:** 2026-06-01
+**Status:** Implemented
 
+**Issue / Validation:**
+While the core layout for the V3 AI Behavior Console was implemented, the inner workings of individual tabs (`TeamTab`, `OrganizationTab`) were functionally basic. They relied on standard HTML tables, basic centered modals, and lacked the "Pipeline Garden" premium visual fidelity. Additionally, the Organization tab missed an opportunity to leverage AI to auto-draft company profiles.
+
+**Idea / Solution:**
+- **Vertical Scroll Fix:** Constrained `.st-layout` to `height: calc(100vh - 120px); overflow: hidden;` in `settings.css` to prevent page-level bleeding and restrict scrolling exclusively to the internal `.st-form-area` and rails.
+- **Team Tab Alignment:** Converted the flexible `.premium-list-item-right` elements (Role, Department, Status) into fixed-width columns (`.item-col-dept`, `.item-col-role`, `.item-col-status`) so they align perfectly vertically, like a table.
+- **Slide-over Drawers:** Replaced standard modals with a new `<SlideOver>` right-side drawer component for a non-blocking configuration experience.
+- **Premium Lists:** Upgraded raw HTML tables and custom lists into sleek `.premium-list` components featuring colored role badges, avatars, and modern layout spacing. Applied this uniformly to `TeamTab`, `DepartmentsTab`, `ScreeningQuestionsTab`, and `CompetitorsTab`.
+- **Premium Empty States:** Swapped dashed-border basic empty states with subtle glassmorphic gradients and icons across all updated tabs.
+- **Vertical Layout Constraint:** Eliminated vertical page scrolling globally by converting `.settings-page` to a strict flex-container and assigning `.st-layout` a `flex: 1` `min-height: 0` property. Internal containers (`.st-rail`, `.st-form-area`, `.st-preview`) now rely on `height: 100%; overflow-y: auto` to naturally constrain content to the viewport.
+- **Premium Checkbox & Inputs:** Replaced legacy generic checkbox `<input type="checkbox">` elements across settings tabs with a newly styled `.premium-checkbox` (with animations and SVG-like checkmarks). Form inputs inside `SlideOver` have been enhanced with glassmorphic backgrounds, gentle drop shadows, and modern focus states.
+- **AI Auto-draft (Backend LLM Integration):** Replaced the frontend simulation with a true, fully-functional backend endpoint (`POST /api/v1/settings/org/auto-draft`). It leverages `httpx` to fetch external HTML and uses a `ChatGroq` LLaMA model to intelligently extract and summarize the `about_us`, `culture_keywords`, and `benefits_text`.
+
+### 74. Settings UI: Tab Consolidation Completion
+**Date:** 2026-06-01
+**Status:** Implemented
+
+**Issue / Validation:**
+Remaining tabs in the Workspace Settings lacked the visual polish applied to the core modules. Inconsistent modals, raw checkboxes, and unconfirmed destructive actions persisted in secondary tabs (`MessageTemplates`, `ApprovalRules`, `Privacy`, `Integrations`).
+
+**Idea / Solution:**
+- **SlideOver Migration:** Replaced all legacy `<div className="modal-overlay">` instances with the standard `SlideOver` drawer component in `MessageTemplatesTab` and `PrivacyTab` (data export modal).
+- **UX Destructive Safeguards:** Enforced `window.confirm()` barriers on all delete actions across `CompetitorsTab`, `PrivacyTab` (GDPR data anonymization processing), and `MessageTemplatesTab`.
+- **UI Component Standardization:** Replaced raw HTML checkboxes in `ApprovalRulesTab` with the standardized `<Toggle>` component for a tactile, premium feel.
+- **Premium List & Badges:** Restyled `MessageTemplatesTab` to use the `.premium-list` layout instead of basic cards. Standardized phase tags in `IntegrationsTab` and `SecurityTab` to utilize the circular `P2`/`P3` badges established in the global settings navigation.
+### 75. Settings UI: Drag-and-Drop & Custom Modals
+**Date:** 2026-06-01
+**Status:** Implemented
+
+**Issue / Validation:**
+- Screening questions reordering relied on crude "up" and "down" arrows instead of natural drag-and-drop.
+- The department labels in `ScreeningQuestionsTab` didn't visually match the exact alignment of `TeamTab`.
+- System-level `window.confirm()` prompts for destructive actions (deletes, deactivations) felt jarring and non-native to the application's premium aesthetic.
+
+**Idea / Solution:**
+- **HTML5 Drag and Drop:** Removed the up/down arrows from the `ScreeningQuestionsTab` and implemented a fully functional HTML5 Drag and Drop integration for sorting questions. The active drag row changes opacity, shows a grabbing cursor, and reorders seamlessly.
+- **Custom Application ConfirmModal:** Created a new, reusable `<ConfirmModal>` UI component. Replaced the jarring `window.confirm()` prompts in both `ScreeningQuestionsTab` (for question deletion) and `TeamTab` (for user activation/deactivation) with this new, native React modal featuring consistent glassmorphic styling, icon cues (⚠️/❓), and variant-colored action buttons.
+- **Visual Alignment:** Updated the `ScreeningQuestionsTab` department labels to utilize the existing `.item-col-dept` class so they exactly match the fixed-column layout seen in the `TeamTab`.
+
+**Files Modified:**
+- `docs/design/pages/07_settings.md`
+- `frontend/src/components/common/SlideOver.jsx`
+- `frontend/src/styles/settings.css`
+- `frontend/src/components/Settings/tabs/TeamTab.jsx`
+- `frontend/src/components/Settings/tabs/OrganizationTab.jsx`
+- `frontend/src/components/Settings/tabs/DepartmentsTab.jsx`
+- `frontend/src/components/Settings/tabs/ScreeningQuestionsTab.jsx`
+- `frontend/src/components/Settings/tabs/CompetitorsTab.jsx`
+- `backend/routers/settings.py`
+- `backend/models/settings.py`

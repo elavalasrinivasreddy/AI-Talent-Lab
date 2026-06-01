@@ -5,6 +5,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { gdprApi } from '../../../utils/api'
 import { useAuth } from '../../../context/AuthContext'
+import SlideOver from '../../common/SlideOver'
 
 export default function PrivacyTab() {
   const { user } = useAuth()
@@ -29,7 +30,7 @@ export default function PrivacyTab() {
   useEffect(() => { loadRequests() }, [loadRequests])
 
   const handleProcess = async (id) => {
-    if (!confirm('This will permanently anonymize the candidate\'s data. Continue?')) return
+    if (!window.confirm('This will permanently anonymize the candidate\'s data. Continue?')) return
     setProcessing(id)
     try {
       await gdprApi.processDeletion(id)
@@ -218,50 +219,49 @@ export default function PrivacyTab() {
       </div>
 
       {/* Export Modal */}
-      {exportModal && (
-        <div className="modal-overlay" onClick={() => setExportModal(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h2>📦 Candidate Data Export</h2>
-            <p className="section-desc">
-              This is the full Subject Access Request (SAR) data export for this candidate.
-            </p>
-            <textarea
-              readOnly
-              value={exportModal}
-              style={{
-                width: '100%',
-                height: '400px',
-                background: 'var(--color-bg-input)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--color-text-primary)',
-                fontFamily: 'monospace',
-                fontSize: '12px',
-                padding: 'var(--space-3)',
-                resize: 'vertical',
-              }}
-            />
-            <div className="btn-row">
-              <button className="btn btn-secondary" onClick={() => {
-                navigator.clipboard.writeText(exportModal)
-                alert('Copied to clipboard!')
-              }}>
-                📋 Copy JSON
-              </button>
-              <button className="btn btn-primary" onClick={() => {
-                const blob = new Blob([exportModal], { type: 'application/json' })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url; a.download = 'candidate_data_export.json'
-                a.click(); URL.revokeObjectURL(url)
-              }}>
-                💾 Download
-              </button>
-              <button className="btn btn-ghost" onClick={() => setExportModal(null)}>Close</button>
-            </div>
-          </div>
+      <SlideOver
+        isOpen={!!exportModal}
+        onClose={() => setExportModal(null)}
+        title="Candidate Data Export"
+      >
+        <p className="section-desc">
+          This is the full Subject Access Request (SAR) data export for this candidate.
+        </p>
+        <textarea
+          readOnly
+          value={exportModal || ''}
+          style={{
+            width: '100%',
+            height: '400px',
+            background: 'var(--color-bg-input)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            color: 'var(--color-text-primary)',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            padding: 'var(--space-3)',
+            resize: 'vertical',
+          }}
+        />
+        <div className="btn-row" style={{ marginTop: 'var(--space-6)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--color-border)' }}>
+          <button className="btn btn-secondary" onClick={() => {
+            navigator.clipboard.writeText(exportModal)
+            alert('Copied to clipboard!')
+          }}>
+            📋 Copy JSON
+          </button>
+          <button className="btn btn-primary" onClick={() => {
+            const blob = new Blob([exportModal], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url; a.download = 'candidate_data_export.json'
+            a.click(); URL.revokeObjectURL(url)
+          }}>
+            💾 Download
+          </button>
+          <button className="btn btn-ghost" onClick={() => setExportModal(null)}>Close</button>
         </div>
-      )}
+      </SlideOver>
     </div>
   )
 }

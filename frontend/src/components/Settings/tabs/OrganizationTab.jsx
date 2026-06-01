@@ -7,6 +7,7 @@ export default function OrganizationTab() {
   const isAdmin = user?.role === 'org_head'
   const [org, setOrg] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [isDrafting, setIsDrafting] = useState(false)
   const [msg, setMsg] = useState('')
   const [tagInput, setTagInput] = useState('')
 
@@ -40,6 +41,32 @@ export default function OrganizationTab() {
     setSaving(false)
   }
 
+  const handleAutoDraft = async () => {
+    if (!org.website) {
+      setMsg('Please enter a website URL first.')
+      return
+    }
+    setIsDrafting(true)
+    setMsg('')
+    try {
+      const res = await api.post('/settings/org/auto-draft', { url: org.website })
+      if (res.data) {
+        setOrg(prev => ({
+          ...prev,
+          about_us: res.data.about_us || prev.about_us,
+          culture_keywords: res.data.culture_keywords || prev.culture_keywords,
+          benefits_text: res.data.benefits_text || prev.benefits_text,
+        }))
+        setMsg('✨ Profile auto-drafted from website!')
+      }
+    } catch (err) {
+      console.error('Auto-draft failed:', err)
+      setMsg('Failed to auto-draft from website.')
+    } finally {
+      setIsDrafting(false)
+    }
+  }
+
   const set = (field, val) => setOrg(prev => ({...prev, [field]: val}))
 
   const keywords = (org?.culture_keywords || '').split(',').map(k => k.trim()).filter(Boolean)
@@ -62,7 +89,20 @@ export default function OrganizationTab() {
   return (
     <div className="settings-form">
       <div className="settings-form-section">
-        <h3>🏢 Organization</h3>
+        <div className="section-header">
+          <h3>🏢 Organization</h3>
+          {isAdmin && (
+            <button 
+              className="btn btn-secondary btn-sm" 
+              onClick={handleAutoDraft} 
+              disabled={isDrafting}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <span className={isDrafting ? 'spin-anim' : ''}>✨</span>
+              {isDrafting ? 'Extracting from website...' : 'Auto-draft from Website'}
+            </button>
+          )}
+        </div>
 
         <div className="form-row">
           <div className="form-group">

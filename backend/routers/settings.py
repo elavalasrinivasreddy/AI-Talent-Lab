@@ -11,7 +11,7 @@ import asyncpg
 from backend.dependencies import get_db, get_current_user, require_org_head, require_dept_admin
 from backend.services.settings_service import SettingsService
 from backend.models.settings import (
-    OrgProfileUpdate,
+    OrgProfileUpdate, AutoDraftRequest,
     DepartmentCreate, DepartmentUpdate,
     CompetitorCreate,
     ScreeningQuestionCreate, ScreeningQuestionUpdate, ReorderRequest,
@@ -20,6 +20,11 @@ from backend.models.settings import (
     AiBehaviorBody,
 )
 from backend.exceptions import InsufficientPermissionsError
+import httpx
+import re
+from langchain_groq import ChatGroq
+from langchain_core.messages import HumanMessage, SystemMessage
+import json
 
 router = APIRouter(prefix="/api/v1/settings", tags=["Settings"])
 
@@ -46,6 +51,60 @@ async def update_org(
     fields = body.model_dump(exclude_none=True)
     org = await SettingsService.update_org(db, user["org_id"], user["user_id"], **fields)
     return {"org": org}
+
+
+@router.post("/org/auto-draft")
+async def auto_draft_org_profile(
+    body: AutoDraftRequest,
+    user: dict = Depends(require_org_head),
+):
+    """Extract company details from a given URL using LLM."""
+    try:
+        # 1. Fetch HTML
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(body.url)
+            html = resp.text
+            
+        # 2. Naive HTML to text
+        text = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.IGNORECASE | re.DOTALL)
+        text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.IGNORECASE | re.DOTALL)
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        # Limit text length to avoid token limits
+        text = text[:15000]
+        
+        # 3. LLM Extraction
+        llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
+        sys_prompt = "You are an expert corporate researcher. Extract details from the provided website text and return a valid JSON object strictly matching this schema: {\"about_us\": \"String, 1-2 paragraphs\", \"culture_keywords\": \"String, comma-separated list of 3-6 keywords\", \"benefits_text\": \"String, short description of benefits or perks mentioned\"}. If not found, make an educated guess or leave empty."
+        human_prompt = f"Website URL: {body.url}\n\nWebsite Content:\n{text}"
+        
+        res = await llm.ainvoke([
+            SystemMessage(content=sys_prompt),
+            HumanMessage(content=human_prompt)
+        ])
+        
+        # Parse JSON
+        content = res.content
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].strip()
+            
+        data = json.loads(content)
+        
+        return {
+            "about_us": data.get("about_us", ""),
+            "culture_keywords": data.get("culture_keywords", ""),
+            "benefits_text": data.get("benefits_text", ""),
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "about_us": "Could not automatically fetch details from the provided website.",
+            "culture_keywords": "Innovation, Collaboration, Excellence",
+            "benefits_text": "Please manually enter your benefits."
+        }
 
 
 # ── Departments ────────────────────────────────────────────────────────────────

@@ -8,6 +8,9 @@ from datetime import datetime
 
 # ── Organization ───────────────────────────────────────────────────────────────
 
+class AutoDraftRequest(BaseModel):
+    url: str
+
 class OrgProfileUpdate(BaseModel):
     segment: Optional[str] = None
     size: Optional[str] = None
