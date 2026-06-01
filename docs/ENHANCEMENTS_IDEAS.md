@@ -17,3 +17,21 @@ Currently, the `org_head` role does not need to participate in the operational f
 3. **Rejection Insights:** Total requests rejected, paired with the top rejection reasons (e.g., budget constraints, poorly defined roles) to identify friction points.
 
 *Implementation Note:* This will require new backend aggregation endpoints (time-series data, `GROUP BY` department queries) and frontend charting components in the `Analytics` or `Dashboard` view for the `org_head`.
+
+## 2. Organization Profile: RAG Integration
+
+**Context:**
+Currently, the Organization tab stores "About Us", "Culture Keywords", and "Benefits" as plain text in the PostgreSQL database. When the LangGraph agents generate Job Descriptions, they inject this text naively.
+
+**Enhancement:**
+- Vectorize the Organization Profile into ChromaDB.
+- Update the JD generation pipelines to use Retrieval-Augmented Generation (RAG). Instead of appending boilerplate, the AI should seamlessly weave the company's specific cultural nuances into the responsibilities and requirements of the JD.
+
+## 3. Department-Level Profile Overrides
+
+**Context:**
+Currently, the entire organization shares a single set of culture keywords and benefits. In enterprise environments, departments (e.g., Engineering vs. Sales) have distinct micro-cultures and specific perks.
+
+**Enhancement:**
+- Update the `departments` database schema to allow defining localized "About Us" and "Benefits" texts.
+- Implement hierarchical fallback logic: If a department lacks an override, inherit from the Organization Profile. Otherwise, use the localized data for sourcing and JD generation.

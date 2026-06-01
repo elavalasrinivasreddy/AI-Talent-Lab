@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import api from '../../../utils/api'
+import Toast from '../../common/Toast'
+import Icon from '../../common/Icon'
 
 export default function OrganizationTab() {
   const { user } = useAuth()
@@ -8,9 +10,14 @@ export default function OrganizationTab() {
   const [org, setOrg] = useState(null)
   const [saving, setSaving] = useState(false)
   const [isDrafting, setIsDrafting] = useState(false)
-  const [msg, setMsg] = useState('')
+  const [toast, setToast] = useState(null)
   const [tagInput, setTagInput] = useState('')
   const fileInputRef = useRef(null)
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 4000)
+  }
 
   const fetchOrg = useCallback(async () => {
     try {
@@ -22,7 +29,7 @@ export default function OrganizationTab() {
   useEffect(() => { fetchOrg() }, [fetchOrg])
 
   const handleSave = async () => {
-    setSaving(true); setMsg('')
+    setSaving(true)
     try {
       await api.patch('/settings/org', {
         segment: org.segment,
@@ -35,20 +42,19 @@ export default function OrganizationTab() {
         linkedin_url: org.linkedin_url,
         glassdoor_url: org.glassdoor_url,
       })
-      setMsg('Organization updated!')
+      showToast('Organization updated successfully')
     } catch (e) {
-      setMsg(e.message || 'Failed to save')
+      showToast(e.message || 'Failed to save', 'error')
     }
     setSaving(false)
   }
 
   const handleAutoDraft = async () => {
     if (!org.website) {
-      setMsg('Please enter a website URL first.')
+      showToast('Please enter a website URL first.', 'error')
       return
     }
     setIsDrafting(true)
-    setMsg('')
     try {
       const res = await api.post('/settings/org/auto-draft', { url: org.website })
       if (res.data) {
@@ -59,14 +65,14 @@ export default function OrganizationTab() {
           benefits_text: res.data.benefits_text || prev.benefits_text,
         }))
         if (res.data.fallback_used) {
-          setMsg('⚠️ Direct scrape failed. Generated draft using public web data.')
+          showToast('⚠️ Direct scrape failed. Generated draft using public web data.', 'warning')
         } else {
-          setMsg('✨ Profile auto-drafted from website!')
+          showToast('✨ Profile auto-drafted from website!')
         }
       }
     } catch (err) {
       console.error('Auto-draft failed:', err)
-      setMsg('Failed to auto-draft from website.')
+      showToast('Failed to auto-draft from website.', 'error')
     } finally {
       setIsDrafting(false)
     }
@@ -76,7 +82,6 @@ export default function OrganizationTab() {
     const file = e.target.files?.[0]
     if (!file) return
     setIsDrafting(true)
-    setMsg('')
     try {
       const formData = new FormData()
       formData.append('file', file)
@@ -84,7 +89,7 @@ export default function OrganizationTab() {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       if (res.data && res.data.error) {
-        setMsg(`❌ Error: ${res.data.error}`)
+        showToast(res.data.error, 'error')
       } else if (res.data) {
         setOrg(prev => ({
           ...prev,
@@ -92,11 +97,11 @@ export default function OrganizationTab() {
           culture_keywords: res.data.culture_keywords || prev.culture_keywords,
           benefits_text: res.data.benefits_text || prev.benefits_text,
         }))
-        setMsg('✨ Profile drafted from Handbook PDF!')
+        showToast('✨ Profile drafted from Handbook PDF!')
       }
     } catch (err) {
       console.error('PDF extraction failed:', err)
-      setMsg('Failed to extract from PDF.')
+      showToast('Failed to extract from PDF.', 'error')
     } finally {
       setIsDrafting(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -303,16 +308,35 @@ export default function OrganizationTab() {
           </div>
         </div>
 
-        {msg && <p className={`form-msg ${msg.includes('updated') ? 'success' : 'error'}`}>{msg}</p>}
-
         {isAdmin && (
-          <div className="btn-row">
+          <div className="btn-row" style={{ marginTop: '24px' }}>
             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
               {saving ? 'Saving...' : 'Save Organization'}
             </button>
           </div>
         )}
       </div>
+
+      {isDrafting && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50,
+          borderRadius: 'var(--radius-lg)'
+        }}>
+          <div className="spin-anim" style={{ fontSize: '32px', marginBottom: '16px' }}>✨</div>
+          <h3 style={{ color: 'white', margin: '0 0 8px' }}>AI is extracting profile data...</h3>
+          <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>This may take a few seconds.</p>
+        </div>
+      )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

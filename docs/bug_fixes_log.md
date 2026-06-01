@@ -1373,3 +1373,15 @@ The Organization Profile acts as the "Brain" of the platform for AI outputs (JDs
 **Files Modified:**
 - `backend/routers/settings.py`
 - `frontend/src/components/Settings/tabs/OrganizationTab.jsx`
+
+## Issue #84: Organization Tab UI/UX Polish
+
+### Problem:
+During the implementation of the Auto-Draft and PDF handbook parsing, the user feedback mechanisms were substandard. Success/Error messages were rendering at the bottom of the form (out of typical eye-line), and the loading state was merely a tiny spinner on the button, lacking the visual gravitas required for a heavy AI processing task.
+
+### Solution / Changes Made:
+- **Toast Notifications:** Stripped out the primitive `msg` state array and replaced it with the modern `<Toast />` component. The Tavily fallback warning ("⚠️ Direct scrape failed...") now correctly appears as a top-right overlay.
+- **Center-Screen Loading Overlay:** Implemented a full-form glassmorphism overlay (`backdropFilter: 'blur(4px)'`) that activates when `isDrafting` is true. This forces the user to pause and draws attention to the fact that the AI is actively extracting and structuring their corporate data, significantly improving the perceived value and user experience of the tool.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/OrganizationTab.jsx`
