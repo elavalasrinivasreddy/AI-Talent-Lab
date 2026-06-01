@@ -15,6 +15,25 @@ router = APIRouter(prefix="/api/v1/careers", tags=["Careers"])
 logger = logging.getLogger(__name__)
 
 
+# ── Organizations List (Public) ────────────────────────────────────────────────
+
+@router.get("/")
+async def list_organizations():
+    """
+    Public endpoint to list all organizations on the platform.
+    Typically used for a platform-level job board or directory.
+    """
+    async with get_connection() as conn:
+        orgs = await conn.fetch(
+            """
+            SELECT slug, name, logo_url, about_us, career_primary_color
+            FROM organizations
+            ORDER BY name ASC
+            """
+        )
+    return {"organizations": [dict(o) for o in orgs]}
+
+
 # ── Career page (org-level) ────────────────────────────────────────────────────
 
 @router.get("/{org_slug}")
@@ -75,7 +94,7 @@ async def get_career_page(
         positions = await conn.fetch(
             f"""
             SELECT p.id, p.role_name, p.location, p.work_type, p.employment_type,
-                   p.experience_min, p.experience_max, p.key_skills, p.created_at,
+                   p.experience_min, p.experience_max, p.created_at,
                    d.name AS department
             FROM positions p
             LEFT JOIN departments d ON d.id = p.department_id
@@ -85,16 +104,9 @@ async def get_career_page(
             *params
         )
 
-    import json
     pos_list = []
     for p in positions:
-        d = dict(p)
-        if d.get("key_skills") and isinstance(d["key_skills"], str):
-            try:
-                d["key_skills"] = json.loads(d["key_skills"])
-            except Exception:
-                d["key_skills"] = []
-        pos_list.append(d)
+        pos_list.append(dict(p))
 
     return {
         "org": dict(org),
@@ -122,7 +134,7 @@ async def get_position_detail(org_slug: str, position_id: int):
         pos = await conn.fetchrow(
             """
             SELECT p.id, p.role_name, p.location, p.work_type, p.employment_type,
-                   p.experience_min, p.experience_max, p.key_skills, p.jd_markdown,
+                   p.experience_min, p.experience_max, p.jd_markdown,
                    p.created_at, p.status, p.is_on_career_page,
                    d.name AS department
             FROM positions p
@@ -134,13 +146,7 @@ async def get_position_detail(org_slug: str, position_id: int):
         if not pos or pos["status"] != "open" or not pos["is_on_career_page"]:
             raise HTTPException(status_code=404, detail={"code": "POSITION_NOT_FOUND", "message": "Position not available"})
 
-    import json
     pos_dict = dict(pos)
-    if pos_dict.get("key_skills") and isinstance(pos_dict["key_skills"], str):
-        try:
-            pos_dict["key_skills"] = json.loads(pos_dict["key_skills"])
-        except Exception:
-            pos_dict["key_skills"] = []
 
     return {
         "org": dict(org),
@@ -179,3 +185,96 @@ async def start_application(org_slug: str, position_id: int):
         org_id=org["id"],
     )
     return {"apply_token": token, "apply_url": f"/apply/{token}"}
+
+
+# ── Fit Finder (public) ───────────────────────────────────────────────────────
+
+@router.get("/{org_slug}/fit")
+async def get_career_fit(
+    org_slug: str,
+    func: Optional[str] = Query(None, alias="function"),
+    exp: Optional[str] = Query(None),
+    values: Optional[str] = Query(None)
+):
+    """
+    Returns ranked positions matching the fit-filter selection.
+    """
+    async with get_connection() as conn:
+        org = await conn.fetchrow("SELECT id FROM organizations WHERE slug=$1", org_slug.lower())
+        if not org:
+            raise HTTPException(status_code=404, detail={"code": "ORG_NOT_FOUND", "message": "Organization not found"})
+        
+        # Fetch all open positions for this org
+        positions = await conn.fetch(
+            """
+            SELECT p.id, p.role_name, p.location, p.work_type, p.employment_type,
+                   p.experience_min, p.experience_max, p.created_at,
+                   p.priority, p.jd_markdown,
+                   d.name AS department
+            FROM positions p
+            LEFT JOIN departments d ON d.id = p.department_id
+            WHERE p.org_id=$1 AND p.status='open' AND p.is_on_career_page=TRUE
+            """,
+            org["id"]
+        )
+
+    pos_list = []
+    
+    # Very basic scoring logic for MVP
+    for p in positions:
+        d = dict(p)
+        score = 50 # Base score
+        
+        # Function match
+        dept = (d.get("department") or "").lower()
+        role = (d.get("role_name") or "").lower()
+        if func and func.lower() != "all":
+            f_lower = func.lower()
+            if f_lower in dept or f_lower in role:
+                score += 30
+            else:
+                score -= 20
+                
+        # Experience match
+        exp_min = d.get("experience_min") or 0
+        exp_max = d.get("experience_max") or 99
+        if exp:
+            if exp == "0-3 yrs":
+                if exp_min <= 3: score += 20
+                else: score -= 10
+            elif exp == "3-7 yrs":
+                if exp_min <= 7 and exp_max >= 3: score += 20
+                else: score -= 10
+            elif exp == "7+ yrs":
+                if exp_min >= 5 or exp_max >= 7: score += 20
+                else: score -= 10
+                
+        # Values match (soft score)
+        if values:
+            val_list = [v.strip().lower() for v in values.split(",")]
+            jd_text = (d.get("jd_markdown") or "").lower()
+            for v in val_list:
+                if v in jd_text:
+                    score += 5
+                    
+        d["fit_score"] = min(100, max(0, score))
+        
+        # Extract a short pitch
+        jd = d.get("jd_markdown") or ""
+        lines = [line.strip() for line in jd.split('\\n') if line.strip() and not line.startswith('#')]
+        d["jd_pitch"] = lines[0][:120] + "..." if lines else "Join our team to help build the future."
+        d["team_pitch"] = "We're a fast-moving team focused on high impact."
+        
+        pos_list.append(d)
+        
+    # Sort by fit_score descending
+    pos_list.sort(key=lambda x: x["fit_score"], reverse=True)
+    
+    # Only return top matches (score > 40)
+    matches = [p for p in pos_list if p["fit_score"] > 40]
+    
+    return {
+        "positions": matches,
+        "total": len(matches)
+    }
+

@@ -28,6 +28,7 @@ import IntegrationsTab from './tabs/IntegrationsTab'
 import AppearanceTab from './tabs/AppearanceTab'
 import SecurityTab from './tabs/SecurityTab'
 import PrivacyTab from './tabs/PrivacyTab'
+import CareerBrandTab from './tabs/CareerBrandTab'
 import '../../styles/settings.css'
 
 const RAIL_GROUPS = [
@@ -101,7 +102,7 @@ const SECTION_COMPONENTS = {
   'competitors': CompetitorsTab,
   'templates': MessageTemplatesTab,
   'appearance': AppearanceTab,
-  'career-brand': () => <PlaceholderSection title="Career Page Brand" desc="Configure primary color, banner image, tagline, and hero copy for your public career page." icon="home" phase={2} />,
+  'career-brand': CareerBrandTab,
   'privacy': PrivacyTab,
   'security': SecurityTab,
   'integrations': IntegrationsTab,
@@ -155,10 +156,12 @@ export default function SettingsPage() {
 
   const switchSection = (key) => {
     setActiveSection(key)
+    setPreviewData(null) // Reset preview data when switching tabs
     navigate(`/settings/${key}`, { replace: true })
   }
 
   const ActiveComponent = SECTION_COMPONENTS[activeSection] || ProfileTab
+  const [previewData, setPreviewData] = useState(null)
 
   // Find active group color
   const activeGroup = RAIL_GROUPS.find(g => g.items.some(i => i.key === activeSection))
@@ -269,13 +272,13 @@ export default function SettingsPage() {
                 activeItemReadOnly = true;
               }
             }
-            return <ActiveComponent isReadOnly={activeItemReadOnly} />
+            return <ActiveComponent isReadOnly={activeItemReadOnly} onPreviewUpdate={setPreviewData} />
           })()}
         </div>
 
         {/* Right Preview - Conditionally rendered */}
         {['ats-rules', 'sourcing', 'screening', 'scorecards', 'bias', 'career-brand'].includes(activeSection) && (
-          <SettingsLivePreview activeSection={activeSection} />
+          <SettingsLivePreview activeSection={activeSection} previewData={previewData} />
         )}
       </div>
     </div>

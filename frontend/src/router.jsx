@@ -31,6 +31,7 @@ const DashboardPage        = lazy(() => import('./components/Dashboard/Dashboard
 const ApplyPage            = lazy(() => import('./components/Apply/ApplyPage'))
 const PanelPage            = lazy(() => import('./components/Panel/PanelPage'))
 const CareerPage           = lazy(() => import('./components/Careers/CareerPage'))
+const CareersIndexPage     = lazy(() => import('./components/Careers/CareersIndexPage'))
 const DeleteMyDataPage     = lazy(() => import('./components/GDPR/DeleteMyDataPage'))
 const CandidateStatusPage  = lazy(() => import('./components/Status/CandidateStatusPage'))
 const PositionsListPage    = lazy(() => import('./components/Positions/PositionsListPage'))
@@ -223,8 +224,9 @@ export const router = createBrowserRouter([
   },
   { path: '/apply/:token', element: <Suspense fallback={PageLoading}><ApplyPage /></Suspense> },
   { path: '/panel/:token', element: <Suspense fallback={PageLoading}><PanelPage /></Suspense> },
+  { path: '/careers', element: <Suspense fallback={PageLoading}><CareersIndexPage /></Suspense> },
   { path: '/careers/:orgSlug', element: <Suspense fallback={PageLoading}><CareerPage /></Suspense> },
-  { path: '/careers/:orgSlug/:positionId', element: <Suspense fallback={PageLoading}><CareerPage /></Suspense> },
+  { path: '/careers/:orgSlug/positions/:positionId', element: <Suspense fallback={PageLoading}><CareerPage /></Suspense> },
   { path: '/delete-my-data', element: <Suspense fallback={PageLoading}><DeleteMyDataPage /></Suspense> },
   { path: '/privacy', element: <Suspense fallback={PageLoading}><DeleteMyDataPage /></Suspense> },
   { path: '/status/:token', element: <Suspense fallback={PageLoading}><CandidateStatusPage /></Suspense> },
