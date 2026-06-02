@@ -408,14 +408,14 @@ async def get_pipeline_summary(
         # We approximate via pipeline_events
         pass_rows = await conn.fetch(
             """
-            SELECT event_data->>'from_status' AS from_status,
+            SELECT event_data::jsonb->>'from_status' AS from_status,
                    COUNT(*) AS moved_count
             FROM pipeline_events
             WHERE position_id = $1 AND org_id = $2
               AND event_type = 'status_changed'
               AND created_at >= NOW() - INTERVAL '30 days'
-              AND event_data->>'from_status' IS NOT NULL
-            GROUP BY event_data->>'from_status'
+              AND event_data::jsonb->>'from_status' IS NOT NULL
+            GROUP BY event_data::jsonb->>'from_status'
             """,
             position_id, current_user["org_id"],
         )
@@ -423,14 +423,14 @@ async def get_pipeline_summary(
 
         enter_rows = await conn.fetch(
             """
-            SELECT event_data->>'to_status' AS to_status,
+            SELECT event_data::jsonb->>'to_status' AS to_status,
                    COUNT(*) AS entered_count
             FROM pipeline_events
             WHERE position_id = $1 AND org_id = $2
               AND event_type = 'status_changed'
               AND created_at >= NOW() - INTERVAL '30 days'
-              AND event_data->>'to_status' IS NOT NULL
-            GROUP BY event_data->>'to_status'
+              AND event_data::jsonb->>'to_status' IS NOT NULL
+            GROUP BY event_data::jsonb->>'to_status'
             """,
             position_id, current_user["org_id"],
         )

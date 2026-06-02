@@ -1846,3 +1846,19 @@ Removed `state` from the `navigate()` call in the "Resume AI Chat" button in `JD
 
 **Files Modified:**
 - `frontend/src/components/Positions/tabs/JDTab.jsx`
+
+---
+
+## 110. GET /positions/{id}/pipeline-summary → 500: operator does not exist: text ->> unknown
+
+**Problem Statement:**
+Loading the pipeline summary for any position returned a 500 error, breaking the pipeline analytics panel on position detail pages.
+
+**Root Cause:**
+`pipeline_events.event_data` is defined as `TEXT` in the schema (`migrations.py:355`). The `get_pipeline_summary` endpoint used the `->>` JSON extraction operator directly on this column (`event_data->>'from_status'`, `event_data->>'to_status'`). PostgreSQL's `->>` operator only works on `json`/`jsonb` types — applying it to `text` raises `UndefinedFunctionError: operator does not exist: text ->> unknown`.
+
+**Idea / Solution:**
+Cast `event_data` to `jsonb` inline at every point of use: `event_data::jsonb->>'key'`. This avoids a schema migration (the data is already valid JSON stored as text) and fixes all 6 affected expressions in the two pipeline-events queries.
+
+**Files Modified:**
+- `backend/routers/positions.py`
