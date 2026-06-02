@@ -95,7 +95,7 @@ export default function Sidebar() {
   }
 
   const handleNewHire = () => {
-    resetChat()
+    resetChat(user)
     navigate('/chat')
   }
 

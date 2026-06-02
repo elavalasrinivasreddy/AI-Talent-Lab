@@ -1,7 +1,34 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 
-const GREETING = { role: 'assistant', content: "Hi! Tell me about the role you're hiring for.", isComplete: true };
+/**
+ * Item 15: Dynamic greeting — replaces static GREETING constant.
+ * Uses time-of-day, user name, and session context.
+ */
+function buildGreeting(user, locationState, sessionData) {
+    const hour = new Date().getHours();
+    let timeGreet = 'Hi';
+    if (hour >= 5 && hour < 12) timeGreet = 'Good morning';
+    else if (hour >= 12 && hour < 17) timeGreet = 'Good afternoon';
+    else if (hour >= 17 && hour < 22) timeGreet = 'Good evening';
+
+    const firstName = user?.name?.split(' ')[0];
+    const nameGreet = firstName ? `${timeGreet}, ${firstName}!` : `${timeGreet}!`;
+
+    // Context-aware greeting body
+    let body;
+    if (sessionData?.position_status === 'draft_needs_revision') {
+        body = `Your JD has feedback from the reviewer. Let's revise it together.`;
+    } else if (locationState?.hireRequestId) {
+        body = `I see you have a hire request ready. Tell me about the role, and I'll draft the JD with you.`;
+    } else {
+        body = `Tell me about the role you're hiring for. I'll help you craft the perfect job description.`;
+    }
+
+    return { role: 'assistant', content: `${nameGreet} ${body}`, isComplete: true };
+}
+
+const DEFAULT_GREETING = { role: 'assistant', content: "Hi! Tell me about the role you're hiring for.", isComplete: true };
 
 const ChatContext = createContext();
 
@@ -16,7 +43,7 @@ export const ChatProvider = ({ children }) => {
     const [sessionTitle, setSessionTitle] = useState('New Hire');
     const [isTitleAnimating, setIsTitleAnimating] = useState(false);
 
-    const [messages, setMessages] = useState([GREETING]);
+    const [messages, setMessages] = useState([DEFAULT_GREETING]);
     const [isStreaming, setIsStreaming] = useState(false);
     const [workflowStage, setWorkflowStage] = useState('intake');
     const [isReadOnly, setIsReadOnly] = useState(false);
@@ -36,11 +63,12 @@ export const ChatProvider = ({ children }) => {
     const [sessionLoaded, setSessionLoaded] = useState(false);
 
     // ── Reset all chat state ──────────────────────────────────
-    const resetChat = useCallback(() => {
+    const resetChat = useCallback((user, locationState) => {
         setCurrentSessionId(null);
         setSessionTitle('New Hire');
-        // Greeting comes from backend on first session fetch, but we seed it locally for reliability.
-        setMessages([GREETING]);
+        // Item 15: Dynamic greeting based on context
+        const greeting = buildGreeting(user, locationState);
+        setMessages([greeting]);
         setIsStreaming(false);
         setWorkflowStage('intake');
         setIsReadOnly(false);
@@ -55,7 +83,7 @@ export const ChatProvider = ({ children }) => {
         setStageSkipped([]);
         setGraphState({});
         setError(null);
-        setSessionLoaded(true); // fresh chat counts as loaded immediately
+        setSessionLoaded(true);
     }, []);
 
     // ── Fetch sessions list ───────────────────────────────────
@@ -107,10 +135,13 @@ export const ChatProvider = ({ children }) => {
                 const dbMessages = (data.messages || []).map(m => ({
                     role: m.role,
                     content: m.content,
-                    isComplete: true
+                    isComplete: true,
+                    // Item 14: Preserve message_type for feedback_injection rendering
+                    message_type: m.message_type || null,
+                    revision_cycle: m.revision_cycle || null,
                 }));
                 if (dbMessages.length === 0 && (!data.workflow_stage || data.workflow_stage === 'intake')) {
-                    setMessages([GREETING]);
+                    setMessages([buildGreeting(null, null, data)]);
                 } else {
                     setMessages(dbMessages);
                 }
@@ -160,17 +191,15 @@ export const ChatProvider = ({ children }) => {
                 if (gs.bias_skipped) skips.push('bias_check');
                 setStageSkipped(skips);
             } else if (res.status === 404) {
-                // Session doesn't exist yet — fresh chat.
-                // We seed the static greeting message locally immediately.
                 setCurrentSessionId(sessionId);
-                setMessages([GREETING]);
+                setMessages([buildGreeting(null, null)]);
                 setWorkflowStage('intake');
                 setSessionTitle('New Hire');
             }
         } catch (err) {
             console.error("Failed to load session", err);
             setCurrentSessionId(sessionId);
-            setMessages([GREETING]);
+            setMessages([DEFAULT_GREETING]);
         } finally {
             setSessionLoaded(true);
         }

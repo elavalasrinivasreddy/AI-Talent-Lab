@@ -39,6 +39,26 @@ const MessageBubble = ({ message }) => {
     const isSystem = message.role === 'system';
 
     if (isSystem) {
+        // Item 14: Render feedback_injection messages as styled cards
+        if (message.message_type === 'feedback_injection') {
+            return (
+                <div className="msg msg--feedback-injection">
+                    <div className="feedback-injection-card">
+                        <div className="feedback-injection-header">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="2">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                            </svg>
+                            <span className="feedback-injection-title">
+                                Reviewer Feedback{message.revision_cycle ? ` — Revision ${message.revision_cycle}` : ''}
+                            </span>
+                        </div>
+                        <div className="feedback-injection-body">
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
         return <div className="msg msg--system">{message.content}</div>;
     }
 

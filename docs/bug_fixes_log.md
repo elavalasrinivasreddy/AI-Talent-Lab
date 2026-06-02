@@ -1865,7 +1865,7 @@ Cast `event_data` to `jsonb` inline at every point of use: `event_data::jsonb->>
 
 ---
 
-## 56. JD Generation Workflow — Design Rev 4 Implementation
+## 111. JD Generation Workflow — Design Rev 4 Implementation
 
 **Date:** 2026-06-02
 
@@ -1939,7 +1939,7 @@ Added 4 new API endpoints:
 
 ---
 
-## 57. Transition Guard Mismatches (State Machine Bug Fix)
+## 112. Transition Guard Mismatches (State Machine Bug Fix)
 
 **Date:** 2026-06-02
 
@@ -1963,7 +1963,7 @@ Three critical state transition guard mismatches existed between the service lay
 
 ---
 
-## 58. Idempotent Feedback Injection into Chat Sessions
+## 113. Idempotent Feedback Injection into Chat Sessions
 
 **Date:** 2026-06-02
 
@@ -1985,7 +1985,7 @@ The injected message renders as a system message in the chat with the reviewer's
 
 ---
 
-## 59. Celery Periodic Task — Stale Review Lock Cleanup
+## 114. Celery Periodic Task — Stale Review Lock Cleanup
 
 **Date:** 2026-06-02
 
@@ -2006,3 +2006,150 @@ Registered the task in `celery_app.py`:
 **Files Modified:**
 - `backend/tasks/hire_request_locks.py` (new file)
 - `backend/celery_app.py` (include list + beat_schedule)
+
+---
+
+## 115. JD Generation Workflow — Full 25-Item Implementation (Design Rev 4)
+
+**Date:** 2026-06-02
+
+### Item 4: Remove phantom `approved` state — direct `pending_jd_approval → open`
+
+**Problem:** Positions transitioned through a phantom `approval_status='approved'` intermediate state before becoming `open`. This caused a race window where sourcing could fire twice.
+
+**Solution:** Replaced inline SQL with atomic `PositionRepository.approve_and_open()` CAS method that goes directly from `pending_jd_approval → open` with `approval_status='approved'` in a single atomic UPDATE. The CAS guard (`WHERE status = 'pending_jd_approval'`) prevents double-fire entirely.
+
+### Item 6: TL cancel-after-pickup (`jd_in_progress → cancelled`)
+
+**Problem:** No mechanism for a team lead to cancel a position after HR picks it up but before submission. TLs had to wait for HR to submit and then reject, creating unnecessary cycles.
+
+**Solution:** New `PositionService.cancel_jd_in_progress()` + `POST /api/v1/positions/{id}/cancel-jd` endpoint. Guards: status must be `jd_in_progress`, caller must be `team_lead` or `org_head`, mandatory cancellation notes. Notifies the HR who picked it up.
+
+### Item 7: HR withdraw submission (`pending_jd_approval → jd_in_progress`)
+
+**Problem:** Once HR submitted a JD for approval, there was no way to retract it. If the HR realized they made a mistake, they had to wait for the reviewer to reject, wasting the reviewer's time.
+
+**Solution:** New `PositionService.withdraw_submission()` + `POST /api/v1/positions/{id}/withdraw-submission` endpoint. Resets `approval_status`, `reviewer_id`, `submitted_at`, `review_notes` to null. Notifies the reviewer. `revision_cycle` does NOT increment (not a reviewer-initiated change).
+
+### Item 9: Cross-dept authority check in approve endpoint
+
+**Problem:** Any team_lead or dept_admin could approve any position, regardless of department affiliation. A TL from Engineering could approve a Marketing JD.
+
+**Solution:** In `record_approval_decision()`, non-org_head approvers are now validated: (1) they must be the assigned `reviewer_id` on the position, (2) their `department_id` must match the position's `department_id`. Raises `PermissionError` on mismatch, surfaced as HTTP 403.
+
+### Item 10: Transactional ATS config + status in submit
+
+**Problem:** ATS config (threshold, search interval) was set separately from the submission status transition, creating a window where config could be lost on failure.
+
+**Solution:** `submit_for_approval()` now accepts optional `ats_threshold` and `search_interval_hours` params. Updates ATS config atomically within the same connection context as the status transition.
+
+### Item 11: Post-approval single transaction; async jobs after commit
+
+**Problem:** Approval mutations (position status, hire_request fulfillment) were not in a single transaction. A crash between them would leave inconsistent state.
+
+**Solution:** Wrapped approve/reject logic in `async with conn.transaction()`. On approval: `PositionRepository.approve_and_open()` + `PositionRepository.fulfill_hire_request()` execute in the same transaction. Celery sourcing, email, and notifications fire after commit.
+
+### Item 12: Reviewer deletion trigger — re-resolve on user delete/deactivate
+
+**Problem:** If a reviewer was deleted/deactivated, positions pending their review would be stuck indefinitely.
+
+**Solution:** New `PositionService.re_resolve_reviewers_on_user_delete(deleted_user_id, org_id)` method + `PositionRepository.get_positions_pending_review_by_user()` + `reassign_reviewer()`. Cascades: dept_admin → org_head fallback. Notifies the new reviewer.
+
+### Item 16: Reviewer preview — `/resolve-reviewer` endpoint
+
+**Problem:** The chat UI had no way to show who would review the JD before the HR submits. The reviewer name only appeared after submission.
+
+**Solution:** New `GET /api/v1/positions/resolve-reviewer?position_id=X` endpoint. Returns `{ reviewer_id, reviewer_name, reviewer_role, department, is_bypass, warning }`. Called by the FinalJDCard when chat reaches the `final_jd` stage.
+
+### Item 17: Block submit when no reviewer can be resolved
+
+**Problem:** If no team_lead, dept_admin, or org_head existed, the submission would go through with `reviewer_id = null`, creating an unreviewable position.
+
+**Solution:** In `submit_for_approval()`, after `resolve_reviewer()` returns, if `reviewer_id` is None and the user is not an org_head, a `ValueError` is raised: "No reviewer available. Ask your workspace admin to assign an org head."
+
+### Item 19: Org_head bypass in Flow 2
+
+**Problem:** When an org_head creates a JD directly (Flow 2), the position still went through the `pending_jd_approval` queue — requiring the org_head to approve their own work.
+
+**Solution:** In `resolve_reviewer()`, if the creator's role is `org_head`, returns `is_bypass=True`. In `submit_for_approval()`, on bypass: calls `PositionRepository.org_head_direct_approve()` which sets `status='open'` + `approval_status='approved'` + fulfills the hire_request in a single transaction, then fires Celery sourcing. Skips the review queue entirely.
+
+### Item 20: Flow 2 reviewer resolution (full department matrix)
+
+**Problem:** Reviewer resolution only used a simple TL → org_head fallback. The design doc specifies a full matrix: `dept_admin → org_head`, `hr + dept → dept_admin → org_head`, `hr + no dept → org_head`, with self-approval blocking.
+
+**Solution:** Complete rewrite of `resolve_reviewer()` with the full matrix logic. Checks org settings for approval toggles (Item 21). Blocks self-approval by escalating to an alternative org_head.
+
+### Item 21: Approval Rules settings (2 toggles)
+
+**Problem:** No way to configure whether HR or dept_admin submissions require review.
+
+**Solution:** `resolve_reviewer()` reads `organizations.settings` JSONB for two keys: `direct_hire_hr_requires_review` (default: true) and `direct_hire_dept_admin_requires_org_head_review` (default: true). When false, the respective role gets `is_bypass=True`.
+
+### Item 22: Same-title warning card + transactional suffix
+
+**Problem:** HR could create duplicate positions with the same title without any warning.
+
+**Solution:** New `GET /api/v1/positions/{id}/same-title-check` endpoint + `PositionRepository.find_same_title()` + `compute_title_suffix()` (with `FOR UPDATE` lock to prevent TOCTOU races). Frontend will call this during intake stage.
+
+### Item 24: ATS config role gate post-open
+
+**Problem:** Any user could edit ATS config (threshold, search interval) on open positions.
+
+**Solution:** New `PositionService.update_ats_config_post_open()` + `PATCH /api/v1/positions/{id}/ats-config`. Enforces: only `org_head` or `dept_admin` roles, only on positions with `status='open'`, only `ats_threshold` and `search_interval_hours` fields.
+
+### VALID_STATUSES expansion
+
+**Problem:** `VALID_STATUSES` set only contained `{draft, open, on_hold, closed, archived}`, blocking transitions to the new states.
+
+**Solution:** Expanded to `{draft, jd_in_progress, pending_jd_approval, draft_needs_revision, open, on_hold, closed, archived, cancelled}`.
+
+### HR Pickup — Status Transition Fix
+
+**Problem:** `atomic_hr_pickup()` only set `picked_up_by` without changing `status`, so the position stayed in `draft` after pickup. Design doc requires `draft → jd_in_progress` on pickup.
+
+**Solution:** Updated `PositionRepository.atomic_hr_pickup()` to also set `status = 'jd_in_progress'` atomically. Removed the `AND status = 'draft'` guard since the `picked_up_by IS NULL` check is sufficient.
+
+### Submit Guard — Status Validation
+
+**Problem:** `submit_for_approval()` had no guard checking position status. It could be called from any status, including `open` or `cancelled`.
+
+**Solution:** Added guard: only positions in `jd_in_progress` or `draft_needs_revision` can be submitted.
+
+### Submit_for_jd_approval — Position Status Update
+
+**Problem:** `submit_for_jd_approval()` only set `approval_status='pending'` without changing `position.status`, so position stayed in `jd_in_progress` after submit.
+
+**Solution:** Updated to also set `position.status = 'pending_jd_approval'` atomically.
+
+**Files Modified:**
+- `backend/db/repositories/positions.py` (added 12 new methods)
+- `backend/services/position_service.py` (rewrote `submit_for_approval`, `record_approval_decision`, added 6 new service methods)
+- `backend/routers/positions.py` (added 5 new endpoints + PermissionError handling)
+
+### Item 14: Feedback card UI in chat (Frontend)
+
+**Problem:** When a reviewer rejects a JD with feedback notes, the `feedback_injection` messages appeared as plain system text in the chat, indistinguishable from other system messages.
+
+**Solution:** Added `FeedbackInjectionCard` component in `MessageList.jsx`. Renders `message_type='feedback_injection'` messages as amber-accented styled cards with a speech-bubble icon, revision cycle number, and markdown-rendered feedback content. Updated `ChatContext.jsx` to preserve `message_type` and `revision_cycle` fields from backend message payloads. Added corresponding CSS in `chat.css`.
+
+### Item 15: Dynamic greeting (`buildGreeting()`) (Frontend)
+
+**Problem:** The chat always showed the same static greeting: "Hi! Tell me about the role you're hiring for." — regardless of time, user, or context (returning to a revision, following up on a hire request, etc.).
+
+**Solution:** Replaced the `GREETING` constant with `buildGreeting(user, locationState, sessionData)`. Uses time-of-day salutations (morning/afternoon/evening), user's first name, and context-aware body text: revision sessions show "Your JD has feedback...", hire request contexts show "I see you have a hire request...", and default shows the standard prompt. The `resetChat()` callback now accepts user and locationState params.
+
+### Item 18: Chat deletion locking by status (Frontend + Backend)
+
+**Problem:** Users could delete chat sessions even when the linked position was under review (`pending_jd_approval`) or already live (`open`), which would orphan the position from its chat history.
+
+**Solution:**
+- **Frontend (`SidebarSessions.jsx`):** Delete button is hidden entirely for `open` positions, disabled with "Cannot delete while under review" tooltip for `pending_jd_approval`, and shown normally for all other statuses.
+- **Backend (`sessions.py`):** Updated `list_visible()` queries to LEFT JOIN positions table and return `position_status` in the session listing so the frontend has the data it needs.
+- **Backend (`sessions.py`):** Updated the `get()` messages query to include `message_type` and `revision_cycle` columns for feedback card rendering.
+
+**Files Modified:**
+- `frontend/src/context/ChatContext.jsx` (buildGreeting, message_type preservation)
+- `frontend/src/components/Chat/MessageList.jsx` (FeedbackInjectionCard)
+- `frontend/src/components/Sidebar/SidebarSessions.jsx` (delete locking)
+- `frontend/src/styles/chat.css` (feedback card styles)
+- `backend/db/repositories/sessions.py` (position_status in list, message_type in get)

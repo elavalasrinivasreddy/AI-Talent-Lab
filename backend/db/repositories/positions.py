@@ -255,10 +255,10 @@ class PositionRepository:
             UPDATE positions
                SET picked_up_by = $1,
                    picked_up_at = NOW(),
+                   status = 'jd_in_progress',
                    updated_at = NOW()
              WHERE id = $2 AND org_id = $3
                AND picked_up_by IS NULL
-               AND status = 'draft'
             """,
             hr_user_id, position_id, org_id,
         )
@@ -284,7 +284,8 @@ class PositionRepository:
         await conn.execute(
             """
             UPDATE positions
-               SET approval_status = 'pending',
+               SET status = 'pending_jd_approval',
+                   approval_status = 'pending',
                    requires_approval = TRUE,
                    reviewer_id = $1,
                    submitted_by_role = $2,
@@ -316,3 +317,220 @@ class PositionRepository:
             position_id, org_id,
         )
         return new_cycle or 0
+
+    # ── Item 6: TL cancel-after-pickup (jd_in_progress → cancelled) ───────
+
+    @staticmethod
+    async def cancel_jd_in_progress(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+    ) -> bool:
+        """Atomic: jd_in_progress → cancelled. Returns True on success."""
+        result = await conn.execute(
+            """
+            UPDATE positions
+               SET status = 'cancelled',
+                   updated_at = NOW()
+             WHERE id = $1 AND org_id = $2
+               AND status = 'jd_in_progress'
+            """,
+            position_id, org_id,
+        )
+        return result.endswith("1")
+
+    # ── Item 7: HR withdraw (pending_jd_approval → jd_in_progress) ────────
+
+    @staticmethod
+    async def withdraw_submission(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+    ) -> bool:
+        """Atomic: pending_jd_approval → jd_in_progress. Bias resets."""
+        result = await conn.execute(
+            """
+            UPDATE positions
+               SET status = 'jd_in_progress',
+                   approval_status = NULL,
+                   reviewer_id = NULL,
+                   submitted_at = NULL,
+                   review_notes = NULL,
+                   updated_at = NOW()
+             WHERE id = $1 AND org_id = $2
+               AND status = 'pending_jd_approval'
+            """,
+            position_id, org_id,
+        )
+        return result.endswith("1")
+
+    # ── Item 11: Transactional approval (pending_jd_approval → open) ──────
+
+    @staticmethod
+    async def approve_and_open(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+        approver_user_id: int,
+    ) -> bool:
+        """Atomic: pending_jd_approval → open with approval_status='approved'."""
+        result = await conn.execute(
+            """
+            UPDATE positions
+               SET status = 'open',
+                   approval_status = 'approved',
+                   approved_by = $1,
+                   approved_at = NOW(),
+                   review_notes = NULL,
+                   updated_at = NOW()
+             WHERE id = $2 AND org_id = $3
+               AND status = 'pending_jd_approval'
+            """,
+            approver_user_id, position_id, org_id,
+        )
+        return result.endswith("1")
+
+    @staticmethod
+    async def reject_to_revision(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+        notes: str,
+    ) -> bool:
+        """Atomic: pending_jd_approval → draft_needs_revision."""
+        result = await conn.execute(
+            """
+            UPDATE positions
+               SET status = 'draft_needs_revision',
+                   approval_status = 'changes_requested',
+                   review_notes = $1,
+                   updated_at = NOW()
+             WHERE id = $2 AND org_id = $3
+               AND status = 'pending_jd_approval'
+            """,
+            notes, position_id, org_id,
+        )
+        return result.endswith("1")
+
+    # ── Item 11 (cont.): Fulfill hire request in same transaction ─────────
+
+    @staticmethod
+    async def fulfill_hire_request(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+    ) -> None:
+        """Set the linked hire_request to 'fulfilled' (Flow 1 only)."""
+        await conn.execute(
+            """
+            UPDATE hire_requests
+               SET status = 'fulfilled',
+                   updated_at = NOW()
+             WHERE position_id = $1 AND org_id = $2
+               AND status IN ('approved', 'approved_modified', 'accepted')
+            """,
+            position_id, org_id,
+        )
+
+    # ── Item 19: Org_head direct-to-open bypass ───────────────────────────
+
+    @staticmethod
+    async def org_head_direct_approve(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+        user_id: int,
+    ) -> None:
+        """Flow 2 bypass: org_head creates → position goes to open directly."""
+        await conn.execute(
+            """
+            UPDATE positions
+               SET status = 'open',
+                   approval_status = 'approved',
+                   approved_by = $1,
+                   approved_at = NOW(),
+                   requires_approval = FALSE,
+                   updated_at = NOW()
+             WHERE id = $2 AND org_id = $3
+            """,
+            user_id, position_id, org_id,
+        )
+
+    # ── Item 12: Re-resolve reviewer when user deleted ────────────────────
+
+    @staticmethod
+    async def get_positions_pending_review_by_user(
+        conn: asyncpg.Connection,
+        user_id: int,
+        org_id: int,
+    ) -> list[dict]:
+        """Find positions where a deleted/deactivated user is the reviewer."""
+        rows = await conn.fetch(
+            """
+            SELECT id, department_id, created_by
+            FROM positions
+            WHERE org_id = $1
+              AND reviewer_id = $2
+              AND status = 'pending_jd_approval'
+            """,
+            org_id, user_id,
+        )
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    async def reassign_reviewer(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+        new_reviewer_id: int,
+        new_reviewer_role: str,
+    ) -> None:
+        """Reassign the reviewer on a pending position."""
+        await conn.execute(
+            """
+            UPDATE positions
+               SET reviewer_id = $1,
+                   reviewer_role_at_submit = $2,
+                   updated_at = NOW()
+             WHERE id = $3 AND org_id = $4
+            """,
+            new_reviewer_id, new_reviewer_role, position_id, org_id,
+        )
+
+    # ── Item 22: Same-title duplicate check ───────────────────────────────
+
+    @staticmethod
+    async def find_same_title(
+        conn: asyncpg.Connection,
+        org_id: int,
+        role_name: str,
+    ) -> list[dict]:
+        """Find active positions with the same title (case-insensitive)."""
+        rows = await conn.fetch(
+            """
+            SELECT id, status, role_name
+            FROM positions
+            WHERE org_id = $1
+              AND LOWER(role_name) = LOWER($2)
+              AND status != 'cancelled'
+            """,
+            org_id, role_name,
+        )
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    async def compute_title_suffix(
+        conn: asyncpg.Connection,
+        org_id: int,
+        role_name: str,
+    ) -> int:
+        """Transactional suffix to prevent TOCTOU on same-title."""
+        count = await conn.fetchval(
+            """
+            SELECT COUNT(*) + 1 FROM positions
+            WHERE org_id = $1 AND LOWER(role_name) = LOWER($2)
+            FOR UPDATE
+            """,
+            org_id, role_name,
+        )
+        return count or 1

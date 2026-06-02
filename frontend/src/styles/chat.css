@@ -374,6 +374,63 @@
   background: var(--color-border);
 }
 
+/* ── Item 14: Feedback Injection Card ────────────────────── */
+.msg--feedback-injection {
+  width: 100%;
+  max-width: 56ch;
+  animation: rise 280ms ease-out both;
+}
+
+.feedback-injection-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid hsl(38, 60%, 30%);
+  border-left: 4px solid hsl(38, 80%, 55%);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.feedback-injection-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.feedback-injection-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: hsl(38, 80%, 65%);
+}
+
+.feedback-injection-body {
+  font-size: var(--font-size-sm);
+  line-height: 1.65;
+  color: var(--color-text-secondary);
+}
+
+.feedback-injection-body p {
+  margin: 0 0 var(--space-2);
+}
+
+.feedback-injection-body p:last-child {
+  margin-bottom: 0;
+}
+
+.feedback-injection-body strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.feedback-injection-body em {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
 /* Streaming cursor: a thin baseline trace, not a fat block */
 .stream-cursor {
   display: inline-block;

@@ -73,7 +73,7 @@ const ChatPage = () => {
         if (!sessionId) {
             loadedRef.current = null;
             hireRequestSentRef.current = false;
-            resetChat();
+            resetChat(null, location.state);
             return;
         }
 
