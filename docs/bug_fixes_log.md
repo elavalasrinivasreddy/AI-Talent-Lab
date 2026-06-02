@@ -1658,3 +1658,105 @@ Added `priority=priority` to the `PositionRepository.create()` call inside `Hire
 
 **Files Modified:**
 - `backend/services/hire_request_service.py`
+
+---
+
+## 99. JD Chat Read-Only Mode Not Enforced During Pending Approval
+
+**Problem Statement:**
+After HR submitted a JD for team lead approval, reopening the position's chat allowed full interaction — HR could still send messages, click "Save Draft", "Finalize JD", and use the bias check. The chat should be locked read-only while approval is pending.
+
+**Root Cause:**
+`submit_for_approval` sets `approval_status='pending'` but leaves `p.status='draft'`. The ChatContext read-only check only examined `position_status` (p.status), which stays `'draft'` and is always in the editable allowlist. The `position_approval_status` field was returned by the session API but never used. Additionally, `FinalizeCTA.jsx` (the rail button) had no `isReadOnly` check at all.
+
+**Idea / Solution:**
+1. Updated `ChatContext.jsx` read-only check to also evaluate `position_approval_status === 'pending'`.
+2. Added `isReadOnly` guard to `FinalizeCTA.jsx` (`canFinalize = ... && !isReadOnly`).
+3. Added an amber read-only banner in `ChatTopBar.jsx` — shown when `isReadOnly` is true so HR knows why editing is disabled.
+
+**Files Modified:**
+- `frontend/src/context/ChatContext.jsx`
+- `frontend/src/components/Chat/FinalizeCTA.jsx`
+- `frontend/src/components/Chat/ChatTopBar.jsx`
+
+---
+
+## 100. Position Detail Shows Duplicate Approval Banners
+
+**Problem Statement:**
+When a position was pending approval, two overlapping warnings appeared: a full-width banner in the hero ("Awaiting team-lead approval. Candidate sourcing is paused…") visible to all users, and the JD review card in the JD tab for team leads. This was redundant and the hero banner showed for every user regardless of role.
+
+**Idea / Solution:**
+Removed the full-width `pd-approval-banner` from `PositionHero.jsx`. Instead, the existing status chip in the hero title row now shows "Pending Review" in amber (`warning` variant) when `approval_status === 'pending'`. One contextual signal replaces two banners.
+
+**Files Modified:**
+- `frontend/src/components/Positions/PositionHero.jsx`
+
+---
+
+## 101. "Request Changes" Button Broken — Wrong Decision Value + No Notes Input
+
+**Problem Statement:**
+The team lead's "Request Changes" button in the JD review card was silently failing with a browser `alert()` dialog. The error was a 422 from the backend because the frontend sent `decision='rejected'` but the backend only accepts `'approved'` or `'changes_requested'`. Additionally, there was no way for the team lead to provide feedback — the notes field was hardcoded to the string `'Changes requested'`.
+
+**Root Cause:**
+`handleDecision('rejected')` in `JDTab.jsx` used the wrong decision key. The backend's INVALID_DECISION guard caught it and returned 422. The catch block surfaced it via `alert()` (a browser native dialog). No notes textarea existed.
+
+**Idea / Solution:**
+1. "Request Changes" now opens an inline modal with a required textarea for feedback.
+2. The submit handler calls `approvalDecision(id, 'changes_requested', notes)` with the correct decision value.
+3. All `alert()` calls replaced with inline `decisionError` / `changesError` banners.
+4. Submit button is disabled until the textarea has content.
+
+**Files Modified:**
+- `frontend/src/components/Positions/tabs/JDTab.jsx`
+
+---
+
+## 102. Team Lead Feedback Notes Not Visible in Position After Changes Requested
+
+**Problem Statement:**
+After a team lead clicked "Request Changes" and provided feedback, the notes were only stored in the notification JSON. HR could only read them from the notification, but selecting text in the notification triggered navigation instead of copying. The feedback was not anchored anywhere on the JD/position view.
+
+**Idea / Solution:**
+1. Added `review_notes TEXT` column to the `positions` table via an idempotent migration.
+2. On `changes_requested`, `position_service.py` now persists the notes to `positions.review_notes`. On `approved`, it clears the field.
+3. `JDTab.jsx` now shows a "Team Lead Feedback" amber info box above the JD when `approval_status === 'changes_requested'` and `review_notes` is non-null. Text is selectable (`user-select: text`).
+
+**Files Modified:**
+- `backend/db/migrations.py`
+- `backend/services/position_service.py`
+- `frontend/src/components/Positions/tabs/JDTab.jsx`
+
+---
+
+## 103. JD Canvas Text Color Inconsistent After AI Update
+
+**Problem Statement:**
+After the AI updated a JD via chat refinement, newly added paragraph/list text appeared bright white while section headers were muted, creating a visual mismatch.
+
+**Root Cause:**
+`.jd-body p { color: var(--color-text-primary) }` came after `.jd-doc p { color: var(--color-text-secondary) }` in the CSS with equal specificity, so `.jd-body p` won — making paragraph text white. List items had no explicit color and inherited root white. Section headers (`h2`) correctly got `--color-text-tertiary` from `.jd-doc h2`. This made p/li white vs. muted h2.
+
+**Idea / Solution:**
+Changed `.jd-body p` to use `var(--color-text-secondary)` and added explicit `color: var(--color-text-secondary)` to `.jd-body ul`, `.jd-body ol`, and `.jd-body li`. All body text now consistently uses secondary color.
+
+**Files Modified:**
+- `frontend/src/styles/chat.css`
+
+---
+
+## 104. Bias Check Not Re-triggered After JD AI Update; Finalize JD Not Gated on Bias Check
+
+**Problem Statement:**
+After the AI refined the JD via chat, the "Run Inclusivity Check" button remained disabled (previous check still shown as done). HR could also click "Finalize JD" without ever running a bias check.
+
+**Root Cause:**
+`biasCheckDone` state in `FinalJDCard.jsx` was never reset when `finalJdMarkdown` changed due to an AI update. The Finalize JD button used `disabled={isBusy}` (only blocked while running), not when the check hadn't been run at all.
+
+**Idea / Solution:**
+1. Added `prevFinalJdRef` to track previous `finalJdMarkdown`. When it changes post-mount (AI update), `biasCheckDone`, `pendingFixes`, and `focusedDiffIdx` are reset — re-enabling the bias check button.
+2. Changed Finalize JD button `disabled` to `isBusy || !biasCheckDone` with tooltip "Run inclusivity check before finalizing".
+
+**Files Modified:**
+- `frontend/src/components/Chat/cards/FinalJDCard.jsx`

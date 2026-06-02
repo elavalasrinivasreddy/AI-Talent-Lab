@@ -13,13 +13,14 @@ import { IconCheck, IconArrowRight } from './icons';
  * Spec: docs/design/pages/05_jd_chat.md §6.C.
  */
 export default function FinalizeCTA() {
-  const { workflowStage, finalJdMarkdown } = useChat();
+  const { workflowStage, finalJdMarkdown, isReadOnly } = useChat();
   const [open, setOpen] = useState(false);
 
   // Allow saving once we have a final JD — the orchestrator marks stage as
   // `complete` on explicit `finalize_jd`, but we let the user finalize as
   // soon as the JD exists, matching today's behavior.
-  const canFinalize = Boolean(finalJdMarkdown) && workflowStage !== 'intake';
+  // Disabled while position is pending approval or live (isReadOnly).
+  const canFinalize = Boolean(finalJdMarkdown) && workflowStage !== 'intake' && !isReadOnly;
   const isComplete = workflowStage === 'complete';
 
   return (

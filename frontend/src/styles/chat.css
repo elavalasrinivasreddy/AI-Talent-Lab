@@ -1983,17 +1983,19 @@
 
 .jd-body p {
   margin: 12px 0;
-  color: var(--color-text-primary);
+  color: var(--color-text-secondary);
 }
 
 .jd-body ul,
 .jd-body ol {
   padding-left: 22px;
   margin: 12px 0;
+  color: var(--color-text-secondary);
 }
 
 .jd-body li {
   margin: 6px 0;
+  color: var(--color-text-secondary);
 }
 
 .jd-body strong {

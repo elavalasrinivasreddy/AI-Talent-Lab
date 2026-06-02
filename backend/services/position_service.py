@@ -330,7 +330,7 @@ class PositionService:
                     """
                     UPDATE positions
                     SET approval_status='approved', approved_by=$1, approved_at=NOW(),
-                        status='open', updated_at=NOW()
+                        status='open', review_notes=NULL, updated_at=NOW()
                     WHERE id=$2
                     """,
                     approver_user_id, position_id,
@@ -339,10 +339,10 @@ class PositionService:
                 await conn.execute(
                     """
                     UPDATE positions
-                    SET approval_status='changes_requested', updated_at=NOW()
-                    WHERE id=$1
+                    SET approval_status='changes_requested', review_notes=$1, updated_at=NOW()
+                    WHERE id=$2
                     """,
-                    position_id,
+                    notes or None, position_id,
                 )
 
             # In-app notification to HR

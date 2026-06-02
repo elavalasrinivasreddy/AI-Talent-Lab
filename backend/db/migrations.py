@@ -912,4 +912,17 @@ async def run_migrations(conn) -> None:
     await conn.execute(competitors_dept_sql)
     logger.info("  Competitors department_id column ensured.")
 
+    # ── Position review_notes column ──────────────────────────────────────────
+    review_notes_sql = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='review_notes') THEN
+            ALTER TABLE positions ADD COLUMN review_notes TEXT;
+        END IF;
+    END $$;
+    """
+    await conn.execute(review_notes_sql)
+    logger.info("  Position review_notes column ensured.")
+
     logger.info("Database migrations complete.")

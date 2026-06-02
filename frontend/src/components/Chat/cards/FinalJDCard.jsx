@@ -53,6 +53,7 @@ const FinalJDCard = () => {
     const [pendingFixes, setPendingFixes] = useState([]);
     const [biasCheckDone, setBiasCheckDone] = useState(false);
     const [focusedDiffIdx, setFocusedDiffIdx] = useState(null);
+    const prevFinalJdRef = useRef(null);
 
     const pendingIndices = useMemo(
         () => pendingFixes.map((f, i) => (f.status === 'pending' ? i : -1)).filter((i) => i >= 0),
@@ -96,6 +97,17 @@ const FinalJDCard = () => {
     useEffect(() => {
         if (!isEditing) setEditedMarkdown(liveMarkdown);
     }, [liveMarkdown, isEditing]);
+
+    // Reset bias check when the AI updates the JD content after initial load.
+    // Only fires when finalJdMarkdown changes (not during streaming updates).
+    useEffect(() => {
+        if (finalJdMarkdown && prevFinalJdRef.current !== null && prevFinalJdRef.current !== finalJdMarkdown) {
+            setBiasCheckDone(false);
+            setPendingFixes([]);
+            setFocusedDiffIdx(null);
+        }
+        prevFinalJdRef.current = finalJdMarkdown ?? null;
+    }, [finalJdMarkdown]);
 
     // ── Scroll to focused diff widget ──
     useEffect(() => {
@@ -468,7 +480,8 @@ const FinalJDCard = () => {
                             <button
                                 className="btn-primary"
                                 onClick={() => setShowModal(true)}
-                                disabled={isBusy}
+                                disabled={isBusy || !biasCheckDone}
+                                title={!biasCheckDone ? 'Run inclusivity check before finalizing' : undefined}
                                 style={{ width: '180px', justifyContent: 'center' }}
                             >
                                 Finalize JD <IconArrowRight size={14} />

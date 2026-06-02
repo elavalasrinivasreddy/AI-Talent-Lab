@@ -97,12 +97,11 @@ export const ChatProvider = ({ children }) => {
                 setSessionTitle(data.title || 'New Hire');
                 setWorkflowStage(data.workflow_stage || 'intake');
                 
-                // Read-only if linked position is pending approval or open
-                if (data.position_status && !['draft', 'rejected', 'draft_needs_revision'].includes(data.position_status)) {
-                    setIsReadOnly(true);
-                } else {
-                    setIsReadOnly(false);
-                }
+                // Read-only when position is submitted for approval (approval_status='pending')
+                // or already live (status not in editable set: draft/rejected/draft_needs_revision).
+                const pendingApproval = data.position_approval_status === 'pending';
+                const statusLocked = data.position_status && !['draft', 'rejected', 'draft_needs_revision'].includes(data.position_status);
+                setIsReadOnly(pendingApproval || !!statusLocked);
 
                 // Restore messages from DB
                 const dbMessages = (data.messages || []).map(m => ({

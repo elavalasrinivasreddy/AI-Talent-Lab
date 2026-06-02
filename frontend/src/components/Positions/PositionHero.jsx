@@ -43,7 +43,9 @@ export default function PositionHero({
   onSearchNow,
   onStatusChange,
 }) {
-  const status = STATUS_CHIP[position.status] || STATUS_CHIP.draft
+  const status = position.approval_status === 'pending'
+    ? { variant: 'warning', label: 'Pending Review' }
+    : STATUS_CHIP[position.status] || STATUS_CHIP.draft
   const priority = PRIORITY_CHIP[position.priority] || PRIORITY_CHIP.normal
 
   const comp = compRange(position.comp_min, position.comp_max)
@@ -124,15 +126,6 @@ export default function PositionHero({
 
       {searchMsg && <div className="pd-search-toast">{searchMsg}</div>}
 
-      {/* Approval banner */}
-      {position.approval_status === 'pending' && (
-        <div className="pd-approval-banner">
-          <Icon name="clock" size={14} />
-          <span>
-            <strong>Awaiting team-lead approval.</strong> Candidate sourcing is paused until the JD is approved.
-          </span>
-        </div>
-      )}
     </div>
   )
 }
