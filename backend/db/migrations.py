@@ -925,4 +925,113 @@ async def run_migrations(conn) -> None:
     await conn.execute(review_notes_sql)
     logger.info("  Position review_notes column ensured.")
 
+    # ══════════════════════════════════════════════════════════════════════
+    # JD Generation Workflow — Design Rev 4  (state_machines.md)
+    # ══════════════════════════════════════════════════════════════════════
+
+    # ── positions: HR pickup tracking ─────────────────────────────────────
+    jd_wf_positions_sql = """
+    DO $$
+    BEGIN
+        -- Atomic CAS guard for HR pickup (Flow 1)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='picked_up_by') THEN
+            ALTER TABLE positions ADD COLUMN picked_up_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='picked_up_at') THEN
+            ALTER TABLE positions ADD COLUMN picked_up_at TIMESTAMPTZ;
+        END IF;
+
+        -- Revision cycle counter (increments on reviewer rejection only)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='revision_cycle') THEN
+            ALTER TABLE positions ADD COLUMN revision_cycle INTEGER NOT NULL DEFAULT 0;
+        END IF;
+
+        -- Server-resolved reviewer for pending_jd_approval
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='reviewer_id') THEN
+            ALTER TABLE positions ADD COLUMN reviewer_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+
+        -- Authority snapshotting at submit time
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='submitted_by_role') THEN
+            ALTER TABLE positions ADD COLUMN submitted_by_role TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='reviewer_role_at_submit') THEN
+            ALTER TABLE positions ADD COLUMN reviewer_role_at_submit TEXT;
+        END IF;
+
+        -- When the JD was submitted for approval
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='submitted_at') THEN
+            ALTER TABLE positions ADD COLUMN submitted_at TIMESTAMPTZ;
+        END IF;
+    END $$;
+    """
+    await conn.execute(jd_wf_positions_sql)
+    logger.info("  JD workflow: positions columns ensured (pickup, revision, reviewer, authority).")
+
+    # ── hire_requests: admin_reviewing lock + modification tracking ────────
+    jd_wf_hire_requests_sql = """
+    DO $$
+    BEGIN
+        -- Atomic lock for admin review (30-min TTL, takeover after 10 min)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='reviewing_locked_by') THEN
+            ALTER TABLE hire_requests ADD COLUMN reviewing_locked_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='reviewing_locked_at') THEN
+            ALTER TABLE hire_requests ADD COLUMN reviewing_locked_at TIMESTAMPTZ;
+        END IF;
+
+        -- JSONB diff for approved_modified status
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='modification_diff') THEN
+            ALTER TABLE hire_requests ADD COLUMN modification_diff JSONB;
+        END IF;
+
+        -- General notes column (admin rejection/modification notes, TL cancel notes)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='notes') THEN
+            ALTER TABLE hire_requests ADD COLUMN notes TEXT;
+        END IF;
+    END $$;
+    """
+    await conn.execute(jd_wf_hire_requests_sql)
+    logger.info("  JD workflow: hire_requests columns ensured (admin lock, diff, notes).")
+
+    # ── chat_messages: feedback injection support ─────────────────────────
+    jd_wf_chat_messages_sql = """
+    DO $$
+    BEGIN
+        -- Distinguish feedback_injection from normal messages
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='chat_messages' AND column_name='message_type') THEN
+            ALTER TABLE chat_messages ADD COLUMN message_type TEXT;
+        END IF;
+
+        -- Ties feedback to a specific revision cycle
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='chat_messages' AND column_name='revision_cycle') THEN
+            ALTER TABLE chat_messages ADD COLUMN revision_cycle INTEGER NOT NULL DEFAULT 0;
+        END IF;
+    END $$;
+    """
+    await conn.execute(jd_wf_chat_messages_sql)
+    logger.info("  JD workflow: chat_messages columns ensured (message_type, revision_cycle).")
+
+    # ── Partial unique index: idempotent feedback injection guard ──────────
+    feedback_idx_sql = """
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_chat_feedback_injection
+        ON chat_messages (session_id, message_type, revision_cycle)
+        WHERE message_type = 'feedback_injection';
+    """
+    await conn.execute(feedback_idx_sql)
+    logger.info("  JD workflow: uq_chat_feedback_injection index ensured.")
+
     logger.info("Database migrations complete.")

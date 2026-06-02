@@ -187,6 +187,10 @@ class PositionRepository:
             # silently dropped, leaving stale values on the position.
             "role_name", "jd_variant_selected", "employment_type",
             "experience_min", "experience_max",
+            # JD Workflow Rev 4: HR pickup + approval tracking
+            "picked_up_by", "picked_up_at", "revision_cycle",
+            "reviewer_id", "submitted_by_role", "reviewer_role_at_submit",
+            "submitted_at", "review_notes",
         }
         fields = {k: v for k, v in data.items() if k in allowed}
         if not fields:
@@ -231,3 +235,84 @@ class PositionRepository:
             position_id, org_id
         )
         return dict(row) if row else None
+
+    # ── JD Workflow: Atomic HR Pickup (CAS) ───────────────────────────────
+
+    @staticmethod
+    async def atomic_hr_pickup(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+        hr_user_id: int,
+    ) -> bool:
+        """Atomic CAS: claim a position for JD work.
+
+        Guard: picked_up_by IS NULL AND status = 'draft'.
+        Returns True if this HR user acquired the lock, False if already taken.
+        """
+        result = await conn.execute(
+            """
+            UPDATE positions
+               SET picked_up_by = $1,
+                   picked_up_at = NOW(),
+                   updated_at = NOW()
+             WHERE id = $2 AND org_id = $3
+               AND picked_up_by IS NULL
+               AND status = 'draft'
+            """,
+            hr_user_id, position_id, org_id,
+        )
+        return result.endswith("1")
+
+    # ── JD Workflow: Submit for JD Approval ───────────────────────────────
+
+    @staticmethod
+    async def submit_for_jd_approval(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+        *,
+        reviewer_id: int,
+        submitted_by_role: str,
+        reviewer_role_at_submit: str,
+    ) -> None:
+        """Set position into pending_jd_approval state with reviewer snapshot.
+
+        Increments revision_cycle if this is a re-submission (review_notes is set),
+        otherwise leaves it at 0.
+        """
+        await conn.execute(
+            """
+            UPDATE positions
+               SET approval_status = 'pending',
+                   requires_approval = TRUE,
+                   reviewer_id = $1,
+                   submitted_by_role = $2,
+                   reviewer_role_at_submit = $3,
+                   submitted_at = NOW(),
+                   review_notes = NULL,
+                   updated_at = NOW()
+             WHERE id = $4 AND org_id = $5
+            """,
+            reviewer_id, submitted_by_role, reviewer_role_at_submit,
+            position_id, org_id,
+        )
+
+    @staticmethod
+    async def increment_revision_cycle(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+    ) -> int:
+        """Increment revision_cycle counter. Returns the new value."""
+        new_cycle = await conn.fetchval(
+            """
+            UPDATE positions
+               SET revision_cycle = revision_cycle + 1,
+                   updated_at = NOW()
+             WHERE id = $1 AND org_id = $2
+            RETURNING revision_cycle
+            """,
+            position_id, org_id,
+        )
+        return new_cycle or 0

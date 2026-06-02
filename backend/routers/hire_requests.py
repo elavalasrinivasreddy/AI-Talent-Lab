@@ -8,6 +8,8 @@ shims so the existing Dashboard widgets keep working — see routers/positions.p
 import logging
 from typing import Optional
 
+from pydantic import BaseModel, field_validator
+
 from fastapi import APIRouter, Depends, Query, Request
 
 import asyncpg
@@ -236,6 +238,99 @@ async def link_session(
         db, request_id, current_user["org_id"],
         user_id=current_user["user_id"],
         session_id=body.session_id,
+        ip_address=_get_ip(request),
+    )
+    return {"request": updated}
+
+
+# ── Admin Reviewing Flow (Design Rev 4) ──────────────────────────────────────
+
+@router.post("/{request_id}/begin-review")
+async def begin_review(
+    request_id: int,
+    request: Request,
+    current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Atomic CAS: submitted → admin_reviewing with lock.
+
+    If another admin holds a stale lock (>10 min), automatically takes over.
+    """
+    updated = await HireRequestService.begin_review(
+        db, request_id, current_user["org_id"],
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+        ip_address=_get_ip(request),
+    )
+    return {"request": updated}
+
+
+@router.post("/{request_id}/release-review")
+async def release_review(
+    request_id: int,
+    request: Request,
+    current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Release admin_reviewing lock → submitted (close without action)."""
+    updated = await HireRequestService.release_review(
+        db, request_id, current_user["org_id"],
+        user_id=current_user["user_id"],
+        ip_address=_get_ip(request),
+    )
+    return {"request": updated}
+
+
+class HireRequestApproveModified(BaseModel):
+    """Payload for approve-with-modifications."""
+    notes: str
+    modification_diff: dict = {}
+
+    @field_validator("notes")
+    @classmethod
+    def notes_not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Notes are required when approving with modifications")
+        return v
+
+
+@router.post("/{request_id}/approve-modified")
+async def approve_modified(
+    request_id: int,
+    request: Request,
+    body: HireRequestApproveModified,
+    current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Approve a hire request with modifications (JSONB diff stored)."""
+    updated = await HireRequestService.approve_modified(
+        db, request_id, current_user["org_id"],
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+        dept_id=current_user.get("dept_id"),
+        notes=body.notes,
+        modification_diff=body.modification_diff,
+        ip_address=_get_ip(request),
+    )
+    return {"request": updated}
+
+
+@router.post("/{request_id}/withdraw")
+async def withdraw_hire_request(
+    request_id: int,
+    request: Request,
+    current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Withdraw an approved request (before HR pickup). Only the raiser or admin.
+
+    This is an alias for cancel that checks the request hasn't been accepted yet.
+    """
+    updated = await HireRequestService.cancel(
+        db, request_id, current_user["org_id"],
+        user_id=current_user["user_id"],
+        role=current_user["role"],
         ip_address=_get_ip(request),
     )
     return {"request": updated}

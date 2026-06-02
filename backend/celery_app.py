@@ -17,6 +17,7 @@ celery_app = Celery(
         "backend.tasks.gdpr_cleanup",
         "backend.tasks.copilot_analysis",
         "backend.tasks.auth_cleanup",
+        "backend.tasks.hire_request_locks",
     ],
 )
 
@@ -55,5 +56,9 @@ celery_app.conf.beat_schedule = {
     "auth-cleanup-consumed-magic-links": {
         "task": "backend.tasks.auth_cleanup.cleanup_consumed_magic_links",
         "schedule": 86400.0,  # every 24 hours (daily)
+    },
+    "release-stale-review-locks": {
+        "task": "backend.tasks.hire_request_locks.release_stale_review_locks",
+        "schedule": 300.0,  # every 5 minutes
     },
 }

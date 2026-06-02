@@ -6,12 +6,11 @@ org_id (enforced by callers — the service layer); no method bypasses tenant
 isolation. Status transitions are intentionally guarded at the service layer,
 not here, so the repo stays a thin data-access surface.
 
-Status lifecycle:
-    pending → approved → accepted → fulfilled
-       │         │
-       │         └→ cancelled
-       └→ rejected (terminal, with reason)
-       └→ cancelled
+Status lifecycle (Design Rev 4):
+    draft → submitted → admin_reviewing → approved | approved_modified | rejected | cancelled
+                │                │
+                └→ cancelled     └→ submitted (close/TTL release)
+    approved / approved_modified → cancelled (TL, before HR pickup)
 """
 from typing import Optional, List, Tuple
 import asyncpg
@@ -28,6 +27,8 @@ _BASE_RETURN = """
     hr.comp_min, hr.comp_max, hr.location,
     hr.status, hr.chat_session_id, hr.position_id,
     hr.approved_by, hr.approved_at, hr.rejection_reason,
+    hr.reviewing_locked_by, hr.reviewing_locked_at,
+    hr.modification_diff, hr.notes,
     hr.created_at, hr.updated_at
 """
 
@@ -38,6 +39,7 @@ SELECT {_BASE_RETURN},
        u.email AS requested_by_email,
        acc.name AS accepted_by_name,
        appr.name AS approved_by_name,
+       lockuser.name AS reviewing_locked_by_name,
        p.role_name AS position_role_name,
        p.status AS position_status,
        p.approval_status AS position_approval_status,
@@ -50,6 +52,7 @@ SELECT {_BASE_RETURN},
   LEFT JOIN users u        ON u.id  = hr.requested_by
   LEFT JOIN users acc      ON acc.id = hr.accepted_by
   LEFT JOIN users appr     ON appr.id = hr.approved_by
+  LEFT JOIN users lockuser ON lockuser.id = hr.reviewing_locked_by
   LEFT JOIN positions p    ON p.id  = hr.position_id
 """
 
@@ -127,28 +130,28 @@ class HireRequestRepository:
 
     @staticmethod
     async def count_pending(
-        conn: asyncpg.Connection, 
-        org_id: int, 
+        conn: asyncpg.Connection,
+        org_id: int,
         department_id: Optional[int] = None,
-        status: Optional[str] = None
+        status: Optional[str] = None,
     ) -> int:
         """Cheap counter for sidebar badge — counts requests needing action.
-        
-        If status is not provided, defaults to 'pending' and 'approved'.
+
+        If status is not provided, defaults to pending/submitted/approved/approved_modified.
         """
         where = ["org_id = $1"]
-        params = [org_id]
-        
+        params: list = [org_id]
+
         if department_id is not None:
             params.append(department_id)
             where.append(f"department_id = ${len(params)}")
-            
+
         if status is not None:
             params.append(status)
             where.append(f"status = ${len(params)}")
         else:
-            where.append("status IN ('pending', 'approved')")
-            
+            where.append("status IN ('pending', 'submitted', 'approved', 'approved_modified')")
+
         sql = f"SELECT COUNT(*) FROM hire_requests WHERE {' AND '.join(where)}"
         return await conn.fetchval(sql, *params)
 
@@ -198,7 +201,6 @@ class HireRequestRepository:
         **fields,
     ) -> Optional[dict]:
         """Partial update on caller-supplied fields, org-scoped."""
-        # Restrict to known-safe columns. Anything else is silently dropped.
         allowed = {
             "department_id", "role_name", "headcount", "priority", "work_type",
             "experience_min", "experience_max", "target_start",
@@ -231,17 +233,47 @@ class HireRequestRepository:
         org_id: int,
         approved_by: Optional[int],
     ) -> None:
-        """Mark `pending` → `approved`. Caller verifies state + permission."""
+        """Mark → `approved`. Clears review lock. Caller verifies state + permission."""
         await conn.execute(
             """
             UPDATE hire_requests
                SET status = 'approved',
                    approved_by = $1,
                    approved_at = NOW(),
+                   reviewing_locked_by = NULL,
+                   reviewing_locked_at = NULL,
                    updated_at = NOW()
              WHERE id = $2 AND org_id = $3
             """,
             approved_by, request_id, org_id,
+        )
+
+    @staticmethod
+    async def approve_modified(
+        conn: asyncpg.Connection,
+        request_id: int,
+        org_id: int,
+        approved_by: int,
+        notes: str,
+        modification_diff: dict,
+    ) -> None:
+        """Mark → `approved_modified` with diff JSONB and notes. Clears lock."""
+        import json
+        await conn.execute(
+            """
+            UPDATE hire_requests
+               SET status = 'approved_modified',
+                   approved_by = $1,
+                   approved_at = NOW(),
+                   notes = $2,
+                   modification_diff = $3::jsonb,
+                   reviewing_locked_by = NULL,
+                   reviewing_locked_at = NULL,
+                   updated_at = NOW()
+             WHERE id = $4 AND org_id = $5
+            """,
+            approved_by, notes, json.dumps({"schema_version": 1, **modification_diff}),
+            request_id, org_id,
         )
 
     @staticmethod
@@ -251,12 +283,15 @@ class HireRequestRepository:
         org_id: int,
         rejection_reason: str,
     ) -> None:
-        """Mark `pending` → `rejected` (terminal). Caller verifies state + permission."""
+        """Mark → `rejected` (terminal). Clears lock. Caller verifies state + permission."""
         await conn.execute(
             """
             UPDATE hire_requests
                SET status = 'rejected',
                    rejection_reason = $1,
+                   notes = $1,
+                   reviewing_locked_by = NULL,
+                   reviewing_locked_at = NULL,
                    updated_at = NOW()
              WHERE id = $2 AND org_id = $3
             """,
@@ -306,13 +341,118 @@ class HireRequestRepository:
         conn: asyncpg.Connection,
         request_id: int,
         org_id: int,
+        notes: Optional[str] = None,
     ) -> None:
+        """Cancel a request. Notes are mandatory (enforced by service layer)."""
         await conn.execute(
             """
             UPDATE hire_requests
-               SET status = 'cancelled', updated_at = NOW()
+               SET status = 'cancelled',
+                   notes = COALESCE($1, notes),
+                   reviewing_locked_by = NULL,
+                   reviewing_locked_at = NULL,
+                   updated_at = NOW()
+             WHERE id = $2 AND org_id = $3
+               AND status IN ('pending', 'submitted', 'approved', 'approved_modified', 'admin_reviewing')
+            """,
+            notes, request_id, org_id,
+        )
+
+    # ── Admin Reviewing Lock (Atomic CAS) ─────────────────────────────────
+
+    @staticmethod
+    async def begin_review(
+        conn: asyncpg.Connection,
+        request_id: int,
+        org_id: int,
+        admin_user_id: int,
+    ) -> bool:
+        """Atomic CAS: submitted → admin_reviewing with lock.
+
+        Returns True if this admin acquired the lock.
+        Returns False if another admin already has it (zero rows updated).
+        """
+        result = await conn.execute(
+            """
+            UPDATE hire_requests
+               SET status = 'admin_reviewing',
+                   reviewing_locked_by = $1,
+                   reviewing_locked_at = NOW(),
+                   updated_at = NOW()
+             WHERE id = $2 AND org_id = $3
+               AND status IN ('pending', 'submitted')
+            """,
+            admin_user_id, request_id, org_id,
+        )
+        # asyncpg returns "UPDATE N" — parse the count
+        return result.endswith("1")
+
+    @staticmethod
+    async def takeover_review(
+        conn: asyncpg.Connection,
+        request_id: int,
+        org_id: int,
+        admin_user_id: int,
+    ) -> bool:
+        """Takeover: admin_reviewing by another admin (after 10-min threshold).
+
+        Returns True if takeover succeeded.
+        """
+        result = await conn.execute(
+            """
+            UPDATE hire_requests
+               SET reviewing_locked_by = $1,
+                   reviewing_locked_at = NOW(),
+                   updated_at = NOW()
+             WHERE id = $2 AND org_id = $3
+               AND status = 'admin_reviewing'
+               AND reviewing_locked_at < NOW() - INTERVAL '10 minutes'
+            """,
+            admin_user_id, request_id, org_id,
+        )
+        return result.endswith("1")
+
+    @staticmethod
+    async def release_review_lock(
+        conn: asyncpg.Connection,
+        request_id: int,
+        org_id: int,
+    ) -> None:
+        """Release lock: admin_reviewing → submitted (close without action)."""
+        await conn.execute(
+            """
+            UPDATE hire_requests
+               SET status = 'submitted',
+                   reviewing_locked_by = NULL,
+                   reviewing_locked_at = NULL,
+                   updated_at = NOW()
              WHERE id = $1 AND org_id = $2
-               AND status IN ('pending', 'approved')
+               AND status = 'admin_reviewing'
             """,
             request_id, org_id,
         )
+
+    @staticmethod
+    async def release_expired_locks(
+        conn: asyncpg.Connection,
+    ) -> int:
+        """Background job: release all locks older than 30 minutes.
+
+        Returns count of released locks.
+        """
+        result = await conn.execute(
+            """
+            UPDATE hire_requests
+               SET status = 'submitted',
+                   reviewing_locked_by = NULL,
+                   reviewing_locked_at = NULL,
+                   updated_at = NOW()
+             WHERE status = 'admin_reviewing'
+               AND reviewing_locked_at < NOW() - INTERVAL '30 minutes'
+            """
+        )
+        # Parse "UPDATE N"
+        try:
+            return int(result.split()[-1])
+        except (ValueError, IndexError):
+            return 0

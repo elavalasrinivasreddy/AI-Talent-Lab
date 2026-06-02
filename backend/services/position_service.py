@@ -221,10 +221,58 @@ class PositionService:
             return
 
         async with get_connection() as conn:
-            # Set approval_status = pending
-            await conn.execute(
-                "UPDATE positions SET approval_status='pending', updated_at=NOW() WHERE id=$1",
-                position_id,
+            # ── Reviewer Resolution Strategy (Design Rev 4) ──────────────
+            # 1. If the hire request was raised by a team_lead → that person
+            # 2. Else → first team_lead in the department
+            # 3. Else → first org_head
+            reviewer_id = None
+            reviewer_role = None
+            submitter_role = None
+
+            submitter_row = await conn.fetchrow(
+                "SELECT role FROM users WHERE id=$1 AND org_id=$2",
+                submitted_by_user_id, org_id,
+            )
+            submitter_role = submitter_row["role"] if submitter_row else "hr"
+
+            hr_request = await conn.fetchrow(
+                "SELECT requested_by FROM hire_requests WHERE position_id=$1 AND org_id=$2",
+                position_id, org_id,
+            )
+            if hr_request and hr_request["requested_by"]:
+                requester = await conn.fetchrow(
+                    "SELECT id, role FROM users WHERE id=$1 AND org_id=$2 AND is_active=TRUE",
+                    hr_request["requested_by"], org_id,
+                )
+                if requester and requester["role"] == "team_lead":
+                    reviewer_id = requester["id"]
+                    reviewer_role = "team_lead"
+
+            if not reviewer_id and dept_id:
+                tl = await conn.fetchrow(
+                    "SELECT id FROM users WHERE org_id=$1 AND role='team_lead' AND is_active=TRUE "
+                    "AND (department_id=$2 OR department_id IS NULL) ORDER BY id LIMIT 1",
+                    org_id, dept_id,
+                )
+                if tl:
+                    reviewer_id = tl["id"]
+                    reviewer_role = "team_lead"
+
+            if not reviewer_id:
+                oh = await conn.fetchrow(
+                    "SELECT id FROM users WHERE org_id=$1 AND role='org_head' AND is_active=TRUE ORDER BY id LIMIT 1",
+                    org_id,
+                )
+                if oh:
+                    reviewer_id = oh["id"]
+                    reviewer_role = "org_head"
+
+            # Set approval_status = pending with reviewer snapshot
+            await PositionRepository.submit_for_jd_approval(
+                conn, position_id, org_id,
+                reviewer_id=reviewer_id or submitted_by_user_id,  # fallback: self
+                submitted_by_role=submitter_role or "hr",
+                reviewer_role_at_submit=reviewer_role or "org_head",
             )
 
             # Audit log
@@ -336,6 +384,10 @@ class PositionService:
                     approver_user_id, position_id,
                 )
             else:
+                # Increment revision cycle for re-submission tracking
+                new_cycle = await PositionRepository.increment_revision_cycle(
+                    conn, position_id, org_id,
+                )
                 await conn.execute(
                     """
                     UPDATE positions
@@ -344,6 +396,49 @@ class PositionService:
                     """,
                     notes or None, position_id,
                 )
+
+                # ── Idempotent Feedback Injection into Chat Session ──────
+                # Find the active chat session for this position and inject
+                # the reviewer's notes as a system message. The partial unique
+                # index (session_id, message_type, revision_cycle) WHERE
+                # message_type='feedback_injection' guarantees exactly-once
+                # delivery per cycle even on concurrent retries.
+                session_row = await conn.fetchrow(
+                    """
+                    SELECT cs.id FROM chat_sessions cs
+                     WHERE cs.position_id = $1 AND cs.org_id = $2
+                     ORDER BY cs.created_at DESC LIMIT 1
+                    """,
+                    position_id, org_id,
+                )
+                if session_row:
+                    feedback_content = (
+                        f"**Reviewer Feedback (Revision {new_cycle}):**\n\n"
+                        f"{notes or 'Changes requested — no specific notes provided.'}\n\n"
+                        f"_Please revise the JD based on this feedback and resubmit._"
+                    )
+                    try:
+                        await conn.execute(
+                            """
+                            INSERT INTO chat_messages (
+                                session_id, org_id, role, content,
+                                message_type, revision_cycle
+                            )
+                            VALUES ($1, $2, 'system', $3, 'feedback_injection', $4)
+                            ON CONFLICT (session_id, message_type, revision_cycle)
+                                WHERE message_type = 'feedback_injection'
+                            DO NOTHING
+                            """,
+                            session_row["id"], org_id, feedback_content, new_cycle,
+                        )
+                        logger.info(
+                            f"Feedback injected into session {session_row['id']} "
+                            f"for position {position_id} (cycle {new_cycle})"
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Feedback injection failed for position {position_id}: {e}"
+                        )
 
             # In-app notification to HR
             if hr_user_id:

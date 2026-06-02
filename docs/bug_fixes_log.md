@@ -1862,3 +1862,147 @@ Cast `event_data` to `jsonb` inline at every point of use: `event_data::jsonb->>
 
 **Files Modified:**
 - `backend/routers/positions.py`
+
+---
+
+## 56. JD Generation Workflow — Design Rev 4 Implementation
+
+**Date:** 2026-06-02
+
+**Problem Statement:**
+The existing hire request lifecycle used a simple `pending → approved → rejected` model with no admin reviewing lock, no atomic HR pickup, no reviewer resolution strategy, and no revision cycle tracking. The JD generation workflow design (Rev 4) specified a much richer state machine with atomic CAS patterns, admin_reviewing locks with TTL/takeover, approved_modified with JSONB diffs, and idempotent feedback injection into chat sessions.
+
+**Scope of Changes:**
+
+### Phase 1: Database Migrations (`migrations.py`)
+Added 14 new columns across 3 tables:
+- **positions:** `picked_up_by`, `picked_up_at`, `revision_cycle`, `reviewer_id`, `submitted_by_role`, `reviewer_role_at_submit`, `submitted_at`
+- **hire_requests:** `reviewing_locked_by`, `reviewing_locked_at`, `modification_diff`, `notes`
+- **chat_messages:** `message_type`, `revision_cycle`
+- **Index:** `uq_chat_feedback_injection` — partial unique index for idempotent feedback injection
+
+### Phase 2: Repository Layer (`hire_requests.py`)
+Complete rewrite with:
+- Updated `_BASE_RETURN` and `_LIST_SELECT` to include new columns (lock user, diff, notes, position stats)
+- `begin_review()` — atomic CAS: submitted → admin_reviewing
+- `takeover_review()` — stale lock takeover after 10 minutes
+- `release_review_lock()` — admin_reviewing → submitted
+- `release_expired_locks()` — background job for 30-min TTL cleanup
+- `approve_modified()` — stores JSONB diff with schema_version
+- `cancel()` updated to accept optional notes and clear locks
+- All terminal transitions now clear `reviewing_locked_by/at`
+
+### Phase 3: Repository Layer (`positions.py`)
+- Added new workflow columns to `allowed` update set
+- `atomic_hr_pickup()` — CAS guard: picked_up_by IS NULL AND status = 'draft'
+- `submit_for_jd_approval()` — writes reviewer_id, submitted_by_role, reviewer_role_at_submit authority snapshot
+- `increment_revision_cycle()` — counter for feedback loops
+
+### Phase 4: Service Layer (`hire_request_service.py`)
+- Updated STATUSES set to include `submitted`, `admin_reviewing`, `approved_modified`
+- Updated lifecycle docstring to Design Rev 4
+- `begin_review()` — CAS + takeover + idempotent re-entry + audit
+- `release_review()` — lock release with ownership check (only locker or org_head)
+- `approve_modified()` — full approval flow with notifications + email + audit
+- `accept()` updated to accept `approved_modified` status
+- `cancel()` updated to pass notes to repository
+
+### Phase 5: Service Layer (`position_service.py`)
+- `submit_for_approval()` — replaced bare SQL with `PositionRepository.submit_for_jd_approval()`
+- Implemented Reviewer Resolution Strategy:
+  1. If hire request was raised by a team_lead → that person reviews
+  2. Else → first team_lead in the department
+  3. Else → first org_head
+- Authority snapshotting at submit time (submitter_role, reviewer_role_at_submit)
+
+### Phase 6: Router Layer (`hire_requests.py`)
+Added 4 new API endpoints:
+- `POST /api/v1/hire-requests/{id}/begin-review` — atomic admin lock
+- `POST /api/v1/hire-requests/{id}/release-review` — lock release
+- `POST /api/v1/hire-requests/{id}/approve-modified` — approve with JSONB diff
+- `POST /api/v1/hire-requests/{id}/withdraw` — cancel before HR pickup
+- Added `HireRequestApproveModified` Pydantic model (inline, notes required)
+- Added pydantic `BaseModel`/`field_validator` imports
+
+**Files Modified:**
+- `backend/db/migrations.py` (new migration blocks)
+- `backend/db/repositories/hire_requests.py` (full rewrite)
+- `backend/db/repositories/positions.py` (new methods + allowed fields)
+- `backend/services/hire_request_service.py` (new methods + status updates)
+- `backend/services/position_service.py` (reviewer resolution)
+- `backend/routers/hire_requests.py` (4 new endpoints)
+
+**Design Docs Reference:**
+- `docs/design/jd_generation_workflow_design.md`
+- `docs/design/state_machines.md`
+- `docs/design/schema_gap_analysis.md`
+
+---
+
+## 57. Transition Guard Mismatches (State Machine Bug Fix)
+
+**Date:** 2026-06-02
+
+**Problem Statement:**
+Three critical state transition guard mismatches existed between the service layer and the Design Rev 4 state machine:
+
+1. **begin_review repo**: CAS SQL only matched `status = 'submitted'`, but existing hire requests use `pending` as the initial status. The service allowed `pending` but the repo silently returned False (0 rows updated), causing a confusing "Could not acquire review lock" error.
+2. **approve_request**: Only accepted `pending` status, but admin should approve from `admin_reviewing` (the Design Rev 4 primary approval state).
+3. **reject_request**: Same issue — only accepted `pending`.
+4. **accept check**: Only blocked `pending`, didn't block `submitted` or `admin_reviewing`.
+
+**Idea / Solution:**
+- `begin_review` repo: `AND status = 'submitted'` → `AND status IN ('pending', 'submitted')` (backward compatibility)
+- `approve_request` service: `!= 'pending'` → `not in ('pending', 'submitted', 'admin_reviewing')`
+- `reject_request` service: Same guard update
+- `accept` check: `== 'pending'` → `in ('pending', 'submitted', 'admin_reviewing')` with updated error message
+
+**Files Modified:**
+- `backend/db/repositories/hire_requests.py` (line 383)
+- `backend/services/hire_request_service.py` (lines 469, 588, 717)
+
+---
+
+## 58. Idempotent Feedback Injection into Chat Sessions
+
+**Date:** 2026-06-02
+
+**Problem Statement:**
+When a reviewer requested changes on a JD, the feedback notes were stored on the position row (`review_notes`) but never appeared in the HR recruiter's chat session. The recruiter had to navigate away from the chat to see what needed to change — breaking the conversational workflow.
+
+**Idea / Solution:**
+In `PositionService.record_approval_decision`, when `decision = 'changes_requested'`:
+
+1. Increment `positions.revision_cycle` via `PositionRepository.increment_revision_cycle()`
+2. Find the most recent chat session linked to this position
+3. Insert a `chat_messages` row with `message_type='feedback_injection'` and `revision_cycle=N`
+4. The partial unique index `uq_chat_feedback_injection` guarantees exactly-once insertion per cycle, even on concurrent retries (`ON CONFLICT ... DO NOTHING`)
+
+The injected message renders as a system message in the chat with the reviewer's feedback in-context.
+
+**Files Modified:**
+- `backend/services/position_service.py` (lines 388–440)
+
+---
+
+## 59. Celery Periodic Task — Stale Review Lock Cleanup
+
+**Date:** 2026-06-02
+
+**Problem Statement:**
+If an admin opens a hire request for review (`admin_reviewing`) and then closes the browser without approving/rejecting/releasing, the lock would persist indefinitely. No other admin could pick up the request, creating a workflow deadlock.
+
+**Idea / Solution:**
+Created `backend/tasks/hire_request_locks.py` with a `release_stale_review_locks` Celery task that:
+- Runs every 5 minutes via Celery Beat
+- Calls `HireRequestRepository.release_expired_locks()` which releases locks older than 30 minutes
+- Transitions expired requests back to `submitted` status
+- Lock lifecycle: Fresh (<10 min) → Stale (10–30 min, takeover-eligible via API) → Expired (>30 min, auto-released by this task)
+
+Registered the task in `celery_app.py`:
+- Added to `include` list
+- Added beat_schedule entry with 300-second (5-minute) interval
+
+**Files Modified:**
+- `backend/tasks/hire_request_locks.py` (new file)
+- `backend/celery_app.py` (include list + beat_schedule)
