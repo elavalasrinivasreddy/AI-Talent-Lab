@@ -1760,3 +1760,89 @@ After the AI refined the JD via chat, the "Run Inclusivity Check" button remaine
 
 **Files Modified:**
 - `frontend/src/components/Chat/cards/FinalJDCard.jsx`
+
+---
+
+## 105. Settings Page Scrolls Vertically; Header Wastes Space; No-Right-Rail Has No CSS
+
+**Problem Statement:**
+The Settings page scrolled the entire viewport instead of being a fixed full-height panel. The "Workspace Settings" header consumed ~70px of vertical space redundantly (user already knows they're in Settings from the sidebar). The `no-right-rail` CSS class applied by JSX had no matching CSS rule, causing the hidden right preview column to still allocate its 300px grid slot.
+
+**Root Cause:**
+Three layered failures in the height chain:
+1. `.app-layout` used `min-height: 100vh` (grows with content) instead of `height: 100vh` (bounded)
+2. `.app-main` had no `overflow-y: auto` or `min-height: 0`, so flex children couldn't be bounded
+3. `.st-page` had no `display: flex; flex-direction: column; height: 100%`, so `.st-layout`'s `flex: 1` was inert
+
+**Idea / Solution:**
+1. Changed `.app-layout` to `height: 100vh; overflow: hidden`
+2. Added `min-height: 0; overflow-y: auto` to `.app-main` (all pages now scroll within the panel, not the full viewport)
+3. Added `height: 100%; display: flex; flex-direction: column; overflow: hidden` to `.st-page`
+4. Removed the `.st-header` ("Workspace Settings" title + subtitle) entirely — redundant happy talk
+5. Added `.st-layout.no-right-rail { grid-template-columns: 240px 1fr }` to reclaim the 300px ghost column
+
+**Files Modified:**
+- `frontend/src/styles/layout.css`
+- `frontend/src/styles/settings.css`
+- `frontend/src/components/Settings/SettingsPage.jsx`
+
+---
+
+## 106. JD Chat Shows Browser alert() Dialogs Instead of App Toast
+
+**Problem Statement:**
+File upload errors in the JD chat (file too large, parse failure, network failure) triggered native browser `alert()` dialogs — a jarring system-level UI that breaks the in-app experience.
+
+**Root Cause:**
+`MessageInput.jsx` used `alert()` for three error conditions (file size limit, file parse error, upload network failure). The app has a `Toast` component in `components/common/Toast.jsx` but it was not wired into `MessageInput`.
+
+**Idea / Solution:**
+Imported `Toast` into `MessageInput.jsx`, added local `toast` state, replaced all three `alert()` calls with `setToast({ message, type: 'error' })`, and rendered `<Toast>` inside the composer wrapper.
+
+**Files Modified:**
+- `frontend/src/components/Chat/MessageInput.jsx`
+
+---
+
+## 107. "New Hire" Sidebar Click Shows System window.confirm Dialog
+
+**Problem Statement:**
+Clicking "New Hire" in the sidebar while mid-session showed a browser-native `window.confirm("Abandon current JD?")` dialog. This is a system-level UI inconsistent with the app, and the guard is unnecessary since sessions are saved and accessible from the session list in the sidebar.
+
+**Idea / Solution:**
+Removed the conditional and confirm dialog. `handleNewHire` now always calls `resetChat()` and navigates to `/chat`. Sessions persist in the sidebar list and can always be resumed.
+
+**Files Modified:**
+- `frontend/src/components/Sidebar/Sidebar.jsx`
+
+---
+
+## 108. "New Hire" Click Shows Old Session Messages Instead of Greeting
+
+**Problem Statement:**
+When HR navigated from a chat session to the "New Hire" page (via sidebar or positions list), the previous session's messages briefly showed (or persisted) before the GREETING appeared. This happened because `ChatContext` initialized `messages` as `[]`, and `resetChat()` only runs inside a `useEffect` — after the first render, which shows stale context state.
+
+**Root Cause:**
+`ChatContext` initial state: `useState([])`. On navigation to `/chat`, ChatPage renders with whatever was in ChatContext (old session messages), then the `useEffect` fires and calls `resetChat()` → GREETING replaces them. The render-before-effect gap made old messages visible.
+
+**Idea / Solution:**
+Changed `ChatContext` initial `messages` state from `useState([])` to `useState([GREETING])`. Now the default state is always the greeting, so any render at `/chat` before `resetChat()` fires still shows the correct greeting.
+
+**Files Modified:**
+- `frontend/src/context/ChatContext.jsx`
+
+---
+
+## 109. Resume AI Chat Triggers AI Auto-Response After Session Deleted
+
+**Problem Statement:**
+When HR deleted the chat session and then clicked "Resume AI Chat" from the position details page, the chat auto-sent a hire request intake message and the AI responded by asking about skills/requirements — even though the JD already existed. The chat appeared to "restore" but immediately launched an unsolicited AI response.
+
+**Root Cause:**
+`JDTab.jsx` passed `hireRequest` in `location.state` when navigating to "Resume AI Chat". When the session was deleted (404), `loadSession` reset `workflowStage` to `'intake'` and `messages` to `[GREETING]`. The auto-seed `useEffect` in `ChatPage.jsx` then detected `workflowStage === 'intake'` + no user messages + `hireRequest` in state → automatically sent the position data, triggering AI intake questions.
+
+**Idea / Solution:**
+Removed `state` from the `navigate()` call in the "Resume AI Chat" button in `JDTab.jsx`. The session URL (`/chat/${session_id}`) is sufficient: if the session exists it loads from DB; if deleted, it shows the GREETING and HR starts a fresh conversation. The `hireRequest` state key is reserved for the hire-requests pickup flow.
+
+**Files Modified:**
+- `frontend/src/components/Positions/tabs/JDTab.jsx`

@@ -163,25 +163,8 @@ export default function SettingsPage() {
   const ActiveComponent = SECTION_COMPONENTS[activeSection] || ProfileTab
   const [previewData, setPreviewData] = useState(null)
 
-  // Find active group color
-  const activeGroup = RAIL_GROUPS.find(g => g.items.some(i => i.key === activeSection))
-  const groupColor = activeGroup?.color || 'var(--color-primary)'
-
   return (
     <div className="st-page">
-      {/* Header */}
-      <div className="st-header">
-        <div className="st-header-left">
-          <div className="st-header-icon" style={{ background: `${groupColor}1a`, color: groupColor }}>
-            <Icon name="settings" size={18} />
-          </div>
-          <div>
-            <h1 className="st-header-title">Workspace Settings</h1>
-            <p className="st-header-sub">Manage your organization and configure how AI agents work</p>
-          </div>
-        </div>
-      </div>
-
       {/* 2-column or 3-column layout */}
       <div className={`st-layout ${!['ats-rules', 'sourcing', 'screening', 'scorecards', 'bias', 'career-brand'].includes(activeSection) ? 'no-right-rail' : ''}`}>
         {/* Left Rail */}

@@ -16,7 +16,7 @@ export const ChatProvider = ({ children }) => {
     const [sessionTitle, setSessionTitle] = useState('New Hire');
     const [isTitleAnimating, setIsTitleAnimating] = useState(false);
 
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState([GREETING]);
     const [isStreaming, setIsStreaming] = useState(false);
     const [workflowStage, setWorkflowStage] = useState('intake');
     const [isReadOnly, setIsReadOnly] = useState(false);

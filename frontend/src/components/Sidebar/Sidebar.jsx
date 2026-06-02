@@ -95,18 +95,8 @@ export default function Sidebar() {
   }
 
   const handleNewHire = () => {
-    // Only reset if current session is drafted/complete or empty (only greeting message)
-    // Or if user explicitly wants to start fresh
-    if (workflowStage === 'complete' || messages.length <= 1) {
-      resetChat()
-      navigate('/chat')
-    } else {
-      // Optional: Show a toast or confirm if they want to abandon current progress
-      if (window.confirm("Abandon current JD generation and start a new one?")) {
-        resetChat()
-        navigate('/chat')
-      }
-    }
+    resetChat()
+    navigate('/chat')
   }
 
   const role = user?.role || 'hr'

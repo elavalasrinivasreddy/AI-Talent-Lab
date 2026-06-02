@@ -1,6 +1,10 @@
 /* ── Settings Page — v3 AI Behavior Console ──────────────── */
 
 .st-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   animation: fadeInUp 300ms ease both;
 }
 
@@ -106,6 +110,10 @@
   grid-template-columns: 240px 1fr 300px;
   gap: var(--space-4);
   overflow: hidden;
+}
+
+.st-layout.no-right-rail {
+  grid-template-columns: 240px 1fr;
 }
 
 /* Left Rail */
