@@ -67,21 +67,48 @@ const FinalJDCard = () => {
 
     useEffect(() => {
         if (biasCard && biasCard.issues && biasCard.issues.length > 0) {
-            setPendingFixes(biasCard.issues.map((i) => ({
-                phrase: i.phrase,
-                suggestion: i.suggestion,
-                category: i.category || 'language',
-                status: 'pending',
-            })));
-            setBiasCheckRunning(false);
-            setBiasCheckDone(false);
-            setFocusedDiffIdx(0); // focus first issue
+            // Only keep issues whose phrase actually appears in the current JD text.
+            // The inline accept/reject widget is rendered via a \b<phrase>\b regex
+            // (see renderDiffContent); if the bias model returns a phrase that isn't
+            // an exact match (paraphrase, casing, punctuation), no widget renders for
+            // it — yet it was still counted, so unresolvedCount never reached 0,
+            // biasCheckDone never flipped, and "Finalize JD" stayed disabled (#3).
+            const matchable = biasCard.issues.filter((i) => {
+                if (!i.phrase) return false;
+                try {
+                    return new RegExp(`\\b${escapeRegExp(i.phrase)}\\b`, 'i').test(editedMarkdown);
+                } catch {
+                    return false;
+                }
+            });
+            if (matchable.length > 0) {
+                setPendingFixes(matchable.map((i) => ({
+                    phrase: i.phrase,
+                    suggestion: i.suggestion,
+                    category: i.category || 'language',
+                    status: 'pending',
+                })));
+                setBiasCheckRunning(false);
+                setBiasCheckDone(false);
+                setFocusedDiffIdx(0); // focus first issue
+            } else {
+                // Issues were reported but none are actionable inline (phrases not
+                // found verbatim). Don't trap the user — treat the check as passed.
+                setPendingFixes([]);
+                setBiasCheckRunning(false);
+                setBiasCheckDone(true);
+                setFocusedDiffIdx(null);
+            }
         } else if (biasCard && (biasCard.clean || (biasCard.issues && biasCard.issues.length === 0))) {
             setPendingFixes([]);
             setBiasCheckRunning(false);
             setBiasCheckDone(true);
             setFocusedDiffIdx(null);
         }
+        // editedMarkdown is intentionally omitted: biasCard arrives right after a
+        // check on the current JD text, and re-running on every edit would wipe
+        // accepted/rejected statuses.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [biasCard]);
 
     useEffect(() => {
@@ -400,8 +427,12 @@ const FinalJDCard = () => {
                                     ref={editRef}
                                     className="jd-wysiwyg"
                                     contentEditable={true}
+                                    suppressContentEditableWarning={true}
                                     dangerouslySetInnerHTML={{ __html: marked(tempMarkdown) }}
-                                    style={{ outline: 'none', border: '1px dashed var(--color-border)', padding: '16px', borderRadius: '8px', minHeight: '400px' }}
+                                    // No border/box/focus ring — editing happens in place on the
+                                    // same content the user already sees, with no UI change (#2).
+                                    // .jd-body styles the descendant elements identically to view mode.
+                                    style={{ outline: 'none' }}
                                     onBlur={(e) => setTempMarkdown(turndownService.turndown(e.target.innerHTML))}
                                 />
                             </div>
@@ -412,8 +443,14 @@ const FinalJDCard = () => {
                                         display: 'flex', alignItems: 'center', gap: '10px',
                                         padding: '8px 14px', marginBottom: '16px',
                                         borderRadius: '8px', border: '1px solid rgba(239,68,68,0.25)',
-                                        background: 'rgba(239,68,68,0.04)',
+                                        // Opaque base (page bg) under the red tint so JD text doesn't
+                                        // bleed through while the banner is pinned and content scrolls.
+                                        background: 'linear-gradient(rgba(239,68,68,0.06), rgba(239,68,68,0.06)), var(--color-bg-primary)',
                                         fontSize: '13px',
+                                        // Pin to the top of the scrolling canvas while the JD scrolls
+                                        // behind it; nav arrows jump between changes (#1).
+                                        position: 'sticky', top: 0, zIndex: 20,
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
                                     }}>
                                         <span style={{ fontFamily: 'monospace', fontSize: '11px', background: 'rgba(239,68,68,0.15)', color: '#EF4444', padding: '2px 7px', borderRadius: '4px', fontWeight: 700 }}>diff</span>
                                         <span style={{ flex: 1, color: 'var(--color-text-secondary)' }}>
