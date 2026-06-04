@@ -1,8 +1,8 @@
 # Phase 1 Testing — Validation Tracker
 
-> Tracks validation of all 41 bug fixes from `bug_fixes_log.md` + JD Chat end-to-end flow.
+> Tracks validation of all bug fixes from `bug_fixes_log.md` + JD Chat end-to-end flow.
 > Branch: `phase_1_testing/bug-fix`
-> Updated: 2026-05-30
+> Updated: 2026-06-04
 
 Legend: ✅ Validated clean | ⚠️ Fixed edge case | ❌ Not yet validated | 🔄 In progress
 
@@ -10,8 +10,8 @@ Legend: ✅ Validated clean | ⚠️ Fixed edge case | ❌ Not yet validated | �
 
 ## Testing position (manual, by user)
 
-User has tested manually up to: **HR picking up a hire request** (status: `approved → accepted`).
-Next manual test: **JD generation via chat window**.
+User has tested manually up to: **Bug #76 (drag-drop screening questions)**.
+Next manual test: **Settings tab bugs #77–91, then JD Chat flow J1–J8**.
 
 ---
 
@@ -108,14 +108,76 @@ Parallel Sonnet review subagents over the JD-chat / Settings / Dashboard / Posit
 
 | Step | Description | Status | Notes |
 |---|---|---|---|
-| J1 | HR picks up hire request (approved → accepted) | 🔄 In progress (user testing) | |
-| J2 | HR starts JD chat from detail page | ❌ | |
+| J1 | HR picks up hire request (approved → jd_in_progress) | ❌ | Status now `jd_in_progress` (not `accepted`) — new state machine |
+| J2 | HR starts JD chat from hire request detail page | ❌ | |
 | J3 | Chat stages 1–8 execute correctly | ❌ | |
 | J4 | JD variants generated, HR reviews | ❌ | |
-| J5 | HR submits JD for HM approval | ❌ | |
-| J6 | HM approves (or auto-approves) | ❌ | |
-| J7 | Position created, career page updated | ❌ | |
+| J5 | HR submits JD for reviewer approval (ATS popup + submit) | ❌ | |
+| J6 | Reviewer approves → position goes open | ❌ | |
+| J7 | Reviewer rejects → feedback injected in chat, HR revises | ❌ | |
 | J8 | Candidate applies via career page | ❌ | |
+
+---
+
+## Batch F — Settings Tabs & Career Page (Items #77–92)
+
+| # | Fix | Files | Status | Notes |
+|---|---|---|---|---|
+| 77 | Scorecard Rubric UI & Backend Issues | `SettingsPage.jsx`, backend | ❌ | |
+| 78 | Remove shape from P2/P3 phase badges | `SettingsPage.jsx` | ❌ | |
+| 79 | Departments Tab confirmation modal & dept head redundancy | `DepartmentsTab.jsx` | ❌ | |
+| 80 | Team Directory UI & role filter logic | `TeamTab.jsx` | ❌ | |
+| 81 | Approval Rules modernization & org head policies | `ApprovalRulesTab.jsx` | ❌ | |
+| 82 | Notifications Tab implementation + logout-on-toggle fix | `NotificationsTab.jsx`, `settings.py` | ❌ | |
+| 83 | Organization auto-draft capabilities upgrade | `OrganizationTab.jsx`, backend | ❌ | |
+| 84 | Organization Tab UI/UX polish | `OrganizationTab.jsx` | ❌ | |
+| 85 | Competitors Intel CRUD + premium accordion UI | `CompetitorsTab.jsx`, backend | ❌ | |
+| 86 | Message Templates: magic draft, tone analyzer, live preview | `MessageTemplatesTab.jsx`, `settings.py` | ❌ | |
+| 87 | Message Templates: role access, UI cleanup, notifications | `MessageTemplatesTab.jsx`, `settings.py` | ❌ | |
+| 88 | Career page implementation + backend 500 fix + scaling | `CareerPage.jsx`, `CareersIndexPage.jsx`, `careers.py` | ❌ | |
+| 89 | Email service 500 on hire request creation (`_safe_url` infinite recursion) | `email_service.py` | ❌ | |
+| 90 | JD rejection requires mandatory feedback note | `positions.py` (router), `LegacyDashboard.jsx` | ❌ | |
+| 91 | Bias checker premium git-diff UI | `FinalJDCard.jsx` | ❌ | |
+| 92 | Drag-drop screening questions: stale closure (frontend useRef) | `ScreeningQuestionsTab.jsx` | ⚠️ | Frontend fix correct; **real blocker was backend route order (#75 below)** |
+| **75** | **Drag-drop never persisted: PATCH /reorder hit /{question_id} (FastAPI route order bug)** | `settings.py` | ✅ | Fixed 2026-06-04: moved `/reorder` before `/{question_id}` (commit `05f44d5`) |
+
+---
+
+## Batch G — JD Chat Workflow (Items #93–110)
+
+| # | Fix | Files | Status | Notes |
+|---|---|---|---|---|
+| 93 | Resume Chat starts blank — no JD pre-seeding | `JDTab.jsx`, `ChatContext.jsx`, `ChatPage.jsx` | ❌ | |
+| 94 | Internal skills check card skipped when no past JDs found | `internal_analyst.py`, `chat_service.py`, `ChatContext.jsx`, `AgentBlockInternal.jsx` | ❌ | |
+| 95 | JD variants refine bar broken on dark theme | `chat.css`, `AgentBlockVariants.jsx` | ❌ | |
+| 96 | Bias diff: stale counter, no navigation, stale closure on handlers | `FinalJDCard.jsx` | ❌ | |
+| 97 | Dev Admin reset leaving orphaned hire requests | `dev_admin.py` | ❌ | |
+| 98 | HireRequestService missing `priority` in position creation | `hire_request_service.py` | ❌ | |
+| 99 | JD chat not read-only during pending approval | `ChatContext.jsx`, `FinalizeCTA.jsx`, `ChatTopBar.jsx` | ❌ | |
+| 100 | Position detail: duplicate approval banners | `PositionHero.jsx` | ❌ | |
+| 101 | "Request Changes" broken — wrong decision value + no notes input | `JDTab.jsx` | ❌ | |
+| 102 | Team lead feedback notes not visible after changes requested | `migrations.py`, `position_service.py`, `JDTab.jsx` | ❌ | |
+| 103 | JD canvas text color inconsistent after AI update | `chat.css` | ❌ | |
+| 104 | Bias check not re-triggered after AI update; Finalize not gated | `FinalJDCard.jsx` | ❌ | |
+| 105 | Settings page scrolls vertically; no-right-rail no CSS | `layout.css`, `settings.css`, `SettingsPage.jsx` | ❌ | |
+| 106 | JD chat shows `alert()` instead of Toast | `MessageInput.jsx` | ❌ | |
+| 107 | "New Hire" sidebar shows `window.confirm` dialog | `Sidebar.jsx` | ❌ | |
+| 108 | "New Hire" shows old session messages instead of greeting | `ChatContext.jsx` | ❌ | |
+| 109 | Resume AI Chat auto-fires after session deleted | `JDTab.jsx` | ❌ | |
+| 110 | GET pipeline-summary 500: text ->> unknown (missing ::jsonb cast) | `positions.py` (router) | ❌ | |
+
+---
+
+## Batch H — JD Workflow State Machine (Items #111–115 + Code Review)
+
+| # | Fix | Files | Status | Notes |
+|---|---|---|---|---|
+| 111 | JD workflow Design Rev 4: DB migrations + repo + service + router | `migrations.py`, `hire_requests.py`, `positions.py`, `hire_request_service.py`, `position_service.py`, `hire_requests.py` (router) | ❌ | 14 new DB columns, CAS pickup, admin_reviewing lock |
+| 112 | Transition guard mismatches — state machine | `hire_requests.py` (repo), `hire_request_service.py` | ❌ | |
+| 113 | Idempotent feedback injection into chat sessions | `position_service.py` | ❌ | |
+| 114 | Celery periodic task — stale review lock cleanup | `hire_request_locks.py`, `celery_app.py` | ❌ | |
+| 115 | Full 25-item JD workflow implementation (frontend + backend) | `positions.py`, `position_service.py`, `positions.py` (router), `ChatContext.jsx`, `MessageList.jsx`, `SidebarSessions.jsx`, `chat.css`, `sessions.py` | ❌ | |
+| CR-1 | 13 race conditions + permission bypasses fixed (code review 2026-06-04) | `position_service.py`, `positions.py` (repo), `positions.py` (router) | ❌ | commit `0a13d82` — atomic submit, auto-approve fix, Flow 1 reviewer, NULL reviewer bypass, TOCTOU guards |
 
 ---
 
@@ -124,6 +186,6 @@ Parallel Sonnet review subagents over the JD-chat / Settings / Dashboard / Posit
 | Date | Session | Work done |
 |---|---|---|
 | 2026-05-30 | S67 | All 41 items validated (Batches A–D). 11 edge cases found and fixed. 4 commits on phase_1_testing/bug-fix. JD Chat flow validation is next. |
-| 2026-06-01 | S68 | Reviewed Settings UI batch (items 42–75). Fixed the #75 KNOWN BUG: screening-questions drag-and-drop not persisting (stale-closure no-op in `onDragEnd`); reworked to standard `onDrop` + `dataTransfer` pattern. Backend reorder chain verified correct. Pattern confirmed isolated to ScreeningQuestionsTab. Logged as fix #76. |
-| 2026-06-01 | S68 | Code-reviewed items 42–75 via 3 parallel Sonnet subagents (backend RBAC, AI pipeline, frontend RBAC). 6 confirmed bugs fixed across 2 commits (dept_id badge leak, 4 AI-node multimodal crash guards, Analytics nav gate, competitor-name fallback leak). 6 findings flagged for product decision. See Batch E section above. |
-| 2026-06-01 | S68 | User approved fixing all 6 flagged items. Implemented correct solutions: SSE competitor generalization, dept-scoped submit delegation (+ auto-approve), resubmit allowed-set fields, org_head department selector in PositionSetupModal (+ fixed latent HR wrong-dept override), empty-JD retry guard, platform_admin dead-code removal. All Python `py_compile` + JSX transform clean. |
+| 2026-06-01 | S68 | Reviewed Settings UI batch (items 42–75). Fixed the #75 KNOWN BUG frontend side (stale closure → useRef). Backend reorder chain appeared correct but route ordering bug not caught. |
+| 2026-06-01 | S68 | Code-reviewed items 42–75 via 3 parallel Sonnet subagents. 6 confirmed bugs fixed. 6 findings flagged → all fixed. |
+| 2026-06-04 | S-today | Code review of commit `14e3aee` (JD workflow implementation). Claude structured + adversarial subagent found 13 bugs (7 P1, 6 P2). All fixed in commit `0a13d82`. Separately: found and fixed real root cause of bug #75 — PATCH `/screening-questions/reorder` was shadowed by `/{question_id}` route (FastAPI order bug). Fixed in commit `05f44d5`. Tracker updated to include Batches F–H (#77–115 + code review). |
