@@ -439,6 +439,7 @@ class HireRequestService:
         user_id: int,
         role: str,
         dept_id: Optional[int],
+        note: Optional[str] = None,
         ip_address: Optional[str] = None,
     ) -> dict:
         """
@@ -446,7 +447,12 @@ class HireRequestService:
 
         Permission: dept_admin whose dept matches the request's department_id,
         or org_head (can approve any request).
+
+        If `note` is provided (e.g. the approver modified the request before
+        approving), it is surfaced to the requester in both the in-app
+        notification and the approval email so they're aware of the changes.
         """
+        note = note.strip() if note else None
         if role not in _APPROVER_ROLES:
             raise InsufficientPermissionsError(
                 "Only dept_admin or org_head can approve hire requests."
@@ -476,15 +482,28 @@ class HireRequestService:
                 conn, request_id, org_id, approved_by=user_id,
             )
 
-            # Notify raiser
+            # Notify raiser. When the approver left a note (typically because they
+            # modified the request before approving), surface it so the team lead
+            # knows their request changed — not just that it was approved.
             if existing["requested_by"]:
+                if note:
+                    raiser_title = "Your hire request was reviewed and approved"
+                    raiser_message = (
+                        f"Your request for {existing['role_name']} was approved with a "
+                        f"note from the reviewer: {note}"
+                    )
+                else:
+                    raiser_title = "Your hire request was approved"
+                    raiser_message = (
+                        f"Your request for {existing['role_name']} has been approved."
+                    )
                 await HireRequestService._notify(
                     conn,
                     org_id=org_id,
                     user_id=existing["requested_by"],
                     type="hire_request_approved",
-                    title="Your hire request was approved",
-                    message=f"Your request for {existing['role_name']} has been approved.",
+                    title=raiser_title,
+                    message=raiser_message,
                     action_url=f"/hire-requests/{request_id}",
                 )
 
@@ -507,6 +526,7 @@ class HireRequestService:
                 action="hire_request_approved",
                 entity_type="hire_request",
                 entity_id=str(request_id),
+                details={"note": note} if note else None,
                 ip_address=ip_address,
             )
 
@@ -518,7 +538,7 @@ class HireRequestService:
         approver_name = updated.get("approved_by_name") or "Your approver"
         request_url = f"/hire-requests/{request_id}"
 
-        # Email raiser
+        # Email raiser (team lead) — include the approver's note if present.
         if existing.get("requested_by_email"):
             await EmailService.send_hire_request_approved(
                 to_email=existing["requested_by_email"],
@@ -527,6 +547,7 @@ class HireRequestService:
                 dept_name=existing.get("department_name") or "General",
                 approver_name=approver_name,
                 request_url=request_url,
+                note=note,
             )
 
         # Email all HR users in org
@@ -1055,7 +1076,7 @@ class HireRequestService:
                 modification_diff=modification_diff,
             )
 
-            # Notify raiser
+            # Notify raiser — surface the actual note so the team lead sees what changed.
             if existing["requested_by"]:
                 await HireRequestService._notify(
                     conn,
@@ -1063,7 +1084,10 @@ class HireRequestService:
                     user_id=existing["requested_by"],
                     type="hire_request_approved_modified",
                     title="Your hire request was approved with modifications",
-                    message=f"Your request for {existing['role_name']} has been approved with notes.",
+                    message=(
+                        f"Your request for {existing['role_name']} was approved with a "
+                        f"note from the reviewer: {notes.strip()}"
+                    ),
                     action_url=f"/hire-requests/{request_id}",
                 )
 
@@ -1097,7 +1121,7 @@ class HireRequestService:
         approver_name = updated.get("approved_by_name") or "Your approver"
         request_url = f"/hire-requests/{request_id}"
 
-        # Email raiser
+        # Email raiser (team lead) — include the modification note.
         if existing.get("requested_by_email"):
             await EmailService.send_hire_request_approved(
                 to_email=existing["requested_by_email"],
@@ -1106,6 +1130,7 @@ class HireRequestService:
                 dept_name=existing.get("department_name") or "General",
                 approver_name=approver_name,
                 request_url=request_url,
+                note=notes.strip(),
             )
 
         return updated

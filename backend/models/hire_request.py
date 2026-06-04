@@ -96,5 +96,24 @@ class HireRequestReject(BaseModel):
         return v
 
 
+class HireRequestApprove(BaseModel):
+    """Approval payload. Optional note shared with the requester — used to explain
+    any modifications the approver made (e.g. headcount or comp changes). A direct
+    approval with no note is valid and notifies the requester with the standard text."""
+    note: Optional[str] = None
+
+    @field_validator("note")
+    @classmethod
+    def note_clean(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        if len(v) > 1000:
+            raise ValueError("Note is too long (max 1000 chars)")
+        return v
+
+
 class HireRequestLinkSession(BaseModel):
     session_id: str

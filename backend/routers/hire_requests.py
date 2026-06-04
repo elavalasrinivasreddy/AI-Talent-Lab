@@ -24,6 +24,7 @@ from backend.models.hire_request import (
     HireRequestAccept,
     HireRequestLinkSession,
     HireRequestReject,
+    HireRequestApprove,
 )
 
 router = APIRouter(prefix="/api/v1/hire-requests", tags=["HireRequests"])
@@ -150,15 +151,20 @@ async def update_hire_request(
 async def approve_hire_request(
     request_id: int,
     request: Request,
+    body: HireRequestApprove | None = None,
     current_user=Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db),
 ):
-    """Approve a pending hire request. Requires dept_admin or org_head role."""
+    """Approve a pending hire request. Requires dept_admin or org_head role.
+
+    Optional `note` is forwarded to the requester so they're aware of any changes
+    the approver made before approving."""
     updated = await HireRequestService.approve_request(
         db, request_id, current_user["org_id"],
         user_id=current_user["user_id"],
         role=current_user["role"],
         dept_id=current_user.get("dept_id"),
+        note=(body.note if body else None),
         ip_address=_get_ip(request),
     )
     return {"request": updated}

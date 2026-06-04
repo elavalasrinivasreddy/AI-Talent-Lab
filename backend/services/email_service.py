@@ -676,13 +676,24 @@ class EmailService:
         dept_name: str,
         approver_name: str,
         request_url: str,
+        note: Optional[str] = None,
     ) -> bool:
-        """Notify raiser (and HR users) that the request has been approved."""
+        """Notify raiser (and HR users) that the request has been approved.
+
+        When `note` is supplied (the approver modified the request before approving),
+        it is rendered as a highlighted block so the requester sees what changed."""
         _recipient_name = html.escape(recipient_name) if recipient_name else None
         _role_name = html.escape(role_name)
         _dept_name = html.escape(dept_name)
         _approver_name = html.escape(approver_name)
         greeting = f"Hi {_recipient_name}," if _recipient_name else "Hi,"
+        note_html = ""
+        if note and note.strip():
+            _note = html.escape(note.strip())
+            note_html = f"""
+<p style="margin:0 0 16px;padding:12px 16px;background:#F1F5F9;border-radius:8px;border-left:3px solid {_BRAND_TEAL};">
+  <strong>Note from {_approver_name}:</strong><br/>{_note}
+</p>"""
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
@@ -691,6 +702,7 @@ class EmailService:
   <span style="color:{_BRAND_TEAL};font-weight:600;">approved</span>
   by <strong>{_approver_name}</strong>.
 </p>
+{note_html}
 <p style="margin:0 0 16px;">
   The request is now in the HR queue and will be picked up shortly to begin the
   job description process.
@@ -699,9 +711,10 @@ class EmailService:
 <p style="margin:0;font-size:13px;color:#64748B;">
   You'll receive another update when HR picks up the request and begins drafting the JD.
 </p>"""
+        _note_text = f"\n\nNote from {approver_name}: {note.strip()}" if note and note.strip() else ""
         body_text = (
             f"{greeting}\n\nThe hire request for {role_name} in {dept_name} has been "
-            f"approved by {approver_name}.\n\nView it: {request_url}"
+            f"approved by {approver_name}.{_note_text}\n\nView it: {request_url}"
         )
         return await EmailService._send(
             to_email=to_email,

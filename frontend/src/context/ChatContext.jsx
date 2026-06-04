@@ -15,12 +15,13 @@ function buildGreeting(user, locationState, sessionData) {
     const firstName = user?.name?.split(' ')[0];
     const nameGreet = firstName ? `${timeGreet}, ${firstName}!` : `${timeGreet}!`;
 
-    // Context-aware greeting body
+    // Context-aware greeting body.
+    // Note: the greeting is intentionally identical for the "New Hire" tab and the
+    // hire-request pickup — a SaaS product should feel consistent across entry points.
+    // The only contextual variant is a session resumed for revision.
     let body;
     if (sessionData?.position_status === 'draft_needs_revision') {
         body = `Your JD has feedback from the reviewer. Let's revise it together.`;
-    } else if (locationState?.hireRequestId) {
-        body = `I see you have a hire request ready. Tell me about the role, and I'll draft the JD with you.`;
     } else {
         body = `Tell me about the role you're hiring for. I'll help you craft the perfect job description.`;
     }

@@ -12,7 +12,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { dashboardApi, copilotApi, positionsApi, hireRequestsApi } from '../../../utils/api'
 import StatusBadge from '../../common/StatusBadge'
-import { timeAgo } from '../../utils/date'
+import { timeAgo } from '../../../utils/date'
 import './LegacyDashboard.css'
 
 export default function LegacyDashboard() {

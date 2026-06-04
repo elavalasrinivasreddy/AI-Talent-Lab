@@ -26,6 +26,8 @@ export default function HireRequestDetailPage() {
   const [busy, setBusy] = useState(null)
   const [rejectOpen, setRejectOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [approveOpen, setApproveOpen] = useState(false)
+  const [approveNote, setApproveNote] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -68,8 +70,10 @@ export default function HireRequestDetailPage() {
   const handleApprove = async () => {
     setBusy('approve')
     try {
-      const res = await hireRequestsApi.approve(req.id)
+      const res = await hireRequestsApi.approve(req.id, approveNote.trim() || undefined)
       setReq(res?.request || null)
+      setApproveOpen(false)
+      setApproveNote('')
       setError('')
     } catch (err) {
       setError(err?.message || 'Couldn\'t approve request.')
@@ -219,16 +223,48 @@ export default function HireRequestDetailPage() {
             {/* dept_admin / org_head: approve or reject while pending */}
             {canApprove && (
               <>
-                <button
-                  type="button"
-                  className="hr-btn hr-btn-primary hr-btn-block"
-                  onClick={handleApprove}
-                  disabled={busy !== null}
-                >
-                  {busy === 'approve' ? <><SpinnerIcon /> Approving…</> : <><CheckIcon /> Approve request</>}
-                </button>
+                {!rejectOpen && (approveOpen ? (
+                  <div className="hr-reject-inline">
+                    <label className="hr-reject-label">Add a note for the requester (optional)</label>
+                    <textarea
+                      className="hr-reject-textarea"
+                      rows={3}
+                      value={approveNote}
+                      onChange={e => setApproveNote(e.target.value)}
+                      placeholder="If you changed anything (headcount, comp, …), note it here so the requester knows."
+                      autoFocus
+                    />
+                    <div className="hr-reject-actions">
+                      <button
+                        type="button"
+                        className="hr-btn hr-btn-primary"
+                        onClick={handleApprove}
+                        disabled={busy !== null}
+                      >
+                        {busy === 'approve' ? <><SpinnerIcon /> Approving…</> : <><CheckIcon /> Confirm approval</>}
+                      </button>
+                      <button
+                        type="button"
+                        className="hr-btn hr-btn-ghost"
+                        onClick={() => { setApproveOpen(false); setApproveNote('') }}
+                        disabled={busy !== null}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="hr-btn hr-btn-primary hr-btn-block"
+                    onClick={() => setApproveOpen(true)}
+                    disabled={busy !== null}
+                  >
+                    <CheckIcon /> Approve request
+                  </button>
+                ))}
 
-                {rejectOpen ? (
+                {!approveOpen && (rejectOpen ? (
                   <div className="hr-reject-inline">
                     <label className="hr-reject-label">Reason for rejection</label>
                     <textarea
@@ -267,7 +303,7 @@ export default function HireRequestDetailPage() {
                   >
                     <XIcon /> Reject request
                   </button>
-                )}
+                ))}
               </>
             )}
 

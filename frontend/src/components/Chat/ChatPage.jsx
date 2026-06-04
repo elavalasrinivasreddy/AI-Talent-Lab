@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useChat } from '../../context/ChatContext';
+import { useAuth } from '../../context/AuthContext';
 import { hireRequestsApi } from '../../utils/api';
 import ChatTopBar from './ChatTopBar';
 import JDStepper from './JDStepper';
@@ -19,6 +20,7 @@ import '../../styles/chat.css';
 const ChatPage = () => {
     const { sessionId } = useParams();
     const location = useLocation();
+    const { user } = useAuth();
     const {
         loadSession,
         setCurrentSessionId,
@@ -32,7 +34,8 @@ const ChatPage = () => {
     } = useChat();
 
     const loadedRef = useRef(null);
-    const hireRequestSentRef = useRef(false);
+    const initKeyRef = useRef(null);   // StrictMode-safe guard: fresh-chat init runs once per navigation
+    const seedKeyRef = useRef(null);   // StrictMode-safe guard: hire-request seed runs once per navigation
     const linkSentRef = useRef(false);
     const [isRailOpen, setIsRailOpen] = useState(true);
     const [railWidth, setRailWidth] = useState(360);
@@ -71,19 +74,26 @@ const ChatPage = () => {
 
     useEffect(() => {
         if (!sessionId) {
+            // Fresh chat (New Hire or hire-request pickup). StrictMode double-invokes
+            // effects in dev; gate on location.key so this setup runs exactly once per
+            // navigation. Without the guard, the second pass re-ran resetChat (nulling
+            // currentSessionId) and the seed effect fired again, minting a duplicate
+            // session and a second bot reply (#6/#8).
+            if (initKeyRef.current === location.key) return;
+            initKeyRef.current = location.key;
             loadedRef.current = null;
-            hireRequestSentRef.current = false;
-            resetChat(null, location.state);
+            // Pass the real user so the greeting is identical from both entry points (#5).
+            resetChat(user, location.state);
             return;
         }
 
         if (sessionId !== loadedRef.current) {
             loadedRef.current = sessionId;
-            hireRequestSentRef.current = false;
+            initKeyRef.current = null;
             setCurrentSessionId(sessionId);
             loadSession(sessionId);
         }
-    }, [sessionId, setCurrentSessionId, loadSession, resetChat]);
+    }, [sessionId, location.key, user, setCurrentSessionId, loadSession, resetChat]);
 
     // Auto-send hire-request context to the chat when the user picked up a
     // request from /hire-requests/:id, OR resumed a chat whose session was
@@ -91,6 +101,7 @@ const ChatPage = () => {
     // that the agent uses to skip ahead.
     useEffect(() => {
         const req = location.state?.hireRequest;
+        if (!req) return;
 
         // For sessionId routes, wait until loadSession has fully completed so we
         // know whether the session has real history before deciding to seed.
@@ -98,14 +109,16 @@ const ChatPage = () => {
 
         // Only seed if there are no real user messages yet (GREETING-only is fine).
         const hasUserMessages = messages.some(m => m.role === 'user');
-        if (hireRequestSentRef.current || workflowStage !== 'intake' || hasUserMessages) return;
+        if (workflowStage !== 'intake' || hasUserMessages) return;
 
-        hireRequestSentRef.current = true;
+        // StrictMode double-invokes effects; gate on location.key so the seed fires
+        // exactly once per navigation. Otherwise two streams launch and two sessions
+        // are created from a single pickup (#6/#8).
+        if (seedKeyRef.current === location.key) return;
+        seedKeyRef.current = location.key;
 
-        if (!req) {
-            return;
-        }
-
+        // Only the fields that shape the JD. Approval/ops metadata (requester name,
+        // target start date) is intentionally left out — it's noise for intake (#7).
         const lines = [`I need to hire a ${req.role_name}.`];
         if (req.department_name) lines.push(`Department: ${req.department_name}`);
         if (req.headcount && req.headcount > 1) lines.push(`Headcount: ${req.headcount}`);
@@ -121,12 +134,10 @@ const ChatPage = () => {
             const cmax = req.comp_max != null ? req.comp_max : 'open';
             lines.push(`Compensation: ₹${cmin}–${cmax} LPA`);
         }
-        if (req.target_start) lines.push(`Target start date: ${req.target_start}`);
         if (req.requirements) lines.push(`\nKey requirements from the hiring manager:\n${req.requirements}`);
-        if (req.requested_by_name) lines.push(`\nRequested by: ${req.requested_by_name}`);
 
         sendMessage({ message: lines.join('\n') });
-    }, [sessionId, sessionLoaded, location.state, workflowStage, sendMessage, messages]);
+    }, [sessionId, sessionLoaded, location.key, location.state, workflowStage, sendMessage, messages]);
 
     // Link the created position back to the hire request once JD generation completes.
     useEffect(() => {

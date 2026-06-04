@@ -2153,3 +2153,82 @@ Registered the task in `celery_app.py`:
 - `frontend/src/components/Sidebar/SidebarSessions.jsx` (delete locking)
 - `frontend/src/styles/chat.css` (feedback card styles)
 - `backend/db/repositories/sessions.py` (position_status in list, message_type in get)
+
+---
+
+### Bug #116: HR Approval Note Not Conveyed to Team Lead
+
+**Problem:** When a department admin modified a hire request (e.g., changed headcount, adjusted comp band) and approved it, the team lead who filed the request had no way to know their request was modified. They received only a generic "approved" notification, not the admin's explanation of changes.
+
+**Solution:**
+- Added `HireRequestApprove` Pydantic model with optional `note` field (max 1000 chars).
+- Updated `approve_hire_request` endpoint to accept optional note in the request body.
+- Service layer (`approve_request`) threads the note into:
+  - **In-app notification:** raiser_title changes to "approved **with modifications**" and message includes the note text.
+  - **Email:** note is rendered as a highlighted callout block in the HTML email body and plain text in fallback.
+  - **Audit log:** stores note in `details` JSONB.
+- Also patched the dormant `approve_modified()` path (existed but raiser never saw the notes; now they do).
+- **Frontend UI:** Added optional-note inline panel (mirrors the reject panel) — approver can supply a note; empty note is valid and sends plain approval (backward-compatible).
+
+**Files Modified:**
+- `backend/models/hire_request.py` (added `HireRequestApprove` model)
+- `backend/routers/hire_requests.py` (updated `/approve` to accept body with note)
+- `backend/services/hire_request_service.py` (threaded note through notifications/emails/audit in both `approve_request` and `approve_modified`)
+- `backend/services/email_service.py` (added `note` param to `send_hire_request_approved`, renders styled note block)
+- `frontend/src/utils/api.js` (approve accepts optional note param)
+- `frontend/src/components/HireRequests/HireRequestDetailPage.jsx` (added approve note UI panel + state)
+- `backend/tests/test_hire_request_approval.py` (added regression test `test_approve_with_note_notifies_raiser_with_note`)
+
+---
+
+### Bug #117: JD Chat Greeting Inconsistent Across Entry Points
+
+**Problem:** The JD chat greeting differed depending on how it was opened: the "New Hire" sidebar tab showed a personalized greeting ("Good afternoon, David!") while picking up a hire request from the hire-requests page showed a generic greeting ("Hi!"). In a SaaS product, the same surface must look identical across all entry points.
+
+**Solution:**
+- **Root cause:** `Sidebar.handleNewHire` passed real `user` to `resetChat`, but `ChatPage.useEffect` (mounted from hire-request pickup) passed `null`. Also, the intended hire-request greeting branch checked for `locationState.hireRequestId` (never passed) instead of `locationState.hireRequest`.
+- Removed the dead hire-request greeting branch entirely. All contexts now render the same greeting: time-of-day + first name (if available) + standard prompt. The only contextual variant is returning to a session for revision ("Your JD has feedback...").
+- `ChatPage` now passes the real `user` from `useAuth()` to `resetChat`, matching the Sidebar behavior.
+
+**Files Modified:**
+- `frontend/src/context/ChatContext.jsx` (removed dead `locationState.hireRequestId` branch; documented single greeting path)
+- `frontend/src/components/Chat/ChatPage.jsx` (added `useAuth()`, pass real `user` to `resetChat`)
+
+---
+
+### Bug #118: StrictMode Double-Seed Creates Duplicate Chat Sessions & Two Bot Replies
+
+**Problem:** When HR picked up a hire request and opened JD chat, two SSE streams launched, both seeding the intake agent. This created:
+1. Two chat sessions in the sidebar history (only one should exist).
+2. Two concurrent bot replies in the same conversation (one asking about must-have skills, another asking about employment type — visibly inconsistent).
+
+**Root cause:** React `StrictMode` (enabled in production; stricter in dev) double-invokes effect setup. `ChatPage.useEffect` had two effects:
+  - **Init effect:** resets chat and nulls `currentSessionId`.
+  - **Seed effect:** checks `hireRequestSentRef.current` flag to gate seeding once.
+
+On StrictMode's second pass: init re-ran and cleared `hireRequestSentRef` **and** nulled `currentSessionId`, so the seed re-ran, minting a second UUID → second `get_or_create_session` row + second SSE stream.
+
+**Solution:**
+- Replaced the `hireRequestSentRef` boolean flag with `seedKeyRef` and `initKeyRef` that gate on `location.key` — stable across StrictMode's double-invoke on the same navigation, but new on each real navigation (e.g., clicking New Hire a second time). `window.history.replaceState` does not change `location.key`, so minting a session id still keeps the guard active.
+- This ensures exactly one session + one stream per pickup, while still re-initing properly when the user navigates.
+
+**Files Modified:**
+- `frontend/src/components/Chat/ChatPage.jsx` (replaced ref guards with location.key logic; added `useAuth()` to pass real user; updated init and seed effect dependency arrays)
+
+---
+
+### Bug #119: Seeded Intake Message Includes Unnecessary Approval Metadata
+
+**Problem:** When HR picked up a hire request, the intake message auto-seeded to the chat included fields that are approval/operations concerns, not JD content:
+- `Requested by: David Kim` — the requester's name (irrelevant to drafting).
+- `Target start date: 2026-06-15` — a scheduling field (not JD content).
+- `Headcount: 2` — ops metadata (borderline; can be JD-relevant but not for agent intake).
+
+These fields added noise tokens and could nudge the agent into echoing irrelevant detail in the generated JD.
+
+**Solution:**
+- Trimmed the seeded message to include only fields that shape the JD: role_name, department, headcount (if >1), work_type, location, experience, compensation, and requirements.
+- Dropped `requested_by_name`, `target_start`, and empty/null fields.
+
+**Files Modified:**
+- `frontend/src/components/Chat/ChatPage.jsx` (seed effect: removed 3 unnecessary fields, simplified field checks)
