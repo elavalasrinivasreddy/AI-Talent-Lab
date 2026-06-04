@@ -340,6 +340,21 @@ async def create_screening_question(
     return {"question": q}
 
 
+@router.patch("/screening-questions/reorder")
+async def reorder_screening_questions(
+    body: ReorderRequest,
+    user: dict = Depends(require_org_head),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Reorder screening questions (admin only).
+
+    Must be registered BEFORE /{question_id} — FastAPI matches routes in order
+    and 'reorder' would otherwise be captured as a question_id parameter.
+    """
+    await SettingsService.reorder_screening_questions(db, user["org_id"], body.order)
+    return {"message": "Questions reordered"}
+
+
 @router.patch("/screening-questions/{question_id}")
 async def update_screening_question(
     question_id: int,
@@ -366,17 +381,6 @@ async def delete_screening_question(
         db, question_id, user["org_id"], user["user_id"],
     )
     return {"message": "Screening question deleted"}
-
-
-@router.patch("/screening-questions/reorder")
-async def reorder_screening_questions(
-    body: ReorderRequest,
-    user: dict = Depends(require_org_head),
-    db: asyncpg.Connection = Depends(get_db),
-):
-    """Reorder screening questions (admin only)."""
-    await SettingsService.reorder_screening_questions(db, user["org_id"], body.order)
-    return {"message": "Questions reordered"}
 
 
 # ── Message Templates ─────────────────────────────────────────────────────────
