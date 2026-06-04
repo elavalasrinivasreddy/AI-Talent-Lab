@@ -89,29 +89,30 @@ class PositionService:
             update_data["closed_at"] = "NOW()"
 
         async with get_connection() as conn:
-            pos = await PositionRepository.update(conn, position_id, org_id, update_data)
-            if not pos:
-                return None
+            async with conn.transaction():
+                pos = await PositionRepository.update(conn, position_id, org_id, update_data)
+                if not pos:
+                    return None
 
-            await PipelineEventRepository.create(conn, {
-                "org_id": org_id,
-                "position_id": position_id,
-                "user_id": user_id,
-                "event_type": "status_changed",
-                "event_data": {"new_status": new_status}
-            })
-            await AuditLogRepository.create(conn, {
-                "org_id": org_id,
-                "user_id": user_id,
-                "action": f"position_{new_status}",
-                "entity_type": "position",
-                "entity_id": str(position_id),
-                "details": json.dumps({"status": new_status})
-            })
+                await PipelineEventRepository.create(conn, {
+                    "org_id": org_id,
+                    "position_id": position_id,
+                    "user_id": user_id,
+                    "event_type": "status_changed",
+                    "event_data": {"new_status": new_status}
+                })
+                await AuditLogRepository.create(conn, {
+                    "org_id": org_id,
+                    "user_id": user_id,
+                    "action": f"position_{new_status}",
+                    "entity_type": "position",
+                    "entity_id": str(position_id),
+                    "details": json.dumps({"status": new_status})
+                })
 
-            # When closed/archived → auto-add non-selected candidates to talent pool
-            if new_status in ("closed", "archived"):
-                await _auto_pool_candidates(conn, position_id, org_id)
+                # When closed/archived → auto-add non-selected candidates to talent pool
+                if new_status in ("closed", "archived"):
+                    await _auto_pool_candidates(conn, position_id, org_id)
 
         if pos:
             pos.pop("jd_embedding", None)
@@ -167,7 +168,7 @@ class PositionService:
         """
         Submit position for JD approval.
 
-        Item 10: Transactional ATS config + status in single SQL
+        Item 10: ATS config + status transition in ONE transaction (atomic)
         Item 17: Block when no reviewer
         Item 19: Org_head bypass (direct to open)
         Item 20: Full department matrix via resolve_reviewer
@@ -175,85 +176,72 @@ class PositionService:
         from backend.services.email_service import EmailService
         from backend.config import settings
 
-        is_auto_approved = False
-        auto_approve_user_id = None
-        role_name = None
-        dept_id = None
-        hr_name = "HR"
-
-        async with get_connection() as conn:
-            pos_row = await conn.fetchrow(
-                "SELECT id, role_name, department_id, status FROM positions WHERE id=$1 AND org_id=$2",
-                position_id, org_id,
-            )
-            if not pos_row:
-                raise ValueError(f"Position {position_id} not found")
-
-            # Guard: only jd_in_progress or draft_needs_revision can be submitted
-            if pos_row["status"] not in ("jd_in_progress", "draft_needs_revision"):
-                raise ValueError(
-                    f"Cannot submit from status '{pos_row['status']}'. "
-                    f"Position must be in jd_in_progress or draft_needs_revision."
-                )
-
-            role_name = pos_row["role_name"]
-            dept_id = pos_row["department_id"]
-
-            # Item 10: Update ATS config atomically with submission
-            if ats_threshold is not None or search_interval_hours is not None:
-                ats_update = {}
-                if ats_threshold is not None:
-                    ats_update["ats_threshold"] = ats_threshold
-                if search_interval_hours is not None:
-                    ats_update["search_interval_hours"] = search_interval_hours
-                await PositionRepository.update(conn, position_id, org_id, ats_update)
-
-            # Check if auto-approve is enabled
-            hr_row = await conn.fetchrow(
-                "SELECT requested_by FROM hire_requests WHERE position_id=$1 AND org_id=$2",
-                position_id, org_id
-            )
-            if hr_row and hr_row["requested_by"]:
-                user_row = await conn.fetchrow(
-                    "SELECT id, auto_approve_jds FROM users WHERE id=$1 AND org_id=$2",
-                    hr_row["requested_by"], org_id
-                )
-                if user_row and user_row["auto_approve_jds"]:
-                    is_auto_approved = True
-                    auto_approve_user_id = user_row["id"]
-
-            submitter_row = await conn.fetchrow(
-                "SELECT name, email FROM users WHERE id=$1 AND org_id=$2",
-                submitted_by_user_id, org_id,
-            )
-            hr_name = submitter_row["name"] if submitter_row else "HR"
-
-        if is_auto_approved:
-            await PositionService.record_approval_decision(
-                position_id=position_id,
-                org_id=org_id,
-                approver_user_id=auto_approve_user_id,
-                decision="approved",
-                notes="Auto-approved via user settings."
-            )
-            return
-
-        # Item 16/20: Resolve reviewer using the full department matrix
+        # Resolve reviewer first — read-only, safe to do before the transaction.
+        # The transaction below uses FOR UPDATE to re-validate status hasn't changed.
         reviewer_info = await PositionService.resolve_reviewer(
             position_id, org_id, submitted_by_user_id,
         )
 
-        # Item 19: Org_head bypass — direct to open
-        if reviewer_info.get("is_bypass"):
-            async with get_connection() as conn:
-                async with conn.transaction():
-                    await PositionRepository.org_head_direct_approve(
+        # Item 17: Block early if no reviewer resolved
+        if not reviewer_info.get("is_bypass") and not reviewer_info.get("reviewer_id"):
+            raise ValueError(
+                reviewer_info.get("warning")
+                or "No reviewer available. Ask your workspace admin to assign an org head before submitting."
+            )
+
+        role_name = None
+        dept_id = None
+        hr_name = "HR"
+        reviewer_row = None
+        is_bypass = reviewer_info.get("is_bypass", False)
+        reviewer_id = reviewer_info.get("reviewer_id")
+
+        async with get_connection() as conn:
+            async with conn.transaction():
+                # Lock the row — prevents concurrent double-submits
+                pos_row = await conn.fetchrow(
+                    """SELECT id, role_name, department_id, status
+                       FROM positions WHERE id=$1 AND org_id=$2 FOR UPDATE""",
+                    position_id, org_id,
+                )
+                if not pos_row:
+                    raise ValueError(f"Position {position_id} not found")
+
+                if pos_row["status"] not in ("jd_in_progress", "draft_needs_revision"):
+                    raise ValueError(
+                        f"Cannot submit from status '{pos_row['status']}'. "
+                        f"Position must be in jd_in_progress or draft_needs_revision."
+                    )
+
+                role_name = pos_row["role_name"]
+                dept_id = pos_row["department_id"]
+
+                # Read submitter — check auto_approve_jds on the SUBMITTER, not hire_request creator
+                submitter_row = await conn.fetchrow(
+                    "SELECT name, role, auto_approve_jds FROM users WHERE id=$1 AND org_id=$2",
+                    submitted_by_user_id, org_id,
+                )
+                hr_name = submitter_row["name"] if submitter_row else "HR"
+                submitter_role = submitter_row["role"] if submitter_row else "hr"
+                auto_approve = bool(submitter_row and submitter_row.get("auto_approve_jds"))
+
+                # Item 10: ATS config update in same transaction as status change
+                if ats_threshold is not None or search_interval_hours is not None:
+                    ats_update = {}
+                    if ats_threshold is not None:
+                        ats_update["ats_threshold"] = ats_threshold
+                    if search_interval_hours is not None:
+                        ats_update["search_interval_hours"] = search_interval_hours
+                    await PositionRepository.update(conn, position_id, org_id, ats_update)
+
+                if is_bypass:
+                    # Item 19: Org_head direct-to-open
+                    success = await PositionRepository.org_head_direct_approve(
                         conn, position_id, org_id, submitted_by_user_id,
                     )
-                    # Fulfill linked hire_request (Flow 1)
-                    await PositionRepository.fulfill_hire_request(
-                        conn, position_id, org_id,
-                    )
+                    if not success:
+                        raise ValueError("Submit failed: position status changed concurrently.")
+                    await PositionRepository.fulfill_hire_request(conn, position_id, org_id)
                     await AuditLogRepository.create(conn, {
                         "org_id": org_id,
                         "user_id": submitted_by_user_id,
@@ -262,84 +250,88 @@ class PositionService:
                         "entity_id": str(position_id),
                         "details": json.dumps({"role_name": role_name, "reason": "org_head_bypass"})
                     })
-            # Fire Celery sourcing
+
+                elif auto_approve:
+                    # Auto-approve: set pending_jd_approval then immediately open — all in one txn
+                    submitted = await PositionRepository.submit_for_jd_approval(
+                        conn, position_id, org_id,
+                        reviewer_id=reviewer_id,
+                        submitted_by_role=submitter_role,
+                        reviewer_role_at_submit=reviewer_info.get("reviewer_role") or "org_head",
+                    )
+                    if not submitted:
+                        raise ValueError("Auto-approve failed: position status changed concurrently.")
+                    success = await PositionRepository.approve_and_open(
+                        conn, position_id, org_id, submitted_by_user_id,
+                    )
+                    if not success:
+                        raise ValueError("Auto-approve open failed: position status changed concurrently.")
+                    await PositionRepository.fulfill_hire_request(conn, position_id, org_id)
+                    await AuditLogRepository.create(conn, {
+                        "org_id": org_id,
+                        "user_id": submitted_by_user_id,
+                        "action": "position_auto_approved",
+                        "entity_type": "position",
+                        "entity_id": str(position_id),
+                        "details": json.dumps({"role_name": role_name})
+                    })
+
+                else:
+                    # Normal submit → pending_jd_approval
+                    submitted = await PositionRepository.submit_for_jd_approval(
+                        conn, position_id, org_id,
+                        reviewer_id=reviewer_id,
+                        submitted_by_role=submitter_role,
+                        reviewer_role_at_submit=reviewer_info.get("reviewer_role") or "org_head",
+                    )
+                    if not submitted:
+                        raise ValueError("Submit failed: position status changed concurrently.")
+
+                    await AuditLogRepository.create(conn, {
+                        "org_id": org_id,
+                        "user_id": submitted_by_user_id,
+                        "action": "position_submitted_for_approval",
+                        "entity_type": "position",
+                        "entity_id": str(position_id),
+                        "details": json.dumps({
+                            "role_name": role_name,
+                            "reviewer_id": reviewer_id,
+                            "reviewer_role": reviewer_info.get("reviewer_role"),
+                        })
+                    })
+
+                    await conn.execute(
+                        """
+                        INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
+                        VALUES ($1,$2,'jd_pending_approval','JD ready for your approval',$3,$4)
+                        """,
+                        org_id, reviewer_id,
+                        f"\"{role_name}\" was submitted by {hr_name} and is waiting for your approval.",
+                        f"/positions/{position_id}/jd",
+                    )
+
+                    reviewer_row = await conn.fetchrow(
+                        "SELECT name, email FROM users WHERE id=$1 AND org_id=$2",
+                        reviewer_id, org_id,
+                    )
+
+        # Post-commit: email and Celery (non-blocking, outside transaction)
+        if is_bypass or auto_approve:
             try:
                 from backend.tasks.candidate_pipeline import run_candidate_search
                 run_candidate_search.delay(position_id, org_id, dept_id, submitted_by_user_id)
-                logger.info(f"Candidate pipeline queued for position {position_id} (org_head bypass)")
+                logger.info(f"Candidate pipeline queued for position {position_id}")
             except Exception as e:
                 logger.warning(f"Could not enqueue candidate pipeline: {e}")
-            return
-
-        # Item 17: Block submit when no reviewer
-        if not reviewer_info.get("reviewer_id"):
-            raise ValueError(
-                reviewer_info.get("warning")
-                or "No reviewer available. Ask your workspace admin to assign an org head before submitting."
-            )
-
-        reviewer_id = reviewer_info["reviewer_id"]
-
-        async with get_connection() as conn:
-            # Get the submitter's role for snapshotting
-            submitter_row = await conn.fetchrow(
-                "SELECT role FROM users WHERE id=$1 AND org_id=$2",
-                submitted_by_user_id, org_id,
-            )
-            submitter_role = submitter_row["role"] if submitter_row else "hr"
-
-            # Set position status + reviewer snapshot (Item 4 + 10)
-            await PositionRepository.submit_for_jd_approval(
-                conn, position_id, org_id,
-                reviewer_id=reviewer_id,
-                submitted_by_role=submitter_role,
-                reviewer_role_at_submit=reviewer_info.get("reviewer_role") or "org_head",
-            )
-
-            # Audit log
-            await AuditLogRepository.create(conn, {
-                "org_id": org_id,
-                "user_id": submitted_by_user_id,
-                "action": "position_submitted_for_approval",
-                "entity_type": "position",
-                "entity_id": str(position_id),
-                "details": json.dumps({
-                    "role_name": role_name,
-                    "reviewer_id": reviewer_id,
-                    "reviewer_role": reviewer_info.get("reviewer_role"),
-                })
-            })
-
-            # Notify the reviewer
-            reviewer_name = reviewer_info.get("reviewer_name") or "Reviewer"
-            await conn.execute(
-                """
-                INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-                VALUES ($1,$2,'jd_pending_approval','JD ready for your approval',
-                        $3, $4)
-                """,
-                org_id, reviewer_id,
-                f"\"{role_name}\" was submitted by {hr_name} and is waiting for your approval.",
-                f"/positions/{position_id}/jd",
-            )
-
-            # Also get reviewer's email for notification
-            reviewer_row = await conn.fetchrow(
-                "SELECT name, email FROM users WHERE id=$1 AND org_id=$2",
-                reviewer_id, org_id,
-            )
-
-        # Email reviewer (outside conn block)
-        if reviewer_row and reviewer_row.get("email"):
+        elif reviewer_row and reviewer_row.get("email"):
             base_url = getattr(settings, "APP_BASE_URL", "https://app.aitalentlab.com")
-            review_url = f"{base_url}/positions/{position_id}/jd"
             try:
                 await EmailService.send_jd_ready_for_review(
                     to_email=reviewer_row["email"],
                     team_lead_name=reviewer_row["name"],
                     role_name=role_name,
                     hr_name=hr_name,
-                    review_url=review_url,
+                    review_url=f"{base_url}/positions/{position_id}/jd",
                 )
             except Exception as e:
                 logger.warning(f"Could not email reviewer {reviewer_id} for approval: {e}")
@@ -364,19 +356,7 @@ class PositionService:
         from backend.config import settings
 
         async with get_connection() as conn:
-            pos_row = await conn.fetchrow(
-                """
-                SELECT role_name, created_by, department_id, approval_status,
-                       status, reviewer_id
-                FROM positions WHERE id=$1 AND org_id=$2
-                """,
-                position_id, org_id,
-            )
-            if not pos_row:
-                raise ValueError(f"Position {position_id} not found")
-
-            # ── Item 9: Cross-dept authority check ───────────────────────
-            # Verify the approver is the assigned reviewer OR an org_head
+            # Read approver first (doesn't need lock)
             approver_row = await conn.fetchrow(
                 "SELECT id, name, role, department_id FROM users WHERE id=$1 AND org_id=$2",
                 approver_user_id, org_id,
@@ -386,34 +366,54 @@ class PositionService:
             approver_name = approver_row["name"]
             approver_role = approver_row["role"]
 
-            if approver_role != "org_head":
-                # Non-org_head must be the assigned reviewer
-                if pos_row["reviewer_id"] and approver_user_id != pos_row["reviewer_id"]:
-                    raise PermissionError(
-                        "You are not the assigned reviewer for this position."
-                    )
-                # Must have dept_scope over this position
-                if pos_row["department_id"] and approver_row["department_id"]:
-                    if approver_row["department_id"] != pos_row["department_id"]:
-                        raise PermissionError(
-                            "You can only review positions in your own department."
-                        )
+            hr_row = None
+            hr_user_id = None
 
-            # Idempotency: prevent double-fire
-            target_status = "approved" if decision == "approved" else "changes_requested"
-            if pos_row["approval_status"] == target_status:
-                return
-
-            hr_user_id = pos_row["created_by"]
-            hr_row = await conn.fetchrow(
-                "SELECT name, email FROM users WHERE id=$1 AND org_id=$2",
-                hr_user_id, org_id,
-            ) if hr_user_id else None
-            hr_name = hr_row["name"] if hr_row else "HR"
-            hr_email = hr_row["email"] if hr_row else None
-
-            # ── Item 4 + 11: Single transaction ──────────────────────────
+            # ── Item 4 + 9 + 11: Single transaction with FOR UPDATE ───────
+            # FOR UPDATE ensures permission check reads fresh reviewer_id —
+            # prevents TOCTOU where a withdrawn/reassigned reviewer still approves.
             async with conn.transaction():
+                pos_row = await conn.fetchrow(
+                    """
+                    SELECT role_name, created_by, department_id, approval_status,
+                           status, reviewer_id
+                    FROM positions WHERE id=$1 AND org_id=$2 FOR UPDATE
+                    """,
+                    position_id, org_id,
+                )
+                if not pos_row:
+                    raise ValueError(f"Position {position_id} not found")
+
+                # ── Item 9: Cross-dept authority check (on fresh locked row) ──
+                if approver_role != "org_head":
+                    # reviewer_id=NULL means no reviewer assigned; only org_head may act
+                    if pos_row["reviewer_id"] is None:
+                        raise PermissionError(
+                            "No reviewer assigned to this position. Only org_head can approve."
+                        )
+                    if approver_user_id != pos_row["reviewer_id"]:
+                        raise PermissionError(
+                            "You are not the assigned reviewer for this position."
+                        )
+                    # Must have dept_scope over this position
+                    if pos_row["department_id"] and approver_row["department_id"]:
+                        if approver_row["department_id"] != pos_row["department_id"]:
+                            raise PermissionError(
+                                "You can only review positions in your own department."
+                            )
+
+                # Idempotency: prevent double-fire
+                target_status = "approved" if decision == "approved" else "changes_requested"
+                if pos_row["approval_status"] == target_status:
+                    return
+
+                hr_user_id = pos_row["created_by"]
+                hr_row = await conn.fetchrow(
+                    "SELECT name, email FROM users WHERE id=$1 AND org_id=$2",
+                    hr_user_id, org_id,
+                ) if hr_user_id else None
+                hr_name = hr_row["name"] if hr_row else "HR"
+                hr_email = hr_row["email"] if hr_row else None
                 if decision == "approved":
                     # pending_jd_approval → open (atomic CAS)
                     success = await PositionRepository.approve_and_open(
@@ -568,9 +568,8 @@ class PositionService:
                     f"current status is '{pos['status']}'."
                 )
 
-            # Verify caller is team_lead (or org_head) who raised the hire request
-            if role not in ("team_lead", "org_head"):
-                raise PermissionError("Only team_lead or org_head can cancel a JD in progress.")
+            if role != "team_lead":
+                raise PermissionError("Only the team_lead who raised the hire request can cancel a JD in progress.")
 
             async with conn.transaction():
                 success = await PositionRepository.cancel_jd_in_progress(
@@ -756,8 +755,26 @@ class PositionService:
                         "reviewer_role": None, "department": None,
                         "is_bypass": True, "warning": None,
                     }
-                if dept_id:
-                    # hr + dept → dept_admin of that dept
+
+                # Flow 1: if a hire_request exists for this position, the reviewer
+                # is the team_lead who raised it — not the dept_admin.
+                tl_row = await conn.fetchrow(
+                    """
+                    SELECT u.id, u.name FROM hire_requests h
+                      JOIN users u ON u.id = h.requested_by
+                     WHERE h.position_id = $1 AND h.org_id = $2
+                       AND h.status IN ('approved', 'approved_modified')
+                       AND u.is_active = TRUE
+                     ORDER BY h.id DESC LIMIT 1
+                    """,
+                    position_id, org_id,
+                )
+                if tl_row:
+                    reviewer_id = tl_row["id"]
+                    reviewer_name = tl_row["name"]
+                    reviewer_role = "team_lead"
+                elif dept_id:
+                    # Flow 2: hr + dept → dept_admin of that dept
                     da = await conn.fetchrow(
                         "SELECT id, name FROM users WHERE org_id=$1 AND role='dept_admin' AND department_id=$2 AND is_active=TRUE ORDER BY id LIMIT 1",
                         org_id, dept_id,
@@ -782,7 +799,7 @@ class PositionService:
                         else:
                             warning = "No reviewer available. Contact your workspace admin."
                 else:
-                    # hr + no dept → org_head
+                    # Flow 2: hr + no dept → org_head
                     oh = await conn.fetchrow(
                         "SELECT id, name FROM users WHERE org_id=$1 AND role='org_head' AND is_active=TRUE ORDER BY id LIMIT 1",
                         org_id,

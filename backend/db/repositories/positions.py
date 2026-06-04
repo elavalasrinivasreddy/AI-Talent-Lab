@@ -247,8 +247,9 @@ class PositionRepository:
     ) -> bool:
         """Atomic CAS: claim a position for JD work.
 
-        Guard: picked_up_by IS NULL AND status = 'draft'.
-        Returns True if this HR user acquired the lock, False if already taken.
+        Guard: picked_up_by IS NULL and linked hire_request is approved/approved_modified.
+        Returns True if this HR user acquired the lock, False if already taken or
+        hire_request was cancelled after approval.
         """
         result = await conn.execute(
             """
@@ -259,6 +260,12 @@ class PositionRepository:
                    updated_at = NOW()
              WHERE id = $2 AND org_id = $3
                AND picked_up_by IS NULL
+               AND EXISTS (
+                   SELECT 1 FROM hire_requests
+                    WHERE position_id = $2
+                      AND org_id = $3
+                      AND status IN ('approved', 'approved_modified')
+               )
             """,
             hr_user_id, position_id, org_id,
         )
@@ -281,7 +288,7 @@ class PositionRepository:
         Increments revision_cycle if this is a re-submission (review_notes is set),
         otherwise leaves it at 0.
         """
-        await conn.execute(
+        result = await conn.execute(
             """
             UPDATE positions
                SET status = 'pending_jd_approval',
@@ -294,10 +301,12 @@ class PositionRepository:
                    review_notes = NULL,
                    updated_at = NOW()
              WHERE id = $4 AND org_id = $5
+               AND status IN ('jd_in_progress', 'draft_needs_revision')
             """,
             reviewer_id, submitted_by_role, reviewer_role_at_submit,
             position_id, org_id,
         )
+        return result.endswith("1")
 
     @staticmethod
     async def increment_revision_cycle(
@@ -440,9 +449,13 @@ class PositionRepository:
         position_id: int,
         org_id: int,
         user_id: int,
-    ) -> None:
-        """Flow 2 bypass: org_head creates → position goes to open directly."""
-        await conn.execute(
+    ) -> bool:
+        """Flow 2 bypass: org_head creates → position goes to open directly.
+
+        Guard: position must still be in jd_in_progress or draft_needs_revision.
+        Returns True on success, False if status changed concurrently.
+        """
+        result = await conn.execute(
             """
             UPDATE positions
                SET status = 'open',
@@ -452,9 +465,11 @@ class PositionRepository:
                    requires_approval = FALSE,
                    updated_at = NOW()
              WHERE id = $2 AND org_id = $3
+               AND status IN ('jd_in_progress', 'draft_needs_revision')
             """,
             user_id, position_id, org_id,
         )
+        return result.endswith("1")
 
     # ── Item 12: Re-resolve reviewer when user deleted ────────────────────
 

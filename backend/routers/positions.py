@@ -219,33 +219,33 @@ async def generate_interview_kit(
 # ── Approval workflow ─────────────────────────────────────────────────────────
 
 @router.post("/{position_id}/submit-for-approval")
-async def submit_for_approval(position_id: int, current_user=Depends(get_current_user)):
+async def submit_for_approval(
+    position_id: int,
+    body: dict = None,
+    current_user=Depends(get_current_user),
+):
     """
-    Recruiter submits a position for hiring manager approval.
+    HR submits a position for JD approval.
+    Body (optional): { ats_threshold?: float, search_interval_hours?: int }
 
-    Delegates to PositionService.submit_for_approval, which scopes the notification
-    to the position's department (only that department's team leads, plus org-level
-    team leads) and also honours JD auto-approval. The previous inline version
-    notified every org_head/team_lead/dept_admin org-wide regardless of department.
+    The service acquires a FOR UPDATE lock on the position row inside a transaction,
+    so the status guard is atomic — no stale pre-check needed here.
     """
-    from backend.db.connection import get_connection
-    async with get_connection() as conn:
-        row = await conn.fetchrow(
-            "SELECT id, requires_approval, approval_status FROM positions WHERE id=$1 AND org_id=$2",
-            position_id, current_user["org_id"],
+    body = body or {}
+    try:
+        await PositionService.submit_for_approval(
+            position_id=position_id,
+            org_id=current_user["org_id"],
+            submitted_by_user_id=current_user["user_id"],
+            ats_threshold=body.get("ats_threshold"),
+            search_interval_hours=body.get("search_interval_hours"),
         )
-        if not row:
-            raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": "Position not found", "details": None}})
-        if not row["requires_approval"]:
-            raise HTTPException(status_code=400, detail={"error": {"code": "APPROVAL_NOT_REQUIRED", "message": "This position does not require approval", "details": None}})
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail={"error": {"code": "INVALID_TRANSITION", "message": str(e), "details": None}})
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail={"error": {"code": "FORBIDDEN", "message": str(e), "details": None}})
 
-    await PositionService.submit_for_approval(
-        position_id=position_id,
-        org_id=current_user["org_id"],
-        submitted_by_user_id=current_user["user_id"],
-    )
-
-    # Reflect the real status — the service may have auto-approved the JD.
+    from backend.db.connection import get_connection
     async with get_connection() as conn:
         final_status = await conn.fetchval(
             "SELECT approval_status FROM positions WHERE id=$1 AND org_id=$2",
