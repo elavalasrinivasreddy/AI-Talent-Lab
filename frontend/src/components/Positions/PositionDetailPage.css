@@ -121,6 +121,16 @@
 }
 .pd-btn-outline:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.pd-btn-primary {
+  border: 1px solid transparent;
+  background: var(--color-primary);
+  color: #ffffff;
+}
+.pd-btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover, #0D9488);
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+}
+.pd-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .pd-status-select {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-md);

@@ -367,7 +367,12 @@ class HireRequestService:
             )
         else:
             # Need to reload it to get the updated status for response
-            created = await HireRequestRepository.get_by_id(conn, created["id"], org_id)
+            reloaded = await HireRequestRepository.get_by_id(conn, created["id"], org_id)
+            if reloaded is not None:
+                created = reloaded
+
+        if created is None:
+            raise RuntimeError("Failed to process hire request")
 
         return created
 

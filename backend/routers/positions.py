@@ -66,16 +66,10 @@ async def pending_count(current_user=Depends(get_current_user)):
                 org_id
             )
         elif role in ("team_lead", "dept_admin"):
-            if dept_id:
-                row = await conn.fetchrow(
-                    "SELECT COUNT(*) FROM positions WHERE org_id=$1 AND approval_status='pending' AND department_id=$2",
-                    org_id, dept_id
-                )
-            else:
-                row = await conn.fetchrow(
-                    "SELECT COUNT(*) FROM positions WHERE org_id=$1 AND approval_status='pending'",
-                    org_id
-                )
+            row = await conn.fetchrow(
+                "SELECT COUNT(*) FROM positions WHERE org_id=$1 AND approval_status='pending' AND reviewer_id=$2",
+                org_id, current_user["user_id"]
+            )
         else:
             return {"count": 0}
             

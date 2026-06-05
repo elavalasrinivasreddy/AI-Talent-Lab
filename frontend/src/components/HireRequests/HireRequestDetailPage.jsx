@@ -279,16 +279,7 @@ export default function HireRequestDetailPage() {
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="hr-btn hr-btn-ghost-danger hr-btn-block"
-                    onClick={() => setRejectOpen(true)}
-                    disabled={busy !== null}
-                  >
-                    <XIcon /> Reject request
-                  </button>
-                ))}
+                )}
               </>
             )}
 

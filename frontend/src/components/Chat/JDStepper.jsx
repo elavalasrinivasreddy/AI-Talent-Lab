@@ -44,7 +44,7 @@ function statePerStage(currentStage, gs, skipped) {
       map[key] = 'skipped';
       return;
     }
-    if (effectiveStage === 'complete') {
+    if (currentStage === 'complete') {
       map[key] = 'done';
       return;
     }

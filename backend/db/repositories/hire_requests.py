@@ -153,7 +153,8 @@ class HireRequestRepository:
             where.append("status IN ('pending', 'submitted', 'approved', 'approved_modified')")
 
         sql = f"SELECT COUNT(*) FROM hire_requests WHERE {' AND '.join(where)}"
-        return await conn.fetchval(sql, *params)
+        val = await conn.fetchval(sql, *params)
+        return int(val) if val is not None else 0
 
     # ── Writes ────────────────────────────────────────────────────────────
 
@@ -191,7 +192,13 @@ class HireRequestRepository:
             headcount, priority, work_type, experience_min, experience_max,
             target_start, requirements, comp_min, comp_max, location,
         )
-        return await HireRequestRepository.get_by_id(conn, row["id"], org_id)
+        if row is None:
+            raise RuntimeError("Database failed to return an ID for the new hire request")
+            
+        res = await HireRequestRepository.get_by_id(conn, row["id"], org_id)
+        if res is None:
+            raise RuntimeError("Failed to retrieve newly created hire request")
+        return res
 
     @staticmethod
     async def update(

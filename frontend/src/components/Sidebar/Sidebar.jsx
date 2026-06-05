@@ -29,7 +29,7 @@ const ALL_NAV = [
     { to: '/dashboard', icon: Icons.dashboard, label: 'Dashboard' },
   ]},
   { section: 'Hiring', items: [
-    { to: '/positions',     icon: Icons.briefcase, label: 'Positions', badge: 'positions_pending' },
+    { to: '/positions',     icon: Icons.briefcase, label: 'Positions' },
     { to: '/interviews',    icon: Icons.calendar,  label: 'Interviews' },
     { to: '/hire-requests', icon: Icons.inbox,     label: 'Hire Requests', roles: ['dept_admin', 'hr', 'team_lead'], badge: 'hire_requests_pending' },
     { to: '/talent-pool',   icon: Icons.users,     label: 'Talent Pool',   roles: ['org_head', 'dept_admin', 'hr'] },
@@ -76,8 +76,8 @@ export default function Sidebar() {
         if (!cancelled) {
           setBadges(b => ({ 
             ...b, 
-            hire_requests_pending: hrData?.count ?? 0,
-            positions_pending: posData?.count ?? 0
+            hire_requests_pending: (hrData?.count ?? 0) + (posData?.count ?? 0),
+            positions_pending: 0
           }))
         }
       } catch {
