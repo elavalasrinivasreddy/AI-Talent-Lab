@@ -50,6 +50,12 @@ class LangChainEmbeddingFunctionAdapter:
     def __call__(self, input: Any) -> Any:
         # Chroma passes a list of texts
         return self.lc_embeddings.embed_documents(input)
+        
+    def embed_query(self, query: str) -> list[float]:
+        return self.lc_embeddings.embed_query(query)
+        
+    def embed_documents(self, documents: list[str]) -> list[list[float]]:
+        return self.lc_embeddings.embed_documents(documents)
 
 
 def get_jd_collection():
