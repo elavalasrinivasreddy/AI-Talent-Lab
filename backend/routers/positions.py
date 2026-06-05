@@ -27,24 +27,22 @@ async def list_positions(
     """List all positions for the org with optional filters."""
     # Enforce department scoping for roles bound to a specific department.
     role = current_user["role"]
-    created_by_filter = None
+    team_lead_id = None
     
     if role in ("hr", "dept_admin") and current_user.get("dept_id"):
         department_id = current_user["dept_id"]
         
     if role == "team_lead":
-        created_by_filter = current_user["user_id"]
-        # Team lead gets restricted to only what they created, ignoring dept-wide views.
-        if current_user.get("dept_id") and not department_id:
-            # We can still apply the dept filter as an extra boundary if needed, but created_by is stricter.
-            pass
+        team_lead_id = current_user["user_id"]
+        # Team lead gets restricted to only what they created, reviewed, or requested via hire requests.
+        department_id = None # Ignore dept filter for team_lead, rely strictly on their involvement.
 
     positions = await PositionService.list_positions(
         org_id=current_user["org_id"],
         department_id=department_id,
         status=status,
         page=page,
-        created_by=created_by_filter
+        team_lead_id=team_lead_id
     )
     return {"positions": positions, "page": page}
 

@@ -129,7 +129,7 @@ class PositionRepository:
         page: int = 1,
         page_size: int = 20,
         assigned_to: Optional[int] = None,
-        created_by: Optional[int] = None,
+        team_lead_id: Optional[int] = None,
     ) -> list[dict]:
         """List positions for an org with optional filters."""
         conditions = ["p.org_id = $1"]
@@ -148,9 +148,9 @@ class PositionRepository:
             conditions.append(f"p.assigned_to = ${idx}")
             params.append(assigned_to)
             idx += 1
-        if created_by:
-            conditions.append(f"p.created_by = ${idx}")
-            params.append(created_by)
+        if team_lead_id:
+            conditions.append(f"(p.created_by = ${idx} OR p.reviewer_id = ${idx} OR p.id IN (SELECT position_id FROM hire_requests WHERE requested_by = ${idx}))")
+            params.append(team_lead_id)
             idx += 1
 
         offset = (page - 1) * page_size
