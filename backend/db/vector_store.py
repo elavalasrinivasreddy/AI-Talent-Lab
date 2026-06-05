@@ -132,15 +132,13 @@ async def search_similar(query_text: str, org_id: int, department_id: Optional[i
 
     try:
         # Enforce tenant isolation (only search within the same org)
-        where_clause = {"org_id": org_id}
-        
         # Optional: Boost/filter by department if provided
         # Or we can just search the whole org. We'll search the whole org for internal check.
         
         results = collection.query(
             query_texts=[query_text],
             n_results=top_k,
-            where=where_clause
+            where={"org_id": org_id} # type: ignore
         )
         
         matched_jds = []
