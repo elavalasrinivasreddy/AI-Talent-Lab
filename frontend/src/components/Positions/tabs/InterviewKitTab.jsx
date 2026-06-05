@@ -141,7 +141,7 @@ export default function InterviewKitTab({ positionId }) {
         {Object.entries(byType).map(([type, qs]) => (
           <div key={type} className="ik-type-group">
             <h4 className="ik-type-label">
-              {TYPE_ICONS[type] || '❓'} {type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+              {TYPE_ICONS[type] || '❓'} {String(type).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
               <span className="ik-type-count">{qs.length}</span>
             </h4>
             {qs.map((q, idx) => {
@@ -154,13 +154,13 @@ export default function InterviewKitTab({ positionId }) {
                 >
                   <div className="ik-question-header" onClick={() => setExpandedQ(isExpanded ? null : qId)}>
                     <div className="ik-question-num">{questions.indexOf(q) + 1}</div>
-                    <div className="ik-question-text">{q.question}</div>
+                    <div className="ik-question-text">{q?.question || 'Untitled Question'}</div>
                     <div className="ik-question-meta">
                       <span
                         className="ik-difficulty"
-                        style={{ color: DIFFICULTY_COLORS[q.difficulty] || '#94a3b8' }}
+                        style={{ color: DIFFICULTY_COLORS[q?.difficulty?.toLowerCase()] || '#94a3b8' }}
                       >
-                        {q.difficulty}
+                        {q?.difficulty || 'N/A'}
                       </span>
                       <span className="ik-expand-icon">{isExpanded ? '▲' : '▾'}</span>
                     </div>
@@ -197,11 +197,11 @@ export default function InterviewKitTab({ positionId }) {
           <div className="ik-scorecard-grid">
             {scorecard.map((dim, i) => (
               <div key={i} className="ik-scorecard-dim">
-                <div className="ik-dim-name">{dim.dimension}</div>
-                <div className="ik-dim-desc">{dim.description}</div>
+                <div className="ik-dim-name">{dim?.dimension || 'Dimension'}</div>
+                <div className="ik-dim-desc">{dim?.description || ''}</div>
                 <div className="ik-rating-scale">
-                  {dim.rating_scale?.map((r, ri) => (
-                    <span key={ri} className={`ik-rating-pill ik-r${ri + 1}`}>{r.split(' - ')[0]}</span>
+                  {Array.isArray(dim?.rating_scale) && dim.rating_scale.map((r, ri) => (
+                    <span key={ri} className={`ik-rating-pill ik-r${ri + 1}`}>{String(r).split(' - ')[0]}</span>
                   ))}
                 </div>
               </div>

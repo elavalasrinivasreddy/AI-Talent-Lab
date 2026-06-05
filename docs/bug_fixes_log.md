@@ -2459,3 +2459,13 @@ The hire_requests subquery `SELECT position_id FROM hire_requests WHERE requeste
 ### Bug #136: Replace all `window.confirm` with app-level `ConfirmModal`
 **Problem:** Several components (e.g., candidate selection, note deletion, dev admin reset, privacy anonymization) were using the native browser `window.confirm` dialog instead of the app's custom UI, which breaks immersion and SaaS design standards.
 **Solution:** Swept the frontend codebase and replaced all instances of `window.confirm` with the app-level `<ConfirmModal />` component in `CandidateDetailPage.jsx`, `DevAdminPage.jsx`, and `PrivacyTab.jsx`.
+
+---
+
+### Bug #137: Interview Kit Tab Failing to Render (Blank Screen)
+**Problem:** When a user visited the Interview Kit tab after generation, the application could crash entirely (blank tab) or fail to display content. The AI-generated JSON payload might contain strings instead of objects for questions or numbers instead of strings for the rating scale, causing React TypeErrors (`TypeError: r.split is not a function` or `replace is not a function`).
+**Solution:**
+1. Hardened the `InterviewKitTab.jsx` component by adding robust type coercion and optional chaining.
+2. Encased `dim.rating_scale` mapping in `Array.isArray` check and cast rating strings using `String(r).split(' - ')[0]`.
+3. Cast `type` to string before replacing formatting tags (`String(type).replace`).
+4. Added fallbacks for `q?.question`, `q?.difficulty`, and `dim?.dimension`.
