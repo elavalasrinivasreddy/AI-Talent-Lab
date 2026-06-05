@@ -51,10 +51,10 @@ class LangChainEmbeddingFunctionAdapter:
         # Chroma passes a list of texts
         return self.lc_embeddings.embed_documents(input)
         
-    def embed_query(self, query: str) -> list[float]:
+    def embed_query(self, query: Any) -> Any:
         return self.lc_embeddings.embed_query(query)
         
-    def embed_documents(self, documents: list[str]) -> list[list[float]]:
+    def embed_documents(self, documents: Any) -> Any:
         return self.lc_embeddings.embed_documents(documents)
 
 
