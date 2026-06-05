@@ -53,7 +53,7 @@ Next manual test: **Settings tab bugs #77–91, then JD Chat flow J1–J8**.
 | 22 | Org Head exclusivity for Organization Profile tab | `SettingsPage.jsx` | ✅ | orgHeadOnly:true present; rail filter and URL guard both enforce it |
 | 23 | Department-scoped competitor intelligence | `competitors` table, `settings_service.py`, `CompetitorsTab.jsx` | ⚠️ | Fixed: CompetitorsTab used user?.department_id (undefined in auth ctx) instead of user?.dept_id — dept_admin would see no competitors |
 | 24 | Fixed approval rules toggle error for dept admins | `settings.py` (models) | ✅ | auto_approve_hire_requests in DepartmentUpdate model; DB migration present |
-| 25 | Redesigned culture keywords chip UI | `OrganizationTab.jsx` | ⚠️ | Fixed: no deduplication in addTag — duplicate keywords would silently save |
+| 25 | Redesigned culture keywords chip UI | `OrganizationTab.jsx` | ⚠️ | Fixed: no deduplication in addTag — duplicate keywords would silently save. Fixed again (2026-06-06): dedup was case-sensitive so "Innovation" and "innovation" saved as separate tags; changed to case-insensitive `.some(k => k.toLowerCase() === val.toLowerCase())` |
 | 26 | Fixed 500 error on competitor creation | `settings_service.py` | ✅ | NotificationRepository.create called with dict arg; signature matches |
 | 27 | Settings API KeyErrors + JSON deserialization | `settings.py` (router), `settings_service.py` | ⚠️ | Fixed: get_ai_behavior now handles non-dict/non-str JSONB values with try/except fallback |
 | 28 | Settings service NoneType + unpacking errors | `settings_service.py` | ✅ | creator guarded, "System" fallback present; explicit kwargs used, no **unpacking |
