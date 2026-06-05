@@ -64,7 +64,7 @@ export default function HireRequestDetailPage() {
 
   const canEdit = (isOwner || isAdmin) && req.status === 'pending'
   const canCancel = (isOwner || isAdmin) && !['cancelled', 'fulfilled', 'rejected'].includes(req.status)
-  const canPickup = isRecruiter && req.status === 'approved'
+  const canPickup = isRecruiter && ['approved', 'approved_modified'].includes(req.status)
   const canApprove = isAdmin && req.status === 'pending'
 
   const handleApprove = async () => {

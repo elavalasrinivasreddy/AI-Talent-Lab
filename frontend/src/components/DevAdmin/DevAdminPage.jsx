@@ -3,6 +3,7 @@
  * Only functional when backend DEV_MODE=true.
  */
 import { useState, useEffect, useCallback } from 'react'
+import ConfirmModal from '../common/ConfirmModal'
 import './DevAdminPage.css'
 
 const API = '/api/v1/dev'
@@ -37,6 +38,7 @@ export default function DevAdminPage() {
   const [users, setUsers]             = useState([])
   const [loading, setLoading]         = useState(false)
   const [log, setLog]                 = useState([])
+  const [resetConfirmParams, setResetConfirmParams] = useState(null)
 
   const addLog = (msg, type = 'info') =>
     setLog(prev => [{ msg, type, time: new Date().toLocaleTimeString() }, ...prev.slice(0, 49)])
@@ -94,9 +96,16 @@ export default function DevAdminPage() {
 
   const handleTabChange = (tab) => setActiveTab(tab)
 
-  const handleReset = async (type, label) => {
+  const handleReset = (type, label) => {
+    setResetConfirmParams({ type, label })
+  }
+
+  const executeReset = async () => {
+    if (!resetConfirmParams) return
+    const { type, label } = resetConfirmParams
+    setResetConfirmParams(null)
+    
     const scopeLabel = selectedOrgId ? `for org ${selectedOrgId}` : `GLOBALLY for ALL ORGS`;
-    if (!window.confirm(`⚠️ This will permanently delete ${label} ${scopeLabel}. Are you sure?`)) return
     setLoading(true)
     try {
       const params = selectedOrgId ? `?org_id=${selectedOrgId}` : ''
@@ -353,6 +362,16 @@ export default function DevAdminPage() {
         )}
 
       </div>
+
+      <ConfirmModal
+        isOpen={!!resetConfirmParams}
+        onClose={() => setResetConfirmParams(null)}
+        onConfirm={executeReset}
+        title="Confirm Reset"
+        message={`⚠️ This will permanently delete ${resetConfirmParams?.label} ${selectedOrgId ? `for org ${selectedOrgId}` : 'GLOBALLY for ALL ORGS'}. Are you sure?`}
+        confirmText="Reset Data"
+        confirmVariant="danger"
+      />
     </div>
   )
 }

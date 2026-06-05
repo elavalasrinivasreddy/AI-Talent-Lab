@@ -6,6 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { gdprApi } from '../../../utils/api'
 import { useAuth } from '../../../context/AuthContext'
 import SlideOver from '../../common/SlideOver'
+import ConfirmModal from '../../common/ConfirmModal'
 
 export default function PrivacyTab() {
   const { user } = useAuth()
@@ -15,6 +16,7 @@ export default function PrivacyTab() {
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(null)
   const [exportModal, setExportModal] = useState(null)
+  const [anonymizeConfirmId, setAnonymizeConfirmId] = useState(null)
 
   const loadRequests = useCallback(async () => {
     try {
@@ -29,16 +31,17 @@ export default function PrivacyTab() {
 
   useEffect(() => { loadRequests() }, [loadRequests])
 
-  const handleProcess = async (id) => {
-    if (!window.confirm('This will permanently anonymize the candidate\'s data. Continue?')) return
-    setProcessing(id)
+  const handleProcess = async () => {
+    if (!anonymizeConfirmId) return
+    setProcessing(anonymizeConfirmId)
     try {
-      await gdprApi.processDeletion(id)
+      await gdprApi.processDeletion(anonymizeConfirmId)
       await loadRequests()
     } catch (err) {
       alert('Failed to process deletion. ' + (err.message || ''))
     } finally {
       setProcessing(null)
+      setAnonymizeConfirmId(null)
     }
   }
 
@@ -148,7 +151,7 @@ export default function PrivacyTab() {
                       {(req.status === 'verified') && (
                         <button
                           className="btn btn-danger btn-sm"
-                          onClick={() => handleProcess(req.id)}
+                          onClick={() => setAnonymizeConfirmId(req.id)}
                           disabled={processing === req.id}
                         >
                           {processing === req.id ? '…' : '🗑 Process'}
@@ -262,6 +265,16 @@ export default function PrivacyTab() {
           <button className="btn btn-ghost" onClick={() => setExportModal(null)}>Close</button>
         </div>
       </SlideOver>
+
+      <ConfirmModal
+        isOpen={!!anonymizeConfirmId}
+        onClose={() => setAnonymizeConfirmId(null)}
+        onConfirm={handleProcess}
+        title="Anonymize Data"
+        message="This will permanently anonymize the candidate's data. Continue?"
+        confirmText="Anonymize"
+        confirmVariant="danger"
+      />
     </div>
   )
 }

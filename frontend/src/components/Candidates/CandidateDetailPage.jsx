@@ -17,6 +17,7 @@ import TagsRow from './TagsRow'
 import ScoreBreakdownBand from './ScoreBreakdownBand'
 import CompareToIdealGrid from './CompareToIdealGrid'
 import InterviewsTab from './tabs/InterviewsTab'
+import ConfirmModal from '../common/ConfirmModal'
 import Icon from '../common/Icon'
 import Chip from '../common/Chip'
 import './CandidateDetailPage.css'
@@ -43,6 +44,7 @@ export default function CandidateDetailPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('skills')
   const [movingStatus, setMovingStatus] = useState(false)
+  const [selectConfirmOpen, setSelectConfirmOpen] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -86,7 +88,6 @@ export default function CandidateDetailPage() {
   }
 
   const handleMarkSelected = async () => {
-    if (!window.confirm('Mark this candidate as selected? This action will be logged.')) return
     try {
       await candidatesApi.markSelected(candidate.id, {
         application_id: candidate.application_id,
@@ -132,7 +133,7 @@ export default function CandidateDetailPage() {
         positionId={positionId}
         movingStatus={movingStatus}
         onStatusChange={handleStatusChange}
-        onMarkSelected={handleMarkSelected}
+        onMarkSelected={() => setSelectConfirmOpen(true)}
         onSchedule={() => {}} // TODO: schedule modal
         onDraftRejection={() => {}} // TODO: rejection draft modal
       />
@@ -228,6 +229,16 @@ export default function CandidateDetailPage() {
         {activeTab === 'timeline' && <TimelineTab events={timeline} />}
         {activeTab === 'notes' && <NotesTab candidateId={parseInt(id)} />}
       </div>
+
+      <ConfirmModal
+        isOpen={selectConfirmOpen}
+        onClose={() => setSelectConfirmOpen(false)}
+        onConfirm={handleMarkSelected}
+        title="Mark Selected"
+        message="Mark this candidate as selected? This action will be logged."
+        confirmText="Mark Selected"
+        confirmVariant="primary"
+      />
     </div>
   )
 }
@@ -392,6 +403,7 @@ function NotesTab({ candidateId }) {
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editContent, setEditContent] = useState('')
+  const [noteDeleteId, setNoteDeleteId] = useState(null)
 
   useEffect(() => {
     notesApi.list(candidateId).then(d => setNotes(d.notes || [])).catch(() => {})
@@ -416,11 +428,12 @@ function NotesTab({ candidateId }) {
     } catch (e) { alert(`Update failed: ${e.message}`) }
   }
 
-  const handleDelete = async (nid) => {
-    if (!window.confirm('Delete this note?')) return
+  const handleDelete = async () => {
+    if (!noteDeleteId) return
     try {
-      await notesApi.delete(nid)
-      setNotes(prev => prev.filter(n => n.id !== nid))
+      await notesApi.delete(noteDeleteId)
+      setNotes(prev => prev.filter(n => n.id !== noteDeleteId))
+      setNoteDeleteId(null)
     } catch (e) { alert(`Delete failed: ${e.message}`) }
   }
 
@@ -447,7 +460,7 @@ function NotesTab({ candidateId }) {
                 <div className="cd-note-meta">
                   <span className="cd-note-time">{new Date(note.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}</span>
                   <button className="cd-note-action" onClick={() => { setEditingId(note.id); setEditContent(note.content) }}>Edit</button>
-                  <button className="cd-note-action cd-note-delete" onClick={() => handleDelete(note.id)}>Delete</button>
+                  <button className="cd-note-action cd-note-delete" onClick={() => setNoteDeleteId(note.id)}>Delete</button>
                 </div>
               </div>
               {editingId === note.id ? (
@@ -464,7 +477,18 @@ function NotesTab({ candidateId }) {
             </div>
           ))}
         </div>
+        </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!noteDeleteId}
+        onClose={() => setNoteDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete Note"
+        message="Are you sure you want to delete this note?"
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   )
 }

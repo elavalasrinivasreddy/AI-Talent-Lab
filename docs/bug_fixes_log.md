@@ -2453,3 +2453,9 @@ The hire_requests subquery `SELECT position_id FROM hire_requests WHERE requeste
 2. Fixed a React crash (`departments is not iterable`) by correctly extracting the array from the `settingsApi.getDepartments()` object response.
 3. Updated the initial state of the `period` hook to "today".
 4. Restrained the `RoleGate` on `DeptChipBar` in `DashboardPage.jsx` to only allow `org_head`.
+
+---
+
+### Bug #136: Replace all `window.confirm` with app-level `ConfirmModal`
+**Problem:** Several components (e.g., candidate selection, note deletion, dev admin reset, privacy anonymization) were using the native browser `window.confirm` dialog instead of the app's custom UI, which breaks immersion and SaaS design standards.
+**Solution:** Swept the frontend codebase and replaced all instances of `window.confirm` with the app-level `<ConfirmModal />` component in `CandidateDetailPage.jsx`, `DevAdminPage.jsx`, and `PrivacyTab.jsx`.

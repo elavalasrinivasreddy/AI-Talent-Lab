@@ -64,7 +64,7 @@ export default function Sidebar() {
     if (!role) return
     // team_lead doesn't need the org-wide pending count; their "Mine"
     // tab is the meaningful one and we don't have a count for that yet.
-    if (!['dept_admin', 'hr', 'team_lead', 'org_head'].includes(role)) return
+    if (!['dept_admin', 'hr', 'team_lead'].includes(role)) return
 
     let cancelled = false
     const refresh = async () => {
