@@ -146,12 +146,16 @@ async def search_similar(query_text: str, org_id: int, department_id: Optional[i
         matched_jds = []
         if results and results.get("documents") and len(results["documents"]) > 0:
             docs = results["documents"][0]
-            metadatas = results["metadatas"][0]
-            distances = results["distances"][0] if "distances" in results else [0]*len(docs)
+            raw_metas = results.get("metadatas")
+            metadatas = raw_metas[0] if raw_metas else [{}] * len(docs)
+            
+            raw_dists = results.get("distances")
+            distances = raw_dists[0] if raw_dists else [0] * len(docs)
             
             for doc, meta, dist in zip(docs, metadatas, distances):
+                meta = meta or {}
                 matched_jds.append({
-                    "id": meta.get("id"), # Might not be in metadata if we used purely chromadb ID
+                    "id": meta.get("id"),
                     "role_name": meta.get("role_name", "Unknown Role"),
                     "department": meta.get("department_id"),
                     "text": doc,
