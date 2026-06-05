@@ -79,7 +79,7 @@ def get_jd_collection():
     # Get or create
     return client.get_or_create_collection(
         name="job_descriptions",
-        embedding_function=embedding_fn
+        embedding_function=embedding_fn # type: ignore
     )
 
 
