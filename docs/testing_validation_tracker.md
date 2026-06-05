@@ -74,7 +74,7 @@ Next manual test: **Settings tab bugs #77–91, then JD Chat flow J1–J8**.
 | 38 | Dept admin forbidden from updating settings/competitors | `settings.py` (router) | ✅ | All 4 permission checks use user.get("dept_id") consistently |
 | 39 | Missing/empty filter tabs for HR & dept admin | `HireRequestListPage.jsx` | ✅ | queue_approval for dept_admin, queue_pickup for hr; dept_admin has general tabs; team_lead only sees 'mine' |
 | 40 | Dept admin forbidden from listing hire requests | `HireRequestListPage.jsx` | ✅ | All dept_admin filters use scope:'default'; HR with no dept returns [] (intentional by design) |
-| 41 | All tab fix + Resume JD Chat button | `hire_request_service.py`, `HireRequestListPage.jsx`, `HireRequestDetailPage.jsx` | ✅ | status='all' → eff_status=None correctly; "Resume JD chat" shown for accepted+no position_id; navigates with hireRequest state |
+| 41 | All tab fix + Resume JD Chat button | `hire_request_service.py`, `HireRequestListPage.jsx`, `HireRequestDetailPage.jsx` | ⚠️ | status='all' → eff_status=None correctly; "Resume JD chat" shown for accepted+no position_id; navigates with hireRequest state. **Edge case fixed (919b4db):** canPickup only checked `approved` — backend allows pickup from `approved_modified` too; fixed to `['approved', 'approved_modified'].includes(req.status)` |
 
 ---
 
