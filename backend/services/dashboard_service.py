@@ -3,6 +3,7 @@ services/dashboard_service.py – Business logic for dashboard stats and activit
 """
 import json
 import logging
+from datetime import timedelta
 from typing import Optional
 
 from backend.db.connection import get_connection
@@ -236,12 +237,13 @@ class DashboardService:
         Full hiring analytics for the analytics dashboard.
         Returns pipeline velocity, source breakdown, time-to-hire, and conversion rates.
         """
-        period_interval = {
-            "week": "7 days",
-            "month": "30 days",
-            "quarter": "90 days",
-            "year": "365 days",
-        }.get(period, "30 days")
+        from datetime import datetime
+        cutoff = datetime.utcnow() - {
+            "week": timedelta(days=7),
+            "month": timedelta(days=30),
+            "quarter": timedelta(days=90),
+            "year": timedelta(days=365),
+        }.get(period, timedelta(days=30))
 
         async with get_connection() as conn:
             # Pipeline conversion rates
@@ -249,10 +251,10 @@ class DashboardService:
                 """
                 SELECT status, COUNT(*) AS count
                 FROM candidate_applications
-                WHERE org_id=$1 AND created_at >= NOW() - $2::interval
+                WHERE org_id=$1 AND created_at >= $2
                 GROUP BY status
                 """,
-                org_id, period_interval,
+                org_id, cutoff,
             )
             funnel_dict = {r["status"]: r["count"] for r in funnel}
 
@@ -262,9 +264,9 @@ class DashboardService:
                 SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 86400)
                 FROM candidate_applications
                 WHERE org_id=$1 AND status IN ('selected', 'hired')
-                  AND created_at >= NOW() - $2::interval
+                  AND created_at >= $2
                 """,
-                org_id, period_interval,
+                org_id, cutoff,
             )
 
             # Source breakdown
@@ -273,11 +275,11 @@ class DashboardService:
                 SELECT c.source, COUNT(*) AS count
                 FROM candidate_applications ca
                 JOIN candidates c ON c.id = ca.candidate_id
-                WHERE ca.org_id=$1 AND ca.created_at >= NOW() - $2::interval
+                WHERE ca.org_id=$1 AND ca.created_at >= $2
                 GROUP BY c.source
                 ORDER BY count DESC
                 """,
-                org_id, period_interval,
+                org_id, cutoff,
             )
 
             # Weekly velocity (last 8 weeks)

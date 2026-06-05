@@ -2301,3 +2301,18 @@ These fields added noise tokens and could nudge the agent into echoing irrelevan
 **Files Modified:**
 - `backend/services/chat_service.py` (`finish_and_save_position`: `draft` → `jd_in_progress` on non-draft finalize)
 - `backend/tests/test_position_approval.py` (status assertion updated to `jd_in_progress`)
+
+---
+
+### Bug #125: Dashboard Analytics 500 — asyncpg Interval / Timestamp Type Mismatch
+
+**Problem:** The `GET /api/v1/dashboard/analytics?period=month` endpoint returned a 500 Internal Server Error. The root cause was a three-layer type mismatch in `dashboard_service.py → get_analytics()`:
+
+1. **String passed as interval:** The `period_interval` variable was a raw Python string (`"30 days"`), but asyncpg requires a `datetime.timedelta` object for PostgreSQL interval parameters. Error: `'str' object has no attribute 'days'`.
+2. **Type inference failure:** After switching to `timedelta`, the SQL `created_at >= NOW() - $2` still failed because asyncpg inferred `$2` as a timestamp (from the `>=` comparison with `created_at`) rather than an interval. Error: `operator does not exist: timestamp without time zone >= interval`.
+3. **Timezone-aware vs naive mismatch:** After switching to a pre-computed cutoff timestamp using `datetime.now(timezone.utc)`, asyncpg rejected it because the DB column `created_at` is `timestamp without time zone` (naive). Error: `can't subtract offset-naive and offset-aware datetimes`.
+
+**Solution:** Replaced the entire interval-passing strategy. Instead of passing an interval to PostgreSQL and doing arithmetic in SQL, the cutoff timestamp is now computed in Python using `datetime.utcnow() - timedelta(days=N)` and passed as a naive UTC `datetime` parameter. The SQL queries use a simple `created_at >= $2` comparison. This avoids all three issues: no string-to-interval encoding, no asyncpg type inference ambiguity, and no naive-vs-aware datetime conflicts.
+
+**Files Modified:**
+- `backend/services/dashboard_service.py` (`get_analytics`: replaced string intervals with pre-computed naive UTC cutoff timestamp)
