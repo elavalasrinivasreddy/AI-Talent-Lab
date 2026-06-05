@@ -123,22 +123,22 @@ Parallel Sonnet review subagents over the JD-chat / Settings / Dashboard / Posit
 
 | # | Fix | Files | Status | Notes |
 |---|---|---|---|---|
-| 77 | Scorecard Rubric UI & Backend Issues | `SettingsPage.jsx`, backend | ❌ | |
-| 78 | Remove shape from P2/P3 phase badges | `SettingsPage.jsx` | ❌ | |
-| 79 | Departments Tab confirmation modal & dept head redundancy | `DepartmentsTab.jsx` | ❌ | |
-| 80 | Team Directory UI & role filter logic | `TeamTab.jsx` | ❌ | |
-| 81 | Approval Rules modernization & org head policies | `ApprovalRulesTab.jsx` | ❌ | |
-| 82 | Notifications Tab implementation + logout-on-toggle fix | `NotificationsTab.jsx`, `settings.py` | ❌ | |
-| 83 | Organization auto-draft capabilities upgrade | `OrganizationTab.jsx`, backend | ❌ | |
-| 84 | Organization Tab UI/UX polish | `OrganizationTab.jsx` | ❌ | |
-| 85 | Competitors Intel CRUD + premium accordion UI | `CompetitorsTab.jsx`, backend | ❌ | |
-| 86 | Message Templates: magic draft, tone analyzer, live preview | `MessageTemplatesTab.jsx`, `settings.py` | ❌ | |
-| 87 | Message Templates: role access, UI cleanup, notifications | `MessageTemplatesTab.jsx`, `settings.py` | ❌ | |
-| 88 | Career page implementation + backend 500 fix + scaling | `CareerPage.jsx`, `CareersIndexPage.jsx`, `careers.py` | ❌ | |
-| 89 | Email service 500 on hire request creation (`_safe_url` infinite recursion) | `email_service.py` | ❌ | |
-| 90 | JD rejection requires mandatory feedback note | `positions.py` (router), `LegacyDashboard.jsx` | ❌ | |
-| 91 | Bias checker premium git-diff UI | `FinalJDCard.jsx` | ❌ | |
-| 92 | Drag-drop screening questions: stale closure (frontend useRef) | `ScreeningQuestionsTab.jsx` | ⚠️ | Frontend fix correct; **real blocker was backend route order (#75 below)** |
+| 77 | Scorecard Rubric UI & Backend Issues | `SettingsPage.jsx`, backend | ✅ | DELETE/PATCH/set-default all correct; ConfirmModal wired; set-default unsets others atomically |
+| 78 | Remove shape from P2/P3 phase badges | `SettingsPage.jsx` | ✅ | Plain text badges; no background/border |
+| 79 | Departments Tab confirmation modal & dept head redundancy | `DepartmentsTab.jsx` | ⚠️ | ConfirmModal correct; **Edge case fixed:** form init had `head_user_id:''` but reset omitted it — removed stale key from initial state |
+| 80 | Team Directory UI & role filter logic | `TeamTab.jsx` | ✅ | Org Head excluded from filter; edit+deactivate icons correct |
+| 81 | Approval Rules modernization & org head policies | `ApprovalRulesTab.jsx` | ✅ | Org head dept selector; allow_auto_approve_jds migration; Toast replaces alert; res.data path fixed |
+| 82 | Notifications Tab implementation + logout-on-toggle fix | `NotificationsTab.jsx`, `settings.py` | ✅ | JSONB column; setUser(res.data.user) logout fix correct; preferences initialized from user object |
+| 83 | Organization auto-draft capabilities upgrade | `OrganizationTab.jsx`, backend | ✅ | Tavily fallback on 403; fallback_used UI warning; PDF upload endpoint functional |
+| 84 | Organization Tab UI/UX polish | `OrganizationTab.jsx` | ✅ | Toast replaces msg array; glassmorphism overlay on isDrafting |
+| 85 | Competitors Intel CRUD + premium accordion UI | `CompetitorsTab.jsx`, backend | ✅ | PATCH endpoint scoped correctly; 3/dept limit enforced server+client; ConfirmModal; accordion state |
+| 86 | Message Templates: magic draft, tone analyzer, live preview | `MessageTemplatesTab.jsx`, `settings.py` | ✅ | All AI endpoints exist with require_hr; live preview; variable insert at cursor; duplicate works |
+| 87 | Message Templates: role access, UI cleanup, notifications | `MessageTemplatesTab.jsx`, `settings.py` | ✅ | require_hr on all endpoints; ConfirmModal; setEditing(null) on save; Toast notifications |
+| 88 | Career page implementation + backend 500 fix + scaling | `CareerPage.jsx`, `CareersIndexPage.jsx`, `careers.py` | ✅ | key_skills removed; fit endpoint clean; back navigation present |
+| 89 | Email service 500 on hire request creation (`_safe_url` infinite recursion) | `email_service.py` | ✅ | Returns "" for empty; prepends FRONTEND_URL for "/" paths; no recursion; html.escape return |
+| 90 | JD rejection requires mandatory feedback note | `positions.py` (router), `LegacyDashboard.jsx` | ✅ | Backend 422 NOTES_REQUIRED enforced; frontend textarea disabled until note typed; both layers validated |
+| 91 | Bias checker premium git-diff UI | `FinalJDCard.jsx` | ✅ | Diff pills (red/green); category badges; accepted state; "Accept all (N)" banner correct |
+| 92 | Drag-drop screening questions: stale closure (frontend useRef) | `ScreeningQuestionsTab.jsx` | ⚠️ | Frontend fix correct; **real blocker was backend route order (#75 below)**; useRef pattern verified; onDragLeave child-element guard present |
 | **75** | **Drag-drop never persisted: PATCH /reorder hit /{question_id} (FastAPI route order bug)** | `settings.py` | ✅ | Fixed 2026-06-04: moved `/reorder` before `/{question_id}` (commit `05f44d5`) |
 
 ---

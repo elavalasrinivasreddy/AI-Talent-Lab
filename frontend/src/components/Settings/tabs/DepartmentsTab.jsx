@@ -9,7 +9,7 @@ export default function DepartmentsTab() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', parent_dept_id: '', head_user_id: '' })
+  const [form, setForm] = useState({ name: '', description: '', parent_dept_id: '' })
   const [editing, setEditing] = useState(null)
   const [msg, setMsg] = useState('')
   const [formMsg, setFormMsg] = useState('')
