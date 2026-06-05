@@ -28,7 +28,7 @@ Next manual test: **Settings tab bugs #77–91, then JD Chat flow J1–J8**.
 | 7 | users.py crash on registration (missing last_login_at) | `migrations.py`, `users.py` | ✅ | Migration idempotent (IF NOT EXISTS), fetchrow None check in place |
 | 8 | Hide current user in team directory + fix registration login state | `TeamTab.jsx`, `auth_service.py` | ⚠️ | Fixed: empty state guard changed from users.length to filtered.length so sole-member org shows empty state |
 | 9 | Strict RBAC for team management + UI polish | `auth.py`, `SettingsPage.jsx`, `TeamTab.jsx` | ⚠️ | Fixed: dept_admin with dept_id=None JWT could bypass dept enforcement (None!=None Python bug) |
-| 10 | Org head exclusivity for compliance/security settings | `SettingsPage.jsx` | ✅ | privacy/security=adminOnly, organization=orgHeadOnly, competitors=adminOnly — all correct |
+| 10 | Org head exclusivity for compliance/security settings | `SettingsPage.jsx` | ⚠️ | Fixed (2026-06-06): organization tab was missing `orgHeadOnly: true` flag — non-org-heads could view the tab (backend blocked saves, but UI was visible). Added flag; rail filter + URL guard now both enforce it. |
 
 ## Batch B — Settings & Approval Rules (Items 11–20)
 

@@ -64,7 +64,7 @@ const RAIL_GROUPS = [
     icon: 'user',
     color: '#06B6D4',
     items: [
-      { key: 'organization', icon: 'briefcase', label: 'Organization profile' },
+      { key: 'organization', icon: 'briefcase', label: 'Organization profile', orgHeadOnly: true },
       { key: 'competitors', icon: 'trending-up', label: 'Competitor intel', adminOnly: true },
       { key: 'templates', icon: 'mail', label: 'Email templates' },
       { key: 'appearance', icon: 'palette', label: 'Appearance' },
