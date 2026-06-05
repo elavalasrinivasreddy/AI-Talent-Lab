@@ -764,7 +764,7 @@ class PositionService:
                     SELECT u.id, u.name FROM hire_requests h
                       JOIN users u ON u.id = h.requested_by
                      WHERE h.position_id = $1 AND h.org_id = $2
-                       AND h.status IN ('approved', 'approved_modified')
+                       AND h.status IN ('approved', 'approved_modified', 'fulfilled')
                        AND u.is_active = TRUE
                      ORDER BY h.id DESC LIMIT 1
                     """,
