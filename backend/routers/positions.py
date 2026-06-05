@@ -215,7 +215,7 @@ async def generate_interview_kit(
 @router.post("/{position_id}/submit-for-approval")
 async def submit_for_approval(
     position_id: int,
-    body: dict = None,
+    body: Optional[dict] = None,
     current_user=Depends(get_current_user),
 ):
     """

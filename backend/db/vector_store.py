@@ -5,7 +5,7 @@ Uses persistent local storage at data/chroma/
 """
 import logging
 import os
-from typing import Optional
+from typing import Optional, Any
 
 from backend.adapters.llm.factory import get_embedding_model
 
@@ -47,7 +47,7 @@ class LangChainEmbeddingFunctionAdapter:
         self.lc_embeddings = lc_embeddings
         self.name = "LangChainEmbeddingFunctionAdapter"
         
-    def __call__(self, input: list[str]) -> list[list[float]]:
+    def __call__(self, input: Any) -> Any:
         # Chroma passes a list of texts
         return self.lc_embeddings.embed_documents(input)
 
