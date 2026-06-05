@@ -45,7 +45,9 @@ def get_chroma_client():
 class LangChainEmbeddingFunctionAdapter:
     def __init__(self, lc_embeddings):
         self.lc_embeddings = lc_embeddings
-        self.name = "LangChainEmbeddingFunctionAdapter"
+        
+    def name(self) -> str:
+        return "LangChainEmbeddingFunctionAdapter"
         
     def __call__(self, input: Any) -> Any:
         # Chroma passes a list of texts
