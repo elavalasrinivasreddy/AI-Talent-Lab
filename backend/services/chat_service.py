@@ -12,6 +12,7 @@ from backend.agents.state import create_initial_state
 from backend.agents.streaming import StreamHandler
 from backend.db.repositories.sessions import ChatSessionRepository
 from backend.db.repositories.organizations import OrgRepository
+from backend.db.repositories.competitors import CompetitorRepository
 from backend.db.repositories.positions import PositionRepository
 from backend.db.repositories.pipeline_events import PipelineEventRepository
 from backend.db.repositories.audit import AuditLogRepository
@@ -51,12 +52,20 @@ class ChatService:
         # Pull org context for Drafting and Intake
         async with get_connection() as conn:
             org_row = await OrgRepository.get_by_id(conn, org_id)
+            # Load the org's configured competitors (Settings → Competitor Intel)
+            # so the market-research stage benchmarks against them instead of
+            # falling back to industry defaults. Prefer competitors scoped to this
+            # department; fall back to all org competitors when none are scoped.
+            competitors = await CompetitorRepository.list_by_org(conn, org_id, department_id)
+            if not competitors and department_id:
+                competitors = await CompetitorRepository.list_by_org(conn, org_id, None)
 
         state = create_initial_state(session_id, org_id, user_id, department_id)
         if org_row:
             state["org_about_us"] = org_row.get("about_us")
             state["org_culture_keywords"] = org_row.get("culture_keywords")
             state["org_benefits_text"] = org_row.get("benefits_text")
+        state["competitors_used"] = [c["name"] for c in competitors if c.get("name")]
 
         # Add greeting message to state per docs/12_chat_flows.md §1.1
         state["messages"] = [
@@ -285,7 +294,7 @@ class ChatService:
                     "role_name": role_name,
                     "jd_markdown": final_jd,
                     "jd_variant_selected": state.get("selected_variant"),
-                    "status": "draft",
+                    "status": "draft" if as_draft else "jd_in_progress",
                     "headcount": setup_data.get("headcount", 1),
                     "priority": setup_data.get("priority", "normal"),
                     "ats_threshold": setup_data.get("ats_threshold", 80.0),
@@ -315,7 +324,7 @@ class ChatService:
                     role_name=role_name,
                     jd_markdown=final_jd,
                     jd_variant_selected=state.get("selected_variant"),
-                    status="draft",  # Stays draft until team_lead approves
+                    status="draft" if as_draft else "jd_in_progress",  # jd_in_progress allows submit_for_approval
                     headcount=setup_data.get("headcount", 1),
                     priority=setup_data.get("priority", "normal"),
                     ats_threshold=setup_data.get("ats_threshold", 80.0),

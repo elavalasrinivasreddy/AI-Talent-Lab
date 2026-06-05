@@ -139,7 +139,9 @@ async def test_finish_and_save_does_not_fire_sourcing(monkeypatch):
     from backend.db.repositories import positions as pos_repo_mod
 
     async def _fake_create(conn, **kwargs):
-        assert kwargs.get("status") == "draft", "Position must be created with status=draft"
+        # Non-draft finalize creates the position as 'jd_in_progress' (editable
+        # until it auto-submits for approval); only as_draft=True saves 'draft'.
+        assert kwargs.get("status") == "jd_in_progress", "Non-draft finalize must create status=jd_in_progress"
         return _make_position()
 
     async def _fake_insert_variants(conn, position_id, variants):

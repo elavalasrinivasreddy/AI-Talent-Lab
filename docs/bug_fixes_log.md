@@ -2275,3 +2275,29 @@ These fields added noise tokens and could nudge the agent into echoing irrelevan
 
 **Files Modified:**
 - `backend/tests/test_position_approval.py` (complete mock rows, CAS repo patches, `_FakeConn.transaction()` + `_FakeTxn`)
+
+---
+
+### Bug #123: Org Competitors Not Loaded Into JD Market-Research State
+
+**Problem:** During JD generation the market-intelligence node logged `No competitor names in state. Using industry defaults` and benchmarked against hardcoded Google/Microsoft/Stripe, even though the org had competitors configured in Settings → Competitor Intel.
+
+**Root cause:** The agent state field `competitors_used` is initialized to `[]` and was never populated. `ChatService.get_or_create_session` loaded other org context (`about_us`/`culture`/`benefits`) but never queried the `competitors` table, so the market node always fell back to defaults.
+
+**Solution:** In `get_or_create_session`, load the org's competitors via `CompetitorRepository.list_by_org(conn, org_id, department_id)` (prefer department-scoped; fall back to all org competitors when none are scoped) and set `state["competitors_used"] = [c["name"] for c in competitors]`.
+
+**Files Modified:**
+- `backend/services/chat_service.py` (`get_or_create_session`: load competitors into state)
+- `backend/tests/test_competitor_state.py` (new regression test — fails without the fix, passes with it)
+
+---
+
+### Bug #124: Position Created as 'draft' Could Not Auto-Submit for Approval
+
+**Problem:** A non-draft JD finalize created the position with `status='draft'`, but `submit_for_approval` only accepts `jd_in_progress`/`draft_needs_revision`. Combined with #120, this contributed to the JD never advancing to pending approval.
+
+**Solution:** `finish_and_save_position` now creates a non-draft finalize with `status='jd_in_progress'` (still editable until it auto-submits), keeping `status='draft'` only for explicit draft saves. Updated `test_finish_and_save_does_not_fire_sourcing` to assert the new status; its real purpose (no sourcing fired, submit called once) is unchanged.
+
+**Files Modified:**
+- `backend/services/chat_service.py` (`finish_and_save_position`: `draft` → `jd_in_progress` on non-draft finalize)
+- `backend/tests/test_position_approval.py` (status assertion updated to `jd_in_progress`)
