@@ -57,6 +57,9 @@ class LangChainEmbeddingFunctionAdapter:
     def embed_documents(self, input: Any) -> Any:
         return self.lc_embeddings.embed_documents(input)
 
+    def embed_with_retries(self, input: Any, **kwargs: Any) -> Any:
+        return self.__call__(input)
+
 
 def get_jd_collection():
     """Get the job descriptions vector collection."""
