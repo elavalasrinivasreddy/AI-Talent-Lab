@@ -216,7 +216,7 @@ export default function HireRequestDetailPage() {
               </li>
             </ul>
             {req.position_id && (
-              <Link to={`/positions/${req.position_id}`} className="hr-btn hr-btn-secondary hr-btn-block">
+              <Link to={`/positions/${req.position_id}/jd`} className="hr-btn hr-btn-secondary hr-btn-block">
                 Open position →
               </Link>
             )}

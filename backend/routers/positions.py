@@ -282,7 +282,15 @@ async def approval_decision(
     except PermissionError as e:
         raise HTTPException(status_code=403, detail={"error": {"code": "FORBIDDEN", "message": str(e), "details": None}})
 
-    return {"ok": True, "approval_status": decision}
+    # Fetch updated status to return to frontend
+    from backend.db.connection import get_connection
+    async with get_connection() as conn:
+        updated_pos = await conn.fetchrow(
+            "SELECT status, approval_status FROM positions WHERE id=$1 AND org_id=$2",
+            position_id, current_user["org_id"]
+        )
+
+    return {"ok": True, "status": updated_pos["status"], "approval_status": updated_pos["approval_status"]}
 
 
 # ── Item 6: TL cancel-after-pickup ────────────────────────────────────────────
