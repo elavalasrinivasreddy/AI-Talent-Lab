@@ -147,24 +147,24 @@ Parallel Sonnet review subagents over the JD-chat / Settings / Dashboard / Posit
 
 | # | Fix | Files | Status | Notes |
 |---|---|---|---|---|
-| 93 | Resume Chat starts blank — no JD pre-seeding | `JDTab.jsx`, `ChatContext.jsx`, `ChatPage.jsx` | ❌ | |
-| 94 | Internal skills check card skipped when no past JDs found | `internal_analyst.py`, `chat_service.py`, `ChatContext.jsx`, `AgentBlockInternal.jsx` | ❌ | |
-| 95 | JD variants refine bar broken on dark theme | `chat.css`, `AgentBlockVariants.jsx` | ❌ | |
-| 96 | Bias diff: stale counter, no navigation, stale closure on handlers | `FinalJDCard.jsx` | ❌ | |
-| 97 | Dev Admin reset leaving orphaned hire requests | `dev_admin.py` | ❌ | |
-| 98 | HireRequestService missing `priority` in position creation | `hire_request_service.py` | ❌ | |
-| 99 | JD chat not read-only during pending approval | `ChatContext.jsx`, `FinalizeCTA.jsx`, `ChatTopBar.jsx` | ❌ | |
-| 100 | Position detail: duplicate approval banners | `PositionHero.jsx` | ❌ | |
-| 101 | "Request Changes" broken — wrong decision value + no notes input | `JDTab.jsx` | ❌ | |
-| 102 | Team lead feedback notes not visible after changes requested | `migrations.py`, `position_service.py`, `JDTab.jsx` | ❌ | |
-| 103 | JD canvas text color inconsistent after AI update | `chat.css` | ❌ | |
-| 104 | Bias check not re-triggered after AI update; Finalize not gated | `FinalJDCard.jsx` | ❌ | |
-| 105 | Settings page scrolls vertically; no-right-rail no CSS | `layout.css`, `settings.css`, `SettingsPage.jsx` | ❌ | |
-| 106 | JD chat shows `alert()` instead of Toast | `MessageInput.jsx` | ❌ | |
-| 107 | "New Hire" sidebar shows `window.confirm` dialog | `Sidebar.jsx` | ❌ | |
-| 108 | "New Hire" shows old session messages instead of greeting | `ChatContext.jsx` | ❌ | |
-| 109 | Resume AI Chat auto-fires after session deleted | `JDTab.jsx` | ❌ | |
-| 110 | GET pipeline-summary 500: text ->> unknown (missing ::jsonb cast) | `positions.py` (router) | ❌ | |
+| 93 | Resume Chat starts blank — no JD pre-seeding | `JDTab.jsx`, `ChatContext.jsx`, `ChatPage.jsx` | ✅ | sessionLoaded guard + messages.some(role=user) prevents race; auto-seed correctly gated |
+| 94 | Internal skills check card skipped when no past JDs found | `internal_analyst.py`, `chat_service.py`, `ChatContext.jsx`, `AgentBlockInternal.jsx` | ✅ | Emission guard uses stage+accepted check; Array.isArray restore correct; empty-state UI renders |
+| 95 | JD variants refine bar broken on dark theme | `chat.css`, `AgentBlockVariants.jsx` | ✅ | .variant-refine-bar dark-theme styling; Enter-key submit present |
+| 96 | Bias diff: stale counter, no navigation, stale closure on handlers | `FinalJDCard.jsx` | ✅ | focusedDiffIdx + pendingIndices memo; latest-ref pattern for global handlers; auto-advance correct |
+| 97 | Dev Admin reset leaving orphaned hire requests | `dev_admin.py` | ✅ | DELETE FROM hire_requests in org-scoped, global, and full-wipe paths |
+| 98 | HireRequestService missing `priority` in position creation | `hire_request_service.py` | ✅ | priority=setup_data.get("priority","normal") forwarded to PositionRepository.create() |
+| 99 | JD chat not read-only during pending approval | `ChatContext.jsx`, `FinalizeCTA.jsx`, `ChatTopBar.jsx` | ✅ | pendingApproval flag set; FinalizeCTA gated; amber banner shown to HR |
+| 100 | Position detail: duplicate approval banners | `PositionHero.jsx` | ✅ | pd-approval-banner removed; single status chip shows "Pending Review" in warning variant |
+| 101 | "Request Changes" broken — wrong decision value + no notes input | `JDTab.jsx` | ✅ | Inline modal; calls changes_requested with notes; submit disabled until notes non-empty; inline error banners |
+| 102 | Team lead feedback notes not visible after changes requested | `migrations.py`, `position_service.py`, `JDTab.jsx` | ✅ | review_notes persisted on rejection, cleared on approval atomically; amber box in JDTab |
+| 103 | JD canvas text color inconsistent after AI update | `chat.css` | ✅ | .jd-body p/ul/ol/li all use --color-text-secondary |
+| 104 | Bias check not re-triggered after AI update; Finalize not gated | `FinalJDCard.jsx` | ✅ | prevFinalJdRef tracks markdown; resets biasCheckDone on change; Finalize disabled until check done |
+| 105 | Settings page scrolls vertically; no-right-rail no CSS | `layout.css`, `settings.css`, `SettingsPage.jsx` | ✅ | height:100vh on app-layout; min-height:0+overflow:auto on app-main; no-right-rail grid fix present |
+| 106 | JD chat shows `alert()` instead of Toast | `MessageInput.jsx` | ✅ | Toast imported; local toast state; all 3 alert() calls replaced; Toast rendered in composer |
+| 107 | "New Hire" sidebar shows `window.confirm` dialog | `Sidebar.jsx` | ✅ | window.confirm removed; handleNewHire always calls resetChat+navigate |
+| 108 | "New Hire" shows old session messages instead of greeting | `ChatContext.jsx` | ✅ | Initial messages state is [DEFAULT_GREETING] not []; resetChat also sets greeting |
+| 109 | Resume AI Chat auto-fires after session deleted | `JDTab.jsx` | ✅ | navigate() has no state; session URL only; prevents intake auto-seed on 404 |
+| 110 | GET pipeline-summary 500: text ->> unknown (missing ::jsonb cast) | `positions.py` (router) | ✅ | event_data::jsonb->>key cast applied at all 6 expressions in both query blocks |
 
 ---
 
