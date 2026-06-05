@@ -89,10 +89,11 @@ async def embed_jd(position_id: int, org_id: int, department_id: Optional[int], 
     if not collection:
         return
 
+    metadata = {"org_id": org_id, "role_name": role_name}
+    if department_id:
+        metadata["department_id"] = department_id
+
     try:
-        metadata = {"org_id": org_id, "role_name": role_name}
-        if department_id:
-            metadata["department_id"] = department_id
             
         collection.upsert(
             documents=[jd_text],
