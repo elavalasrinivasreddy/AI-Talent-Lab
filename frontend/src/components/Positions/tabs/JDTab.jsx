@@ -112,6 +112,8 @@ export default function JDTab({ position, onUpdate }) {
   const canEdit = canTeamLeadEdit || canHrEdit
 
   const canResumeChat = isDraftOrRejected && user?.role === 'hr' && !!position?.session_id
+  // HR can view (read-only) the chat while pending approval — no stage regression
+  const canViewChat = isPendingApproval && user?.role === 'hr' && !!position?.session_id
   const canApprove = isPendingApproval && (user?.role === 'team_lead' || user?.role === 'org_head')
 
   return (
@@ -193,6 +195,14 @@ export default function JDTab({ position, onUpdate }) {
                   onClick={() => navigate(`/chat/${position.session_id}`)}
                 >
                   💬 Resume AI Chat
+                </button>
+              )}
+              {canViewChat && (
+                <button
+                  className="jd-btn"
+                  onClick={() => navigate(`/chat/${position.session_id}`)}
+                >
+                  👁 View AI Chat
                 </button>
               )}
             </>

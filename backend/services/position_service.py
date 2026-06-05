@@ -717,17 +717,18 @@ class PositionService:
             reviewer_dept = None
             warning = None
 
-            # Check org settings for approval toggles (Item 21)
-            hr_requires_review = True
-            dept_admin_requires_org_review = True
-            settings_row = await conn.fetchrow(
-                "SELECT settings FROM organizations WHERE id=$1",
-                org_id,
-            )
-            if settings_row and settings_row["settings"]:
-                org_settings = settings_row["settings"] if isinstance(settings_row["settings"], dict) else {}
-                hr_requires_review = org_settings.get("direct_hire_hr_requires_review", True)
-                dept_admin_requires_org_review = org_settings.get("direct_hire_dept_admin_requires_org_head_review", True)
+            # Check org settings for approval toggles (Item 21).
+            # Org settings live in the organizations.ai_behavior_settings JSONB
+            # column — there is NO plain "settings" column. The old query
+            # `SELECT settings FROM organizations` threw
+            # 'column "settings" does not exist', which bubbled up and aborted
+            # submit_for_approval: the position was created but never submitted,
+            # so no reviewer was set, the team lead got no notification, and the
+            # stage stayed at "JD generation". Use the shared decoder instead.
+            from backend.services.settings_service import SettingsService
+            org_settings = await SettingsService.get_ai_behavior(conn, org_id)
+            hr_requires_review = org_settings.get("direct_hire_hr_requires_review", True)
+            dept_admin_requires_org_review = org_settings.get("direct_hire_dept_admin_requires_org_head_review", True)
 
             if creator_role == "dept_admin":
                 if not dept_admin_requires_org_review:

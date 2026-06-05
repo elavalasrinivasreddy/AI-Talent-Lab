@@ -2232,3 +2232,33 @@ These fields added noise tokens and could nudge the agent into echoing irrelevan
 
 **Files Modified:**
 - `frontend/src/components/Chat/ChatPage.jsx` (seed effect: removed 3 unnecessary fields, simplified field checks)
+
+---
+
+### Bug #120: Team Lead Not Notified + Stage Stuck — Wrong "settings" Column in resolve_reviewer
+
+**Problem:** After HR finalized a JD, the position saved (200 OK) but the team lead received no approval notification and the hire request/position stayed at "JD generation" instead of moving to pending approval. Backend log: `Auto-submit for approval failed (non-blocking): column "settings" does not exist`.
+
+**Root cause:** `PositionService.resolve_reviewer()` ran `SELECT settings FROM organizations WHERE id=$1`, but the `organizations` table has no `settings` column — org settings live in the `ai_behavior_settings` JSONB column. asyncpg raised `UndefinedColumnError`, which bubbled up and aborted `submit_for_approval`. `chat_service` caught it as a non-blocking warning, so the position was created but never submitted: no reviewer resolved, no notification, status never advanced to `pending_jd_approval`.
+
+**Solution:** Replaced the broken inline query with the shared decoder `SettingsService.get_ai_behavior(conn, org_id)`, which reads and JSON-decodes the correct `ai_behavior_settings` column. The `direct_hire_*` approval-toggle keys are written nowhere, so they default to `True` (review required) — the intended safe default.
+
+**Files Modified:**
+- `backend/services/position_service.py` (`resolve_reviewer`: query `ai_behavior_settings` via `SettingsService.get_ai_behavior`)
+- `backend/tests/test_position_approval.py` (added regression test `test_resolve_reviewer_uses_ai_behavior_settings_column` — fails with the exact production error without the fix, passes with it)
+
+---
+
+### Bug #121: Lock HR Chat Once JD Is Submitted for Approval
+
+**Problem:** Once a JD was created and HR submitted it for team-lead approval, the "Resume AI Chat" button on the Position detail JD tab reopened the chat session and regressed the workflow stage — un-submitting the approval and forcing HR to resubmit. The chat was also fully editable while pending review.
+
+**Solution (HR lock):**
+- **Backend (`chat.py`):** Added a position-lock guard to the `/stream` and `/save-draft` endpoints. A linked position's chat is read-only once `approval_status == 'pending'` (awaiting reviewer) or the position has moved to any non-editable status. Editable statuses are `draft`, `rejected`, `draft_needs_revision` only — so a JD rejected with notes reopens for editing (stage moves back), while submitted/approved/live JDs are locked. Both endpoints share one `_position_lock_detail()` helper that mirrors the frontend's read-only definition in `ChatContext.jsx`, so lock behavior is identical on both sides.
+- **Frontend (`JDTab.jsx`):** When a JD is pending approval, HR sees a read-only "👁 View AI Chat" button (navigates to the session without regressing the stage) instead of "Resume AI Chat".
+
+**Review note:** The original guard hardcoded `status IN ('open','closed','on_hold')`; `closed`/`on_hold` are not valid position statuses in this codebase and it drifted from the frontend's canonical lock rule. Replaced with the shared helper aligned to `ChatContext.jsx` (locked when `approval_status='pending'` OR `status NOT IN {draft, rejected, draft_needs_revision}`), which also covers `fulfilled`/`cancelled`.
+
+**Files Modified:**
+- `backend/routers/chat.py` (`_position_lock_detail` helper + guards on `/stream` and `/save-draft`)
+- `frontend/src/components/Positions/tabs/JDTab.jsx` (read-only "View AI Chat" button for pending-approval state)

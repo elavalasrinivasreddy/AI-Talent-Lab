@@ -355,3 +355,70 @@ async def test_approval_decision_changes_requested_no_sourcing(monkeypatch):
     assert len(celery_delay_calls) == 0, (
         "run_candidate_search.delay must NOT be called when changes are requested"
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Test 4 — resolve_reviewer reads ai_behavior_settings, NOT a "settings" column
+# Regression: the old query `SELECT settings FROM organizations` threw
+# 'column "settings" does not exist', which aborted submit_for_approval so the
+# team lead was never notified and the stage stayed at "JD generation".
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class _ReviewerFakeConn:
+    """Fake conn that raises if the non-existent `settings` column is queried,
+    mirroring Postgres UndefinedColumnError. Returns proper rows otherwise."""
+
+    async def fetchrow(self, query, *args):
+        q = query.lower()
+        # The bug: querying a plain `settings` column that doesn't exist.
+        if "settings from organizations" in q and "ai_behavior_settings" not in q:
+            raise Exception('column "settings" does not exist')
+        if "from users where id" in q:
+            return {"id": 36, "role": "hr", "name": "HR Person", "department_id": 3}
+        if "ai_behavior_settings" in q:
+            # JSONB returned as a str (asyncpg default) — get_ai_behavior decodes it.
+            return {"ai_behavior_settings": "{}"}
+        if "from hire_requests" in q:
+            return {"id": 99, "name": "Team Lead"}
+        return None
+
+    async def fetch(self, query, *args):
+        return []
+
+    async def execute(self, query, *args):
+        return None
+
+
+@pytest.mark.asyncio
+async def test_resolve_reviewer_uses_ai_behavior_settings_column(monkeypatch):
+    """resolve_reviewer must not query a non-existent `settings` column.
+
+    Before the fix it issued `SELECT settings FROM organizations`, which raised
+    and bubbled up to abort submit_for_approval (no team-lead notification,
+    stage stuck at JD generation). After the fix it reads ai_behavior_settings,
+    so an HR-created position with a linked hire request resolves to the team
+    lead as reviewer.
+    """
+    fake_conn = _ReviewerFakeConn()
+    monkeypatch.setattr(
+        _pos_service_module, "get_connection",
+        lambda: _FakeConnCtx(fake_conn),
+    )
+
+    from backend.db.repositories import positions as pos_repo_mod
+
+    async def _fake_get(conn, position_id, org_id):
+        return _make_position(position_id)
+
+    monkeypatch.setattr(pos_repo_mod.PositionRepository, "get", staticmethod(_fake_get))
+
+    # Must not raise, and must resolve the team lead (id=99) as the reviewer.
+    result = await PositionService.resolve_reviewer(
+        position_id=7, org_id=1, user_id=36,
+    )
+
+    assert result.get("reviewer_id") == 99, (
+        f"Expected team lead (99) as reviewer; got {result}"
+    )
+    assert not result.get("is_bypass"), "HR submission should require review, not bypass"
