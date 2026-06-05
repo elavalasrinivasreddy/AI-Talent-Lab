@@ -2316,3 +2316,41 @@ These fields added noise tokens and could nudge the agent into echoing irrelevan
 
 **Files Modified:**
 - `backend/services/dashboard_service.py` (`get_analytics`: replaced string intervals with pre-computed naive UTC cutoff timestamp)
+
+---
+
+### Bug #126: Hire Request and Chat Stalling at "JD Generation"
+
+**Problem:** After completing a JD in the Chat UI and clicking "Submit for Approval", the chat UI's stepper showed an infinite spinner on the final "Save" stage. Simultaneously, the Hire Request's status remained stuck at "JD Generation" (status `pending`) instead of moving to "JD Approval" (status `fulfilled` with `approval_status = pending`).
+
+**Root cause:** The "Submit for Approval" button in `PositionSetupModal.jsx` called the backend `save-position` endpoint, but it never dispatched the `finalize_jd` action with `status: 'complete'` to the chat agent. Because the agent's state never became `complete`, the chat stepper spinner ran forever. Furthermore, the frontend `ChatPage.jsx` relied on the `workflowStage === 'complete'` state change to trigger the `linkSession` endpoint. Since this state change never arrived, `linkSession` was never called, leaving the Hire Request unlinked and stalled in the "JD Generation" stage.
+
+**Solution:**
+1. In `PositionSetupModal.jsx`, upon successful save, explicitly dispatch `sendMessage({ action: 'finalize_jd', action_data: { status: 'complete' } })`.
+2. Do not rely on `ChatPage.jsx`'s unreliable `useEffect` to link the session. Instead, execute `hireRequestsApi.linkSession(req.id, currentSessionId)` deterministically right inside `PositionSetupModal.jsx` before navigating away.
+3. In `JDStepper.jsx`, fixed a mapping bug where `effectiveStage === 'complete'` incorrectly mapped to the `current` state (which renders a spinner). It now correctly maps to `done` (rendering a green checkmark).
+
+**Files Modified:**
+- `frontend/src/components/Chat/PositionSetupModal.jsx`
+- `frontend/src/components/Chat/ChatPage.jsx`
+- `frontend/src/components/Chat/JDStepper.jsx`
+
+---
+
+### Bug #127: Missing "Edit Notes" Workflow for Dept Admins
+
+**Problem:** When a Department Admin edits a Team Lead's Hire Request, they need to provide notes explaining what changed (e.g. "Adjusted headcount to 2"). The system previously expected these notes to be entered during the Approval step, but UX requires editing and approving to be distinct actions. The notes were also not persisted to the database or shown inline on the request card.
+
+**Solution:**
+1. Added an optional `notes` column to the `HireRequestUpdate` Pydantic model and updated `HireRequestRepository.update` to accept it.
+2. Modified `HireRequestForm.jsx` to render an "Edit Notes" textarea exclusively in Edit mode.
+3. Modified `HireRequestDetailPage.jsx` to render `req.notes` as an inline styled block below the Relay Visualization.
+4. Simplified the "Approve request" action in `HireRequestDetailPage.jsx` by removing its inline note form.
+5. Updated `HireRequestService.approve_request` to seamlessly fallback to `existing["notes"]` when composing the approval notification email, ensuring the Team Lead receives the edit context.
+
+**Files Modified:**
+- `backend/models/hire_request.py`
+- `backend/services/hire_request_service.py`
+- `backend/db/repositories/hire_requests.py`
+- `frontend/src/components/HireRequests/HireRequestForm.jsx`
+- `frontend/src/components/HireRequests/HireRequestDetailPage.jsx`

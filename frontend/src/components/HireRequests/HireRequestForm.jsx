@@ -22,6 +22,7 @@ const BLANK = {
   comp_max: '',
   target_start: '',
   requirements: '',
+  notes: '',
 }
 
 const toNum = (v) => (v === '' || v == null ? null : Number(v))
@@ -80,6 +81,7 @@ export default function HireRequestForm({ mode }) {
           comp_max: r.comp_max ?? '',
           target_start: r.target_start || '',
           requirements: r.requirements || '',
+          notes: r.notes || '',
         })
       })
       .catch(err => {
@@ -113,6 +115,9 @@ export default function HireRequestForm({ mode }) {
         comp_max: toNum(form.comp_max),
         target_start: form.target_start || null,
         requirements: form.requirements.trim() || null,
+      }
+      if (isEdit && form.notes.trim()) {
+        payload.notes = form.notes.trim()
       }
       const res = isEdit
         ? await hireRequestsApi.update(id, payload)
@@ -314,6 +319,25 @@ export default function HireRequestForm({ mode }) {
               />
             </div>
           </section>
+
+          {isEdit && (
+            <section className="hr-form-section" style={{ borderLeftColor: 'var(--color-primary)' }}>
+              <h2 className="hr-form-section-title">Edit Notes</h2>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', margin: '-10px 0 16px' }}>
+                If you are modifying this request, explain what was changed so the requester knows why.
+              </p>
+              <div className="hr-field">
+                <label htmlFor="hr-notes">Notes for Team Lead</label>
+                <textarea
+                  id="hr-notes"
+                  rows={3}
+                  value={form.notes}
+                  onChange={e => set('notes', e.target.value)}
+                  placeholder="e.g. Adjusted headcount to 2 as per Q3 budget. Raised max comp slightly."
+                />
+              </div>
+            </section>
+          )}
         </div>
 
         <div className="hr-form-actions">

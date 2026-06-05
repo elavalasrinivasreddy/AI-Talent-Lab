@@ -127,9 +127,9 @@ export const ChatProvider = ({ children }) => {
                 setWorkflowStage(data.workflow_stage || 'intake');
                 
                 // Read-only when position is submitted for approval (approval_status='pending')
-                // or already live (status not in editable set: draft/rejected/draft_needs_revision).
+                // or already live (status not in editable set: draft/jd_in_progress/rejected/draft_needs_revision).
                 const pendingApproval = data.position_approval_status === 'pending';
-                const statusLocked = data.position_status && !['draft', 'rejected', 'draft_needs_revision'].includes(data.position_status);
+                const statusLocked = data.position_status && !['draft', 'jd_in_progress', 'rejected', 'draft_needs_revision'].includes(data.position_status);
                 setIsReadOnly(pendingApproval || !!statusLocked);
 
                 // Restore messages from DB

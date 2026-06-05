@@ -100,8 +100,8 @@ export default function JDTab({ position, onUpdate }) {
   }
 
   const isApproved = position?.status === 'open' || position?.approval_status === 'approved'
-  const isPendingApproval = position?.status === 'pending_approval' || position?.approval_status === 'pending'
-  const isDraftOrRejected = position?.status === 'draft' || position?.approval_status === 'rejected'
+  const isPendingApproval = position?.status === 'pending_approval' || position?.status === 'pending_jd_approval' || position?.approval_status === 'pending'
+  const isDraftOrRejected = ['draft', 'jd_in_progress', 'draft_needs_revision'].includes(position?.status) || position?.approval_status === 'rejected'
 
   // Team Leads can only edit during pending_approval. Once approved, locked.
   const canTeamLeadEdit = isPendingApproval && (user?.role === 'team_lead' || user?.role === 'org_head')

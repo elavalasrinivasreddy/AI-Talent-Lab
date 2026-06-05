@@ -139,13 +139,7 @@ const ChatPage = () => {
         sendMessage({ message: lines.join('\n') });
     }, [sessionId, sessionLoaded, location.key, location.state, workflowStage, sendMessage, messages]);
 
-    // Link the created position back to the hire request once JD generation completes.
-    useEffect(() => {
-        const req = location.state?.hireRequest;
-        if (!req || !currentSessionId || workflowStage !== 'complete' || linkSentRef.current) return;
-        linkSentRef.current = true;
-        hireRequestsApi.linkSession(req.id, currentSessionId).catch(err => console.error('linkSession failed:', err));
-    }, [location.state, workflowStage, currentSessionId]);
+
 
     return (
         <div className="chat-page chat-page--v3">

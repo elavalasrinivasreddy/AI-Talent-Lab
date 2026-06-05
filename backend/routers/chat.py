@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/v1/chat", tags=["Recruiter Chat"])
 # (ChatContext.jsx) so lock behavior is identical on both sides: once the JD is
 # submitted for approval (approval_status='pending') or has moved on to any
 # non-editable status (approved/live/fulfilled/cancelled), the chat is read-only.
-_EDITABLE_POSITION_STATUSES = {"draft", "rejected", "draft_needs_revision"}
+_EDITABLE_POSITION_STATUSES = {"draft", "jd_in_progress", "rejected", "draft_needs_revision"}
 
 
 def _position_lock_detail(session: Optional[dict]) -> Optional[dict]:

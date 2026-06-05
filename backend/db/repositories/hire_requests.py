@@ -204,7 +204,7 @@ class HireRequestRepository:
         allowed = {
             "department_id", "role_name", "headcount", "priority", "work_type",
             "experience_min", "experience_max", "target_start",
-            "requirements", "comp_min", "comp_max", "location",
+            "requirements", "comp_min", "comp_max", "location", "notes",
         }
         sanitized = {k: v for k, v in fields.items() if k in allowed}
         if not sanitized:

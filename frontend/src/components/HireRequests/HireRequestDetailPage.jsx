@@ -26,8 +26,6 @@ export default function HireRequestDetailPage() {
   const [busy, setBusy] = useState(null)
   const [rejectOpen, setRejectOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
-  const [approveOpen, setApproveOpen] = useState(false)
-  const [approveNote, setApproveNote] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -70,10 +68,8 @@ export default function HireRequestDetailPage() {
   const handleApprove = async () => {
     setBusy('approve')
     try {
-      const res = await hireRequestsApi.approve(req.id, approveNote.trim() || undefined)
+      const res = await hireRequestsApi.approve(req.id)
       setReq(res?.request || null)
-      setApproveOpen(false)
-      setApproveNote('')
       setError('')
     } catch (err) {
       setError(err?.message || 'Couldn\'t approve request.')
@@ -163,6 +159,15 @@ export default function HireRequestDetailPage() {
 
       <RelayVisualization request={req} />
 
+      {req.notes && (
+        <div className="hr-banner" style={{ backgroundColor: 'var(--color-surface)', borderLeft: '4px solid var(--color-primary)', marginTop: '24px' }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--color-text)' }}>Edit Notes</h3>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-secondary)', whiteSpace: 'pre-wrap' }}>
+            {req.notes}
+          </p>
+        </div>
+      )}
+
       {error && (
         <div className="hr-banner tone-danger" role="alert">
           <AlertIcon /> <span>{error}</span>
@@ -223,48 +228,28 @@ export default function HireRequestDetailPage() {
             {/* dept_admin / org_head: approve or reject while pending */}
             {canApprove && (
               <>
-                {!rejectOpen && (approveOpen ? (
-                  <div className="hr-reject-inline">
-                    <label className="hr-reject-label">Add a note for the requester (optional)</label>
-                    <textarea
-                      className="hr-reject-textarea"
-                      rows={3}
-                      value={approveNote}
-                      onChange={e => setApproveNote(e.target.value)}
-                      placeholder="If you changed anything (headcount, comp, …), note it here so the requester knows."
-                      autoFocus
-                    />
-                    <div className="hr-reject-actions">
-                      <button
-                        type="button"
-                        className="hr-btn hr-btn-primary"
-                        onClick={handleApprove}
-                        disabled={busy !== null}
-                      >
-                        {busy === 'approve' ? <><SpinnerIcon /> Approving…</> : <><CheckIcon /> Confirm approval</>}
-                      </button>
-                      <button
-                        type="button"
-                        className="hr-btn hr-btn-ghost"
-                        onClick={() => { setApproveOpen(false); setApproveNote('') }}
-                        disabled={busy !== null}
-                      >
-                        Cancel
-                      </button>
-                    </div>
+                {!rejectOpen && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                    <button
+                      type="button"
+                      className="hr-btn hr-btn-primary"
+                      onClick={handleApprove}
+                      disabled={busy !== null}
+                    >
+                      {busy === 'approve' ? <><SpinnerIcon /> Approving…</> : <><CheckIcon /> Approve request</>}
+                    </button>
+                    <button
+                      type="button"
+                      className="hr-btn hr-btn-danger"
+                      onClick={() => setRejectOpen(true)}
+                      disabled={busy !== null}
+                    >
+                      <XIcon /> Reject request
+                    </button>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="hr-btn hr-btn-primary hr-btn-block"
-                    onClick={() => setApproveOpen(true)}
-                    disabled={busy !== null}
-                  >
-                    <CheckIcon /> Approve request
-                  </button>
-                ))}
+                )}
 
-                {!approveOpen && (rejectOpen ? (
+                {rejectOpen && (
                   <div className="hr-reject-inline">
                     <label className="hr-reject-label">Reason for rejection</label>
                     <textarea

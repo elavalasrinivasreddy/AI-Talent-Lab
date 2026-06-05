@@ -91,7 +91,25 @@ async def embed_jd(position_id: int, org_id: int, department_id: Optional[int], 
         )
         logger.info(f"Embedded JD for position {position_id} (org {org_id})")
     except Exception as e:
-        logger.error(f"Failed to embed JD: {e}")
+        # Auto-recover from dimension mismatch (e.g. collection was created
+        # with 384-dim default embeddings, but now we're using 1536-dim OpenAI).
+        if "dimension" in str(e).lower():
+            logger.warning(f"Dimension mismatch in ChromaDB — recreating collection: {e}")
+            try:
+                client = get_chroma_client()
+                client.delete_collection("job_descriptions")
+                new_collection = get_jd_collection()
+                if new_collection:
+                    new_collection.upsert(
+                        documents=[jd_text],
+                        metadatas=[metadata],
+                        ids=[f"pos_{position_id}"]
+                    )
+                    logger.info(f"Embedded JD for position {position_id} after collection reset")
+            except Exception as retry_err:
+                logger.error(f"Failed to embed JD after collection reset: {retry_err}")
+        else:
+            logger.error(f"Failed to embed JD: {e}")
 
 
 async def search_similar(query_text: str, org_id: int, department_id: Optional[int] = None, top_k: int = 3) -> list[dict]:

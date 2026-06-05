@@ -459,6 +459,10 @@ class HireRequestService:
             )
 
         existing = await HireRequestService.get(conn, request_id, org_id)
+        
+        # Fallback to the notes saved during an Edit
+        if not note and existing.get("notes"):
+            note = existing["notes"].strip()
 
         # dept_admin can only approve requests scoped to their own department.
         # Org-level requests (department_id is NULL) must be approved by org_head.

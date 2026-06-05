@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
+import { hireRequestsApi } from '../../utils/api';
 import { IconX, IconCheck, IconArrowRight } from './icons';
 
 /**
@@ -11,8 +12,10 @@ import { IconX, IconCheck, IconArrowRight } from './icons';
  */
 const PositionSetupModal = ({ show, onClose }) => {
     const { token, user } = useAuth();
-    const { currentSessionId, fetchSessions } = useChat();
+    const { currentSessionId, fetchSessions, sendMessage } = useChat();
     const navigate = useNavigate();
+    const location = useLocation();
+    const req = location.state?.hireRequest;
 
     // Most recruiters chat off an accepted hire request, so the session already
     // carries a department and the backend uses it. Only users without a department
@@ -92,6 +95,14 @@ const PositionSetupModal = ({ show, onClose }) => {
                         navigate('/dashboard');
                     }, 1800);
                 } else {
+                    sendMessage({ action: 'finalize_jd', action_data: { status: 'complete' } });
+                    if (req && req.id) {
+                        try {
+                            await hireRequestsApi.linkSession(req.id, currentSessionId);
+                        } catch (linkErr) {
+                            console.error('Failed to link session:', linkErr);
+                        }
+                    }
                     const data = await res.json();
                     setSuccess(true);
                     setTimeout(() => {
@@ -183,6 +194,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                                             className="pfield-select"
                                             value={formData.department_id}
                                             onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
+                                            disabled={isLoading || isDraftLoading}
                                             required
                                         >
                                             <option value="" disabled>Select a department…</option>
@@ -205,6 +217,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                                         min="0" max="100" step="0.1"
                                         value={formData.ats_threshold}
                                         onChange={(e) => setFormData({ ...formData, ats_threshold: e.target.value })}
+                                        disabled={isLoading || isDraftLoading}
                                     />
                                     <span className="pfield-hint">Min score to advance to screening</span>
                                 </div>
@@ -215,6 +228,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                                         className="pfield-select"
                                         value={formData.search_interval_hours}
                                         onChange={(e) => setFormData({ ...formData, search_interval_hours: e.target.value })}
+                                        disabled={isLoading || isDraftLoading}
                                     >
                                         <option value="12">Every 12 hours</option>
                                         <option value="24">Every 24 hours</option>
