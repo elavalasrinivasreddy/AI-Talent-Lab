@@ -2417,3 +2417,39 @@ The hire_requests subquery `SELECT position_id FROM hire_requests WHERE requeste
 - `backend/services/position_service.py`
 - `backend/db/repositories/positions.py` (edge case fix: `AND position_id IS NOT NULL` in subquery)
 - `backend/db/repositories/positions.py`
+
+---
+
+### Bug #132: Chat Interface "Pending approval" Banner Logic
+**Problem:** The chat interface displayed the "Pending team lead approval — this JD is read-only..." banner even after the JD was successfully approved and saved, failing to pick up the updated `approved` status.
+**Solution:** Fixed the frontend banner logic to correctly hide the warning banner once the position status updates from `pending_approval` to `open` or `approved`.
+
+---
+
+### Bug #133: Hire Request Reject Button Styling
+**Problem:** The "Reject request" button on the Hire Request page was missing its red `.hr-btn-danger` background styling, rendering it incorrectly.
+**Solution:** Added the `.hr-btn-danger` CSS class to `HireRequests.css` to properly apply the solid red background and hover effects.
+
+---
+
+### Bug #134: Hire Request Cancellation Notifications & Native Modal
+**Problem:** 
+1. When a Department Admin cancelled a Hire Request, a native browser `window.confirm` popup appeared instead of an app-level UI modal.
+2. The team lead who initially raised the request was not notified when an admin cancelled their request.
+**Solution:** 
+1. Replaced the native `window.confirm` with the app's standard `ConfirmModal` component in `HireRequestDetailPage.jsx`.
+2. Updated the cancellation logic in `backend/services/hire_request_service.py` to dispatch an in-app notification to the original requester if the request is cancelled by someone else (e.g. an admin).
+
+---
+
+### Bug #135: Org Head Dashboard Fetching & UI Bugs
+**Problem:** 
+1. The dashboard returned a `422 Validation Error` due to a malformed `dept_id` query parameter for the Org Head role.
+2. Active departments with zero currently open positions were disappearing from the department filter chips.
+3. The default period filter was incorrectly set to "This Week" instead of "Today".
+4. The department chip filter was unnecessarily visible for Department Admins, whose scope is inherently locked to their own department.
+**Solution:** 
+1. Replaced the frontend's naive department accumulator with an explicit call to `settingsApi.getDepartments()` so all active departments accurately load, resolving the URL query issues.
+2. Fixed a React crash (`departments is not iterable`) by correctly extracting the array from the `settingsApi.getDepartments()` object response.
+3. Updated the initial state of the `period` hook to "today".
+4. Restrained the `RoleGate` on `DeptChipBar` in `DashboardPage.jsx` to only allow `org_head`.

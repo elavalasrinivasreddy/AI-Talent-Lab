@@ -829,6 +829,21 @@ class HireRequestService:
         async with conn.transaction():
             await HireRequestRepository.cancel(conn, request_id, org_id, notes=None)
 
+            # Notify the requester if someone else (e.g. dept admin) cancelled it
+            if existing["requested_by"] and existing["requested_by"] != user_id:
+                canceller_row = await conn.fetchrow("SELECT name FROM users WHERE id = $1", user_id)
+                canceller_name = (canceller_row["name"] if canceller_row else None) or "An admin"
+                
+                await HireRequestService._notify(
+                    conn,
+                    org_id=org_id,
+                    user_id=existing["requested_by"],
+                    type="hire_request_cancelled",
+                    title="Hire request cancelled",
+                    message=f"Your request for {existing['role_name']} was cancelled by {canceller_name}.",
+                    action_url=f"/hire-requests/{request_id}",
+                )
+
             # Notify the recruiter who had it (if accepted)
             if existing["status"] == "accepted" and existing["accepted_by"]:
                 await HireRequestService._notify(

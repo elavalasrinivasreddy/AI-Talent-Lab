@@ -12,18 +12,19 @@ import Chip from '../common/Chip'
 const ALL = 'all'
 
 export default function DeptChipBar({ departments = [], selected = ALL, onChange }) {
-  const options = [ALL, ...departments]
+  const allOption = { id: ALL, name: 'All Depts' }
+  const options = [allOption, ...departments]
 
   return (
     <div className="dept-chip-bar" role="group" aria-label="Filter by department">
       {options.map(dept => {
-        const isActive = selected === dept
+        const isActive = selected === dept.id
         return (
           <button
-            key={dept}
+            key={dept.id}
             type="button"
             className="dept-chip-btn"
-            onClick={() => onChange(dept)}
+            onClick={() => onChange(dept.id)}
             aria-pressed={isActive}
           >
             <Chip
@@ -32,7 +33,7 @@ export default function DeptChipBar({ departments = [], selected = ALL, onChange
               size="sm"
               style={{ cursor: 'pointer', pointerEvents: 'none' }}
             >
-              {dept === ALL ? 'All Depts' : dept}
+              {dept.name}
             </Chip>
           </button>
         )

@@ -10,6 +10,7 @@ import {
 import {
   ArrowLeftIcon, AlertIcon, SpinnerIcon, CheckIcon, XIcon,
 } from './icons'
+import ConfirmModal from '../common/ConfirmModal'
 import './HireRequests.css'
 
 /**
@@ -26,6 +27,7 @@ export default function HireRequestDetailPage() {
   const [busy, setBusy] = useState(null)
   const [rejectOpen, setRejectOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [cancelModalOpen, setCancelModalOpen] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -127,8 +129,11 @@ export default function HireRequestDetailPage() {
     }
   }
 
-  const handleCancel = async () => {
-    if (!window.confirm('Cancel this hire request? You can\'t undo this.')) return
+  const handleCancel = () => {
+    setCancelModalOpen(true)
+  }
+
+  const confirmCancel = async () => {
     setBusy('cancel')
     try {
       await hireRequestsApi.cancel(req.id)
@@ -353,6 +358,16 @@ export default function HireRequestDetailPage() {
           </div>
         </aside>
       </div>
+
+      <ConfirmModal
+        isOpen={cancelModalOpen}
+        onClose={() => setCancelModalOpen(false)}
+        onConfirm={confirmCancel}
+        title="Cancel Hire Request"
+        message="Are you sure you want to cancel this hire request? You cannot undo this action."
+        confirmText="Yes, Cancel Request"
+        confirmVariant="danger"
+      />
     </div>
   )
 }

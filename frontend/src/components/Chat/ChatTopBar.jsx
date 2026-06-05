@@ -16,7 +16,7 @@ const STAGE_CONFIG = {
 const TOTAL_STAGES = 5;
 
 const ChatTopBar = () => {
-    const { sessionTitle, isTitleAnimating, isReadOnly } = useChat();
+    const { sessionTitle, isTitleAnimating, isReadOnly, readOnlyReason } = useChat();
 
     return (
         <>
@@ -53,7 +53,11 @@ const ChatTopBar = () => {
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                     </svg>
-                    Pending team lead approval — this JD is read-only until a decision is made
+                    {readOnlyReason === 'pending_approval'
+                        ? 'Pending team lead approval — this JD is read-only until a decision is made'
+                        : readOnlyReason === 'approved_and_open'
+                            ? 'Position approved — this JD is now finalized and read-only'
+                            : 'This JD has been finalized and is read-only'}
                 </div>
             )}
         </>

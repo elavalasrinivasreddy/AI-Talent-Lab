@@ -15,9 +15,10 @@
  * Roles: org_head | dept_admin | hr | team_lead | platform_admin
  * See backend/models/auth.py for canonical role list.
  */
-import { useState, useMemo, lazy, Suspense } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { settingsApi } from '../../utils/api'
 
 // Legacy dashboard — loaded lazily only when ?legacy_dashboard=1
 const LegacyDashboard = lazy(() => import('./legacy/LegacyDashboard'))
@@ -74,17 +75,6 @@ function getGreeting() {
   return 'Good evening'
 }
 
-// Derive unique dept names from positions list
-function deriveDepts(positions) {
-  const seen = new Set()
-  const depts = []
-  for (const p of positions) {
-    const d = p.department_name
-    if (d && !seen.has(d)) { seen.add(d); depts.push(d) }
-  }
-  return depts.sort()
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -95,13 +85,21 @@ export default function DashboardPage() {
   const legacyMode = searchParams.get('legacy_dashboard') === '1'
 
   const role   = user?.role || 'hr'
-  const [period, setPeriod] = useState('week')
+  const [period, setPeriod] = useState('today')
   const [selectedDept, setSelectedDept] = useState('all')
 
   const data = useDashboardData(role, period, selectedDept)
   const { lanes, suggestions, positions, health, loading, error, dismiss, dismissAll } = data
 
-  const depts   = useMemo(() => deriveDepts(positions), [positions])
+  const [depts, setDepts] = useState([])
+  
+  useEffect(() => {
+    if (role === 'org_head') {
+      settingsApi.getDepartments()
+        .then(res => setDepts(res?.departments || []))
+        .catch(err => console.error('Failed to load depts', err))
+    }
+  }, [role])
   const suffix  = greetingSuffix(role, { positions, health, lanes })
   const roleLabel = ROLE_LABELS[role] || role
 
@@ -156,8 +154,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Dept Chip Bar — admin only ── */}
-      <RoleGate roles={['org_head', 'dept_admin']}>
+      {/* ── Dept Chip Bar — org_head only ── */}
+      <RoleGate roles={['org_head']}>
         <DeptChipBar
           departments={depts}
           selected={selectedDept}

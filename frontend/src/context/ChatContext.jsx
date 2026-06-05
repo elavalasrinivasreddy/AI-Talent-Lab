@@ -48,6 +48,7 @@ export const ChatProvider = ({ children }) => {
     const [isStreaming, setIsStreaming] = useState(false);
     const [workflowStage, setWorkflowStage] = useState('intake');
     const [isReadOnly, setIsReadOnly] = useState(false);
+    const [readOnlyReason, setReadOnlyReason] = useState(null);
 
     // ── Interactive card states ────────────────────────────────
     const [internalCard, setInternalCard] = useState(null);
@@ -73,6 +74,7 @@ export const ChatProvider = ({ children }) => {
         setIsStreaming(false);
         setWorkflowStage('intake');
         setIsReadOnly(false);
+        setReadOnlyReason(null);
         setInternalCard(null);
         setMarketCard(null);
         setVariantsCard(null);
@@ -131,6 +133,16 @@ export const ChatProvider = ({ children }) => {
                 const pendingApproval = data.position_approval_status === 'pending';
                 const statusLocked = data.position_status && !['draft', 'jd_in_progress', 'rejected', 'draft_needs_revision'].includes(data.position_status);
                 setIsReadOnly(pendingApproval || !!statusLocked);
+                
+                if (pendingApproval) {
+                    setReadOnlyReason('pending_approval');
+                } else if (data.position_approval_status === 'approved' || data.position_status === 'open') {
+                    setReadOnlyReason('approved_and_open');
+                } else if (statusLocked) {
+                    setReadOnlyReason('locked');
+                } else {
+                    setReadOnlyReason(null);
+                }
 
                 // Restore messages from DB
                 const dbMessages = (data.messages || []).map(m => ({
@@ -447,7 +459,7 @@ export const ChatProvider = ({ children }) => {
         sessions, fetchSessions,
         currentSessionId, loadSession, setCurrentSessionId, sessionLoaded,
         sessionTitle, setSessionTitle, isTitleAnimating,
-        messages, workflowStage, isStreaming, error, isReadOnly,
+        messages, workflowStage, isStreaming, error, isReadOnly, readOnlyReason,
         sendMessage, deleteSession, resetChat,
         internalCard, setInternalCard, dismissInternalCard,
         marketCard, setMarketCard, dismissMarketCard,
