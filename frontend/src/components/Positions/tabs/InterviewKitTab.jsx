@@ -4,14 +4,8 @@
  * Per docs/design/pages/12_career_page.md §Interview Kit
  */
 import React, { useState, useEffect } from 'react'
+import { positionsApi } from '../../../utils/api'
 import './InterviewKitTab.css'
-
-const API = '/api/v1'
-
-function authHeader() {
-  const t = localStorage.getItem('token')
-  return t ? { Authorization: `Bearer ${t}` } : {}
-}
 
 const TYPE_ICONS = {
   technical: '⚙️',
@@ -44,19 +38,18 @@ export default function InterviewKitTab({ positionId }) {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${API}/positions/${positionId}/interview-kit`, {
-        headers: authHeader(),
-      })
-      if (res.status === 404) {
-        setKit(null) // Not yet generated
-      } else if (!res.ok) {
-        throw new Error('Failed to load')
-      } else {
-        const data = await res.json()
+      const data = await positionsApi.getInterviewKit(positionId)
+      if (data) {
         setKit(data)
+      } else {
+        setKit(null)
       }
     } catch (e) {
-      setError(e.message)
+      if (e.status === 404) {
+        setKit(null)
+      } else {
+        setError(e.message)
+      }
     } finally {
       setLoading(false)
     }
@@ -66,15 +59,10 @@ export default function InterviewKitTab({ positionId }) {
     setGenerating(true)
     setError('')
     try {
-      const res = await fetch(`${API}/positions/${positionId}/interview-kit/generate`, {
-        method: 'POST',
-        headers: authHeader(),
-      })
-      if (!res.ok) throw new Error('Generation failed')
-      const data = await res.json()
+      const data = await positionsApi.generateInterviewKit(positionId)
       setKit(data)
     } catch (e) {
-      setError('AI generation failed. Please try again.')
+      setError(e.message || 'AI generation failed. Please try again.')
     } finally {
       setGenerating(false)
     }

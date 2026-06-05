@@ -2469,3 +2469,11 @@ The hire_requests subquery `SELECT position_id FROM hire_requests WHERE requeste
 2. Encased `dim.rating_scale` mapping in `Array.isArray` check and cast rating strings using `String(r).split(' - ')[0]`.
 3. Cast `type` to string before replacing formatting tags (`String(type).replace`).
 4. Added fallbacks for `q?.question`, `q?.difficulty`, and `dim?.dimension`.
+
+---
+
+### Bug #138: "Generate Interview Kit" Failed with 401 Unauthorized
+**Problem:** Clicking "Generate Interview Kit" consistently showed "AI generation failed" in the UI. The root cause was that `InterviewKitTab.jsx` used a local manual `authHeader()` function that looked for the token in `localStorage.getItem('token')`. However, the auth system uses `sessionStorage.getItem('atl_session')`, resulting in an empty Authorization header and the FastAPI backend returning a `401 Unauthorized` error.
+**Solution:**
+1. Replaced the manual `fetch` calls and broken `authHeader` implementation in `InterviewKitTab.jsx`.
+2. Refactored the component to use the centralized `positionsApi.getInterviewKit` and `positionsApi.generateInterviewKit` methods, which automatically hook into the correct session storage token getter.
