@@ -2262,3 +2262,16 @@ These fields added noise tokens and could nudge the agent into echoing irrelevan
 **Files Modified:**
 - `backend/routers/chat.py` (`_position_lock_detail` helper + guards on `/stream` and `/save-draft`)
 - `frontend/src/components/Positions/tabs/JDTab.jsx` (read-only "View AI Chat" button for pending-approval state)
+
+---
+
+### Bug #122: Stale Approval-Decision Tests (KeyError after Rev 4 refactor)
+
+**Problem:** `test_approval_decision_approved_fires_sourcing` and `test_approval_decision_changes_requested_no_sourcing` failed with `KeyError` at `position_service.py:367`. Test-only issue (no product impact) but it left two approval-gating tests permanently red.
+
+**Root cause:** Both tests were written for an older `record_approval_decision` and never updated after the Rev 4 refactor, which added a `FOR UPDATE` transaction, CAS repo methods (`approve_and_open`, `reject_to_revision`, `increment_revision_cycle`, `fulfill_hire_request`), an approver-role permission check, and an `approval_status` idempotency guard. The mocks supplied incomplete rows (`from users` lacked `role`/`department_id`; `from positions` lacked `approval_status`/`status`/`reviewer_id`) and `_FakeConn` had no `transaction()`. `KeyError approver_row["role"]` was the first wall, `AttributeError conn.transaction()` the second.
+
+**Solution:** Modernized both tests to match the current code — complete mock rows (approver `role='org_head'` to bypass the reviewer-match check; position row with `approval_status`/`status`/`reviewer_id`), patched the four CAS repo methods, and added a no-op `transaction()` context manager to `_FakeConn`. Tests again genuinely assert Celery gating: approval fires `run_candidate_search.delay` once with correct args; changes-requested fires zero.
+
+**Files Modified:**
+- `backend/tests/test_position_approval.py` (complete mock rows, CAS repo patches, `_FakeConn.transaction()` + `_FakeTxn`)

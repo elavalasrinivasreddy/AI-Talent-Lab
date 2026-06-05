@@ -51,6 +51,20 @@ class _FakeConn:
     async def fetch(self, query, *args):
         return []
 
+    def transaction(self):
+        # record_approval_decision wraps its writes in `async with conn.transaction()`.
+        return _FakeTxn()
+
+
+class _FakeTxn:
+    """No-op async context manager standing in for asyncpg's transaction()."""
+
+    async def __aenter__(self):
+        return None
+
+    async def __aexit__(self, *args):
+        return False
+
 
 class _FakeConnCtx:
     """Context manager that yields a _FakeConn."""
@@ -221,15 +235,25 @@ async def test_approval_decision_approved_fires_sourcing(monkeypatch):
     """
     celery_delay_calls = []
 
-    # Build a fake conn that returns position row and user rows on fetchrow
+    # Build a fake conn that returns position row and user rows on fetchrow.
+    # Rows must carry every column the current record_approval_decision reads:
+    #   approver (from users): name, role, department_id
+    #   position (from positions): role_name, created_by, department_id,
+    #                              approval_status, status, reviewer_id
+    # approver role 'org_head' bypasses the reviewer-match permission check.
     fetchrow_map = {
         "from positions": {
             "role_name": "Senior Engineer",
             "created_by": 10,
             "department_id": 3,
+            "approval_status": "pending",
+            "status": "pending_jd_approval",
+            "reviewer_id": None,
         },
         "from users": {
             "name": "Alice Smith",
+            "role": "org_head",
+            "department_id": 3,
             "email": "alice@example.com",
         },
     }
@@ -240,6 +264,15 @@ async def test_approval_decision_approved_fires_sourcing(monkeypatch):
         _pos_service_module, "get_connection",
         lambda: _FakeConnCtx(fake_conn),
     )
+
+    # Patch the Rev 4 CAS repo methods invoked inside the transaction.
+    from backend.db.repositories import positions as pos_repo_mod
+
+    async def _cas_ok(*args, **kwargs):
+        return True
+
+    monkeypatch.setattr(pos_repo_mod.PositionRepository, "approve_and_open", staticmethod(_cas_ok))
+    monkeypatch.setattr(pos_repo_mod.PositionRepository, "fulfill_hire_request", staticmethod(_cas_ok))
 
     # Patch AuditLogRepository
     from backend.db.repositories import audit as audit_repo_mod
@@ -308,9 +341,14 @@ async def test_approval_decision_changes_requested_no_sourcing(monkeypatch):
             "role_name": "Senior Engineer",
             "created_by": 10,
             "department_id": 3,
+            "approval_status": "pending",
+            "status": "pending_jd_approval",
+            "reviewer_id": None,
         },
         "from users": {
             "name": "Alice Smith",
+            "role": "org_head",
+            "department_id": 3,
             "email": "alice@example.com",
         },
     }
@@ -320,6 +358,18 @@ async def test_approval_decision_changes_requested_no_sourcing(monkeypatch):
         _pos_service_module, "get_connection",
         lambda: _FakeConnCtx(fake_conn),
     )
+
+    # Patch the Rev 4 CAS repo methods for the rejection path.
+    from backend.db.repositories import positions as pos_repo_mod
+
+    async def _reject_ok(*args, **kwargs):
+        return True
+
+    async def _bump_cycle(*args, **kwargs):
+        return 1
+
+    monkeypatch.setattr(pos_repo_mod.PositionRepository, "reject_to_revision", staticmethod(_reject_ok))
+    monkeypatch.setattr(pos_repo_mod.PositionRepository, "increment_revision_cycle", staticmethod(_bump_cycle))
 
     from backend.db.repositories import audit as audit_repo_mod
 
