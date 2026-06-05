@@ -281,12 +281,14 @@ async def approval_decision(
         raise HTTPException(status_code=403, detail={"error": {"code": "FORBIDDEN", "message": str(e), "details": None}})
 
     # Fetch updated status to return to frontend
-    from backend.db.connection import get_connection
     async with get_connection() as conn:
         updated_pos = await conn.fetchrow(
             "SELECT status, approval_status FROM positions WHERE id=$1 AND org_id=$2",
             position_id, current_user["org_id"]
         )
+
+    if updated_pos is None:
+        raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": "Position not found after approval", "details": None}})
 
     return {"ok": True, "status": updated_pos["status"], "approval_status": updated_pos["approval_status"]}
 

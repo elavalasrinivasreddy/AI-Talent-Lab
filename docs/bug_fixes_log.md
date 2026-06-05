@@ -2379,8 +2379,11 @@ These fields added noise tokens and could nudge the agent into echoing irrelevan
 1. Updated `HireRequestDetailPage.jsx` to correctly route the "Open Position" button to `/positions/${id}/jd`.
 2. Updated the `approval-decision` API in `backend/routers/positions.py` to return both `status` and `approval_status` from the database so the frontend correctly syncs its local state.
 
+**Edge Case Fixed (code review):**
+The endpoint fetched `updated_pos` after the approval call with no NULL guard — if the position wasn't found (e.g., concurrent deletion), `updated_pos["status"]` would raise a TypeError and return an unhelpful 500. Added an explicit 404 raise when `updated_pos is None`. Also removed a redundant `from backend.db.connection import get_connection` import inside the handler body (the module-level import already covers it).
+
 **Files Modified:**
-- `backend/routers/positions.py`
+- `backend/routers/positions.py` (edge case fix: NULL guard on `updated_pos` + removed duplicate import)
 - `frontend/src/components/HireRequests/HireRequestDetailPage.jsx`
 
 ---
@@ -2406,7 +2409,11 @@ These fields added noise tokens and could nudge the agent into echoing irrelevan
 2. Expanded the SQL WHERE condition for Team Leads to match positions where they are either the creator (`created_by`), the hiring manager (`reviewer_id`), or the requester of the linked hire request.
 3. Updated the router and service layers to pass the `team_lead_id` instead of strictly applying the `created_by` filter.
 
+**Edge Case Fixed (code review):**
+The hire_requests subquery `SELECT position_id FROM hire_requests WHERE requested_by = $N` did not exclude NULL `position_id` rows (hire requests not yet linked to a position). In PostgreSQL, `x IN (NULL, ...)` produces UNKNOWN (not FALSE) when `x` doesn't match any non-NULL value, which could yield unexpected query behaviour. Added `AND position_id IS NOT NULL` to the subquery.
+
 **Files Modified:**
 - `backend/routers/positions.py`
 - `backend/services/position_service.py`
+- `backend/db/repositories/positions.py` (edge case fix: `AND position_id IS NOT NULL` in subquery)
 - `backend/db/repositories/positions.py`

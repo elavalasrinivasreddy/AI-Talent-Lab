@@ -149,7 +149,7 @@ class PositionRepository:
             params.append(assigned_to)
             idx += 1
         if team_lead_id:
-            conditions.append(f"(p.created_by = ${idx} OR p.reviewer_id = ${idx} OR p.id IN (SELECT position_id FROM hire_requests WHERE requested_by = ${idx}))")
+            conditions.append(f"(p.created_by = ${idx} OR p.reviewer_id = ${idx} OR p.id IN (SELECT position_id FROM hire_requests WHERE requested_by = ${idx} AND position_id IS NOT NULL))")
             params.append(team_lead_id)
             idx += 1
 
