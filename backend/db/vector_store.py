@@ -108,7 +108,8 @@ async def embed_jd(position_id: int, org_id: int, department_id: Optional[int], 
             logger.warning(f"Dimension mismatch in ChromaDB — recreating collection: {e}")
             try:
                 client = get_chroma_client()
-                client.delete_collection("job_descriptions")
+                if client:
+                    client.delete_collection("job_descriptions")
                 new_collection = get_jd_collection()
                 if new_collection:
                     new_collection.upsert(
