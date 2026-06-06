@@ -10,7 +10,10 @@ export function RecruiterLeaderboard({ data }) {
       <div className="leaderboard-list">
         {data.recruiters.map((recruiter) => (
           <div key={recruiter.id} className="leaderboard-row">
-            <div className="leaderboard-name">{recruiter.name}</div>
+            <div className="leaderboard-name">
+              {recruiter.name}
+              {recruiter.department_name && <span className="leaderboard-dept"> • {recruiter.department_name}</span>}
+            </div>
             <div className="leaderboard-bar-track">
               <div className="leaderboard-bar-fill" style={{ width: `${recruiter.pct}%` }} />
             </div>

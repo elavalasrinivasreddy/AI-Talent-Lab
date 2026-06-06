@@ -18,7 +18,7 @@ const PERIODS = [
 ]
 
 export default function AnalyticsPage() {
-  const [period, setPeriod] = useState('quarter')
+  const [period, setPeriod] = useState('week')
   const [roiData, setRoiData] = useState(null)
   const [recruiterData, setRecruiterData] = useState(null)
   const [bottleneckData, setBottleneckData] = useState(null)

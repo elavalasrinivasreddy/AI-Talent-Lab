@@ -461,40 +461,62 @@ class DashboardService:
         }
 
     @staticmethod
-    async def get_per_recruiter(org_id: int, period: str = "quarter") -> dict:
+    async def get_per_recruiter(org_id: int, role: str = "hr", dept_id: Optional[int] = None, period: str = "quarter") -> dict:
         """Hires per recruiter for the given period."""
         _now = datetime.now(timezone.utc).replace(tzinfo=None)
         period_days = {"week": 7, "month": 30, "quarter": 90, "year": 365}.get(period, 90)
         cutoff = _now - timedelta(days=period_days)
 
         async with get_connection() as conn:
-            rows = await conn.fetch(
+            args = [org_id, cutoff]
+            dept_filter = ""
+            if role == "dept_admin" and dept_id:
+                dept_filter = "AND u.department_id = $3"
+                args.append(dept_id)
+
+            query = f"""
+                WITH recruiter_stats AS (
+                    SELECT
+                        u.id,
+                        u.name,
+                        d.name AS department_name,
+                        u.department_id,
+                        COUNT(ca.id) FILTER (
+                            WHERE ca.status IN ('selected', 'hired')
+                        ) AS hires,
+                        COUNT(DISTINCT p.id) AS active_positions
+                    FROM users u
+                    LEFT JOIN departments d ON d.id = u.department_id
+                    LEFT JOIN positions p
+                        ON p.assigned_to = u.id AND p.status = 'open'
+                    LEFT JOIN candidate_applications ca
+                        ON ca.position_id = p.id
+                        AND ca.created_at >= $2
+                    WHERE u.org_id = $1
+                      AND u.role = 'hr'
+                      {dept_filter}
+                    GROUP BY u.id, u.name, d.name, u.department_id
+                )
+            """
+
+            if role in ("org_head", "platform_admin"):
+                query += """
+                , ranked AS (
+                    SELECT *, ROW_NUMBER() OVER(PARTITION BY department_id ORDER BY hires DESC NULLS LAST, name) as rn
+                    FROM recruiter_stats
+                )
+                SELECT * FROM ranked WHERE rn <= 3 ORDER BY hires DESC NULLS LAST, name
                 """
-                SELECT
-                    u.id,
-                    u.name,
-                    COUNT(ca.id) FILTER (
-                        WHERE ca.status IN ('selected', 'hired')
-                    ) AS hires,
-                    COUNT(DISTINCT p.id) AS active_positions
-                FROM users u
-                LEFT JOIN positions p
-                    ON p.assigned_to = u.id AND p.status = 'open'
-                LEFT JOIN candidate_applications ca
-                    ON ca.position_id = p.id
-                    AND ca.created_at >= $2
-                WHERE u.org_id = $1
-                  AND u.role IN ('hr', 'org_head', 'dept_admin')
-                GROUP BY u.id, u.name
-                ORDER BY hires DESC NULLS LAST, u.name
-                """,
-                org_id, cutoff,
-            )
+            else:
+                query += "SELECT * FROM recruiter_stats ORDER BY hires DESC NULLS LAST, name"
+
+            rows = await conn.fetch(query, *args)
 
         result = [
             {
                 "id": r["id"],
                 "name": r["name"],
+                "department_name": r["department_name"],
                 "hires": r["hires"] or 0,
                 "active_positions": r["active_positions"] or 0,
             }

@@ -149,6 +149,8 @@ async def get_recruiter_performance(
 ):
     return await DashboardService.get_per_recruiter(
         org_id=current_user["org_id"],
+        role=current_user["role"],
+        dept_id=current_user.get("dept_id"),
         period=period,
     )
 
