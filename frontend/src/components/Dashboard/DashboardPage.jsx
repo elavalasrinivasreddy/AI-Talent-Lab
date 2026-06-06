@@ -92,12 +92,17 @@ export default function DashboardPage() {
   const { lanes, suggestions, positions, health, loading, error, dismiss, dismissAll } = data
 
   const [depts, setDepts] = useState([])
-  
+  const [deptsError, setDeptsError] = useState(false)
+
   useEffect(() => {
     if (role === 'org_head') {
+      setDeptsError(false)
       settingsApi.getDepartments()
         .then(res => setDepts(res?.departments || []))
-        .catch(err => console.error('Failed to load depts', err))
+        .catch(err => {
+          console.error('Failed to load depts', err)
+          setDeptsError(true)
+        })
     }
   }, [role])
   const suffix  = greetingSuffix(role, { positions, health, lanes })
@@ -156,11 +161,22 @@ export default function DashboardPage() {
 
       {/* ── Dept Chip Bar — org_head only ── */}
       <RoleGate roles={['org_head']}>
-        <DeptChipBar
-          departments={depts}
-          selected={selectedDept}
-          onChange={setSelectedDept}
-        />
+        {deptsError ? (
+          <p className="dash-dept-load-error">
+            Couldn't load departments — <button type="button" className="dash-dept-retry" onClick={() => {
+              setDeptsError(false)
+              settingsApi.getDepartments()
+                .then(res => setDepts(res?.departments || []))
+                .catch(() => setDeptsError(true))
+            }}>retry</button>
+          </p>
+        ) : (
+          <DeptChipBar
+            departments={depts}
+            selected={selectedDept}
+            onChange={setSelectedDept}
+          />
+        )}
       </RoleGate>
 
       {/* ── Health Strip — admin only ── */}

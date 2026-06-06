@@ -87,6 +87,8 @@ const PositionSetupModal = ({ show, onClose }) => {
             });
 
             if (res.ok) {
+                // Read body immediately — before any async work that might outlive the stream.
+                const data = await res.json();
                 fetchSessions();
                 if (asDraft) {
                     setDraftSuccess(true);
@@ -103,12 +105,17 @@ const PositionSetupModal = ({ show, onClose }) => {
                             console.error('Failed to link session:', linkErr);
                         }
                     }
-                    const data = await res.json();
                     setSuccess(true);
+                    // auto_submitted=false means position was saved but approval submission failed.
+                    // HR can manually submit from the JD tab.
+                    const delay = data.auto_submitted === false ? 3500 : 1200;
+                    if (data.auto_submitted === false) {
+                        setError("JD saved, but couldn't auto-submit for approval. Open the JD tab and submit manually.");
+                    }
                     setTimeout(() => {
                         onClose();
-                        navigate(data.position_id ? `/positions/${data.position_id}` : '/positions');
-                    }, 1200);
+                        navigate(data.position_id ? `/positions/${data.position_id}/jd` : '/positions');
+                    }, delay);
                 }
             } else {
                 const errData = await res.json();

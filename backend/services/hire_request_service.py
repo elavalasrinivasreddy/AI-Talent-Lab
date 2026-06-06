@@ -812,6 +812,7 @@ class HireRequestService:
         *,
         user_id: int,
         role: str,
+        caller_dept_id: Optional[int] = None,
         ip_address: Optional[str] = None,
     ) -> dict:
         existing = await HireRequestService.get(conn, request_id, org_id)
@@ -821,13 +822,21 @@ class HireRequestService:
             raise InsufficientPermissionsError(
                 "You can only cancel your own hire requests."
             )
+        # dept_admin can only cancel requests in their own department
+        if role == "dept_admin" and caller_dept_id != existing.get("department_id"):
+            raise InsufficientPermissionsError(
+                "You can only cancel hire requests in your department."
+            )
         if existing["status"] in ("cancelled", "fulfilled", "rejected"):
             raise _BadTransitionError(
                 f"Request is already {existing['status']}."
             )
 
         async with conn.transaction():
-            await HireRequestRepository.cancel(conn, request_id, org_id, notes=None)
+            cancelled = await HireRequestRepository.cancel(conn, request_id, org_id, notes=None)
+            # Guard: concurrent cancel already landed — skip notifications to avoid phantom alerts
+            if not cancelled:
+                return await HireRequestService.get(conn, request_id, org_id)
 
             # Notify the requester if someone else (e.g. dept admin) cancelled it
             if existing["requested_by"] and existing["requested_by"] != user_id:

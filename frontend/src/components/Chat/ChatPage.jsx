@@ -31,6 +31,9 @@ const ChatPage = () => {
         workflowStage,
         messages,
         sessionLoaded,
+        isReadOnly,
+        readOnlyReason,
+        refreshGraphState,
     } = useChat();
 
     const loadedRef = useRef(null);
@@ -71,6 +74,14 @@ const ChatPage = () => {
     useEffect(() => {
         fetchSessions();
     }, [fetchSessions]);
+
+    // Poll for approval status every 30s when the JD is pending review (#132).
+    // Keeps the read-only banner reactive without requiring a full page reload.
+    useEffect(() => {
+        if (!sessionId || !isReadOnly || readOnlyReason !== 'pending_approval') return;
+        const timer = setInterval(() => refreshGraphState(sessionId), 30_000);
+        return () => clearInterval(timer);
+    }, [sessionId, isReadOnly, readOnlyReason, refreshGraphState]);
 
     useEffect(() => {
         if (!sessionId) {

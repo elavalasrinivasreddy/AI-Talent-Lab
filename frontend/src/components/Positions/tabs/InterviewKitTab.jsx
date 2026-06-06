@@ -71,7 +71,7 @@ export default function InterviewKitTab({ positionId }) {
   const handleCopyAll = async () => {
     if (!kit?.questions) return
     const text = kit.questions
-      .map((q, i) => `Q${i + 1}. ${q.question}\nType: ${q.type} | Difficulty: ${q.difficulty}\nLook for: ${q.what_to_look_for}`)
+      .map((q, i) => `Q${i + 1}. ${q.question}\nType: ${q.type} | Difficulty: ${q.difficulty}\nLook for: ${typeof q.what_to_look_for === 'string' ? q.what_to_look_for : ''}`)
       .join('\n\n')
     await navigator.clipboard.writeText(text)
     setCopied(true)
@@ -126,6 +126,14 @@ export default function InterviewKitTab({ positionId }) {
 
       {/* Questions by type */}
       <div className="ik-sections">
+        {questions.length === 0 && (
+          <div className="ik-empty-inline">
+            <p>No questions were generated. Try regenerating the kit.</p>
+            <button className="ik-regen-btn" onClick={handleGenerate} disabled={generating}>
+              {generating ? '⏳ Regenerating…' : '↺ Regenerate'}
+            </button>
+          </div>
+        )}
         {Object.entries(byType).map(([type, qs]) => (
           <div key={type} className="ik-type-group">
             <h4 className="ik-type-label">
@@ -157,14 +165,14 @@ export default function InterviewKitTab({ positionId }) {
                     <div className="ik-question-body">
                       <div className="ik-look-for">
                         <span className="ik-look-label">Look for:</span>
-                        <p>{q.what_to_look_for}</p>
+                        <p>{typeof q.what_to_look_for === 'string' ? q.what_to_look_for : String(q.what_to_look_for ?? '')}</p>
                       </div>
                       {q.follow_ups?.length > 0 && (
                         <div className="ik-follow-ups">
                           <span className="ik-follow-label">Follow-up questions:</span>
                           <ul>
                             {q.follow_ups.map((fu, fi) => (
-                              <li key={fi}>{fu}</li>
+                              <li key={fi}>{typeof fu === 'string' ? fu : String(fu ?? '')}</li>
                             ))}
                           </ul>
                         </div>

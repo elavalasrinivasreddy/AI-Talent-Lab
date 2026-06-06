@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
 
 /**
@@ -63,13 +63,14 @@ export const ChatProvider = ({ children }) => {
     const [graphState, setGraphState] = useState({});     // mirror of backend graph_state_parsed (for intake block etc.)
     const [error, setError] = useState(null);
     const [sessionLoaded, setSessionLoaded] = useState(false);
+    const abortControllerRef = useRef(null);
 
     // ── Reset all chat state ──────────────────────────────────
-    const resetChat = useCallback((user, locationState) => {
+    const resetChat = useCallback((user, locationState, sessionData = null) => {
         setCurrentSessionId(null);
         setSessionTitle('New Hire');
         // Item 15: Dynamic greeting based on context
-        const greeting = buildGreeting(user, locationState);
+        const greeting = buildGreeting(user, locationState, sessionData);
         setMessages([greeting]);
         setIsStreaming(false);
         setWorkflowStage('intake');
@@ -131,7 +132,7 @@ export const ChatProvider = ({ children }) => {
                 // Read-only when position is submitted for approval (approval_status='pending')
                 // or already live (status not in editable set: draft/jd_in_progress/rejected/draft_needs_revision).
                 const pendingApproval = data.position_approval_status === 'pending';
-                const statusLocked = data.position_status && !['draft', 'jd_in_progress', 'rejected', 'draft_needs_revision'].includes(data.position_status);
+                const statusLocked = data.position_status && !['draft', 'jd_in_progress', 'draft_needs_revision'].includes(data.position_status);
                 setIsReadOnly(pendingApproval || !!statusLocked);
                 
                 if (pendingApproval) {
@@ -228,6 +229,19 @@ export const ChatProvider = ({ children }) => {
             if (res.ok) {
                 const data = await res.json();
                 if (data.graph_state_parsed) setGraphState(data.graph_state_parsed);
+                // #132: keep read-only state reactive (e.g. TL approves while chat is open)
+                const pendingApproval = data.position_approval_status === 'pending';
+                const statusLocked = data.position_status && !['draft', 'jd_in_progress', 'draft_needs_revision'].includes(data.position_status);
+                setIsReadOnly(pendingApproval || !!statusLocked);
+                if (pendingApproval) {
+                    setReadOnlyReason('pending_approval');
+                } else if (data.position_approval_status === 'approved' || data.position_status === 'open') {
+                    setReadOnlyReason('approved_and_open');
+                } else if (statusLocked) {
+                    setReadOnlyReason('locked');
+                } else {
+                    setReadOnlyReason(null);
+                }
             }
         } catch {
             // Silent — best-effort refresh
@@ -259,6 +273,12 @@ export const ChatProvider = ({ children }) => {
     const sendMessage = useCallback(async (payload) => {
         setError(null);
         setIsStreaming(true);
+
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
 
         let activeSessionId = currentSessionId;
 
@@ -295,7 +315,8 @@ export const ChatProvider = ({ children }) => {
                 body: JSON.stringify({
                     session_id: activeSessionId,
                     ...payload
-                })
+                }),
+                signal: controller.signal,
             });
 
             if (!response.ok) {
@@ -335,13 +356,17 @@ export const ChatProvider = ({ children }) => {
                 }
             }
         } catch (err) {
-            console.error("Streaming error:", err);
-            setError("Connection interrupted. Please try again.");
+            if (err.name !== 'AbortError') {
+                console.error("Streaming error:", err);
+                setError("Connection interrupted. Please try again.");
+            }
         } finally {
-            setIsStreaming(false);
-            setIsJdStreaming(false);
-            // Refresh sidebar sessions after any stream completes
-            fetchSessions();
+            if (abortControllerRef.current === controller) {
+                abortControllerRef.current = null;
+                setIsStreaming(false);
+                setIsJdStreaming(false);
+                fetchSessions();
+            }
         }
     }, [currentSessionId, token, fetchSessions]);
 

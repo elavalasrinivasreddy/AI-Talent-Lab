@@ -35,14 +35,15 @@ async def list_positions(
     if role == "team_lead":
         team_lead_id = current_user["user_id"]
         # Team lead gets restricted to only what they created, reviewed, or requested via hire requests.
-        department_id = None # Ignore dept filter for team_lead, rely strictly on their involvement.
+        department_id = None  # Ignore dept filter for team_lead, rely strictly on their involvement.
 
     positions = await PositionService.list_positions(
         org_id=current_user["org_id"],
         department_id=department_id,
         status=status,
         page=page,
-        team_lead_id=team_lead_id
+        team_lead_id=team_lead_id,
+        team_lead_dept_id=current_user.get("dept_id") if role == "team_lead" else None,
     )
     return {"positions": positions, "page": page}
 
@@ -280,17 +281,13 @@ async def approval_decision(
     except PermissionError as e:
         raise HTTPException(status_code=403, detail={"error": {"code": "FORBIDDEN", "message": str(e), "details": None}})
 
-    # Fetch updated status to return to frontend
-    async with get_connection() as conn:
-        updated_pos = await conn.fetchrow(
-            "SELECT status, approval_status FROM positions WHERE id=$1 AND org_id=$2",
-            position_id, current_user["org_id"]
-        )
-
-    if updated_pos is None:
-        raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": "Position not found after approval", "details": None}})
-
-    return {"ok": True, "status": updated_pos["status"], "approval_status": updated_pos["approval_status"]}
+    # State transitions are deterministic — derive from decision instead of re-fetching
+    # (avoids a TOCTOU window between the commit and a second DB round-trip).
+    _result = {
+        "approved": {"status": "open", "approval_status": "approved"},
+        "changes_requested": {"status": "draft_needs_revision", "approval_status": "changes_requested"},
+    }[decision]
+    return {"ok": True, **_result}
 
 
 # ── Item 6: TL cancel-after-pickup ────────────────────────────────────────────

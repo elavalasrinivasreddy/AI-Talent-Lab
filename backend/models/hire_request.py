@@ -60,7 +60,7 @@ class HireRequestUpdate(BaseModel):
     comp_min: Optional[int] = Field(default=None, ge=0)
     comp_max: Optional[int] = Field(default=None, ge=0)
     location: Optional[str] = None
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=1000)
 
     @field_validator("work_type")
     @classmethod

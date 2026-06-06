@@ -410,8 +410,13 @@ class ChatService:
                     submitted_by_user_id=user_id,
                 )
                 logger.info(f"Position {position_id} auto-submitted for team_lead approval")
+                position = dict(position)
+                position["auto_submitted"] = True
             except Exception as e:
-                logger.warning(f"Auto-submit for approval failed (non-blocking): {e}")
+                logger.warning(f"Auto-submit for approval failed: {e}")
+                position = dict(position)
+                position["auto_submitted"] = False
+                position["auto_submit_error"] = str(e)
         else:
             logger.info(f"Position {position_id} saved as draft — approval skipped")
 

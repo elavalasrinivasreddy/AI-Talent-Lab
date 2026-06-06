@@ -176,9 +176,32 @@ async def delete_jd(position_id: int):
     collection = get_jd_collection()
     if not collection:
         return
-        
+
     try:
         collection.delete(ids=[f"pos_{position_id}"])
         logger.info(f"Deleted vector for position {position_id}")
     except Exception as e:
         logger.error(f"Failed to delete vector: {e}")
+
+
+def startup_probe() -> bool:
+    """Validate ChromaDB connectivity at startup.
+
+    Returns True when ready, False when gracefully absent (not installed).
+    Logs clearly so operators know vector search is degraded without crashing
+    the app — all vector call-sites already guard for None/empty returns.
+    """
+    if not HAS_CHROMA:
+        logger.warning("ChromaDB not installed — vector search disabled.")
+        return False
+    client = get_chroma_client()
+    if client is None:
+        logger.error("ChromaDB installed but client failed to initialize — vector search unavailable.")
+        return False
+    try:
+        client.heartbeat()
+        logger.info("ChromaDB startup probe: OK")
+        return True
+    except Exception as e:
+        logger.error(f"ChromaDB startup probe failed: {e} — vector search unavailable.")
+        return False

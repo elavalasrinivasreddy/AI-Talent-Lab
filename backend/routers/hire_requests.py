@@ -225,6 +225,7 @@ async def cancel_hire_request(
         db, request_id, current_user["org_id"],
         user_id=current_user["user_id"],
         role=current_user["role"],
+        caller_dept_id=current_user.get("dept_id"),
         ip_address=_get_ip(request),
     )
     return {"request": updated}
@@ -337,6 +338,7 @@ async def withdraw_hire_request(
         db, request_id, current_user["org_id"],
         user_id=current_user["user_id"],
         role=current_user["role"],
+        caller_dept_id=current_user.get("dept_id"),
         ip_address=_get_ip(request),
     )
     return {"request": updated}

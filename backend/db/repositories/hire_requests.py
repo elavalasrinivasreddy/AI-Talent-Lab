@@ -349,9 +349,9 @@ class HireRequestRepository:
         request_id: int,
         org_id: int,
         notes: Optional[str] = None,
-    ) -> None:
-        """Cancel a request. Notes are mandatory (enforced by service layer)."""
-        await conn.execute(
+    ) -> bool:
+        """Cancel a request. Returns True if the row was actually updated."""
+        row_id = await conn.fetchval(
             """
             UPDATE hire_requests
                SET status = 'cancelled',
@@ -361,9 +361,11 @@ class HireRequestRepository:
                    updated_at = NOW()
              WHERE id = $2 AND org_id = $3
                AND status IN ('pending', 'submitted', 'approved', 'approved_modified', 'admin_reviewing')
+            RETURNING id
             """,
             notes, request_id, org_id,
         )
+        return row_id is not None
 
     # ── Admin Reviewing Lock (Atomic CAS) ─────────────────────────────────
 

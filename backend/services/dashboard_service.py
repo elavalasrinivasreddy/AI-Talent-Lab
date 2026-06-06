@@ -3,7 +3,7 @@ services/dashboard_service.py – Business logic for dashboard stats and activit
 """
 import json
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from backend.db.connection import get_connection
@@ -17,11 +17,10 @@ class DashboardService:
     @staticmethod
     async def get_stats(org_id: int, user_id: int, role: str, department_id: Optional[int] = None, period: str = "week") -> dict:
         """Stats cards with role-based filtering."""
-        period_filter = {
-            "today": "NOW() - INTERVAL '1 day'",
-            "week": "NOW() - INTERVAL '7 days'",
-            "month": "NOW() - INTERVAL '30 days'",
-        }.get(period, "NOW() - INTERVAL '7 days'")
+        period_days = {"today": 1, "week": 7, "month": 30}.get(period, 7)
+        _now = datetime.now(timezone.utc).replace(tzinfo=None)
+        cutoff = _now - timedelta(days=period_days)
+        prev_cutoff = _now - timedelta(days=period_days * 2)
 
         # Base filters
         pos_filter = "org_id=$1"
@@ -59,18 +58,13 @@ class DashboardService:
             )
             
             # Trend calculation (comparing current period to previous period)
-            prev_period_filter = {
-                "today": "NOW() - INTERVAL '2 days' AND created_at < NOW() - INTERVAL '1 day'",
-                "week": "NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days'",
-                "month": "NOW() - INTERVAL '60 days' AND created_at < NOW() - INTERVAL '30 days'",
-            }.get(period)
-
-            # For trends, we just compare total sourced for now as an example
             current_sourced = await conn.fetchval(
-                f"SELECT COUNT(*) FROM candidates WHERE org_id=$1 AND created_at >= {period_filter}", org_id
+                "SELECT COUNT(*) FROM candidates WHERE org_id=$1 AND created_at >= $2",
+                org_id, cutoff,
             )
             prev_sourced = await conn.fetchval(
-                f"SELECT COUNT(*) FROM candidates WHERE org_id=$1 AND created_at >= {prev_period_filter}", org_id
+                "SELECT COUNT(*) FROM candidates WHERE org_id=$1 AND created_at >= $2 AND created_at < $3",
+                org_id, prev_cutoff, cutoff,
             )
 
         return {
@@ -237,13 +231,14 @@ class DashboardService:
         Full hiring analytics for the analytics dashboard.
         Returns pipeline velocity, source breakdown, time-to-hire, and conversion rates.
         """
-        from datetime import datetime
-        cutoff = datetime.utcnow() - {
+        _now = datetime.now(timezone.utc).replace(tzinfo=None)
+        cutoff = _now - {
             "week": timedelta(days=7),
             "month": timedelta(days=30),
             "quarter": timedelta(days=90),
             "year": timedelta(days=365),
         }.get(period, timedelta(days=30))
+        velocity_cutoff = _now - timedelta(days=56)
 
         async with get_connection() as conn:
             # Pipeline conversion rates
@@ -292,11 +287,11 @@ class DashboardService:
                     COUNT(*) FILTER (WHERE status='interview') AS interview,
                     COUNT(*) FILTER (WHERE status IN ('selected','hired')) AS hired
                 FROM candidate_applications
-                WHERE org_id=$1 AND created_at >= NOW() - INTERVAL '56 days'
+                WHERE org_id=$1 AND created_at >= $2
                 GROUP BY week
                 ORDER BY week
                 """,
-                org_id,
+                org_id, velocity_cutoff,
             )
 
             # Top performing positions (by conversion rate)

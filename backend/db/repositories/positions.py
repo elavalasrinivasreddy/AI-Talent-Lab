@@ -135,6 +135,7 @@ class PositionRepository:
         page_size: int = 20,
         assigned_to: Optional[int] = None,
         team_lead_id: Optional[int] = None,
+        team_lead_dept_id: Optional[int] = None,
     ) -> list[dict]:
         """List positions for an org with optional filters."""
         conditions = ["p.org_id = $1"]
@@ -154,9 +155,23 @@ class PositionRepository:
             params.append(assigned_to)
             idx += 1
         if team_lead_id:
-            conditions.append(f"(p.created_by = ${idx} OR p.reviewer_id = ${idx} OR p.id IN (SELECT position_id FROM hire_requests WHERE requested_by = ${idx} AND position_id IS NOT NULL))")
-            params.append(team_lead_id)
-            idx += 1
+            if team_lead_dept_id:
+                # reviewer_id arm is dept-scoped to prevent cross-dept position leaks
+                conditions.append(
+                    f"(p.created_by = ${idx} OR "
+                    f"(p.reviewer_id = ${idx} AND p.department_id = ${idx + 1}) OR "
+                    f"p.id IN (SELECT position_id FROM hire_requests WHERE requested_by = ${idx} AND position_id IS NOT NULL))"
+                )
+                params.append(team_lead_id)
+                params.append(team_lead_dept_id)
+                idx += 2
+            else:
+                conditions.append(
+                    f"(p.created_by = ${idx} OR p.reviewer_id = ${idx} OR "
+                    f"p.id IN (SELECT position_id FROM hire_requests WHERE requested_by = ${idx} AND position_id IS NOT NULL))"
+                )
+                params.append(team_lead_id)
+                idx += 1
 
         offset = (page - 1) * page_size
         where = " AND ".join(conditions)

@@ -44,11 +44,13 @@ class PositionService:
         page: int = 1,
         assigned_to: Optional[int] = None,
         team_lead_id: Optional[int] = None,
+        team_lead_dept_id: Optional[int] = None,
     ) -> list[dict]:
         async with get_connection() as conn:
             positions = await PositionRepository.list_for_org(
-                conn, org_id, department_id, status, page, 
-                page_size=20, assigned_to=assigned_to, team_lead_id=team_lead_id
+                conn, org_id, department_id, status, page,
+                page_size=20, assigned_to=assigned_to,
+                team_lead_id=team_lead_id, team_lead_dept_id=team_lead_dept_id,
             )
         for p in positions:
             p.pop("jd_embedding", None)
