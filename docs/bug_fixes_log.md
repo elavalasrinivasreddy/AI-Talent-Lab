@@ -2501,3 +2501,31 @@ Four execution gaps existed in the live Dashboard v3:
 - `frontend/src/components/Dashboard/BriefingLane.jsx`
 - `frontend/src/styles/dashboard.css`
 - `frontend/src/components/Dashboard/DashboardPage.jsx`
+
+---
+
+### Bug #140: Analytics Redesign: Agent ROI Dashboard
+**Problem:**
+The "Hiring Analytics" page was generic and did not highlight the core value prop of AI Talent Lab, which is measuring the impact of AI sourcing and automation versus human actions.
+
+**Solution:**
+Replaced the legacy analytics page with the new "Agent ROI Dashboard".
+1. Backend: Added `actor_type` to `pipeline_events` for strict attribution (`human`, `ai_agent`, `system`).
+2. Backend: Built complex analytics aggregations in `dashboard_service.py`: `get_agent_roi()`, `get_per_recruiter()`, and `get_bottleneck_radar()`. Added routing for `/api/v1/dashboard/agent-roi`, `/recruiter-performance`, and `/bottlenecks`.
+3. Frontend: Swapped out old KPI strip with `AgentROIHero` showing direct time/money saved and AI sourcing metrics.
+4. Frontend: Added `DualFunnel` for head-to-head pipeline throughput (AI vs Human), `BottleneckRadar` for phase-level blockers via inline SVG, and `RecruiterLeaderboard` for tracking active positions and hires.
+5. Frontend: Rewrote `AnalyticsPage.jsx` and `AnalyticsPage.css` with a new, simplified, glass-like aesthetic.
+6. Frontend: Fixed a lingering `Unterminated regular expression` syntax error in `CandidateDetailPage.jsx` caused by an extra `</div>` tag.
+
+**Files Modified:**
+- `backend/db/migrations.py`
+- `backend/routers/dashboard.py`
+- `backend/services/dashboard_service.py`
+- `frontend/src/utils/api.js`
+- `frontend/src/components/Analytics/AgentROIHero.jsx` (New)
+- `frontend/src/components/Analytics/DualFunnel.jsx` (New)
+- `frontend/src/components/Analytics/BottleneckRadar.jsx` (New)
+- `frontend/src/components/Analytics/RecruiterLeaderboard.jsx` (New)
+- `frontend/src/components/Analytics/AnalyticsPage.jsx`
+- `frontend/src/components/Analytics/AnalyticsPage.css`
+- `frontend/src/components/Candidates/CandidateDetailPage.jsx`

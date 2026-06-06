@@ -477,7 +477,6 @@ function NotesTab({ candidateId }) {
             </div>
           ))}
         </div>
-        </div>
       )}
 
       <ConfirmModal
