@@ -220,44 +220,49 @@ async def get_career_fit(
 
     pos_list = []
     
+    has_filters = bool(func or exp or values)
+    
     # Very basic scoring logic for MVP
     for p in positions:
         d = dict(p)
         score = 50 # Base score
         
-        # Function match
-        dept = (d.get("department") or "").lower()
-        role = (d.get("role_name") or "").lower()
-        if func and func.lower() != "all":
-            f_lower = func.lower()
-            if f_lower in dept or f_lower in role:
-                score += 30
-            else:
-                score -= 20
-                
-        # Experience match
-        exp_min = d.get("experience_min") or 0
-        exp_max = d.get("experience_max") or 99
-        if exp:
-            if exp == "0-3 yrs":
-                if exp_min <= 3: score += 20
-                else: score -= 10
-            elif exp == "3-7 yrs":
-                if exp_min <= 7 and exp_max >= 3: score += 20
-                else: score -= 10
-            elif exp == "7+ yrs":
-                if exp_min >= 5 or exp_max >= 7: score += 20
-                else: score -= 10
-                
-        # Values match (soft score)
-        if values:
-            val_list = [v.strip().lower() for v in values.split(",")]
-            jd_text = (d.get("jd_markdown") or "").lower()
-            for v in val_list:
-                if v in jd_text:
-                    score += 5
+        if has_filters:
+            # Function match
+            dept = (d.get("department") or "").lower()
+            role = (d.get("role_name") or "").lower()
+            if func and func.lower() != "all":
+                f_lower = func.lower()
+                if f_lower in dept or f_lower in role:
+                    score += 30
+                else:
+                    score -= 20
                     
-        d["fit_score"] = min(100, max(0, score))
+            # Experience match
+            exp_min = d.get("experience_min") or 0
+            exp_max = d.get("experience_max") or 99
+            if exp:
+                if exp == "0-3 yrs":
+                    if exp_min <= 3: score += 20
+                    else: score -= 10
+                elif exp == "3-7 yrs":
+                    if exp_min <= 7 and exp_max >= 3: score += 20
+                    else: score -= 10
+                elif exp == "7+ yrs":
+                    if exp_min >= 5 or exp_max >= 7: score += 20
+                    else: score -= 10
+                    
+            # Values match (soft score)
+            if values:
+                val_list = [v.strip().lower() for v in values.split(",")]
+                jd_text = (d.get("jd_markdown") or "").lower()
+                for v in val_list:
+                    if v in jd_text:
+                        score += 5
+                        
+            d["fit_score"] = min(100, max(0, score))
+        else:
+            d["fit_score"] = 0
         
         # Extract a short pitch
         jd = d.get("jd_markdown") or ""
@@ -267,11 +272,13 @@ async def get_career_fit(
         
         pos_list.append(d)
         
-    # Sort by fit_score descending
-    pos_list.sort(key=lambda x: x["fit_score"], reverse=True)
-    
-    # Only return top matches (score > 40)
-    matches = [p for p in pos_list if p["fit_score"] > 40]
+    if has_filters:
+        # Sort by fit_score descending
+        pos_list.sort(key=lambda x: x["fit_score"], reverse=True)
+        # Only return top matches (score > 40)
+        matches = [p for p in pos_list if p["fit_score"] > 40]
+    else:
+        matches = pos_list
     
     return {
         "positions": matches,

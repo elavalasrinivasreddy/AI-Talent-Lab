@@ -2535,3 +2535,29 @@ Replaced the legacy analytics page with the new "Agent ROI Dashboard".
 - `frontend/src/components/Analytics/AnalyticsPage.jsx`
 - `frontend/src/components/Analytics/AnalyticsPage.css`
 - `frontend/src/components/Candidates/CandidateDetailPage.jsx`
+
+---
+
+## 116. Fix Default 50% Match Display on Career Page
+
+**Problem Statement:**
+On the public career page, all open roles showed a default 50% match even when the user had not selected any Fit Finder filters. This was confusing, as 50% looked arbitrary.
+
+**Idea / Solution:**
+Updated the backend  endpoint to calculate . If no filters are present, the endpoint still returns the roles but sets . The frontend correctly hides the match UI when  is 0, completely removing the default 50% badge while still listing the open positions.
+
+**Files Modified:**
+- 
+
+---
+
+## 116. Fix Default 50% Match Display on Career Page
+
+**Problem Statement:**
+On the public career page, all open roles showed a default "50% match" even when the user had not selected any Fit Finder filters. This was confusing, as 50% looked arbitrary.
+
+**Idea / Solution:**
+Updated the backend `/fit` endpoint to calculate `has_filters`. If no filters are present, the endpoint still returns the roles but sets `fit_score = 0`. The frontend correctly hides the match UI when `fit_score` is 0, completely removing the default 50% badge while still listing the open positions.
+
+**Files Modified:**
+- `backend/routers/careers.py`
