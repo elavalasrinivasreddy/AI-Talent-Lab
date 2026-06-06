@@ -362,6 +362,11 @@
   animation: rise 260ms ease-out both;
 }
 
+/* When a lane has no items, override the urgency tint to success/clear */
+.tb-lane--empty {
+  --lane-tint: var(--color-success, #10B981);
+}
+
 .tb-lane-header {
   display: flex;
   align-items: center;
