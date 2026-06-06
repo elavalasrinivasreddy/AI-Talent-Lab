@@ -1034,4 +1034,23 @@ async def run_migrations(conn) -> None:
     await conn.execute(feedback_idx_sql)
     logger.info("  JD workflow: uq_chat_feedback_injection index ensured.")
 
+    actor_type_sql = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='pipeline_events' AND column_name='actor_type'
+        ) THEN
+            ALTER TABLE pipeline_events
+                ADD COLUMN actor_type VARCHAR(20) NOT NULL DEFAULT 'human';
+            COMMENT ON COLUMN pipeline_events.actor_type IS
+                'Who generated this event: human | ai_agent | system';
+        END IF;
+    END $$;
+    CREATE INDEX IF NOT EXISTS idx_pipeline_events_actor
+        ON pipeline_events(org_id, actor_type);
+    """
+    await conn.execute(actor_type_sql)
+    logger.info("  pipeline_events.actor_type column ensured.")
+
     logger.info("Database migrations complete.")
