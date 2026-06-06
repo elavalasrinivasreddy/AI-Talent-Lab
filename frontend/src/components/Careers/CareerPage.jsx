@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import api from '../../utils/api'
 import Icon from '../common/Icon'
 import './CareerPage.css'
@@ -23,6 +25,10 @@ export default function CareerPage() {
   const [activePosition, setActivePosition] = useState(null)
   const [loadingPosition, setLoadingPosition] = useState(false)
   const [applying, setApplying] = useState(false)
+  
+  // Apply Modal state
+  const [showApplyModal, setShowApplyModal] = useState(false)
+  const [applyForm, setApplyForm] = useState({ name: '', email: '' })
 
   // Testimonials mock data
   const testimonials = [
@@ -109,17 +115,26 @@ export default function CareerPage() {
     }
   }
 
-  const handleApply = async () => {
+  const handleApplyClick = () => {
+    setShowApplyModal(true)
+  }
+
+  const submitApplication = async (e) => {
+    e.preventDefault()
+    if (!applyForm.name || !applyForm.email) return
+
     try {
       setApplying(true)
-      const res = await api.post(`/careers/${orgSlug}/positions/${positionId}/apply`)
+      const res = await api.post(`/careers/${orgSlug}/positions/${positionId}/apply`, {
+        name: applyForm.name,
+        email: applyForm.email
+      })
       if (res.data.apply_url) {
         window.location.href = res.data.apply_url
       }
     } catch (err) {
       console.error('Apply error:', err)
       alert(err.response?.data?.error?.message || 'Failed to start application')
-    } finally {
       setApplying(false)
     }
   }
@@ -247,7 +262,7 @@ export default function CareerPage() {
                 <button 
                   className="cp-apply-btn-main" 
                   style={{ backgroundColor: brandColor }}
-                  onClick={handleApply}
+                  onClick={handleApplyClick}
                   disabled={applying}
                 >
                   {applying ? 'Starting chat...' : 'Apply via chat'} <Icon name="arrow-right" size={16} />
@@ -255,7 +270,12 @@ export default function CareerPage() {
               </div>
               
               <div className="cp-position-content">
-                <pre className="cp-jd-markdown">{activePosition.jd_markdown}</pre>
+                <ReactMarkdown 
+                  className="cp-jd-markdown markdown-body"
+                  remarkPlugins={[remarkGfm]}
+                >
+                  {activePosition.jd_markdown}
+                </ReactMarkdown>
               </div>
             </>
           ) : (
@@ -405,6 +425,68 @@ export default function CareerPage() {
         <div>Powered by AI Talent Lab</div>
         <Link to="/">Platform</Link>
       </footer>
+
+      {showApplyModal && (
+        <div className="modal show" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content" style={{ width: '100%', maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">Apply for {activePosition?.role_name}</h3>
+              <button onClick={() => setShowApplyModal(false)}>
+                <Icon name="x" size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <form onSubmit={submitApplication}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={applyForm.name}
+                    onChange={(e) => setApplyForm({ ...applyForm, name: e.target.value })}
+                    placeholder="Jane Doe"
+                  />
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={applyForm.email}
+                    onChange={(e) => setApplyForm({ ...applyForm, email: e.target.value })}
+                    placeholder="jane@example.com"
+                  />
+                </div>
+                <div className="modal-footer" style={{ marginTop: '24px', borderTop: 'none', padding: 0 }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowApplyModal(false)}
+                    disabled={applying}
+                    style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={applying}
+                    style={{ 
+                      padding: '8px 16px', 
+                      borderRadius: '8px', 
+                      backgroundColor: brandColor, 
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    {applying ? 'Starting...' : 'Start Application'} <Icon name="arrow-right" size={16} />
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

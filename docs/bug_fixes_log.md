@@ -2575,3 +2575,21 @@ Updated `CareerPage.jsx` to extract `positionId` from the route parameters. If p
 **Files Modified:**
 - `frontend/src/components/Careers/CareerPage.jsx`
 - `frontend/src/components/Careers/CareerPage.css`
+
+---
+
+## 118. Fix Career Page JD Formatting and Public Apply Flow
+
+**Problem Statement:**
+The Job Description on the Career Page was rendering as raw markdown instead of formatted HTML. Furthermore, clicking "Apply via chat" resulted in a "link expired" error. This was because the apply chat was strictly designed for known, sourced candidates, but the career page was generating anonymous tokens without candidate context, breaking the agent's initialization.
+
+**Idea / Solution:**
+Instead of rewriting the highly optimized 8-step candidate chat agent to support anonymous users, we bridged the gap in the UI. 
+1. Added an interstitial modal to `CareerPage.jsx` when clicking "Apply via chat". The modal collects the candidate's Name and Email.
+2. Modified the `POST /apply` backend endpoint to accept this data, instantly create a `candidates` and `candidate_applications` record, and generate a standard, fully-authenticated Apply Token.
+3. This smoothly routes the public applicant into the exact same chat experience as an invited candidate.
+4. Added `react-markdown` to the Career Page to properly render the JD's markdown payload into rich HTML.
+
+**Files Modified:**
+- `backend/routers/careers.py`
+- `frontend/src/components/Careers/CareerPage.jsx`

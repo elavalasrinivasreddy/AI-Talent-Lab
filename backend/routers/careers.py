@@ -156,11 +156,17 @@ async def get_position_detail(org_slug: str, position_id: int):
 
 # ── Start application from career page ────────────────────────────────────────
 
+from pydantic import BaseModel, EmailStr
+
+class StartApplicationRequest(BaseModel):
+    name: str
+    email: EmailStr
+
 @router.post("/{org_slug}/positions/{position_id}/apply")
-async def start_application(org_slug: str, position_id: int):
+async def start_application(org_slug: str, position_id: int, req: StartApplicationRequest):
     """
     Start a candidate application from the career page.
-    Creates an anonymous candidate session and returns a short-lived apply token.
+    Creates a candidate (if new) and an application, then returns a standard apply token.
     """
     from backend.services.apply_service import ApplyService
     from backend.db.connection import get_connection as gc
@@ -179,9 +185,32 @@ async def start_application(org_slug: str, position_id: int):
         if not pos or pos["status"] != "open":
             raise HTTPException(status_code=404, detail={"code": "POSITION_NOT_FOUND", "message": "Position not available"})
 
-    # Generate a career-page apply token (no candidate yet — will be created during chat)
-    token = ApplyService.generate_career_page_token(
-        position_id=position_id,
+        # Find or create candidate
+        candidate = await conn.fetchrow(
+            "SELECT id FROM candidates WHERE email=$1 AND org_id=$2",
+            req.email, org["id"]
+        )
+        if not candidate:
+            candidate = await conn.fetchrow(
+                "INSERT INTO candidates (org_id, name, email, source) VALUES ($1, $2, $3, 'career_page') RETURNING id",
+                org["id"], req.name, req.email
+            )
+
+        # Check if already applied
+        app = await conn.fetchrow(
+            "SELECT id, status FROM candidate_applications WHERE candidate_id=$1 AND position_id=$2",
+            candidate["id"], position_id
+        )
+        if not app:
+            app = await conn.fetchrow(
+                "INSERT INTO candidate_applications (org_id, department_id, candidate_id, position_id, status) VALUES ($1, $2, $3, $4, 'sourced') RETURNING id",
+                org["id"], pos["department_id"], candidate["id"], position_id
+            )
+
+    # Generate the standard apply token
+    token = ApplyService.generate_apply_token(
+        application_id=app["id"],
+        candidate_id=candidate["id"],
         org_id=org["id"],
     )
     return {"apply_token": token, "apply_url": f"/apply/{token}"}
