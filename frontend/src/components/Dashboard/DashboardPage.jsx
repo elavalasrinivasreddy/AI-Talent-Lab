@@ -144,7 +144,10 @@ export default function DashboardPage() {
               {newHireLabel}
             </Link>
           )}
-          <div className="dash-period-switcher">
+          <div
+            className="dash-period-switcher"
+            title="Period controls the health metrics above. Lane content refreshes in real-time."
+          >
             {['today', 'week', 'month'].map(p => (
               <button
                 key={p}
