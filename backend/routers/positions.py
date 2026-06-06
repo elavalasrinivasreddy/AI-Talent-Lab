@@ -75,6 +75,32 @@ async def pending_count(current_user=Depends(get_current_user)):
         return {"count": row["count"] if row else 0}
 
 
+# ── Item 16: Reviewer preview — must be declared before /{position_id} ────────
+# FastAPI matches routes in declaration order; a static path like /resolve-reviewer
+# would be captured by /{position_id} as position_id="resolve-reviewer" otherwise.
+
+@router.get("/resolve-reviewer")
+async def resolve_reviewer(
+    position_id: int = Query(...),
+    current_user=Depends(get_current_user),
+):
+    """
+    Resolve who will review the JD. Called when chat reaches final_jd stage.
+    Returns: { reviewer_id, reviewer_name, reviewer_role, department, is_bypass, warning }
+    """
+    try:
+        result = await PositionService.resolve_reviewer(
+            position_id=position_id,
+            org_id=current_user["org_id"],
+            user_id=current_user["user_id"],
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail={
+            "error": {"code": "NOT_FOUND", "message": str(e), "details": None}
+        })
+
+
 @router.get("/{position_id}")
 async def get_position(
     position_id: int,
@@ -343,30 +369,6 @@ async def withdraw_submission(
     except ValueError as e:
         raise HTTPException(status_code=422, detail={
             "error": {"code": "INVALID_TRANSITION", "message": str(e), "details": None}
-        })
-
-
-# ── Item 16: Reviewer preview ────────────────────────────────────────────────
-
-@router.get("/resolve-reviewer")
-async def resolve_reviewer(
-    position_id: int = Query(...),
-    current_user=Depends(get_current_user),
-):
-    """
-    Resolve who will review the JD. Called when chat reaches final_jd stage.
-    Returns: { reviewer_id, reviewer_name, reviewer_role, department, is_bypass, warning }
-    """
-    try:
-        result = await PositionService.resolve_reviewer(
-            position_id=position_id,
-            org_id=current_user["org_id"],
-            user_id=current_user["user_id"],
-        )
-        return result
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail={
-            "error": {"code": "NOT_FOUND", "message": str(e), "details": None}
         })
 
 

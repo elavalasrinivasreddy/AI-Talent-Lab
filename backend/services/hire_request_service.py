@@ -969,14 +969,31 @@ class HireRequestService:
                 "Only dept_admin or org_head can review hire requests."
             )
 
+        # Attempt atomic CAS first — eliminates TOCTOU from a pre-read get.
+        # If the request is unclaimed (pending/submitted) this will succeed.
+        acquired = await HireRequestRepository.begin_review(
+            conn, request_id, org_id, admin_user_id=user_id,
+        )
+        if acquired:
+            await AuditLogRepository.create(
+                conn,
+                org_id=org_id,
+                user_id=user_id,
+                action="hire_request_review_started",
+                entity_type="hire_request",
+                entity_id=str(request_id),
+                ip_address=ip_address,
+            )
+            return await HireRequestService.get(conn, request_id, org_id)
+
+        # CAS failed — read current state to decide whether this is idempotent
+        # re-entry, a stale lock takeover, or a genuine bad transition.
         existing = await HireRequestService.get(conn, request_id, org_id)
 
         if existing["status"] == "admin_reviewing":
-            # Check if it's our own lock (idempotent re-entry)
             if existing.get("reviewing_locked_by") == user_id:
-                return existing
+                return existing  # Idempotent re-entry by same admin
 
-            # Try takeover if lock is stale
             took = await HireRequestRepository.takeover_review(
                 conn, request_id, org_id, admin_user_id=user_id,
             )
@@ -998,29 +1015,9 @@ class HireRequestService:
             )
             return await HireRequestService.get(conn, request_id, org_id)
 
-        if existing["status"] not in ("pending", "submitted"):
-            raise _BadTransitionError(
-                f"Can only begin review on a submitted request; current status is '{existing['status']}'."
-            )
-
-        acquired = await HireRequestRepository.begin_review(
-            conn, request_id, org_id, admin_user_id=user_id,
+        raise _BadTransitionError(
+            f"Can only begin review on a submitted request; current status is '{existing['status']}'."
         )
-        if not acquired:
-            raise _BadTransitionError(
-                "Could not acquire review lock. Another admin may have started reviewing."
-            )
-
-        await AuditLogRepository.create(
-            conn,
-            org_id=org_id,
-            user_id=user_id,
-            action="hire_request_review_started",
-            entity_type="hire_request",
-            entity_id=str(request_id),
-            ip_address=ip_address,
-        )
-        return await HireRequestService.get(conn, request_id, org_id)
 
     @staticmethod
     async def release_review(
@@ -1096,7 +1093,7 @@ class HireRequestService:
                     "You can only approve hire requests for your own department."
                 )
 
-        if existing["status"] not in ("pending", "admin_reviewing"):
+        if existing["status"] not in ("pending", "submitted", "admin_reviewing"):
             raise _BadTransitionError(
                 f"Can only approve a pending/reviewing request; current status is '{existing['status']}'."
             )

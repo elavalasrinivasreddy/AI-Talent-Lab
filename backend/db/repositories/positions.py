@@ -385,6 +385,8 @@ class PositionRepository:
                    reviewer_id = NULL,
                    submitted_at = NULL,
                    review_notes = NULL,
+                   submitted_by_role = NULL,
+                   reviewer_role_at_submit = NULL,
                    updated_at = NOW()
              WHERE id = $1 AND org_id = $2
                AND status = 'pending_jd_approval'

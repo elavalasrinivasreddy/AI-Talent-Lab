@@ -464,15 +464,15 @@ class PositionService:
                             await conn.execute(
                                 """
                                 INSERT INTO chat_messages (
-                                    session_id, org_id, role, content,
+                                    session_id, role, content,
                                     message_type, revision_cycle
                                 )
-                                VALUES ($1, $2, 'system', $3, 'feedback_injection', $4)
+                                VALUES ($1, 'system', $2, 'feedback_injection', $3)
                                 ON CONFLICT (session_id, message_type, revision_cycle)
                                     WHERE message_type = 'feedback_injection'
                                 DO NOTHING
                                 """,
-                                session_row["id"], org_id, feedback_content, new_cycle,
+                                session_row["id"], feedback_content, new_cycle,
                             )
                         except Exception as e:
                             logger.warning(f"Feedback injection failed: {e}")
