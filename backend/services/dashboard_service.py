@@ -56,6 +56,17 @@ class DashboardService:
             total_selected = await conn.fetchval(
                 f"SELECT COUNT(*) FROM candidate_applications WHERE {app_filter} AND status='selected'", *params
             )
+
+            avg_time_to_hire_raw = await conn.fetchval(
+                f"""
+                SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 86400)
+                FROM candidate_applications
+                WHERE {app_filter}
+                  AND status IN ('selected', 'hired')
+                  AND created_at >= ${len(params) + 1}
+                """,
+                *params, cutoff,
+            )
             
             # Trend calculation (comparing current period to previous period)
             current_sourced = await conn.fetchval(
@@ -73,6 +84,7 @@ class DashboardService:
             "applied_this_period": total_applied or 0,
             "interviews_this_period": total_interview or 0,
             "offers_this_period": total_selected or 0,
+            "avg_time_to_hire": round(float(avg_time_to_hire_raw or 0), 1),
             "trends": {
                 "candidates": {"value": current_sourced, "diff": current_sourced - (prev_sourced or 0), "trend": "up" if current_sourced >= (prev_sourced or 0) else "down"}
             },
