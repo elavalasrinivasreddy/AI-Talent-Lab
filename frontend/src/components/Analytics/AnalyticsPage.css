@@ -42,7 +42,6 @@
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: all 0.15s;
 }
 
 .analytics-period-btn:hover {
@@ -65,74 +64,6 @@
   font-size: 14px;
 }
 
-/* ── KPI Strip ── */
-.analytics-kpi-strip {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-}
-
-@media (max-width: 900px) {
-  .analytics-kpi-strip {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.analytics-kpi-card {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  padding: 18px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  position: relative;
-  overflow: hidden;
-  transition: border-color 0.15s, transform 0.15s;
-}
-
-.analytics-kpi-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 3px;
-  height: 100%;
-  background: var(--accent, var(--color-primary));
-}
-
-.analytics-kpi-card:hover {
-  border-color: var(--color-border-strong);
-  transform: translateY(-1px);
-}
-
-.analytics-kpi-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.analytics-kpi-value {
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.analytics-kpi-label {
-  font-size: 11px;
-  color: var(--color-text-tertiary);
-  margin-top: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-}
-
 /* ── Grid ── */
 .analytics-grid {
   display: grid;
@@ -153,20 +84,6 @@
   padding: 20px;
 }
 
-.analytics-card--funnel {
-  grid-column: span 1;
-}
-
-.analytics-card--velocity {
-  grid-column: span 2;
-}
-
-@media (max-width: 900px) {
-  .analytics-card--velocity {
-    grid-column: span 1;
-  }
-}
-
 .analytics-card-title {
   font-size: 15px;
   font-weight: 600;
@@ -181,219 +98,267 @@
   margin: 0;
 }
 
-/* ── Funnel ── */
-.analytics-funnel {
+/* ── Agent ROI Hero ── */
+.roi-hero {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.analytics-funnel-row {
-  display: grid;
-  grid-template-columns: 80px 1fr 44px 44px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 14px;
+  padding: 24px;
+  gap: 32px;
   align-items: center;
-  gap: 10px;
 }
 
-.analytics-funnel-label {
-  font-size: 12px;
+@media (max-width: 768px) {
+  .roi-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.roi-hero-main {
+  flex: 1;
+}
+
+.roi-hero-title {
+  font-size: 14px;
+  text-transform: uppercase;
   color: var(--color-text-secondary);
-  text-align: right;
-}
-
-.analytics-funnel-bar-track {
-  height: 10px;
-  background: var(--color-bg-secondary);
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.analytics-funnel-bar-fill {
-  height: 100%;
-  border-radius: 5px;
-  transition: width 0.5s ease;
-}
-
-.analytics-funnel-val {
-  font-size: 13px;
+  margin: 0 0 8px;
   font-weight: 600;
-  text-align: right;
+  letter-spacing: 0.05em;
 }
 
-.analytics-funnel-conv {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  text-align: right;
+.roi-hero-value {
+  font-size: 48px;
+  font-weight: 800;
+  color: #10B981;
+  line-height: 1;
+  margin-bottom: 4px;
 }
 
-/* ── Sources ── */
-.analytics-sources {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.analytics-source-row {
-  display: grid;
-  grid-template-columns: 10px 120px 1fr 36px 40px;
-  align-items: center;
-  gap: 10px;
-}
-
-.analytics-source-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.analytics-source-name {
-  font-size: 13px;
+.roi-hero-subtitle {
+  font-size: 15px;
   color: var(--color-text-primary);
-  text-transform: capitalize;
+  font-weight: 500;
 }
 
-.analytics-source-bar-track {
-  height: 6px;
-  background: var(--color-bg-secondary);
-  border-radius: 3px;
-  overflow: hidden;
+.roi-hero-metrics {
+  display: flex;
+  gap: 32px;
 }
 
-.analytics-source-bar {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s ease;
+.roi-metric {
+  display: flex;
+  flex-direction: column;
 }
 
-.analytics-source-count {
+.roi-metric-label {
   font-size: 12px;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
   font-weight: 600;
-  text-align: right;
+  margin-bottom: 4px;
 }
 
-.analytics-source-pct {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  text-align: right;
+.roi-metric-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text-primary);
 }
 
-/* ── Velocity Chart ── */
-.analytics-velocity {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 160px;
-  padding: 0 4px;
-}
-
-.analytics-velocity-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1;
-  gap: 4px;
-  height: 100%;
-}
-
-.analytics-velocity-bars {
-  display: flex;
-  gap: 2px;
-  align-items: flex-end;
-  height: 140px;
-  width: 100%;
-}
-
-.analytics-vbar {
-  flex: 1;
-  border-radius: 3px 3px 0 0;
-  min-height: 2px;
-  transition: height 0.4s ease;
-}
-
-.analytics-vbar--sourced {
-  background: #06B6D4;
-}
-
-.analytics-vbar--applied {
-  background: #3B82F6;
-}
-
-.analytics-vbar--hired {
-  background: #10B981;
-}
-
-.analytics-velocity-label {
-  font-size: 10px;
-  color: var(--color-text-secondary);
-  text-align: center;
-  white-space: nowrap;
-}
-
-.analytics-velocity-legend {
-  display: flex;
-  gap: 16px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border);
-}
-
-.analytics-velocity-legend span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.roi-metric-sub {
   font-size: 12px;
   color: var(--color-text-secondary);
+  margin-top: 2px;
 }
 
-.analytics-velocity-legend span span {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  flex-shrink: 0;
+/* ── Dual Funnel ── */
+.dual-funnel-card {
+  grid-column: span 2;
 }
 
-/* ── Top Positions ── */
-.analytics-positions-table {
+.dual-funnel-container {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 12px;
 }
 
-.analytics-pos-header {
+.dual-funnel-row {
   display: grid;
-  grid-template-columns: 1fr 100px 100px 80px;
-  font-size: 11px;
-  color: var(--color-text-secondary);
+  grid-template-columns: 1fr 100px 1fr;
+  align-items: center;
+  gap: 16px;
+}
+
+.dual-funnel-label {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 4px 8px;
 }
 
-.analytics-pos-header span,
-.analytics-pos-row span {
-  padding: 0 4px;
+.dual-funnel-human {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
 }
 
-.analytics-pos-header span:not(:first-child),
-.analytics-pos-row span:not(:first-child) {
-  text-align: center;
+.dual-funnel-ai {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.analytics-pos-row {
-  display: grid;
-  grid-template-columns: 1fr 100px 100px 80px;
+.dual-funnel-val {
   font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  width: 32px;
+}
+
+.dual-funnel-human .dual-funnel-val {
+  text-align: right;
+}
+
+.dual-funnel-bar-wrapper {
+  height: 12px;
+  background: var(--color-bg-secondary);
+  border-radius: 6px;
+  width: 100%;
+  display: flex;
+}
+
+.dual-funnel-bar-wrapper.right {
+  justify-content: flex-end;
+}
+
+.dual-funnel-bar {
+  height: 100%;
+  border-radius: 6px;
+}
+
+.dual-funnel-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  margin-right: 8px;
+}
+
+/* ── Bottleneck Radar ── */
+.bottleneck-radar-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.radar-container {
+  width: 100%;
+  max-width: 300px;
+  aspect-ratio: 1;
+}
+
+.radar-grid {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.radar-poly-current {
+  fill: rgba(16, 185, 129, 0.2);
+  stroke: #10B981;
+  stroke-width: 2;
+}
+
+.radar-poly-prev {
+  fill: rgba(99, 102, 241, 0.1);
+  stroke: rgba(99, 102, 241, 0.4);
+  stroke-width: 1;
+  stroke-dasharray: 4;
+}
+
+.radar-label {
+  font-size: 11px;
+  fill: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.radar-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* ── Recruiter Leaderboard ── */
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 100px;
+  align-items: center;
+  gap: 16px;
   padding: 8px;
   border-radius: 8px;
-  transition: background 0.1s;
 }
 
-.analytics-pos-row:hover {
+.leaderboard-row:hover {
   background: var(--color-bg-secondary);
 }
 
-.analytics-pos-name {
+.leaderboard-name {
+  font-size: 14px;
   font-weight: 500;
   color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leaderboard-bar-track {
+  height: 8px;
+  background: var(--color-bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.leaderboard-bar-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 4px;
+}
+
+.leaderboard-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.leaderboard-hires {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.leaderboard-positions {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
 }
