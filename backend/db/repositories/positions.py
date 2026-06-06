@@ -36,6 +36,7 @@ class PositionRepository:
         search_interval_hours: int = 24,
         is_on_career_page: bool = True,
         created_by: Optional[int] = None,
+        assigned_to: Optional[int] = None,
     ) -> dict[str, Any]:
         """Create a new position. Accepts explicit conn for use in transactions."""
         row = await conn.fetchrow(
@@ -45,12 +46,12 @@ class PositionRepository:
                 jd_variant_selected, status, priority, headcount, location,
                 work_type, employment_type, experience_min, experience_max,
                 salary_min, salary_max, currency, ats_threshold,
-                search_interval_hours, is_on_career_page, created_by
+                search_interval_hours, is_on_career_page, created_by, assigned_to
             )
             VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
                 $11, $12, $13, $14, $15, $16, $17, $18,
-                $19, $20, $21
+                $19, $20, $21, $22
             )
             RETURNING *
             """,
@@ -58,7 +59,7 @@ class PositionRepository:
             jd_variant_selected, status, priority, headcount, location,
             work_type, employment_type, experience_min, experience_max,
             salary_min, salary_max, currency, ats_threshold,
-            search_interval_hours, is_on_career_page, created_by
+            search_interval_hours, is_on_career_page, created_by, assigned_to
         )
         return dict(row)
 

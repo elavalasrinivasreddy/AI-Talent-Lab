@@ -316,6 +316,10 @@ class ChatService:
                 await conn.execute("DELETE FROM jd_variants WHERE position_id = $1", position_id)
                 audit_action = "position_updated"
             else:
+                user_row = await conn.fetchrow("SELECT role FROM users WHERE id = $1", user_id)
+                user_role = user_row["role"] if user_row else "hr"
+                assigned_to = user_id if user_role == "hr" else None
+
                 position = await PositionRepository.create(
                     conn=conn,
                     org_id=org_id,
@@ -330,6 +334,7 @@ class ChatService:
                     ats_threshold=setup_data.get("ats_threshold", 80.0),
                     search_interval_hours=setup_data.get("search_interval_hours", 24),
                     created_by=user_id,
+                    assigned_to=assigned_to,
                     location=state.get("location"),
                     work_type=state.get("work_type", "onsite"),
                     employment_type=state.get("employment_type", "full_time"),

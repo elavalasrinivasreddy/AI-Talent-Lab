@@ -1351,6 +1351,12 @@ The Notifications tab in Settings was merely a placeholder. Users (Hiring Manage
 - Apply database migrations by restarting the backend.
 - Hook up the `notification_preferences` context to actual Celery task email dispatchers (so emails respect the user's `false` flags).
 
+### Bug Fixes Log
+
+| Date | Component | Issue | Fix Description |
+|---|---|---|---|
+| 2026-06-06 | Analytics Dashboard | "Active positions" showing 0 for HR when they created the position. | The position was not auto-assigned to the HR upon creation in JD Chat. Ran a DB update to map `assigned_to = created_by` for HR users, and patched `ChatService.finish_and_save_position` and `PositionRepository.create` to automatically assign new positions to the HR user upon creation. |
+
 ### Bug Fix: Logout on Toggle
 - **Issue:** Changing a notification toggle triggered an unintentional logout.
 - **Cause:** The `api.patch('/auth/profile')` call returned data wrapped in an Axios `res.data` object, but the frontend was trying to set the global user state via `setUser(res.user)`. This resulted in `undefined` being pushed to the AuthContext, which cleared the session and bounced the user to the login screen.
