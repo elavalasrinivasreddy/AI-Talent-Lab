@@ -131,7 +131,7 @@ class ApplyService:
                 FROM screening_questions
                 WHERE org_id=$1 AND (department_id=$2 OR department_id IS NULL)
                   AND is_active=TRUE
-                ORDER BY order_index
+                ORDER BY sort_order
                 """,
                 org_id, data.get("department_id")
             )
@@ -172,6 +172,7 @@ class ApplyService:
                 "employment_type": data["employment_type"],
             },
             "org": {
+                "id": org_id,
                 "name": data["org_name"],
                 "logo_url": data["logo_url"],
                 "about_us": data["about_us"],
@@ -450,7 +451,7 @@ class ApplyService:
                 SELECT field_key, label, field_type, options, is_required
                 FROM screening_questions
                 WHERE org_id=$1 AND (department_id=$2 OR department_id IS NULL) AND is_active=TRUE
-                ORDER BY order_index
+                ORDER BY sort_order
                 """,
                 org_id, data.get("department_id")
             )
@@ -492,16 +493,17 @@ class ApplyService:
                 return state, session["id"]
 
             # Create new session
-            row = await conn.fetchrow(
+            import uuid as _uuid
+            session_id = str(_uuid.uuid4())
+            await conn.execute(
                 """
                 INSERT INTO candidate_sessions
-                    (org_id, candidate_id, application_id, session_state, messages, status)
-                VALUES ($1, $2, $3, $4, $5, 'active')
-                RETURNING id
+                    (id, org_id, candidate_id, application_id, session_state, messages, status)
+                VALUES ($1, $2, $3, $4, $5, $6, 'active')
                 """,
-                org_id, candidate_id, application_id, "{}", "[]"
+                session_id, org_id, candidate_id, application_id, "{}", "[]"
             )
-            return {}, row["id"]
+            return {}, session_id
 
     @staticmethod
     async def _append_message(

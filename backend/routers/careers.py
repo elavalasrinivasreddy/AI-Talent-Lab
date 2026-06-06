@@ -168,7 +168,7 @@ async def start_application(org_slug: str, position_id: int, req: StartApplicati
     Start a candidate application from the career page.
     Creates a candidate (if new) and an application, then returns a standard apply token.
     """
-    from backend.services.apply_service import ApplyService
+    from backend.services.apply_service import generate_apply_token
     from backend.db.connection import get_connection as gc
 
     async with gc() as conn:
@@ -179,7 +179,7 @@ async def start_application(org_slug: str, position_id: int, req: StartApplicati
             raise HTTPException(status_code=404, detail={"code": "ORG_NOT_FOUND", "message": "Organization not found"})
 
         pos = await conn.fetchrow(
-            "SELECT id, status FROM positions WHERE id=$1 AND org_id=$2",
+            "SELECT id, status, department_id FROM positions WHERE id=$1 AND org_id=$2",
             position_id, org["id"]
         )
         if not pos or pos["status"] != "open":
@@ -208,7 +208,7 @@ async def start_application(org_slug: str, position_id: int, req: StartApplicati
             )
 
     # Generate the standard apply token
-    token = ApplyService.generate_apply_token(
+    token = generate_apply_token(
         application_id=app["id"],
         candidate_id=candidate["id"],
         org_id=org["id"],

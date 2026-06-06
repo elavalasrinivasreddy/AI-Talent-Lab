@@ -2538,7 +2538,7 @@ Replaced the legacy analytics page with the new "Agent ROI Dashboard".
 
 ---
 
-## 116. Fix Default 50% Match Display on Career Page
+## 141. Fix Default 50% Match Display on Career Page
 
 **Problem Statement:**
 On the public career page, all open roles showed a default 50% match even when the user had not selected any Fit Finder filters. This was confusing, as 50% looked arbitrary.
@@ -2551,7 +2551,7 @@ Updated the backend  endpoint to calculate . If no filters are present, the endp
 
 ---
 
-## 116. Fix Default 50% Match Display on Career Page
+## 142. Fix Default 50% Match Display on Career Page
 
 **Problem Statement:**
 On the public career page, all open roles showed a default "50% match" even when the user had not selected any Fit Finder filters. This was confusing, as 50% looked arbitrary.
@@ -2564,7 +2564,7 @@ Updated the backend `/fit` endpoint to calculate `has_filters`. If no filters ar
 
 ---
 
-## 117. Fix "Apply via chat" Button on Career Page
+## 143. Fix "Apply via chat" Button on Career Page
 
 **Problem Statement:**
 Clicking "Apply via chat" on the Career Page job card updated the URL to include the `positionId`, but the page remained the same (the job list). The user could not view the specific job details or start the application chat.
@@ -2578,7 +2578,7 @@ Updated `CareerPage.jsx` to extract `positionId` from the route parameters. If p
 
 ---
 
-## 118. Fix Career Page JD Formatting and Public Apply Flow
+## 144. Fix Career Page JD Formatting and Public Apply Flow
 
 **Problem Statement:**
 The Job Description on the Career Page was rendering as raw markdown instead of formatted HTML. Furthermore, clicking "Apply via chat" resulted in a "link expired" error. This was because the apply chat was strictly designed for known, sourced candidates, but the career page was generating anonymous tokens without candidate context, breaking the agent's initialization.
@@ -2593,3 +2593,77 @@ Instead of rewriting the highly optimized 8-step candidate chat agent to support
 **Files Modified:**
 - `backend/routers/careers.py`
 - `frontend/src/components/Careers/CareerPage.jsx`
+
+---
+
+## 145. Fix react-markdown className Prop Error
+
+**Problem Statement:**
+The Career Page crashed with `Unexpected className prop` error. react-markdown v9+ removed the `className` prop from the `<ReactMarkdown>` component. Passing it directly causes an assertion failure.
+
+**Idea / Solution:**
+Wrapped `<ReactMarkdown>` inside a `<div>` element and moved the CSS class names (`cp-jd-markdown markdown-body`) to the wrapper div instead.
+
+**Files Modified:**
+- `frontend/src/components/Careers/CareerPage.jsx`
+
+---
+
+## 146. Fix Career Page Apply Endpoint — Missing department_id + Wrong Token Function
+
+**Problem Statement:**
+Two bugs in the `POST /careers/{org_slug}/positions/{position_id}/apply` endpoint:
+1. The SQL query selecting the position did not include `department_id`, causing a `KeyError` when creating the application record.
+2. The code called `ApplyService.generate_apply_token()` — but `generate_apply_token` is a standalone module-level function, not a class method. This caused an `AttributeError`.
+
+**Idea / Solution:**
+1. Added `department_id` to the position SELECT query.
+2. Changed the import to `from backend.services.apply_service import generate_apply_token` and called it directly.
+
+**Files Modified:**
+- `backend/routers/careers.py`
+
+---
+
+## 147. Fix Browser Alert → Toast Notification on Career Page
+
+**Problem Statement:**
+Error messages on the Career Page were shown via the browser's native `alert()` dialog instead of in-app toast notifications, which is inconsistent with the product's UX standards.
+
+**Idea / Solution:**
+Replaced `alert()` with the existing `Toast` component from `components/common/Toast.jsx`. Added toast state management and rendered the `<Toast>` component in the Career Page.
+
+**Files Modified:**
+- `frontend/src/components/Careers/CareerPage.jsx`
+
+---
+
+## 148. Fix Apply Chat — Session Creation & Column Name Bugs
+
+**Problem Statement:**
+After successfully generating a token and navigating to the apply chat, the chatbot showed no greeting message. Three root causes:
+1. `apply_service.py` `verify_and_load` queried `screening_questions` with `ORDER BY order_index`, but the actual column name is `sort_order` → caused 500 on page load.
+2. `apply_service.py` `_load_context` had the same `order_index` bug → caused 500 on `send_message` (greeting).
+3. `_get_or_create_session` tried to INSERT into `candidate_sessions` without providing an `id` value, but the `id` column is `text` (UUID) with no default → `NotNullViolationError`.
+4. `verify_and_load` returned the `org` dict without an `id` field, causing the consent endpoint to return 400 (it checks `context["org"]["id"]`).
+
+**Idea / Solution:**
+1. Changed `ORDER BY order_index` → `ORDER BY sort_order` in both `verify_and_load` and `_load_context`.
+2. Generated a UUID (`uuid.uuid4()`) for the session `id` field in `_get_or_create_session`, matching the project pattern where session tables use text UUIDs.
+3. Added `"id": org_id` to the `org` dict in the `verify_and_load` return value.
+
+**Files Modified:**
+- `backend/services/apply_service.py`
+
+---
+
+## 149. Fix GDPR Consent — Timezone-Aware vs Naive Datetime
+
+**Problem Statement:**
+`GDPRService.set_retention_period` created a timezone-aware datetime (`datetime.now(timezone.utc)`) but the DB column `data_retained_until` is `timestamp without time zone`. asyncpg rejects mixing offset-aware and offset-naive datetimes, causing the retention period to silently fail.
+
+**Idea / Solution:**
+Changed `datetime.now(timezone.utc)` to `datetime.utcnow()` which produces an offset-naive datetime compatible with the DB column type.
+
+**Files Modified:**
+- `backend/services/gdpr_service.py`

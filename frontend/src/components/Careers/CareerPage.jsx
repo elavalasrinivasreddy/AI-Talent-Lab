@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import api from '../../utils/api'
 import Icon from '../common/Icon'
+import Toast from '../common/Toast'
 import './CareerPage.css'
 
 export default function CareerPage() {
@@ -29,6 +30,9 @@ export default function CareerPage() {
   // Apply Modal state
   const [showApplyModal, setShowApplyModal] = useState(false)
   const [applyForm, setApplyForm] = useState({ name: '', email: '' })
+  
+  // Toast state
+  const [toast, setToast] = useState(null)
 
   // Testimonials mock data
   const testimonials = [
@@ -134,7 +138,10 @@ export default function CareerPage() {
       }
     } catch (err) {
       console.error('Apply error:', err)
-      alert(err.response?.data?.error?.message || 'Failed to start application')
+      setToast({
+        message: err.response?.data?.error?.message || 'Failed to start application',
+        type: 'error'
+      })
       setApplying(false)
     }
   }
@@ -172,6 +179,14 @@ export default function CareerPage() {
   
   return (
     <div className="cp-container">
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
+      
       <div style={{ position: 'absolute', top: 24, left: 24, zIndex: 10 }}>
         <Link 
           to="/careers" 
@@ -270,12 +285,13 @@ export default function CareerPage() {
               </div>
               
               <div className="cp-position-content">
-                <ReactMarkdown 
-                  className="cp-jd-markdown markdown-body"
-                  remarkPlugins={[remarkGfm]}
-                >
-                  {activePosition.jd_markdown}
-                </ReactMarkdown>
+                <div className="cp-jd-markdown markdown-body">
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                  >
+                    {activePosition.jd_markdown}
+                  </ReactMarkdown>
+                </div>
               </div>
             </>
           ) : (
