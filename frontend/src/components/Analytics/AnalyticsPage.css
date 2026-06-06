@@ -263,6 +263,55 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
+}
+
+.radar-info-wrapper {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.radar-info-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  cursor: help;
+  background: var(--color-bg-card);
+}
+
+.radar-tooltip {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  width: 280px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+  z-index: 10;
+  line-height: 1.5;
+}
+
+.radar-tooltip strong {
+  color: var(--color-text-primary);
+}
+
+.radar-info-wrapper:hover .radar-tooltip {
+  opacity: 1;
+  visibility: visible;
 }
 
 .radar-container {
@@ -331,6 +380,12 @@
 
 .leaderboard-row:hover {
   background: var(--color-bg-secondary);
+}
+
+.leaderboard-name-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* for text truncation */
 }
 
 .leaderboard-name {

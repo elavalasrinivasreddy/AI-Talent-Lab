@@ -30,15 +30,17 @@ export function BottleneckRadar({ current, previous }) {
 
   return (
     <div className="analytics-card bottleneck-radar-card">
-      <div className="analytics-card-header" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <h3 className="analytics-card-title" style={{ margin: 0 }}>Bottleneck Radar</h3>
-        <span 
-          className="radar-info-icon" 
-          title="Sourcing: Volume of new candidates&#10;Screening: % of applicants passing screening&#10;Interview Speed: Speed of the interview phase (faster is better)&#10;Offer Accept: Interview to Hire conversion rate&#10;AI Accept: AI Copilot suggestions accepted&#10;Retention: Post-hire retention"
-          style={{ cursor: 'help', color: 'var(--color-text-tertiary)', fontSize: '14px', border: '1px solid var(--color-border)', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          ?
-        </span>
+      <h3 className="analytics-card-title">Bottleneck Radar</h3>
+      <div className="radar-info-wrapper">
+        <span className="radar-info-icon">?</span>
+        <div className="radar-tooltip">
+          <strong>Sourcing:</strong> Volume of new candidates<br/>
+          <strong>Screening:</strong> % of applicants passing screening<br/>
+          <strong>Interview Speed:</strong> Speed of the interview phase (faster is better)<br/>
+          <strong>Offer Accept:</strong> Interview to Hire conversion rate<br/>
+          <strong>AI Accept:</strong> AI Copilot suggestions accepted<br/>
+          <strong>Retention:</strong> Post-hire retention
+        </div>
       </div>
       <div className="radar-container">
         <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} className="radar-svg">
