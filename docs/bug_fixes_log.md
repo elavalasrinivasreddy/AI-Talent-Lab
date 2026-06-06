@@ -2478,3 +2478,26 @@ The hire_requests subquery `SELECT position_id FROM hire_requests WHERE requeste
 1. Replaced the manual `fetch` calls and broken `authHeader` implementation in `InterviewKitTab.jsx`.
 2. Refactored the component to use the centralized `positionsApi.getInterviewKit` and `positionsApi.generateInterviewKit` methods, which automatically hook into the correct session storage token getter.
 \n### Bug #137: Position Settings UI & Original Request Drawer Fixes\n**Problem:**\n1. The Original Request Drawer (viewable from the Position Hero 'i' button) was using transparent CSS variables making text illegible, and was missing several UI icons.\n2. The Drawer failed to display the 'Department' field because the backend query did not fetch the department name.\n3. The ATS Score slider line in the Position Settings tab was rendering excessively thick, and the Auto-Search Interval dropdown text was crushing due to strict width constraints.\n4. The Position Settings contained an unused 'Approval Required' toggle that confused users since candidate sourcing runs automatically once a position is open.\n**Solution:**\n1. Fixed `OriginalRequestDrawer.css` to use the correct design system tokens (e.g. `--color-bg-card`) to resolve transparency, and added missing icons to `Icon.jsx`.\n2. Updated `PositionRepository.get_with_stats()` in the backend to perform a `LEFT JOIN` on the `departments` table, and updated the frontend drawer to display the latest position metadata accurately.\n3. Modified `PositionSettingsTab.css` to apply the slider gradient strictly to `::-webkit-slider-runnable-track` (height: 2px) for a thin line appearance, and removed strict `flex-shrink` constraints on the Auto-Search dropdown.\n4. Removed the 'Approval Required' toggle entirely from `PositionSettingsTab.jsx`.
+
+
+---
+
+### Bug #139: Dashboard v3 Execution Fixes
+**Problem:** 
+Four execution gaps existed in the live Dashboard v3:
+1. `HealthStrip` cards were showing empty ("—") because they expected fields that the backend did not return.
+2. The NOW lane always had a red urgency tint even when it was completely empty ("All clear").
+3. The period switcher (Today / This Week / This Month) didn't affect the lanes, misleading users into thinking the lanes were being filtered.
+
+**Solution:**
+1. Backend: Added `avg_time_to_hire` logic to `get_stats()` in `dashboard_service.py` to calculate time to hire.
+2. Frontend: Updated `HealthStrip.jsx` to map to existing fields (`active_positions`, `avg_time_to_hire`, `interviews_this_period`, `offers_this_period`).
+3. Frontend: Added `.tb-lane--empty` to `dashboard.css` and dynamic class application in `BriefingLane.jsx` to show a green success tint when the NOW lane is empty.
+4. Frontend: Added a title tooltip to `.dash-period-switcher` in `DashboardPage.jsx` to clarify that it controls the health metrics above, and lane content refreshes in real-time.
+
+**Files Modified:**
+- `backend/services/dashboard_service.py`
+- `frontend/src/components/Dashboard/HealthStrip.jsx`
+- `frontend/src/components/Dashboard/BriefingLane.jsx`
+- `frontend/src/styles/dashboard.css`
+- `frontend/src/components/Dashboard/DashboardPage.jsx`
