@@ -149,6 +149,9 @@ export const dashboardApi = {
     return _get(`/dashboard/activity?${q}`)
   },
   getAnalytics: (period = 'month') => _get(`/dashboard/analytics?period=${period}`),
+  getAgentRoi: (period = 'quarter') => _get(`/dashboard/agent-roi?period=${period}`),
+  getRecruiterPerformance: (period = 'quarter') => _get(`/dashboard/recruiter-performance?period=${period}`),
+  getBottlenecks: (period = 'quarter') => _get(`/dashboard/bottlenecks?period=${period}`),
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────────
