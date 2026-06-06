@@ -5,7 +5,7 @@ import Icon from '../common/Icon'
 import './CareerPage.css'
 
 export default function CareerPage() {
-  const { orgSlug } = useParams()
+  const { orgSlug, positionId } = useParams()
   const [org, setOrg] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -18,6 +18,11 @@ export default function CareerPage() {
   })
   const [positions, setPositions] = useState([])
   const [loadingFit, setLoadingFit] = useState(false)
+
+  // Single position state
+  const [activePosition, setActivePosition] = useState(null)
+  const [loadingPosition, setLoadingPosition] = useState(false)
+  const [applying, setApplying] = useState(false)
 
   // Testimonials mock data
   const testimonials = [
@@ -39,6 +44,15 @@ export default function CareerPage() {
     fetchOrgAndFit()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgSlug])
+
+  useEffect(() => {
+    if (positionId) {
+      fetchPositionDetail()
+    } else {
+      setActivePosition(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positionId])
 
   // Refetch when filters change
   useEffect(() => {
@@ -79,6 +93,34 @@ export default function CareerPage() {
       console.error('Fit fetch error:', err)
     } finally {
       setLoadingFit(false)
+    }
+  }
+
+  const fetchPositionDetail = async () => {
+    try {
+      setLoadingPosition(true)
+      const res = await api.get(`/careers/${orgSlug}/positions/${positionId}`)
+      setActivePosition(res.data.position)
+      if (!org) setOrg(res.data.org)
+    } catch (err) {
+      console.error('Position fetch error:', err)
+    } finally {
+      setLoadingPosition(false)
+    }
+  }
+
+  const handleApply = async () => {
+    try {
+      setApplying(true)
+      const res = await api.post(`/careers/${orgSlug}/positions/${positionId}/apply`)
+      if (res.data.apply_url) {
+        window.location.href = res.data.apply_url
+      }
+    } catch (err) {
+      console.error('Apply error:', err)
+      alert(err.response?.data?.error?.message || 'Failed to start application')
+    } finally {
+      setApplying(false)
     }
   }
 
@@ -165,90 +207,130 @@ export default function CareerPage() {
       </div>
 
       {/* 2. STATS STRIP */}
-      <div className="cp-stats-strip">
-        <div className="cp-stat-item">
-          <div className="cp-stat-val">{org.size || 'Growing'}</div>
-          <div className="cp-stat-label">Team Size</div>
+      {!positionId && (
+        <div className="cp-stats-strip">
+          <div className="cp-stat-item">
+            <div className="cp-stat-val">{org.size || 'Growing'}</div>
+            <div className="cp-stat-label">Team Size</div>
+          </div>
+          <div className="cp-stat-item">
+            <div className="cp-stat-val">{org.headquarters || 'Global'}</div>
+            <div className="cp-stat-label">Headquarters</div>
+          </div>
+          <div className="cp-stat-item">
+            <div className="cp-stat-val">Remote</div>
+            <div className="cp-stat-label">Work Style</div>
+          </div>
+          <div className="cp-stat-item">
+            <div className="cp-stat-val" style={{ color: brandColor }}>{positions.length}</div>
+            <div className="cp-stat-label">Open Roles</div>
+          </div>
         </div>
-        <div className="cp-stat-item">
-          <div className="cp-stat-val">{org.headquarters || 'Global'}</div>
-          <div className="cp-stat-label">Headquarters</div>
-        </div>
-        <div className="cp-stat-item">
-          <div className="cp-stat-val">Remote</div>
-          <div className="cp-stat-label">Work Style</div>
-        </div>
-        <div className="cp-stat-item">
-          <div className="cp-stat-val" style={{ color: brandColor }}>{positions.length}</div>
-          <div className="cp-stat-label">Open Roles</div>
-        </div>
-      </div>
+      )}
 
-      {/* 3. FIT FINDER SECTION */}
-      <div className="cp-fit-section">
-        <div className="cp-fit-header">
-          <h2>Find your fit</h2>
-          <p>Tell us what you're looking for, and we'll match you with the right team.</p>
-        </div>
-        
-        <div className="cp-fit-questions">
-          {/* Q1: Function */}
-          <div className="cp-fit-q">
-            <label>What do you do?</label>
-            <div className="cp-chips">
-              {['Engineering', 'Design', 'Product', 'Sales', 'All'].map(f => (
+      {/* 3. POSITION DETAIL OR FIT FINDER SECTION */}
+      {positionId ? (
+        <div className="cp-position-detail">
+          {loadingPosition ? (
+            <div className="cp-spinner" style={{ margin: '40px auto' }} />
+          ) : activePosition ? (
+            <>
+              <div className="cp-position-header">
+                <h2>{activePosition.role_name}</h2>
+                <div className="cp-job-meta">
+                  <span>{activePosition.department || 'General'}</span>
+                  <span>•</span>
+                  <span>{activePosition.location}</span>
+                  <span>•</span>
+                  <span>{activePosition.work_type}</span>
+                </div>
                 <button 
-                  key={f}
-                  className={`cp-chip ${fitFilters.function === f ? 'active' : ''}`}
-                  style={fitFilters.function === f ? { background: `${brandColor}30`, borderColor: brandColor, color: brandColor } : {}}
-                  onClick={() => setFitFilters(p => ({ ...p, function: f === 'All' ? '' : f }))}
+                  className="cp-apply-btn-main" 
+                  style={{ backgroundColor: brandColor }}
+                  onClick={handleApply}
+                  disabled={applying}
                 >
-                  {f}
+                  {applying ? 'Starting chat...' : 'Apply via chat'} <Icon name="arrow-right" size={16} />
                 </button>
-              ))}
+              </div>
+              
+              <div className="cp-position-content">
+                <pre className="cp-jd-markdown">{activePosition.jd_markdown}</pre>
+              </div>
+            </>
+          ) : (
+            <div className="cp-no-roles">
+              <p>Position not found or no longer available.</p>
+              <Link to={`/careers/${orgSlug}`}>View other open roles</Link>
             </div>
+          )}
+        </div>
+      ) : (
+        <div className="cp-fit-section">
+          <div className="cp-fit-header">
+            <h2>Find your fit</h2>
+            <p>Tell us what you're looking for, and we'll match you with the right team.</p>
           </div>
           
-          {/* Q2: Experience */}
-          <div className="cp-fit-q">
-            <label>Experience level</label>
-            <div className="cp-chips">
-              {['0-3 yrs', '3-7 yrs', '7+ yrs'].map(e => (
-                <button 
-                  key={e}
-                  className={`cp-chip ${fitFilters.exp === e ? 'active' : ''}`}
-                  style={fitFilters.exp === e ? { background: `${brandColor}30`, borderColor: brandColor, color: brandColor } : {}}
-                  onClick={() => setFitFilters(p => ({ ...p, exp: p.exp === e ? '' : e }))}
-                >
-                  {e}
-                </button>
-              ))}
+          <div className="cp-fit-questions">
+            {/* Q1: Function */}
+            <div className="cp-fit-q">
+              <label>What do you do?</label>
+              <div className="cp-chips">
+                {['Engineering', 'Design', 'Product', 'Sales', 'All'].map(f => (
+                  <button 
+                    key={f}
+                    className={`cp-chip ${fitFilters.function === f ? 'active' : ''}`}
+                    style={fitFilters.function === f ? { background: `${brandColor}30`, borderColor: brandColor, color: brandColor } : {}}
+                    onClick={() => setFitFilters(p => ({ ...p, function: f === 'All' ? '' : f }))}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          
-          {/* Q3: Values */}
-          <div className="cp-fit-q">
-            <label>What matters most?</label>
-            <div className="cp-chips">
-              {['Ownership', 'Stability', 'Mentorship', 'Impact', 'Fast Pace'].map(v => (
-                <button 
-                  key={v}
-                  className={`cp-chip ${fitFilters.values.includes(v) ? 'active' : ''}`}
-                  style={fitFilters.values.includes(v) ? { background: `${brandColor}30`, borderColor: brandColor, color: brandColor } : {}}
-                  onClick={() => handleValueToggle(v)}
-                >
-                  {v}
-                </button>
-              ))}
+            
+            {/* Q2: Experience */}
+            <div className="cp-fit-q">
+              <label>Experience level</label>
+              <div className="cp-chips">
+                {['0-3 yrs', '3-7 yrs', '7+ yrs'].map(e => (
+                  <button 
+                    key={e}
+                    className={`cp-chip ${fitFilters.exp === e ? 'active' : ''}`}
+                    style={fitFilters.exp === e ? { background: `${brandColor}30`, borderColor: brandColor, color: brandColor } : {}}
+                    onClick={() => setFitFilters(p => ({ ...p, exp: p.exp === e ? '' : e }))}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Q3: Values */}
+            <div className="cp-fit-q">
+              <label>What matters most?</label>
+              <div className="cp-chips">
+                {['Ownership', 'Stability', 'Mentorship', 'Impact', 'Fast Pace'].map(v => (
+                  <button 
+                    key={v}
+                    className={`cp-chip ${fitFilters.values.includes(v) ? 'active' : ''}`}
+                    style={fitFilters.values.includes(v) ? { background: `${brandColor}30`, borderColor: brandColor, color: brandColor } : {}}
+                    onClick={() => handleValueToggle(v)}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 4. MATCHING ROLES */}
       <div className="cp-roles-section">
         <h3 className="cp-roles-title">
-          {loadingFit ? 'Finding matches...' : `Open Roles (${positions.length})`}
+          {positionId ? 'Other Open Roles' : (loadingFit ? 'Finding matches...' : `Open Roles (${positions.length})`)}
         </h3>
         
         <div className="cp-roles-grid">

@@ -2561,3 +2561,17 @@ Updated the backend `/fit` endpoint to calculate `has_filters`. If no filters ar
 
 **Files Modified:**
 - `backend/routers/careers.py`
+
+---
+
+## 117. Fix "Apply via chat" Button on Career Page
+
+**Problem Statement:**
+Clicking "Apply via chat" on the Career Page job card updated the URL to include the `positionId`, but the page remained the same (the job list). The user could not view the specific job details or start the application chat.
+
+**Idea / Solution:**
+Updated `CareerPage.jsx` to extract `positionId` from the route parameters. If present, it fetches the specific position's details from the backend and renders the public Position Detail View (including the JD and an active "Apply via chat" button that calls the `/apply` endpoint) instead of the Fit Finder. Also added styling for the new view in `CareerPage.css`.
+
+**Files Modified:**
+- `frontend/src/components/Careers/CareerPage.jsx`
+- `frontend/src/components/Careers/CareerPage.css`
