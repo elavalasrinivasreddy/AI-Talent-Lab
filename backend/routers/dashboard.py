@@ -131,3 +131,33 @@ async def get_analytics(
         org_id=current_user["org_id"],
         period=period,
     )
+
+@router.get("/agent-roi")
+async def get_agent_roi(
+    period: str = Query("quarter", pattern="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    return await DashboardService.get_agent_roi(
+        org_id=current_user["org_id"],
+        period=period,
+    )
+
+@router.get("/recruiter-performance")
+async def get_recruiter_performance(
+    period: str = Query("quarter", pattern="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    return await DashboardService.get_per_recruiter(
+        org_id=current_user["org_id"],
+        period=period,
+    )
+
+@router.get("/bottlenecks")
+async def get_bottlenecks(
+    period: str = Query("quarter", pattern="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    return await DashboardService.get_bottleneck_radar(
+        org_id=current_user["org_id"],
+        period=period,
+    )
