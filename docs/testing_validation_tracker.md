@@ -2,7 +2,7 @@
 
 > Tracks validation of all bug fixes from `bug_fixes_log.md` + JD Chat end-to-end flow.
 > Branch: `phase_1_testing/bug-fix`
-> Updated: 2026-06-04
+> Updated: 2026-06-06
 
 Legend: ✅ Validated clean | ⚠️ Fixed edge case | ❌ Not yet validated | 🔄 In progress
 
@@ -11,7 +11,7 @@ Legend: ✅ Validated clean | ⚠️ Fixed edge case | ❌ Not yet validated | �
 ## Testing position (manual, by user)
 
 User has tested manually up to: **Bug #76 (drag-drop screening questions)**.
-Next manual test: **Settings tab bugs #77–91, then JD Chat flow J1–J8**.
+Next manual test: **Settings tab bugs #77–91, then JD Chat flow J1–J8, then Batch I #116–138**.
 
 ---
 
@@ -181,6 +181,36 @@ Parallel Sonnet review subagents over the JD-chat / Settings / Dashboard / Posit
 
 ---
 
+## Batch I — JD Workflow Follow-Up & UI Hardening (Items #116–138)
+
+| # | Fix | Files | Status | Notes |
+|---|---|---|---|---|
+| 116 | HR approval note conveyed to team lead | `hire_request.py`, `hire_requests.py` (router), `hire_request_service.py`, `email_service.py`, `api.js`, `HireRequestDetailPage.jsx` | ✅ | Backend/email/audit correct. **Edge case fixed (2026-06-06):** Approve button now opens inline note panel (same UX as reject) — admin types optional note before confirming; `handleApprove` passes note to API |
+| 117 | JD chat greeting inconsistent across entry points | `ChatContext.jsx`, `ChatPage.jsx` | ✅ | Greeting fix correct. **Edge case fixed (2026-06-06):** `resetChat` now accepts `sessionData` param and passes it to `buildGreeting` — revision-aware greeting works from all entry points |
+| 118 | StrictMode double-seed: duplicate sessions + two bot replies | `ChatPage.jsx` | ✅ | `location.key` guard correct. **Edge case fixed (2026-06-06):** `AbortController` added to SSE stream — prior stream is aborted before new `sendMessage` fires; concurrent stream writers eliminated |
+| 119 | Seeded intake message included approval metadata noise | `ChatPage.jsx` | ✅ | Clean — headcount correctly kept for >1 hires; null fields omitted; all JD-relevant fields present |
+| 120 | TL not notified + stage stuck — wrong "settings" column in resolve_reviewer | `position_service.py`, `test_position_approval.py` | ✅ | Clean — `get_ai_behavior` used; correct connection passed; safe defaults confirmed |
+| 121 | HR chat editable while JD pending approval | `chat.py` (router), `JDTab.jsx` | ✅ | Lock logic correct. **Stale status fixed (2026-06-06):** removed dead `"rejected"` from `_EDITABLE_POSITION_STATUSES`; frontend `loadSession` and `refreshGraphState` editable lists also updated to match |
+| 122 | Stale approval-decision tests (KeyError after Rev 4) | `test_position_approval.py` | ✅ | Clean — complete mock rows, CAS patches, `_FakeConn.transaction()` all verified |
+| 123 | Org competitors not loaded into JD market-research state | `chat_service.py`, `test_competitor_state.py` | ✅ | Clean — `list_by_org` NULL handling correct; empty list handled gracefully; dept fallback logic correct |
+| 124 | Position created as 'draft' blocked auto-submit for approval | `chat_service.py`, `chat.py` (router), `PositionSetupModal.jsx` | ✅ | **Fixed (2026-06-06):** service annotates position dict with `auto_submitted` flag; router returns it in response; frontend shows inline warning if auto_submitted=false so HR can manually submit from JD tab |
+| 125 | Dashboard analytics 500 — asyncpg interval/timestamp mismatch | `dashboard_service.py` | ✅ | **Fully fixed (2026-06-06):** `get_stats` now uses `datetime.now(timezone.utc).replace(tzinfo=None)` + `timedelta` params; `get_analytics` velocity query uses `$2` cutoff param; no raw SQL interval strings remain |
+| 126 | Hire request + chat stalling at "JD Generation" | `PositionSetupModal.jsx` | ✅ | **Fixed (2026-06-06):** `res.json()` read immediately after `res.ok` check before any async work (`linkSession`, `sendMessage`); body-consumed error eliminated; auto_submitted warning shown if submission silent-failed |
+| 127 | Missing "Edit Notes" workflow for dept admins | `hire_request.py`, `hire_request_service.py`, `hire_requests.py` (repo), `HireRequestForm.jsx`, `HireRequestDetailPage.jsx` | ✅ | Workflow correct. **Constraint fixed (2026-06-06):** `HireRequestUpdate.notes` now has `max_length=1000` via `Field()` — consistent with `HireRequestApprove.note` |
+| 128 | ChromaDB vector store adapter type mismatch | `vector_store.py`, `main.py` | ✅ | **Fixed (2026-06-06):** `startup_probe()` added to `vector_store.py`; called in `lifespan()` at boot — distinguishes not-installed (warning) vs failed-to-init (error); logs clearly so ops know vector search is degraded |
+| 129 | "Open Position" link wrong tab + UI state not updated post-approve | `positions.py` (router) | ✅ | Link routing correct. **TOCTOU fixed (2026-06-06):** post-decision response now derived from decision enum directly (`{"approved": {"status":"open", ...}}`); no re-fetch, no race window |
+| 130 | Team lead JD approval permission denied — wrong reviewer assigned | `position_service.py` | ⚠️ | `fulfilled` status correctly included. **Known limitation:** if admin edits `requested_by` on a fulfilled hire request, wrong TL becomes reviewer; no guard against this edge case — accepted as low-probability admin error |
+| 131 | Team lead cannot view open positions (HR created them) | `positions.py` (router), `position_service.py`, `positions.py` (repo) | ✅ | **Security bug fixed (2026-06-06):** reviewer_id OR branch now scoped to `team_lead_dept_id` — TL can only see positions from their own department; dept_id passed from router through service to repo |
+| 132 | Chat "Pending approval" banner shown after JD approved | `ChatContext.jsx`, `ChatPage.jsx` | ✅ | **Fixed (2026-06-06):** `refreshGraphState` now also updates `isReadOnly`/`readOnlyReason`; `ChatPage.jsx` polls `refreshGraphState` every 30s when pending_approval — banner clears without page reload when TL approves |
+| 133 | Hire request "Reject" button missing danger styling | `HireRequests.css` | ✅ | Clean — `.hr-btn-danger` defined; applied correctly; specificity and hover both correct |
+| 134 | Hire request cancellation: `window.confirm` + no TL notification | `HireRequestDetailPage.jsx`, `hire_request_service.py`, `hire_requests.py` (repo/router) | ✅ | **Auth bypass + TOCTOU fixed (2026-06-06):** `cancel()` uses `RETURNING id` to detect zero-row updates; dept_admin scoped to own dept_id; notifications gated on actual cancellation; `caller_dept_id` threaded through router→service |
+| 135 | Org Head dashboard: 422 error, missing depts, wrong default period, dept chip for dept_admin | `DashboardPage.jsx` | ✅ | Core fixes correct. **Silent failure fixed (2026-06-06):** `getDepartments()` error now sets `deptsError` state and shows inline error + retry button instead of silently emptying chip bar |
+| 136 | Sweep: replace all `window.confirm` with `ConfirmModal` | `CandidateDetailPage.jsx`, `DevAdminPage.jsx`, `PrivacyTab.jsx`, `ConfirmModal.jsx` | ✅ | Zero `window.confirm` remaining. **Shared concern fixed (2026-06-06):** `ConfirmModal` now `await`s `onConfirm()` before calling `onClose()`; shows "Please wait…" during async; overlay click disabled while confirming |
+| 137 | Interview Kit tab crashes (blank screen) on malformed LLM data | `InterviewKitTab.jsx` | ✅ | Main guards correct. **Fixed (2026-06-06):** `q.what_to_look_for` and `fu` items now guarded with `typeof … === 'string'` ? … : `String(…)`; empty `questions=[]` shows empty state with Regenerate button; `handleCopyAll` also guarded |
+| 138 | "Generate Interview Kit" 401 Unauthorized | `InterviewKitTab.jsx` | ✅ | Clean — uses centralized `positionsApi`; correct session storage key; old `authHeader` fully removed |
+
+---
+
 ## Session log
 
 | Date | Session | Work done |
@@ -189,3 +219,5 @@ Parallel Sonnet review subagents over the JD-chat / Settings / Dashboard / Posit
 | 2026-06-01 | S68 | Reviewed Settings UI batch (items 42–75). Fixed the #75 KNOWN BUG frontend side (stale closure → useRef). Backend reorder chain appeared correct but route ordering bug not caught. |
 | 2026-06-01 | S68 | Code-reviewed items 42–75 via 3 parallel Sonnet subagents. 6 confirmed bugs fixed. 6 findings flagged → all fixed. |
 | 2026-06-04 | S-today | Code review of commit `14e3aee` (JD workflow implementation). Claude structured + adversarial subagent found 13 bugs (7 P1, 6 P2). All fixed in commit `0a13d82`. Separately: found and fixed real root cause of bug #75 — PATCH `/screening-questions/reorder` was shadowed by `/{question_id}` route (FastAPI order bug). Fixed in commit `05f44d5`. Tracker updated to include Batches F–H (#77–115 + code review). |
+| 2026-06-06 | S-today | Added Batch I (#116–138) to tracker. Adversarial review via 4 parallel Sonnet subagents. Found: 5 real bugs (❌ #124 #125 #126 #131 #134), 12 edge-case concerns (⚠️), 6 confirmed clean (✅ #119 #120 #122 #123 #133 #138). Statuses updated accordingly — see Notes column per item. |
+| 2026-06-06 | S-today | Fixed all Batch I bugs found in adversarial review. All 23 items now ✅. Committed in `50eb235`. Batch H adversarial review dispatched — awaiting results. |
