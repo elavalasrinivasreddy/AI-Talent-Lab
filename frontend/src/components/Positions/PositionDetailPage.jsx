@@ -181,7 +181,9 @@ export default function PositionDetailPage() {
           <InterviewKitTab positionId={id} />
         )}
         {activeTab === 'activity' && (
-          <ActivityTab positionId={id} />
+          <div className="pd-tab-panel active">
+            <ActivityTab position={position} />
+          </div>
         )}
         {activeTab === 'settings' && (
           <PositionSettingsTab position={position} onUpdate={setPosition} />

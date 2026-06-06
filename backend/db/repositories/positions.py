@@ -97,9 +97,14 @@ class PositionRepository:
 
     @staticmethod
     async def get_with_stats(conn: asyncpg.Connection, position_id: int, org_id: int) -> Optional[dict]:
-        """Get position with candidate pipeline counts."""
+        """Get position with candidate pipeline counts and department info."""
         row = await conn.fetchrow(
-            "SELECT * FROM positions WHERE id = $1 AND org_id = $2",
+            """
+            SELECT p.*, d.name as department_name 
+            FROM positions p
+            LEFT JOIN departments d ON p.department_id = d.id AND d.org_id = $2
+            WHERE p.id = $1 AND p.org_id = $2
+            """,
             position_id, org_id
         )
         if not row:

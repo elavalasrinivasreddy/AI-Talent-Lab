@@ -4,10 +4,14 @@
  * tags row, action buttons (Share, Run Search, Add Candidate).
  * Per docs/design/pages/03_position_detail.md §3.
  */
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import Chip from '../common/Chip'
 import Icon from '../common/Icon'
+import { useAuth } from '../../context/AuthContext'
+import OriginalRequestDrawer from './OriginalRequestDrawer'
+import ConfirmModal from '../common/ConfirmModal'
+import Toast from '../common/Toast'
 
 const PRIORITY_CHIP = {
   urgent: { variant: 'danger',  label: 'Urgent' },
@@ -43,12 +47,33 @@ export default function PositionHero({
   onSearchNow,
   onStatusChange,
 }) {
+  const { user } = useAuth()
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [statusModalOpen, setStatusModalOpen] = useState(false)
+  const [pendingStatus, setPendingStatus] = useState(null)
+  const [toastMessage, setToastMessage] = useState(null)
+
+  const canEditStatus = ['org_head', 'hr', 'dept_admin'].includes(user?.role) || user?.id === position?.created_by || user?.id === position?.assigned_to
+
+  const handleStatusClick = (newStatus) => {
+    if (newStatus === position.status) return
+    setPendingStatus(newStatus)
+    setStatusModalOpen(true)
+  }
+
+  const handleStatusConfirm = () => {
+    if (pendingStatus) {
+      onStatusChange(pendingStatus)
+      setToastMessage(`Position status updated to ${STATUS_CHIP[pendingStatus]?.label || pendingStatus}`)
+      setPendingStatus(null)
+    }
+  }
   const status = position.approval_status === 'pending'
     ? { variant: 'warning', label: 'Pending Review' }
     : STATUS_CHIP[position.status] || STATUS_CHIP.draft
   const priority = PRIORITY_CHIP[position.priority] || PRIORITY_CHIP.normal
 
-  const comp = compRange(position.comp_min, position.comp_max)
+  const comp = compRange(position.salary_min || position.comp_min, position.salary_max || position.comp_max)
 
   const metaParts = [
     position.department_name,
@@ -76,6 +101,9 @@ export default function PositionHero({
         <div className="pd-hero-left">
           <div className="pd-hero-title-row">
             <h1 className="pd-hero-title">{position.role_name}</h1>
+            <button className="pd-hero-info-btn" onClick={() => setDrawerOpen(true)} title="View Original Request">
+              <Icon name="info" size={16} />
+            </button>
             <Chip variant={status.variant} dot size="sm">{status.label}</Chip>
           </div>
 
@@ -100,32 +128,71 @@ export default function PositionHero({
             </div>
           )}
         </div>
+        <div className="pd-hero-right">
+          {canEditStatus ? (
+            <select
+              className="pd-status-select"
+              value={position.status || 'draft'}
+              onChange={(e) => handleStatusClick(e.target.value)}
+            >
+              <option value="draft">Draft</option>
+              <option value="open">Active (Open)</option>
+              <option value="on_hold">On Hold</option>
+              <option value="closed">Closed</option>
+              <option value="archived">Archived</option>
+            </select>
+          ) : (
+            <div className="pd-status-locked">
+              <Icon name="lock" size={14} /> {status.label}
+            </div>
+          )}
 
-        <div className="pd-hero-actions">
-          <button
-            className="pd-btn pd-btn-outline"
-            onClick={onSearchNow}
-            disabled={searching || position.status !== 'open'}
-          >
-            <Icon name="search" size={14} />
-            {searching ? 'Searching…' : 'Run Search'}
-          </button>
-
-          <select
-            className="pd-status-select"
-            value={position.status}
-            onChange={e => onStatusChange(e.target.value)}
-          >
-            <option value="open">Open</option>
-            <option value="on_hold">On Hold</option>
-            <option value="closed">Close</option>
-            <option value="archived">Archive</option>
-          </select>
+          <div className="pd-hero-actions">
+            <button className="pd-btn pd-btn-outline" title="Share Position">
+              <Icon name="share" size={14} />
+              Share
+            </button>
+            <button className="pd-btn pd-btn-outline" title="Add Candidate Manually">
+              <Icon name="user-plus" size={14} />
+              Add Candidate
+            </button>
+            {position.status === 'open' && (
+              <button
+                className="pd-btn pd-btn-primary"
+                onClick={onSearchNow}
+                disabled={searching}
+              >
+                {searching ? <Icon name="loader" size={14} className="spin" /> : <Icon name="search" size={14} />}
+                {searching ? 'Sourcing...' : 'Run Search'}
+              </button>
+            )}
+          </div>
+          {searchMsg && <div className="pd-search-msg">{searchMsg}</div>}
         </div>
       </div>
 
-      {searchMsg && <div className="pd-search-toast">{searchMsg}</div>}
+      {drawerOpen && (
+        <OriginalRequestDrawer
+          position={position}
+          onClose={() => setDrawerOpen(false)}
+        />
+      )}
 
+      <ConfirmModal
+        isOpen={statusModalOpen}
+        onClose={() => setStatusModalOpen(false)}
+        onConfirm={handleStatusConfirm}
+        title="Confirm Status Change"
+        message={`Are you sure you want to change the position status to '${STATUS_CHIP[pendingStatus]?.label}'? This may affect candidates and automated search workflows.`}
+        confirmText="Yes, Change Status"
+        confirmVariant={pendingStatus === 'closed' || pendingStatus === 'archived' ? 'danger' : 'primary'}
+      />
+
+      <Toast 
+        message={toastMessage} 
+        onClose={() => setToastMessage(null)} 
+        type="success" 
+      />
     </div>
   )
 }
