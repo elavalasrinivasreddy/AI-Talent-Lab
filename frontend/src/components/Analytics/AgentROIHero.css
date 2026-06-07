@@ -1,0 +1,230 @@
+/* AgentROIHero.css */
+
+@keyframes roi-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes roi-shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+
+/* ── Hero Card ── */
+.roi-hero {
+  background: linear-gradient(
+    135deg,
+    var(--color-bg-elevated, #1A2236) 0%,
+    rgba(13, 148, 136, 0.07) 100%
+  );
+  border: 1px solid rgba(13, 148, 136, 0.28);
+  border-radius: var(--radius-lg, 14px);
+  padding: 28px 36px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: roi-rise 280ms ease-out both;
+}
+
+/* ── Hero Body (left/right split) ── */
+.roi-hero-body {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 40px;
+}
+
+@media (max-width: 680px) {
+  .roi-hero {
+    padding: 20px;
+  }
+  .roi-hero-body {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .roi-hero-right {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-start;
+  }
+  .roi-stat-block {
+    align-items: flex-start;
+  }
+}
+
+/* ── Left: Big Number ── */
+.roi-hero-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary, #0D9488);
+  margin: 0 0 10px;
+}
+
+.roi-hero-share-display {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.roi-hero-share-num {
+  font-size: clamp(56px, 8vw, 80px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--color-primary, #0D9488);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-primary);
+}
+
+.roi-hero-share-unit {
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 700;
+  color: var(--color-primary, #0D9488);
+  opacity: 0.6;
+}
+
+.roi-hero-share-context {
+  font-size: 14px;
+  color: var(--color-text-secondary, #94A3B8);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+/* ── Delta chip ── */
+.roi-delta-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 12px;
+}
+
+.roi-delta-chip.positive {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--color-success, #10B981);
+  border: 1px solid rgba(16, 185, 129, 0.30);
+}
+
+.roi-delta-chip.negative {
+  background: rgba(239, 68, 68, 0.10);
+  color: var(--color-danger, #EF4444);
+  border: 1px solid rgba(239, 68, 68, 0.26);
+}
+
+.roi-delta-chip.neutral {
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--color-text-secondary, #94A3B8);
+  border: 1px solid var(--color-border, #1E3047);
+}
+
+/* ── Alert ── */
+.roi-alert {
+  padding: 8px 14px;
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(217, 119, 6, 0.26);
+  border-radius: var(--radius-md, 10px);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-warning, #D97706);
+  line-height: 1.5;
+}
+
+/* ── Right: Stat Blocks ── */
+.roi-hero-right {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: flex-end;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.roi-stat-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.roi-stat-num {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--color-text-primary, #F1F5F9);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.roi-stat-num-primary {
+  color: var(--color-primary, #0D9488);
+}
+
+.roi-stat-num-muted {
+  font-size: 22px;
+  color: var(--color-text-secondary, #94A3B8);
+}
+
+.roi-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-secondary, #94A3B8);
+}
+
+/* ── Share Bar ── */
+.roi-share-bar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.roi-share-bar {
+  height: 5px;
+  background: rgba(148, 163, 184, 0.12);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.roi-share-fill {
+  height: 100%;
+  background: var(--color-primary, #0D9488);
+  border-radius: 3px;
+  transition: width 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.roi-share-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.roi-bar-label-ai {
+  color: var(--color-primary, #0D9488);
+  font-weight: 600;
+}
+
+.roi-bar-label-human {
+  color: var(--color-text-secondary, #94A3B8);
+}
+
+/* ── Loading Skeleton ── */
+.roi-hero-skeleton {
+  height: 200px;
+  border-radius: var(--radius-lg, 14px);
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-elevated, #1A2236) 0%,
+    rgba(148, 163, 184, 0.06) 50%,
+    var(--color-bg-elevated, #1A2236) 100%
+  );
+  background-size: 800px 100%;
+  animation: roi-shimmer 1.6s ease-in-out infinite;
+}

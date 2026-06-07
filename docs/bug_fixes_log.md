@@ -2752,3 +2752,97 @@ Added explicit `int()` casts for `application_id` and `position_id` inside the `
 
 **Files Modified:**
 - `backend/routers/candidates.py`
+
+---
+
+## 156. Analytics Page: Emoji Icon Violation in Error Banner
+
+**Problem Statement:**
+`AnalyticsPage.jsx` line 67 used a raw `⚠️` emoji as an icon in the error banner: `<div className="analytics-error">⚠️ {error}</div>`. Using emoji as icons violates the ui-ux-pro-max design rule (priority 4: no-emoji-icons), breaks visual consistency with the SVG icon system, and renders inconsistently across platforms.
+
+**Idea / Solution:**
+Removed the emoji. The `.analytics-error` CSS class now provides the semantic error styling (danger red border + background). The error message text is rendered directly with `role="alert"` for screen-reader accessibility.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/AnalyticsPage.jsx`
+
+---
+
+## 157. Analytics Page: Promise.all Causes Total Failure on Single API Error
+
+**Problem Statement:**
+`AnalyticsPage.jsx` used `Promise.all(...)` for its four data-fetching calls. If any one API endpoint failed (e.g., agent-roi endpoint unreachable), `Promise.all` rejects the entire batch, causing the whole dashboard to show an error state even when other data is available.
+
+**Idea / Solution:**
+Replaced `Promise.all` with `Promise.allSettled`. Each response is checked individually — fulfilled results update their respective state; only when all four calls fail does the error banner appear. This matches the graceful-degradation pattern used in the Dashboard page.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/AnalyticsPage.jsx`
+
+---
+
+## 158. Analytics Page: Missing KPI Strip for Key Hiring Metrics
+
+**Problem Statement:**
+The Analytics page only showed the Agent ROI hero and chart cards. Key operational KPIs (Total Candidates, Avg Time to Hire, Offer Acceptance Rate, Active Positions) had no visible row, making it impossible for a manager to get a quick pipeline health summary alongside the AI-vs-human comparison.
+
+**Idea / Solution:**
+Added a `KpiStrip` component rendered between the ROI hero and the charts grid. It calls `dashboardApi.getAnalytics(period)` (already in api.js at line 152) and displays four metric cards in a responsive auto-fit grid. Values default to `—` when data is unavailable.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/AnalyticsPage.jsx`
+
+---
+
+## 159. Analytics Page: AgentROIHero Uses Conservative Typography (B-grade Design)
+
+**Problem Statement:**
+`AgentROIHero.jsx` used 48px for the AI sourcing share number and a hardcoded `color: #10B981` in `AnalyticsPage.css`. This violated the design token system and was visually weak for a hero metric — on a SaaS dashboard, the primary KPI should command immediate attention with display-scale typography (56–80px).
+
+**Idea / Solution:**
+Rewrote `AgentROIHero.jsx` and extracted it into a dedicated `AgentROIHero.css`. Key A+ upgrades: (1) `clamp(56px, 8vw, 80px)` hero number in teal token; (2) full-width visual share bar showing AI vs Human split; (3) trend delta chip showing pp change vs last period with positive/negative/neutral states; (4) low-share alert banner when AI contribution < 20%; (5) stat blocks (hours saved, AI-sourced count) in right column; (6) `font-variant-numeric: tabular-nums` on all data values; (7) loading skeleton instead of null return.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/AgentROIHero.jsx`
+- `frontend/src/components/Analytics/AgentROIHero.css` (new file)
+
+---
+
+## 160. Analytics Page: DualFunnel Uses Hardcoded Hex Colors
+
+**Problem Statement:**
+`DualFunnel.jsx` used `backgroundColor: '#6366F1'` and `backgroundColor: '#10B981'` inline styles, bypassing the design token system. This breaks dark/light mode switching and violates the `color-semantic` ui-ux-pro-max rule.
+
+**Idea / Solution:**
+Replaced all hardcoded hex with design tokens via CSS classes: `.dual-funnel-bar-human` uses `var(--color-chart-human, #8B5CF6)` (purple for human, distinguishable from AI teal) and `.dual-funnel-bar-ai` uses `var(--color-primary, #0D9488)`. Added a header row labelling each side and a conversion-rate footer (sourced-to-hire %) for each funnel.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/DualFunnel.jsx`
+- `frontend/src/components/Analytics/AnalyticsPage.css`
+
+---
+
+## 161. Analytics Page: BottleneckRadar Uses Hardcoded Legend Colors + No Regression Signal
+
+**Problem Statement:**
+`BottleneckRadar.jsx` legend used inline `style={{ backgroundColor: 'rgba(16,185,129,0.8)' }}` and `rgba(99,102,241,0.4)` — hardcoded RGBA bypassing design tokens. Additionally, there was no visual signal for axes that had regressed vs the previous period; all axis labels looked identical regardless of whether a metric had dropped.
+
+**Idea / Solution:**
+Replaced legend dot inline styles with semantic CSS classes (`.radar-legend-dot-current` / `.radar-legend-dot-prev`) referencing `var(--color-primary)` and RGBA of the indigo token. Added `isRegressed()` helper that flags axes where current value dropped >10pp vs previous period; regressed axes render with `.radar-label-regressed` class (red fill, bold weight) and a `↓` indicator inline with the label.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/BottleneckRadar.jsx`
+- `frontend/src/components/Analytics/AnalyticsPage.css`
+
+---
+
+## 162. Analytics Page: Period Switcher Uses Bordered Buttons Instead of Pill Style
+
+**Problem Statement:**
+`AnalyticsPage.css` rendered the period selector as individual bordered buttons with `border: 1px solid var(--color-border)` per button. This looks like a form control, not a navigation pill — inconsistent with the Dashboard's period switcher which uses a pill container. Also the symmetric 1:1 grid did not give the DualFunnel chart enough room vs the radar chart.
+
+**Idea / Solution:**
+Rewrote `AnalyticsPage.css` with: (1) pill-style period switcher matching `dashboard.css` (container with `border-radius: 9999px`, active tab gets `background: var(--color-primary)`, no individual borders); (2) asymmetric grid `3fr 2fr` so the DualFunnel gets proportionally more space; (3) KPI card styles with animation stagger; (4) all hardcoded hex colors replaced with design tokens; (5) `animation: rise` on cards for smooth load-in.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/AnalyticsPage.css`
