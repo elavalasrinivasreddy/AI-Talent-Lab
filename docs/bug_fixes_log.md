@@ -2849,7 +2849,7 @@ Rewrote `AnalyticsPage.css` with: (1) pill-style period switcher matching `dashb
 
 ---
 
-### Bug #141: Analytics A+ Design Upgrade — AgentROIHero
+### Bug #163: Analytics A+ Design Upgrade — AgentROIHero
 
 **Date:** 2026-06-07
 **Severity:** Design / UX
@@ -2868,7 +2868,7 @@ ROI hero used no visual hierarchy — the AI share percentage was plain text wit
 
 ---
 
-### Bug #142: Analytics A+ Design — DualFunnel hardcoded colors
+### Bug #164: Analytics A+ Design — DualFunnel hardcoded colors
 
 **Date:** 2026-06-07
 **Severity:** Design / Code Quality
@@ -2886,7 +2886,7 @@ Replaced inline `backgroundColor` with CSS classes `dual-funnel-bar-human` (`var
 
 ---
 
-### Bug #143: Analytics A+ Design — BottleneckRadar hardcoded legend colors + regression signals
+### Bug #165: Analytics A+ Design — BottleneckRadar hardcoded legend colors + regression signals
 
 **Date:** 2026-06-07
 **Severity:** Design / Code Quality
@@ -2904,7 +2904,7 @@ Replaced inline `backgroundColor` with `.radar-legend-dot-current` and `.radar-l
 
 ---
 
-### Bug #144: Analytics A+ Design — emoji violation + KPI strip + Promise.allSettled
+### Bug #166: Analytics A+ Design — emoji violation + KPI strip + Promise.allSettled
 
 **Date:** 2026-06-07
 **Severity:** Design / Reliability
@@ -2921,7 +2921,7 @@ Removed emoji, replaced with `role="alert"` div. Switched to `Promise.allSettled
 
 ---
 
-### Bug #145: Analytics A+ Design — CSS full rewrite
+### Bug #167: Analytics A+ Design — CSS full rewrite
 
 **Date:** 2026-06-07
 **Severity:** Design
@@ -2938,7 +2938,7 @@ Full rewrite: pill period switcher (`border-radius: 9999px`), asymmetric `3fr 2f
 
 ---
 
-### Bug #146: Dashboard — PULSE event titles render as raw lowercase system strings
+### Bug #168: Dashboard — PULSE event titles render as raw lowercase system strings
 
 **Date:** 2026-06-07
 **Severity:** UX / Polish
@@ -2955,7 +2955,7 @@ Added `formatEventTitle()` helper that capitalizes each word and handles acronym
 
 ---
 
-### Bug #147: Dashboard — VelocitySparkline "open reqs" always plural
+### Bug #169: Dashboard — VelocitySparkline "open reqs" always plural
 
 **Date:** 2026-06-07
 **Severity:** Copy / Grammar
@@ -2972,7 +2972,7 @@ Changed to `` `${n} open req${n !== 1 ? 's' : ''}` `` for proper singular/plural
 
 ---
 
-### Bug #148: Positions List — "active roles" always plural
+### Bug #170: Positions List — "active roles" always plural
 
 **Date:** 2026-06-07
 **Severity:** Copy / Grammar
@@ -2989,7 +2989,7 @@ Changed to `` `${openCount} active role${openCount !== 1 ? 's' : ''}` ``.
 
 ---
 
-### Bug #149: Position Detail — AI confidence shown as raw decimal (0.27)
+### Bug #171: Position Detail — AI confidence shown as raw decimal (0.27)
 
 **Date:** 2026-06-07
 **Severity:** UX / Readability
@@ -3006,7 +3006,7 @@ Changed to `{confLabel}: {Math.round(confidence * 100)}%` so it displays as `"Me
 
 ---
 
-### Bug #150: Position Card — Stage color bars used 7 distinct colors with no semantic meaning + no tooltips
+### Bug #172: Position Card — Stage color bars used 7 distinct colors with no semantic meaning + no tooltips
 
 **Date:** 2026-06-07
 **Severity:** Design / UX
@@ -3023,7 +3023,7 @@ Reduced to 3 semantic colors: pipeline stages (sourced→interview) use `var(--c
 
 ---
 
-### Bug #151: Dashboard — Avg Time to Hire shows bare dash with no explanation
+### Bug #173: Dashboard — Avg Time to Hire shows bare dash with no explanation
 
 **Date:** 2026-06-07
 **Severity:** UX / Clarity
@@ -3040,7 +3040,7 @@ Added `delta: 'No hires this period'` to the card config when `avg_time_to_hire`
 
 ---
 
-### Bug #152: Positions List — Empty state lacked A+ design and clear CTA
+### Bug #174: Positions List — Empty state lacked A+ design and clear CTA
 
 **Date:** 2026-06-07
 **Severity:** Design / UX
@@ -3058,7 +3058,7 @@ Rewrote with CSS classes (`positions-empty-*`): teal-rimmed icon circle, descrip
 
 ---
 
-### Bug #153: Position Detail — ATS chip had no tooltip; saturation bar had no explanation
+### Bug #175: Position Detail — ATS chip had no tooltip; saturation bar had no explanation
 
 **Date:** 2026-06-07
 **Severity:** UX / Discoverability
@@ -3075,7 +3075,7 @@ Added `cursor: help` + descriptive `title` to ATS chip. Added `title="% of pipel
 
 ---
 
-### Bug #154: Dashboard — PULSE "View" buttons too small for touch; empty lane too tall
+### Bug #176: Dashboard — PULSE "View" buttons too small for touch; empty lane too tall
 
 **Date:** 2026-06-07
 **Severity:** Accessibility / UX
@@ -3092,7 +3092,7 @@ Added `cursor: help` + descriptive `title` to ATS chip. Added `title="% of pipel
 
 ---
 
-### Bug #155: Position Detail — Status dropdown isolated in hero-right, disconnected from title
+### Bug #177: Position Detail — Status dropdown isolated in hero-right, disconnected from title
 
 **Date:** 2026-06-07
 **Severity:** UX / Layout
@@ -3110,7 +3110,7 @@ Moved `pd-status-select` into the title row (`.pd-hero-title-row`) inline with t
 
 ---
 
-### Bug #156: Positions Toolbar — Sort control used raw inline styles
+### Bug #178: Positions Toolbar — Sort control used raw inline styles
 
 **Date:** 2026-06-07
 **Severity:** Code Quality / Design
@@ -3152,7 +3152,7 @@ Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, 
 
 
 ---
-### 69. Candidate Hero Button Styling & Disabled States
+### 179. Candidate Hero Button Styling & Disabled States
 **Symptom:** Candidate Hero action buttons ("Schedule", "Mark Selected", "Retry ATS Score") were not styled like standard buttons, leading to a mismatched UI. Furthermore, the "Move to..." button did not disable when the candidate was in the final pipeline stage.
 **Root Cause:** The `CandidateHero.jsx` component used local CSS classes (`cd-action-primary`, `cd-action-ghost`) that did not align with the product's standardized `btn` or `pd-btn` aesthetic. The disabled logic for the primary status move button was missing.
 **Fix:**
@@ -3161,14 +3161,14 @@ Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, 
 - Added logic to dynamically disable the "Move to..." button when no next `VISIBLE_MOVE_STAGES` exist.
 
 ---
-### 70. Replaced Native Browser Confirm Modals in Candidate Details
+### 180. Replaced Native Browser Confirm Modals in Candidate Details
 **Symptom:** A native `window.confirm()` popup was firing when taking pipeline actions, which breaks the SaaS immersion.
 **Root Cause:** A hardcoded `window.confirm` was embedded directly in the `onMarkSelected` callback passed down to `CandidateHero.jsx`.
 **Fix:** Replaced the native alert with the application's `ConfirmModal` component (product-native dialog) using state triggers (`setSelectConfirmOpen(true)`).
 
 
 ---
-### 71. Candidate Notes 500 Internal Server Error (KeyError)
+### 181. Candidate Notes 500 Internal Server Error (KeyError)
 **Symptom:** Saving a note in the candidate profile threw a `500 Internal Server Error` with `KeyError: 'id'` and then immediately failed again with `KeyError: 'name'` if the first error was bypassed.
 **Root Cause:** The `notes.py` router accessed `user["id"]` and `user["name"]` from the dictionary returned by `get_current_user`. However, `get_current_user` parses the JWT which only contains `"sub"` (mapped to `"user_id"`) and does not contain the user's name.
 **Fix:**
@@ -3177,7 +3177,7 @@ Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, 
 
 
 ---
-### 72. Note Mentions Not Dispatching Notifications & Missing Edit Mode UX
+### 182. Note Mentions Not Dispatching Notifications & Missing Edit Mode UX
 **Symptom:** 
 1. When mentioning a user via `@name` in the Notes tab of a candidate's profile, the mentioned user never received a notification despite the UI indicating they were tagged.
 2. When editing an existing note, typing `@` did not trigger the user directory dropdown, making it impossible to tag users properly in edit mode.
@@ -3189,3 +3189,9 @@ Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, 
 - Unified the `handleDraftChange` into a bi-modal `handleInputChange(e, mode)` to support triggering the tagging logic in both `'draft'` and `'edit'` states.
 - Extracted the mention dropdown into a shared `renderMentionDropdown` function and injected it correctly beneath both the compose box and the inline edit box.
 
+
+---
+### 183. Position Hero Status Dropdown Styling Fix
+**Symptom:** The position status dropdown ("Active (Open)") in the `PositionHero` header appeared as a dark, unstyled native select element that looked out of place and broke the premium aesthetics of the design system.
+**Root Cause:** When the user had edit permissions, the system swapped out the beautiful `Chip` component for a raw `<select>` element with a basic CSS class (`pd-status-select--inline`). Native selects are difficult to style beautifully across different browsers and operating systems.
+**Fix:** Refactored the interactive status control to utilize an invisible native `<select>` element perfectly overlaid on top of a fully-styled `Chip` component. This preserves the beautiful, dynamic status colors (e.g., green for Active, yellow for On Hold) and semantic `Chip` design while retaining the interactive dropdown behavior of the `<select>`.
