@@ -2667,3 +2667,88 @@ Changed `datetime.now(timezone.utc)` to `datetime.utcnow()` which produces an of
 
 **Files Modified:**
 - `backend/services/gdpr_service.py`
+
+---
+
+## 150. Fix Celery Worker DB Pool Initialization
+
+**Problem Statement:**
+Starting the Celery worker resulted in `RuntimeError: Database pool not initialized. Call create_pool() first.`. This happens because Celery workers run in separate processes and do not trigger FastAPI's startup events where the connection pool is normally initialized.
+
+**Idea / Solution:**
+Updated `get_pool()` in `backend/db/connection.py` to auto-initialize the database connection pool using `settings.DATABASE_URL` if the pool is `None`, instead of raising a `RuntimeError`. This allows Celery tasks to seamlessly obtain a database connection without requiring complex signal handler boilerplate.
+
+**Files Modified:**
+- `backend/db/connection.py`
+
+---
+
+## 151. Trigger ATS Scoring for Organic Applicants (Career Portal)
+
+**Problem Statement:**
+When a candidate applied organically through the Career Portal's chat interface, their resume was processed and their status updated to "Applied" successfully, but the ATS scoring background task was never triggered. This resulted in the score showing as `--` indefinitely on the candidate's profile.
+
+**Idea / Solution:**
+1. Created a dedicated Celery task `score_candidate_application` in `backend/tasks/candidate_pipeline.py` to handle the ATS scoring of organic applicants.
+2. Updated `_step_complete` in `backend/services/apply_service.py` to dispatch this Celery task automatically as the final step of the chat workflow, immediately after the GDPR consent and status updates.
+
+**Files Modified:**
+- `backend/tasks/candidate_pipeline.py`
+- `backend/services/apply_service.py`
+
+---
+
+## 152. Prevent Groq API Rate Limits During Celery Background Sourcing
+
+**Problem Statement:**
+When the Celery worker runs the candidate sourcing pipeline, it spins up multiple parallel workers (defaulting to the number of CPU cores). Each worker queries Tavily and then hits the Groq API concurrently using the `llama-3.3-70b-versatile` model to extract candidate dossiers. This caused the system to rapidly exceed Groq's 12,000 Tokens Per Minute (TPM) limit on the free tier, resulting in `429 Too Many Requests` errors.
+
+**Idea / Solution:**
+Updated `backend/adapters/candidate_sources/tavily.py` to specifically request the `llama-3.1-8b-instant` model for dossier extraction. This model is much faster, has a significantly higher TPM limit, and is more than capable of handling the simple structured JSON extraction required, effectively resolving the parallel scraping rate limits.
+
+**Files Modified:**
+- `backend/adapters/candidate_sources/tavily.py`
+
+---
+
+## 153. Expose ATS Retry Functionality in UI
+
+**Problem Statement:**
+When ATS scoring for an organic applicant failed (e.g., due to rate limits or API errors), there was no way for an HR admin to trigger a retry. The score remained missing without any recourse.
+
+**Idea / Solution:**
+1. Added an explicit `Retry ATS Score` button inside `CandidateHero.jsx` which displays when viewing a candidate's application details. 
+2. Set the `cd-hero-actions` container to `flex-direction: row` to ensure horizontal alignment, as the additional buttons were incorrectly stacking vertically and stretching the hero layout.
+3. Added a dedicated `POST /api/v1/candidates/{candidate_id}/retry-ats` endpoint in `backend/routers/candidates.py` to accept manual retries and enqueue the `score_candidate_application` Celery task.
+
+**Files Modified:**
+- `frontend/src/components/Candidates/CandidateHero.jsx`
+- `frontend/src/components/Candidates/CandidateDetailPage.css`
+- `backend/routers/candidates.py`
+
+---
+
+## 154. Fix position_id Context Loss During Navigation
+
+**Problem Statement:**
+When clicking a candidate from the Pipeline stack view or Kanban view, the candidate's action buttons (Move to, Schedule, Retry ATS) were missing. This occurred because `positionId` was not passed in the React Router state during navigation. 
+
+**Idea / Solution:**
+Updated `onClick` navigation handlers in both `PipelineStackView.jsx` and `PipelineTab.jsx` to correctly include `positionId` in the router's state payload, ensuring the Candidate Detail Page recognizes the specific position context and renders the action panel.
+
+**Files Modified:**
+- `frontend/src/components/Positions/PipelineStackView.jsx`
+- `frontend/src/components/Positions/tabs/PipelineTab.jsx`
+
+---
+
+## 155. Fix Celery Type Mismatch for ATS Retry
+
+**Problem Statement:**
+When clicking the "Retry ATS Score" button, the Celery task failed with `invalid input for query argument $1: '12' ('str' object cannot be interpreted as an integer)`. This happened because the frontend `positionId` was passed as a string and asyncpg strictly requires integers for DB binding.
+
+**Idea / Solution:**
+Added explicit `int()` casts for `application_id` and `position_id` inside the `retry_ats_scoring` endpoint handler in `backend/routers/candidates.py` before passing the parameters to the Celery `score_candidate_application.delay()` function.
+
+**Files Modified:**
+- `backend/routers/candidates.py`

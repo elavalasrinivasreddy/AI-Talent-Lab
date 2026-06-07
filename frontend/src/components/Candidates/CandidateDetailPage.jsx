@@ -99,6 +99,15 @@ export default function CandidateDetailPage() {
     }
   }
 
+  const handleRetryAts = async () => {
+    try {
+      await candidatesApi.retryAts(candidate.id, candidate.application_id, positionId)
+      alert('ATS scoring has been re-queued. Please wait a minute and refresh the page.')
+    } catch (e) {
+      alert(`Error: ${e.message}`)
+    }
+  }
+
   if (loading) return <CandidateSkeleton />
   if (!candidate) return (
     <div className="cd-error">
@@ -136,6 +145,7 @@ export default function CandidateDetailPage() {
         onMarkSelected={() => setSelectConfirmOpen(true)}
         onSchedule={() => {}} // TODO: schedule modal
         onDraftRejection={() => {}} // TODO: rejection draft modal
+        onRetryAts={handleRetryAts}
       />
 
       {/* Tags + Status row */}

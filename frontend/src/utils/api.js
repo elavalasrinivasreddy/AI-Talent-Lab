@@ -132,6 +132,7 @@ export const candidatesApi = {
   addTag: (id, tag) => _post(`/candidates/${id}/tags`, { tag }),
   removeTag: (id, tag) => _delete(`/candidates/${id}/tags/${tag}`),
   sendOutreach: (applicationIds) => _post('/candidates/send-outreach', { application_ids: applicationIds }),
+  retryAts: (id, application_id, position_id) => _post(`/candidates/${id}/retry-ats`, { application_id, position_id }),
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────

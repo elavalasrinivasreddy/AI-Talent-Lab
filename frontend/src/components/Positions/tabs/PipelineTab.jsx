@@ -239,7 +239,7 @@ export default function PipelineTab({ positionId }) {
                   activeStage={activeStage}
                   onMove={(newStatus) => handleMoveCard(card, newStatus)}
                   onClick={() => navigate(`/candidates/${card.id}`, {
-                    state: { from: `/positions/${positionId}`, fromLabel: 'Back to Position', fromTab: 'pipeline' }
+                    state: { positionId, from: `/positions/${positionId}`, fromLabel: 'Back to Position', fromTab: 'pipeline' }
                   })}
                 />
               ))}
@@ -301,7 +301,7 @@ export default function PipelineTab({ positionId }) {
                       positionId={positionId}
                       onMove={(newStatus) => handleMoveCard(card, newStatus)}
                       onClick={() => navigate(`/candidates/${card.id}`, {
-                        state: { from: `/positions/${positionId}`, fromLabel: 'Back to Position', fromTab: 'pipeline' }
+                        state: { positionId, from: `/positions/${positionId}`, fromLabel: 'Back to Position', fromTab: 'pipeline' }
                       })}
                     />
                   ))}

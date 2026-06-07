@@ -81,7 +81,7 @@ export default function CandidatesTab({ positionId }) {
               key={c.application_id || c.id}
               candidate={c}
               onView={() => navigate(`/candidates/${c.id}`, {
-                state: { from: `/positions/${positionId}`, fromLabel: 'Back to Position', fromTab: 'candidates' }
+                state: { positionId, from: `/positions/${positionId}`, fromLabel: 'Back to Position', fromTab: 'candidates' }
               })}
               onSendOutreach={() => handleSendOutreach(c.application_id)}
             />

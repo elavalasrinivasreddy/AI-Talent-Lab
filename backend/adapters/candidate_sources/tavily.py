@@ -146,8 +146,8 @@ class TavilyAdapter(CandidateSourceAdapter):
 
         logger.info(f"TavilyAdapter: {len(raw_results)} raw results, extracting dossiers…")
 
-        # LLM for structured extraction — low temperature for factual faithfulness
-        llm = get_llm(temperature=0.1, max_tokens=512)
+        # LLM for structured extraction — use 8b-instant to avoid rate limits during parallel scraping
+        llm = get_llm(model="llama-3.1-8b-instant", temperature=0.1, max_tokens=512)
 
         seen: set[tuple[str, str]] = set()
         candidates: list[dict] = []

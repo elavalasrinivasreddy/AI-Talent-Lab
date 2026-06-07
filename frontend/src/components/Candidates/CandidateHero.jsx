@@ -29,6 +29,7 @@ export default function CandidateHero({
   onMarkSelected,
   onSchedule,
   onDraftRejection,
+  onRetryAts,
 }) {
   const score = candidate.skill_match_score
   const scoreStyle = score != null ? getScoreStyle(score) : null
@@ -103,6 +104,9 @@ export default function CandidateHero({
         <div className="cd-hero-actions">
           {candidate.application_id && positionId && (
             <>
+              <button className="cd-action-secondary" onClick={onRetryAts}>
+                <Icon name="refresh-cw" size={13} /> Retry ATS Score
+              </button>
               <button
                 className="cd-action-primary"
                 onClick={() => {

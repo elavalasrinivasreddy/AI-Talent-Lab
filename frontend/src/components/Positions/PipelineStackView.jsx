@@ -68,6 +68,7 @@ export default function PipelineStackView({
   const handleOpen = (candidate) => {
     navigate(`/candidates/${candidate.id}`, {
       state: {
+        positionId,
         from: `/positions/${positionId}`,
         fromTab: 'pipeline',
         fromLabel: 'Back to Position',

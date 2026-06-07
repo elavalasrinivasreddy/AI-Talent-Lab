@@ -419,6 +419,19 @@ class ApplyService:
         except Exception as e:
             logger.warning(f"GDPR consent recording failed: {e}")
 
+        # ── Trigger ATS Scoring Background Task ──────────────────────────────
+        try:
+            from backend.tasks.candidate_pipeline import score_candidate_application
+            score_candidate_application.delay(
+                candidate_id,
+                application_id,
+                payload.get("position_id"),
+                org_id
+            )
+            logger.info(f"Dispatched ATS scoring task for application {application_id}")
+        except Exception as e:
+            logger.error(f"Failed to dispatch ATS scoring task: {e}")
+
         return {"completed": True}
 
     # ── Helpers ────────────────────────────────────────────────────────────────
