@@ -3195,3 +3195,9 @@ Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, 
 **Symptom:** The position status dropdown ("Active (Open)") in the `PositionHero` header appeared as a dark, unstyled native select element that looked out of place and broke the premium aesthetics of the design system.
 **Root Cause:** When the user had edit permissions, the system swapped out the beautiful `Chip` component for a raw `<select>` element with a basic CSS class (`pd-status-select--inline`). Native selects are difficult to style beautifully across different browsers and operating systems.
 **Fix:** Refactored the interactive status control to utilize an invisible native `<select>` element perfectly overlaid on top of a fully-styled `Chip` component. This preserves the beautiful, dynamic status colors (e.g., green for Active, yellow for On Hold) and semantic `Chip` design while retaining the interactive dropdown behavior of the `<select>`.
+
+---
+### 184. Refactored Position Status UI Layout (Static Chip + Action Button)
+**Symptom:** Based on product feedback, replacing the inline static status label with an interactive dropdown broke the clean aesthetics of the title header row. 
+**Root Cause:** Interactivity was embedded directly into the primary status indicator, making it visually noisy. 
+**Fix:** Restored the `Active (Open)` status indicator next to the position title to be a purely static, beautiful semantic `Chip`. Moved the interactive state change control out of the title flow entirely, adding a distinct "Change Status" dropdown button into the right-hand action bar (`pd-hero-actions`). This preserves discoverability without cluttering the main metadata display.

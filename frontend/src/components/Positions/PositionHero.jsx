@@ -104,28 +104,7 @@ export default function PositionHero({
             <button className="pd-hero-info-btn" onClick={() => setDrawerOpen(true)} title="View Original Request">
               <Icon name="info" size={16} />
             </button>
-            {canEditStatus ? (
-              <div style={{ position: 'relative', display: 'inline-block' }}>
-                <Chip variant={status.variant} dot size="sm" style={{ cursor: 'pointer', paddingRight: '24px' }}>
-                  {status.label} 
-                  <Icon name="chevron-down" size={12} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
-                </Chip>
-                <select
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', appearance: 'none' }}
-                  value={position.status || 'draft'}
-                  onChange={(e) => handleStatusClick(e.target.value)}
-                  title="Change Status"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="open">Active (Open)</option>
-                  <option value="on_hold">On Hold</option>
-                  <option value="closed">Closed</option>
-                  <option value="archived">Archived</option>
-                </select>
-              </div>
-            ) : (
-              <Chip variant={status.variant} dot size="sm">{status.label}</Chip>
-            )}
+            <Chip variant={status.variant} dot size="sm">{status.label}</Chip>
           </div>
 
           <div className="pd-hero-meta">
@@ -157,6 +136,27 @@ export default function PositionHero({
           )}
 
           <div className="pd-hero-actions">
+            {canEditStatus && (
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <button className="pd-btn pd-btn-outline" title="Change Status" style={{ paddingRight: '24px' }}>
+                  <Icon name="edit" size={14} />
+                  Change Status
+                  <Icon name="chevron-down" size={12} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
+                </button>
+                <select
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', appearance: 'none' }}
+                  value={position.status || 'draft'}
+                  onChange={(e) => handleStatusClick(e.target.value)}
+                  title="Change Status"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="open">Active (Open)</option>
+                  <option value="on_hold">On Hold</option>
+                  <option value="closed">Closed</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+            )}
             <button className="pd-btn pd-btn-outline" title="Share Position">
               <Icon name="share" size={14} />
               Share
