@@ -47,6 +47,9 @@ export default function CandidateDetailPage() {
   const [activeTab, setActiveTab] = useState('skills')
   const [movingStatus, setMovingStatus] = useState(false)
   const [selectConfirmOpen, setSelectConfirmOpen] = useState(false)
+  const [statusConfirmOpen, setStatusConfirmOpen] = useState(false)
+  const [pendingStatus, setPendingStatus] = useState(null)
+  const [retryAtsConfirmOpen, setRetryAtsConfirmOpen] = useState(false)
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
   const [draftRejectionModalOpen, setDraftRejectionModalOpen] = useState(false)
   const [toast, setToast] = useState(null)
@@ -74,21 +77,29 @@ export default function CandidateDetailPage() {
 
   useEffect(() => { load() }, [load])
 
-  const handleStatusChange = async (newStatus) => {
+  const handleStatusChange = (newStatus) => {
     if (!candidate?.application_id) return
+    setPendingStatus(newStatus)
+    setStatusConfirmOpen(true)
+  }
+
+  const confirmStatusChange = async () => {
+    if (!pendingStatus) return
     setMovingStatus(true)
+    setStatusConfirmOpen(false)
     try {
       await candidatesApi.updateStatus(candidate.id, {
-        status: newStatus,
+        status: pendingStatus,
         application_id: candidate.application_id,
         position_id: parseInt(positionId, 10),
       })
-      setCandidate(prev => ({ ...prev, pipeline_status: newStatus }))
+      setCandidate(prev => ({ ...prev, pipeline_status: pendingStatus }))
       load()
     } catch (e) {
       setToast({ message: `Move failed: ${e.message}`, type: 'error' })
     } finally {
       setMovingStatus(false)
+      setPendingStatus(null)
     }
   }
 
@@ -107,7 +118,10 @@ export default function CandidateDetailPage() {
     }
   }
 
-  const handleRetryAts = async () => {
+  const handleRetryAts = () => setRetryAtsConfirmOpen(true)
+
+  const confirmRetryAts = async () => {
+    setRetryAtsConfirmOpen(false)
     try {
       setToast({ message: 'ATS scoring triggered. Updating...', type: 'success' })
       await candidatesApi.retryAts(candidate.id, candidate.application_id, parseInt(positionId, 10))
@@ -258,6 +272,26 @@ export default function CandidateDetailPage() {
         title="Mark Selected"
         message="Mark this candidate as selected? This action will be logged."
         confirmText="Mark Selected"
+        confirmVariant="primary"
+      />
+
+      <ConfirmModal
+        isOpen={statusConfirmOpen}
+        onClose={() => { setStatusConfirmOpen(false); setPendingStatus(null); }}
+        onConfirm={confirmStatusChange}
+        title="Change Status"
+        message={`Are you sure you want to change the candidate's status to "${pendingStatus && PIPELINE_STAGES[pendingStatus] ? PIPELINE_STAGES[pendingStatus].label : pendingStatus}"?`}
+        confirmText="Change Status"
+        confirmVariant="primary"
+      />
+
+      <ConfirmModal
+        isOpen={retryAtsConfirmOpen}
+        onClose={() => setRetryAtsConfirmOpen(false)}
+        onConfirm={confirmRetryAts}
+        title="Retry ATS Score"
+        message="Are you sure you want to re-run the ATS scoring? This will overwrite the current AI analysis."
+        confirmText="Retry Score"
         confirmVariant="primary"
       />
 

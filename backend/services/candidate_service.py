@@ -89,6 +89,11 @@ async def compute_ats_score(
             "missing_skills": [],
             "extra_skills": [],
             "summary": "Candidate profile does not closely match the role requirements.",
+            "emb_score": round(emb_score * 100, 1),
+            "skills_match": 0.0,
+            "experience_match": 0.0,
+            "career_trajectory": "unknown",
+            "red_flags": [],
             "method": "embedding_only"
         }
 
@@ -105,6 +110,11 @@ async def compute_ats_score(
             "missing_skills": [],
             "extra_skills": [],
             "summary": "No resume available. Score based on profile similarity only.",
+            "emb_score": round(emb_score * 100, 1),
+            "skills_match": 0.0,
+            "experience_match": 0.0,
+            "career_trajectory": "unknown",
+            "red_flags": [],
             "method": "embedding_only"
         }
 
@@ -180,7 +190,12 @@ Rules:
             "matched_skills": [],
             "missing_skills": [],
             "extra_skills": [],
-            "summary": "Score computed from profile similarity.",
+            "summary": "LLM ATS scoring failed. Falling back to embedding score.",
+            "emb_score": round(emb_score * 100, 1),
+            "skills_match": 0.0,
+            "experience_match": 0.0,
+            "career_trajectory": "unknown",
+            "red_flags": [],
             "method": "embedding_fallback"
         }
 

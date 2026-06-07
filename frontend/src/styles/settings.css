@@ -869,8 +869,7 @@
   padding: var(--space-6);
   width: 90%;
   max-width: 800px;
-  max-height: 80vh;
-  min-height: 400px;
+  max-height: 90vh;
   overflow: auto;
   resize: both;
   animation: fadeInUp 250ms ease;

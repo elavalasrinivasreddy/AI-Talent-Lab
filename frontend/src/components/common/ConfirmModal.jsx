@@ -19,7 +19,7 @@ export default function ConfirmModal({ isOpen, onClose, onConfirm, title, messag
 
   return (
     <div className="modal-overlay" onClick={confirming ? undefined : onClose} style={{ zIndex: 9999 }}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center', padding: 'var(--space-6)' }}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', minHeight: 'auto', textAlign: 'center', padding: 'var(--space-6)' }}>
         <div style={{ marginBottom: 'var(--space-4)' }}>
           <div style={{
             width: '48px', height: '48px', borderRadius: '50%',

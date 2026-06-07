@@ -388,7 +388,7 @@ class ApplyService:
             # Notify recruiter — find who created the position
             app_row = await conn.fetchrow(
                 """
-                SELECT p.created_by, c.name AS candidate_name, p.role_name
+                SELECT p.created_by, c.name AS candidate_name, p.role_name, ca.position_id
                 FROM candidate_applications ca
                 JOIN positions p ON p.id = ca.position_id
                 JOIN candidates c ON c.id = ca.candidate_id
@@ -396,6 +396,9 @@ class ApplyService:
                 """,
                 application_id
             )
+            
+            position_id = app_row["position_id"] if app_row else None
+
             if app_row and app_row["created_by"]:
                 await NotificationRepository.create(conn, {
                     "org_id": org_id,
@@ -403,7 +406,7 @@ class ApplyService:
                     "type": "application_received",
                     "title": f"New Application — {app_row['role_name']}",
                     "message": f"{app_row['candidate_name']} has submitted their application via chat.",
-                    "action_url": f"/positions/{payload.get('position_id')}?tab=candidates",
+                    "action_url": f"/positions/{position_id}?tab=candidates",
                 })
 
         # ── GDPR: Record consent + set data retention ────────────────────────
@@ -425,7 +428,7 @@ class ApplyService:
             score_candidate_application.delay(
                 candidate_id,
                 application_id,
-                payload.get("position_id"),
+                position_id,
                 org_id
             )
             logger.info(f"Dispatched ATS scoring task for application {application_id}")

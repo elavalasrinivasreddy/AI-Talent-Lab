@@ -13,14 +13,9 @@ from backend.adapters.llm.factory import get_llm
 logger = logging.getLogger(__name__)
 
 # ── Step definitions ──────────────────────────────────────────────────────────
-
 STEPS = [
     "greeting",
     "interest",
-    "current_role",
-    "experience",
-    "compensation",
-    "notice_period",
     "resume_upload",
     "screening_questions",
     "completion",
@@ -69,18 +64,6 @@ class CandidateChatController:
 
         elif step == "interest":
             return await self._step_interest(user_message)
-
-        elif step == "current_role":
-            return await self._step_current_role(user_message)
-
-        elif step == "experience":
-            return await self._step_experience(user_message)
-
-        elif step == "compensation":
-            return await self._step_compensation(user_message)
-
-        elif step == "notice_period":
-            return await self._step_notice_period(user_message)
 
         elif step == "resume_upload":
             # Resume upload handled separately via file endpoint
@@ -136,111 +119,12 @@ class CandidateChatController:
                 self.state
             )
 
-        # Interested → move to current role
-        candidate = self.context.get("candidate", {})
-        current_title = candidate.get("current_title")
-        current_company = candidate.get("current_company")
-
-        self.state["step"] = "current_role"
-
-        if current_title and current_company:
-            msg = (
-                f"Wonderful! Let's get started.\n\n"
-                f"We have you listed as **{current_title}** at **{current_company}** — "
-                f"is that still your current role?"
-            )
-            self.state["has_profile"] = True
-        else:
-            msg = "Wonderful! Could you share your current role and company?"
-            self.state["has_profile"] = False
-
-        return msg, self.state
-
-    async def _step_current_role(self, user_message: str) -> tuple[str, dict]:
-        """Confirm or update current role."""
-        msg_lower = (user_message or "").lower()
-        affirmative = ["yes", "correct", "right", "that's right", "yep", "yeah", "sure"]
-
-        if self.state.get("has_profile") and any(kw in msg_lower for kw in affirmative):
-            # Confirmed — no change needed
-            candidate = self.context.get("candidate", {})
-            self.state["current_title"] = candidate.get("current_title")
-            self.state["current_company"] = candidate.get("current_company")
-        else:
-            # Parse updated role/company from message using LLM
-            parsed = await self._llm_parse_role(user_message)
-            self.state["current_title"] = parsed.get("title", user_message)
-            self.state["current_company"] = parsed.get("company", "")
-
-        self.state["step"] = "experience"
-        role_name = self.state.get("role_name", "this role")
-        # Infer role area from role name
-        role_area = role_name.replace("Senior ", "").replace("Lead ", "").replace("Principal ", "")
-
-        return (
-            f"Got it!\n\n"
-            f"How many years of total professional experience do you have?\n\n"
-            f"And of those, how many are directly relevant to {role_area}?",
-            self.state
-        )
-
-    async def _step_experience(self, user_message: str) -> tuple[str, dict]:
-        """Extract experience years."""
-        parsed = await self._llm_parse_experience(user_message)
-        total = parsed.get("total_years")
-        relevant = parsed.get("relevant_years")
-
-        self.state["experience_years"] = total
-        self.state["relevant_experience_years"] = relevant
-        self.state["step"] = "compensation"
-
-        if total and relevant:
-            confirm = f"Got it — {total} years total, {relevant} years of directly relevant experience."
-        elif total:
-            confirm = f"Got it — {total} years of total experience."
-        else:
-            confirm = "Got it, thank you!"
-
-        return (
-            f"{confirm}\n\n"
-            "A couple of questions about compensation — this helps ensure "
-            "the role is the right fit for both of us:\n\n"
-            "1. What is your current annual CTC?\n"
-            "2. What are you expecting for this role?\n\n"
-            "*(You can skip this if you prefer — just say \"skip\")*",
-            self.state
-        )
-
-    async def _step_compensation(self, user_message: str) -> tuple[str, dict]:
-        """Collect CTC details or handle decline."""
-        msg_lower = (user_message or "").lower()
-        skip_kws = ["skip", "prefer not", "decline", "rather not", "no thanks", "pass"]
-
-        if any(kw in msg_lower for kw in skip_kws):
-            self.state["compensation_declined"] = True
-            self.state["compensation_current"] = "declined"
-            self.state["compensation_expected"] = "declined"
-        else:
-            parsed = await self._llm_parse_compensation(user_message)
-            self.state["compensation_current"] = parsed.get("current_ctc", user_message)
-            self.state["compensation_expected"] = parsed.get("expected_ctc", "")
-            self.state["compensation_declined"] = False
-
-        self.state["step"] = "notice_period"
-        return (
-            "Thank you!\n\n"
-            "What is your notice period at your current company?\n\n"
-            "*(If you're between jobs or immediately available, just let me know!)*",
-            self.state
-        )
-
-    async def _step_notice_period(self, user_message: str) -> tuple[str, dict]:
-        """Record notice period."""
-        self.state["notice_period"] = (user_message or "").strip()
+        # Interested → move to resume_upload
         self.state["step"] = "resume_upload"
 
         return (
-            "Almost done! Please share your latest resume.\n\n"
+            "Wonderful! Let's get started.\n\n"
+            "Please share your latest resume.\n\n"
             "You can upload a **PDF or Word document** (max 5MB).",
             self.state
         )
@@ -294,61 +178,3 @@ class CandidateChatController:
             self.state
         )
 
-    # ── LLM helpers ────────────────────────────────────────────────────────────
-
-    async def _llm_parse_role(self, text: str) -> dict:
-        try:
-            resp = await self.llm.ainvoke([{
-                "role": "user",
-                "content": (
-                    f'Extract the job title and company from this text. Return ONLY JSON.\n'
-                    f'Text: "{text}"\n'
-                    f'Return: {{"title": "...", "company": "..."}}'
-                )
-            }])
-            content = resp.content.strip()
-            if "```" in content:
-                content = content.split("```")[1].strip()
-                if content.startswith("json"):
-                    content = content[4:].strip()
-            return json.loads(content)
-        except Exception:
-            return {"title": text, "company": ""}
-
-    async def _llm_parse_experience(self, text: str) -> dict:
-        try:
-            resp = await self.llm.ainvoke([{
-                "role": "user",
-                "content": (
-                    f'Extract total years and relevant years of experience from: "{text}"\n'
-                    f'Return ONLY JSON: {{"total_years": 5, "relevant_years": 3}}\n'
-                    f'Use null if not mentioned.'
-                )
-            }])
-            content = resp.content.strip()
-            if "```" in content:
-                content = content.split("```")[1].strip()
-                if content.startswith("json"):
-                    content = content[4:].strip()
-            return json.loads(content)
-        except Exception:
-            return {"total_years": None, "relevant_years": None}
-
-    async def _llm_parse_compensation(self, text: str) -> dict:
-        try:
-            resp = await self.llm.ainvoke([{
-                "role": "user",
-                "content": (
-                    f'Extract current CTC and expected CTC from: "{text}"\n'
-                    f'Return ONLY JSON: {{"current_ctc": "12 LPA", "expected_ctc": "18 LPA"}}\n'
-                    f'Use null if not mentioned.'
-                )
-            }])
-            content = resp.content.strip()
-            if "```" in content:
-                content = content.split("```")[1].strip()
-                if content.startswith("json"):
-                    content = content[4:].strip()
-            return json.loads(content)
-        except Exception:
-            return {"current_ctc": text, "expected_ctc": None}

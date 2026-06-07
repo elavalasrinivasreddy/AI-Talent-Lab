@@ -3201,3 +3201,21 @@ Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, 
 **Symptom:** Based on product feedback, replacing the inline static status label with an interactive dropdown broke the clean aesthetics of the title header row. 
 **Root Cause:** Interactivity was embedded directly into the primary status indicator, making it visually noisy. 
 **Fix:** Restored the `Active (Open)` status indicator next to the position title to be a purely static, beautiful semantic `Chip`. Moved the interactive state change control out of the title flow entirely, adding a distinct "Change Status" dropdown button into the right-hand action bar (`pd-hero-actions`). This preserves discoverability without cluttering the main metadata display.
+
+---
+### 185. Candidate Actions Modals & Popup Placement
+**Symptom:**
+1. Most candidate pipeline actions (status change, retry ATS) were missing confirmation modals.
+2. Small popups (like ConfirmModal) appeared unnecessarily tall with huge vertical spacing, making them appear pushed down, while tall popups (like Schedule Interview) didn't utilize available screen height efficiently, forcing unnecessary scrolling.
+**Root Cause:**
+1. Handlers directly called API without intercepting with state-driven ConfirmModals.
+2. Global `.modal-content` CSS forced a `min-height: 400px`, making small modals huge, and a restrictive `max-height: 80vh` which cut off tall modals too early.
+**Fix:**
+- Intercepted `handleStatusChange` and `handleRetryAts` in `CandidateDetailPage.jsx` with React state to render `ConfirmModal`s before executing the API calls.
+- Removed `min-height: 400px` from global `.modal-content` and increased `max-height` to `90vh` so modals wrap their content beautifully and center perfectly on the screen.
+
+---
+### 186. Organic Candidate ATS Scoring Failure ('NoneType' object has no attribute 'get')
+**Symptom:** When a candidate applied through the careers page chat bot (organic application), their background ATS scoring failed silently in Celery with `'NoneType' object has no attribute 'get'`, leaving them without an AI score or evaluation. Additionally, the notification sent to recruiters had a broken link (`/positions/None?tab=candidates`).
+**Root Cause:** The `apply_service.py` attempted to extract `position_id` from the decoded magic link JWT payload (`payload.get("position_id")`). However, the magic link token schema only contains `application_id`, `candidate_id`, and `org_id`. Because it didn't exist, `position_id` evaluated to `None`. This `None` was passed to the celery background task, causing `PositionRepository.get()` to return `None`, which immediately crashed when trying to access `position.get("ats_threshold")`.
+**Fix:** Updated the recruiter notification query inside `complete_application` to explicitly `SELECT ca.position_id` from the `candidate_applications` table using the known `application_id`. Substituted the broken `payload.get()` fallback with the real, database-verified `position_id` for both the notification action URL and the Celery background task arguments.

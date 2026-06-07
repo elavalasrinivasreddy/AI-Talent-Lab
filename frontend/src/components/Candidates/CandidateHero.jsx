@@ -125,11 +125,11 @@ export default function CandidateHero({
                   </button>
                 )}
               </div>
-              <div className="cd-action-row-sub">
-                <button className="cd-btn cd-btn-ghost" onClick={onRetryAts}>
+              <div className="cd-action-row-sub" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <button className="cd-btn cd-btn-outline" onClick={onRetryAts}>
                   <Icon name="refresh-cw" size={13} /> Retry ATS Score
                 </button>
-                <button className="cd-btn cd-btn-ghost-danger" onClick={onDraftRejection}>
+                <button className="cd-btn cd-btn-outline" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }} onClick={onDraftRejection}>
                   <Icon name="x" size={13} /> Draft Rejection
                 </button>
               </div>
