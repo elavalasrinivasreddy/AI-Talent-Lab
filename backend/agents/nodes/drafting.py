@@ -12,6 +12,8 @@ import os
 
 from backend.adapters.llm.factory import get_llm
 from backend.agents.state import AgentState
+from backend.config import settings
+from backend.services.llm_usage_logger import llm_context
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +119,8 @@ Generate the 3 JD variants now."""
         ]
 
         logger.info(f"Generating 3 JD variants for {role_name}")
-        response = await llm.ainvoke(messages)
+        with llm_context(org_id=state.get("org_id"), operation="jd_generation", model=settings.LLM_PROVIDER):
+            response = await llm.ainvoke(messages)
         
         content_raw = response.content
         if isinstance(content_raw, list):
@@ -265,8 +268,9 @@ Generate the final polished JD in markdown now."""
                     await token_queue.put(text)
             content = "".join(parts).strip()
         else:
-            response = await llm.ainvoke(messages)
-            
+            with llm_context(org_id=state.get("org_id"), operation="jd_generation", model=settings.LLM_PROVIDER):
+                response = await llm.ainvoke(messages)
+
             content_raw = response.content
             if isinstance(content_raw, list):
                 content_raw = " ".join(

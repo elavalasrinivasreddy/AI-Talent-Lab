@@ -8,6 +8,8 @@ import math
 from typing import Optional, Any
 
 from backend.adapters.llm.factory import get_llm, get_embedding_model
+from backend.config import settings
+from backend.services.llm_usage_logger import llm_context
 from backend.db.connection import get_connection
 from backend.db.repositories.candidates import CandidateRepository
 from backend.db.repositories.positions import PositionRepository
@@ -137,7 +139,8 @@ Rules:
 - career_trajectory: must be one of "steady_growth", "job_hopper", or "unknown"
 - red_flags: list of potential issues, or empty list if none"""
 
-        response = await llm.ainvoke([{"role": "user", "content": prompt}])
+        with llm_context(org_id=org_id, operation="ats_scoring", model=settings.LLM_PROVIDER):
+            response = await llm.ainvoke([{"role": "user", "content": prompt}])
         content = response.content.strip()
         if "```json" in content:
             content = content.split("```json")[-1].split("```")[0].strip()

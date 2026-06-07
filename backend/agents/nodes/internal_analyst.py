@@ -9,6 +9,8 @@ import os
 
 from backend.adapters.llm.factory import get_llm
 from backend.agents.state import AgentState
+from backend.config import settings
+from backend.services.llm_usage_logger import llm_context
 
 try:
     from backend.db.vector_store import search_similar
@@ -87,7 +89,8 @@ async def run_internal_analyst(state: AgentState) -> AgentState:
             {"role": "user", "content": user_content},
         ]
 
-        response = await llm.ainvoke(messages)
+        with llm_context(org_id=org_id, operation="internal_analysis", model=settings.LLM_PROVIDER):
+            response = await llm.ainvoke(messages)
         content_raw = response.content
         if isinstance(content_raw, list):
             # Model may return a list of content blocks (multimodal); join their text

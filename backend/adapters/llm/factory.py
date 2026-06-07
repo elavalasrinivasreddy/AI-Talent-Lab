@@ -8,6 +8,7 @@ import logging
 from typing import Optional
 
 from backend.config import settings
+from backend.services.llm_usage_logger import llm_usage_callback
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ def get_llm(
         return ChatGroq(
             api_key=settings.GROQ_API_KEY,
             model_name=model or "llama-3.3-70b-versatile",
+            callbacks=[llm_usage_callback],
             **common_kwargs,
         )
 
@@ -54,6 +56,7 @@ def get_llm(
         return ChatOpenAI(
             api_key=settings.OPENAI_API_KEY,
             model=model or "gpt-4o-mini",
+            callbacks=[llm_usage_callback],
             **common_kwargs,
         )
 
@@ -63,6 +66,7 @@ def get_llm(
         return ChatGoogleGenerativeAI(
             google_api_key=settings.GEMINI_API_KEY,
             model=model or "gemini-2.0-flash",
+            callbacks=[llm_usage_callback],
             **common_kwargs,
         )
 

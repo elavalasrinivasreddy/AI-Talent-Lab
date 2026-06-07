@@ -10,6 +10,8 @@ import os
 from backend.adapters.llm.factory import get_llm
 from backend.agents.state import AgentState
 from backend.agents.tools.search import search_competitor_jds, SearchError
+from backend.config import settings
+from backend.services.llm_usage_logger import llm_context
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +78,8 @@ async def run_market_intelligence(state: AgentState) -> AgentState:
             {"role": "user", "content": user_content},
         ]
 
-        response = await llm.ainvoke(messages)
+        with llm_context(org_id=state.get("org_id"), operation="market_intelligence", model=settings.LLM_PROVIDER):
+            response = await llm.ainvoke(messages)
         content_raw = response.content
         if isinstance(content_raw, list):
             # Model may return a list of content blocks (multimodal); join their text

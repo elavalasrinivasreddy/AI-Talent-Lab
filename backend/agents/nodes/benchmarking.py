@@ -9,6 +9,8 @@ import os
 
 from backend.adapters.llm.factory import get_llm
 from backend.agents.state import AgentState
+from backend.config import settings
+from backend.services.llm_usage_logger import llm_context
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +51,8 @@ async def run_benchmarking(state: AgentState) -> AgentState:
             {"role": "user", "content": user_content},
         ]
 
-        response = await llm.ainvoke(messages)
+        with llm_context(org_id=state.get("org_id"), operation="benchmarking", model=settings.LLM_PROVIDER):
+            response = await llm.ainvoke(messages)
         content_raw = response.content
         if isinstance(content_raw, list):
             # Model may return a list of content blocks (multimodal); join their text
