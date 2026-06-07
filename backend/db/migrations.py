@@ -1053,4 +1053,58 @@ async def run_migrations(conn) -> None:
     await conn.execute(actor_type_sql)
     logger.info("  pipeline_events.actor_type column ensured.")
 
+    # ── Ops Intelligence tables ──────────────────────────────────────────────────
+    ops_sql = """
+    CREATE TABLE IF NOT EXISTS llm_usage_log (
+        id            SERIAL PRIMARY KEY,
+        org_id        INTEGER,
+        operation     VARCHAR(60) NOT NULL DEFAULT 'unknown',
+        model         VARCHAR(80) NOT NULL DEFAULT 'unknown',
+        input_tokens  INTEGER NOT NULL DEFAULT 0,
+        output_tokens INTEGER NOT NULL DEFAULT 0,
+        cost_usd      NUMERIC(12, 6) NOT NULL DEFAULT 0,
+        duration_ms   INTEGER,
+        success       BOOLEAN NOT NULL DEFAULT true,
+        error_code    VARCHAR(50),
+        created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_llm_usage_org_op
+        ON llm_usage_log(org_id, operation, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS task_run_log (
+        id                   SERIAL PRIMARY KEY,
+        org_id               INTEGER,
+        task_type            VARCHAR(60) NOT NULL,
+        position_id          INTEGER,
+        status               VARCHAR(20) NOT NULL DEFAULT 'success',
+        candidates_found     INTEGER,
+        candidates_processed INTEGER,
+        duration_ms          INTEGER,
+        error_message        TEXT,
+        celery_task_id       VARCHAR(200),
+        created_at           TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_task_run_org_type
+        ON task_run_log(org_id, task_type, created_at DESC);
+    """
+    await conn.execute(ops_sql)
+    logger.info("  llm_usage_log and task_run_log tables ensured.")
+
+    # Add jd_status to positions
+    await conn.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='positions' AND column_name='jd_status'
+        ) THEN
+            ALTER TABLE positions
+                ADD COLUMN jd_status VARCHAR(20) NOT NULL DEFAULT 'na';
+            COMMENT ON COLUMN positions.jd_status IS
+                'na | draft | pending_review | approved | rejected';
+        END IF;
+    END $$;
+    """)
+    logger.info("  positions.jd_status column ensured.")
+
     logger.info("Database migrations complete.")
