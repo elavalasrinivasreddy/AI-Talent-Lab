@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from backend.db.repositories.departments import DeptRepository
 from backend.dependencies import get_current_user, get_db
 from backend.services.dashboard_service import DashboardService
+from backend.services.ops_service import OpsService
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["Dashboard"])
 logger = logging.getLogger(__name__)
@@ -160,6 +161,42 @@ async def get_bottlenecks(
     current_user=Depends(get_current_user),
 ):
     return await DashboardService.get_bottleneck_radar(
+        org_id=current_user["org_id"],
+        period=period,
+    )
+
+
+@router.get("/ops/celery")
+async def get_celery_stats(
+    period: str = Query("quarter", pattern="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    """Celery task health: success rate, candidate yield, timing."""
+    return await OpsService.get_celery_stats(
+        org_id=current_user["org_id"],
+        period=period,
+    )
+
+
+@router.get("/ops/llm")
+async def get_llm_stats(
+    period: str = Query("quarter", pattern="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    """LLM token usage and cost breakdown by operation."""
+    return await OpsService.get_llm_stats(
+        org_id=current_user["org_id"],
+        period=period,
+    )
+
+
+@router.get("/ops/jd")
+async def get_jd_stats(
+    period: str = Query("quarter", pattern="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    """JD generation performance + position lifecycle stats."""
+    return await OpsService.get_jd_stats(
         org_id=current_user["org_id"],
         period=period,
     )
