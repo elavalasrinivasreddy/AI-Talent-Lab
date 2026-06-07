@@ -8,6 +8,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { dashboardApi, candidatesApi } from '../../../utils/api'
 import { PIPELINE_STAGES, getScoreStyle } from '../../../utils/constants'
+import Toast from '../../common/Toast'
 import './PipelineTab.css'
 
 const VISIBLE_STAGES = ['sourced', 'emailed', 'applied', 'screening', 'interview', 'selected', 'rejected']
@@ -30,6 +31,7 @@ export default function PipelineTab({ positionId }) {
   const [sortBy, setSortBy] = useState('score_desc')
   const [currentPage, setCurrentPage] = useState(1)
   const [viewMode, setViewMode] = useState('grid') // 'grid' | 'kanban'
+  const [toast, setToast] = useState(null)
   const navigate = useNavigate()
 
   const load = useCallback(async () => {
@@ -93,8 +95,9 @@ export default function PipelineTab({ positionId }) {
         position_id: positionId,
       })
       load()
+      setToast({ message: 'Candidate moved', type: 'success' })
     } catch (e) {
-      alert(`Move failed: ${e.message}`)
+      setToast({ message: `Move failed: ${e.message}`, type: 'error' })
     }
   }
 
@@ -116,6 +119,8 @@ export default function PipelineTab({ positionId }) {
 
   return (
     <div className="pipeline-container">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      
       {/* View Mode Toggle */}
       <div className="pipeline-toolbar">
         <div className="pipeline-view-toggle">

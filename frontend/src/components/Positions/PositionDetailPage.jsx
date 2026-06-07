@@ -17,6 +17,7 @@ import InterviewKitTab from './tabs/InterviewKitTab'
 import ActivityTab from './tabs/ActivityTab'
 import PositionSettingsTab from './tabs/PositionSettingsTab'
 import Icon from '../common/Icon'
+import Toast from '../common/Toast'
 import './PositionDetailPage.css'
 
 const TABS = [
@@ -45,6 +46,7 @@ export default function PositionDetailPage() {
   const [summary, setSummary] = useState(null)
   const [summaryUnavailable, setSummaryUnavailable] = useState(false)
   const [activeStage, setActiveStage] = useState('sourced')
+  const [toast, setToast] = useState(null)
 
   const loadPosition = useCallback(async () => {
     try {
@@ -106,8 +108,9 @@ export default function PositionDetailPage() {
     try {
       const updated = await positionsApi.updateStatus(id, newStatus)
       setPosition(prev => ({ ...prev, ...updated }))
+      setToast({ message: 'Position status updated', type: 'success' })
     } catch (e) {
-      alert(`Failed to update status: ${e.message}`)
+      setToast({ message: `Failed to update status: ${e.message}`, type: 'error' })
     }
   }
 
@@ -128,6 +131,8 @@ export default function PositionDetailPage() {
 
   return (
     <div className="pd-page">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
       {/* Hero */}
       <PositionHero
         position={position}

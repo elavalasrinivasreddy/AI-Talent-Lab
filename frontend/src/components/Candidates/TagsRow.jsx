@@ -6,6 +6,7 @@
 import React, { useState } from 'react'
 import Chip from '../common/Chip'
 import Icon from '../common/Icon'
+import Toast from '../common/Toast'
 import { candidatesApi } from '../../utils/api'
 import { PIPELINE_STAGES } from '../../utils/constants'
 
@@ -21,6 +22,7 @@ export default function TagsRow({
 }) {
   const [adding, setAdding] = useState(false)
   const [tagInput, setTagInput] = useState('')
+  const [toast, setToast] = useState(null)
 
   const handleAddTag = async () => {
     const tag = tagInput.trim().toLowerCase()
@@ -31,7 +33,7 @@ export default function TagsRow({
       setTagInput('')
       setAdding(false)
     } catch (e) {
-      alert(`Failed to add tag: ${e.message}`)
+      setToast({ message: `Failed to add tag: ${e.message}`, type: 'error' })
     }
   }
 
@@ -40,7 +42,7 @@ export default function TagsRow({
       await candidatesApi.removeTag(candidateId, tag)
       onTagsChange(tags.filter(t => t !== tag))
     } catch (e) {
-      alert(`Failed to remove tag: ${e.message}`)
+      setToast({ message: `Failed to remove tag: ${e.message}`, type: 'error' })
     }
   }
 
@@ -104,6 +106,7 @@ export default function TagsRow({
           </button>
         )}
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

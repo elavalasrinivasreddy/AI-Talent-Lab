@@ -106,30 +106,30 @@ export default function CandidateHero({
             <div className="cd-action-group-vertical">
               <div className="cd-action-row-main">
                 <button
-                  className="cd-action-primary"
+                  className="cd-btn cd-btn-primary"
                   onClick={() => {
                     const idx = VISIBLE_MOVE_STAGES.indexOf(candidate.pipeline_status)
                     const next = VISIBLE_MOVE_STAGES[idx + 1]
                     if (next) onStatusChange(next)
                   }}
-                  disabled={movingStatus}
+                  disabled={movingStatus || !VISIBLE_MOVE_STAGES[VISIBLE_MOVE_STAGES.indexOf(candidate.pipeline_status) + 1]}
                 >
                   {nextStageLabel(candidate.pipeline_status)}
                 </button>
-                <button className="cd-action-secondary" onClick={onSchedule}>
+                <button className="cd-btn cd-btn-outline" onClick={onSchedule}>
                   <Icon name="calendar" size={13} /> Schedule
                 </button>
                 {candidate.pipeline_status !== 'selected' && (
-                  <button className="cd-action-secondary" onClick={onMarkSelected}>
+                  <button className="cd-btn cd-btn-outline" onClick={onMarkSelected}>
                     <Icon name="check" size={13} /> Mark Selected
                   </button>
                 )}
               </div>
               <div className="cd-action-row-sub">
-                <button className="cd-action-ghost" onClick={onRetryAts}>
+                <button className="cd-btn cd-btn-ghost" onClick={onRetryAts}>
                   <Icon name="refresh-cw" size={13} /> Retry ATS Score
                 </button>
-                <button className="cd-action-ghost-danger" onClick={onDraftRejection}>
+                <button className="cd-btn cd-btn-ghost-danger" onClick={onDraftRejection}>
                   <Icon name="x" size={13} /> Draft Rejection
                 </button>
               </div>

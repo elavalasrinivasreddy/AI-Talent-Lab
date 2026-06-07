@@ -208,6 +208,27 @@ async def list_users(
     return {"users": [_user_response(u) for u in users]}
 
 
+# ── GET /directory ────────────────────────────────────────────────────────────
+
+@router.get("/directory")
+async def list_directory(
+    user: dict = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """List basic info for all users in the org for @mentions. Available to all org users."""
+    users = await AuthService.list_users(db, user["org_id"])
+    return {
+        "users": [
+            {
+                "id": u["id"],
+                "name": u["name"],
+                "department_id": u.get("department_id")
+            }
+            for u in users
+        ]
+    }
+
+
 # ── POST /add-user (admin) ────────────────────────────────────────────────────
 
 @router.post("/add-user")

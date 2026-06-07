@@ -3150,3 +3150,19 @@ Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, 
 - `frontend/src/components/Candidates/CandidateDetailPage.jsx`
 - `frontend/src/components/Candidates/CandidateDetailPage.css`
 
+
+---
+### 69. Candidate Hero Button Styling & Disabled States
+**Symptom:** Candidate Hero action buttons ("Schedule", "Mark Selected", "Retry ATS Score") were not styled like standard buttons, leading to a mismatched UI. Furthermore, the "Move to..." button did not disable when the candidate was in the final pipeline stage.
+**Root Cause:** The `CandidateHero.jsx` component used local CSS classes (`cd-action-primary`, `cd-action-ghost`) that did not align with the product's standardized `btn` or `pd-btn` aesthetic. The disabled logic for the primary status move button was missing.
+**Fix:**
+- Consolidated local button styles in `CandidateDetailPage.css` into a standardized `.cd-btn` class family (`cd-btn-primary`, `cd-btn-outline`, `cd-btn-ghost`) mirroring the premium button styles from other pages.
+- Updated `CandidateHero.jsx` to apply the new button styles.
+- Added logic to dynamically disable the "Move to..." button when no next `VISIBLE_MOVE_STAGES` exist.
+
+---
+### 70. Replaced Native Browser Confirm Modals in Candidate Details
+**Symptom:** A native `window.confirm()` popup was firing when taking pipeline actions, which breaks the SaaS immersion.
+**Root Cause:** A hardcoded `window.confirm` was embedded directly in the `onMarkSelected` callback passed down to `CandidateHero.jsx`.
+**Fix:** Replaced the native alert with the application's `ConfirmModal` component (product-native dialog) using state triggers (`setSelectConfirmOpen(true)`).
+

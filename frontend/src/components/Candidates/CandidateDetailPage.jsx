@@ -18,6 +18,7 @@ import ScoreBreakdownBand from './ScoreBreakdownBand'
 import CompareToIdealGrid from './CompareToIdealGrid'
 import InterviewsTab from './tabs/InterviewsTab'
 import ConfirmModal from '../common/ConfirmModal'
+import ScheduleInterviewModal from '../Interviews/ScheduleInterviewModal'
 import Toast from '../common/Toast'
 import Icon from '../common/Icon'
 import Chip from '../common/Chip'
@@ -46,6 +47,8 @@ export default function CandidateDetailPage() {
   const [activeTab, setActiveTab] = useState('skills')
   const [movingStatus, setMovingStatus] = useState(false)
   const [selectConfirmOpen, setSelectConfirmOpen] = useState(false)
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+  const [draftRejectionModalOpen, setDraftRejectionModalOpen] = useState(false)
   const [toast, setToast] = useState(null)
 
   const load = useCallback(async () => {
@@ -78,7 +81,7 @@ export default function CandidateDetailPage() {
       await candidatesApi.updateStatus(candidate.id, {
         status: newStatus,
         application_id: candidate.application_id,
-        position_id: positionId,
+        position_id: parseInt(positionId, 10),
       })
       setCandidate(prev => ({ ...prev, pipeline_status: newStatus }))
       load()
@@ -93,22 +96,22 @@ export default function CandidateDetailPage() {
     try {
       await candidatesApi.markSelected(candidate.id, {
         application_id: candidate.application_id,
-        position_id: positionId,
+        position_id: parseInt(positionId, 10),
       })
+      setSelectConfirmOpen(false)
       setCandidate(prev => ({ ...prev, pipeline_status: 'selected' }))
-      setToast({ message: 'Candidate marked as selected', type: 'success' })
+      load()
+      setToast({ message: 'Candidate marked as selected!', type: 'success' })
     } catch (e) {
-      setToast({ message: `Error: ${e.message}`, type: 'error' })
+      setToast({ message: `Action failed: ${e.message}`, type: 'error' })
     }
   }
 
   const handleRetryAts = async () => {
     try {
-      await candidatesApi.retryAts(candidate.id, candidate.application_id, positionId)
       setToast({ message: 'ATS scoring triggered. Updating...', type: 'success' })
-      setTimeout(() => {
-        load()
-      }, 4000)
+      await candidatesApi.retryAts(candidate.id, candidate.application_id, parseInt(positionId, 10))
+      setTimeout(() => load(), 4000)
     } catch (e) {
       setToast({ message: `Error: ${e.message}`, type: 'error' })
     }
@@ -151,8 +154,8 @@ export default function CandidateDetailPage() {
         movingStatus={movingStatus}
         onStatusChange={handleStatusChange}
         onMarkSelected={() => setSelectConfirmOpen(true)}
-        onSchedule={() => {}} // TODO: schedule modal
-        onDraftRejection={() => {}} // TODO: rejection draft modal
+        onSchedule={() => setScheduleModalOpen(true)}
+        onDraftRejection={() => setDraftRejectionModalOpen(true)}
         onRetryAts={handleRetryAts}
       />
 
@@ -256,6 +259,35 @@ export default function CandidateDetailPage() {
         message="Mark this candidate as selected? This action will be logged."
         confirmText="Mark Selected"
         confirmVariant="primary"
+      />
+
+      {scheduleModalOpen && (
+        <ScheduleInterviewModal
+          open={scheduleModalOpen}
+          onClose={() => setScheduleModalOpen(false)}
+          onCreated={() => {
+            load()
+            setToast({ message: 'Interview scheduled successfully', type: 'success' })
+          }}
+          positionId={parseInt(positionId, 10)}
+          candidateId={candidate.id}
+          applicationId={candidate.application_id}
+          candidateName={candidate.name}
+          positionTitle={candidate.position_title || 'Position'}
+        />
+      )}
+
+      <ConfirmModal
+        isOpen={draftRejectionModalOpen}
+        onClose={() => setDraftRejectionModalOpen(false)}
+        onConfirm={async () => {
+          setDraftRejectionModalOpen(false)
+          setToast({ message: 'Rejection draft feature coming soon!', type: 'info' })
+        }}
+        title="Draft Rejection"
+        message="Are you sure you want to draft a rejection email for this candidate?"
+        confirmText="Draft Rejection"
+        confirmVariant="danger"
       />
     </div>
   )
@@ -446,7 +478,7 @@ function NotesTab({ candidateId }) {
 
   useEffect(() => {
     notesApi.list(candidateId).then(d => setNotes(d.notes || [])).catch(() => {})
-    api.get('/auth/users').then(res => setOrgUsers(res.data.users || [])).catch(() => {})
+    api.get('/auth/directory').then(res => setOrgUsers(res.data.users || [])).catch(() => {})
   }, [candidateId])
 
   const handleDraftChange = (e) => {

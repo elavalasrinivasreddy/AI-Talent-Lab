@@ -237,6 +237,11 @@ async def _process_candidate(
             "missing_skills": score_result.get("missing_skills", []),
             "extra_skills": score_result.get("extra_skills", []),
             "summary": score_result.get("summary", ""),
+            "emb_score": score_result.get("emb_score"),
+            "skills_match": score_result.get("skills_match"),
+            "experience_match": score_result.get("experience_match"),
+            "career_trajectory": score_result.get("career_trajectory", "unknown"),
+            "red_flags": score_result.get("red_flags", []),
             "method": score_result.get("method", ""),
         })
 
@@ -334,6 +339,11 @@ async def _score_application(candidate_id: int, application_id: int, position_id
             "missing_skills": score_result.get("missing_skills", []),
             "extra_skills": score_result.get("extra_skills", []),
             "summary": score_result.get("summary", ""),
+            "emb_score": score_result.get("emb_score"),
+            "skills_match": score_result.get("skills_match"),
+            "experience_match": score_result.get("experience_match"),
+            "career_trajectory": score_result.get("career_trajectory", "unknown"),
+            "red_flags": score_result.get("red_flags", []),
             "method": score_result.get("method", ""),
         })
 

@@ -590,16 +590,8 @@ class SettingsService:
 
         # 2. Default screening questions
         default_questions = [
-            {"field_key": "notice_period", "label": "Notice Period", "field_type": "select",
-             "options": "Immediate,15 days,30 days,60 days,90+ days", "is_required": True, "sort_order": 1},
-            {"field_key": "current_ctc", "label": "Current Salary (LPA)", "field_type": "number",
-             "is_required": True, "sort_order": 2},
-            {"field_key": "expected_ctc", "label": "Expected Salary (LPA)", "field_type": "number",
-             "is_required": True, "sort_order": 3},
-            {"field_key": "total_experience", "label": "Total Experience (Years)", "field_type": "number",
-             "is_required": True, "sort_order": 4},
             {"field_key": "office_availability", "label": "Office Availability", "field_type": "select",
-             "options": "Yes (3 days/week),Yes (5 days/week),No (Remote only)", "is_required": True, "sort_order": 5},
+             "options": "Yes (3 days/week),Yes (5 days/week),No (Remote only)", "is_required": True, "sort_order": 1},
         ]
         for q in default_questions:
             await ScreeningQuestionRepository.create(

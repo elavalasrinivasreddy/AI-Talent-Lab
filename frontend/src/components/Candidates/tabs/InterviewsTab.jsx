@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react'
 import { interviewsApi } from '../../../utils/api'
 import ScheduleInterviewModal from '../../Interviews/ScheduleInterviewModal'
+import Toast from '../../common/Toast'
 import './InterviewsTab.css'
 
 const ROUND_STATUS_ICONS = {
@@ -36,6 +37,7 @@ export default function InterviewsTab({ candidateId, positionId, candidateName, 
   const [showScheduleModal, setShowScheduleModal] = useState(false)
   const [generating, setGenerating] = useState(null) // interview id
   const [debriefs, setDebriefs] = useState({}) // interview_id → debrief markdown
+  const [toast, setToast] = useState(null)
 
   const load = async () => {
     setLoading(true)
@@ -67,7 +69,7 @@ export default function InterviewsTab({ candidateId, positionId, candidateName, 
       const result = await interviewsApi.generateDebrief(interviewId)
       setDebriefs(d => ({ ...d, [interviewId]: result.debrief }))
     } catch (e) {
-      alert('Debrief generation failed: ' + e.message)
+      setToast({ message: `Debrief generation failed: ${e.message}`, type: 'error' })
     } finally {
       setGenerating(null)
     }
@@ -143,6 +145,8 @@ export default function InterviewsTab({ candidateId, positionId, candidateName, 
         positionTitle=""
         roundNumber={nextRound}
       />
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }
