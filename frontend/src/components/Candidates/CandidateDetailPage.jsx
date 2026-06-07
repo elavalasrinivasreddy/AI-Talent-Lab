@@ -481,45 +481,59 @@ function NotesTab({ candidateId }) {
     api.get('/auth/directory').then(res => setOrgUsers(res.data.users || [])).catch(() => {})
   }, [candidateId])
 
-  const handleDraftChange = (e) => {
+  const handleInputChange = (e, mode) => {
     const val = e.target.value
-    setDraft(val)
+    if (mode === 'draft') setDraft(val)
+    else setEditContent(val)
     
     // Check if the cursor is right after an @ symbol and a word
     const cursor = e.target.selectionStart
     const textBefore = val.slice(0, cursor)
     const match = textBefore.match(/@(\w*)$/)
     if (match) {
-      setMentionQuery(match[1])
+      setMentionQuery({ text: match[1], mode })
     } else {
       setMentionQuery(null)
     }
   }
 
   const insertMention = (userName) => {
-    const textarea = document.querySelector('.cd-notes-input')
-    const cursor = textarea ? textarea.selectionStart : draft.length
-    const textBefore = draft.slice(0, cursor)
-    const textAfter = draft.slice(cursor)
+    const isEdit = mentionQuery?.mode === 'edit'
+    const textarea = document.querySelector(isEdit ? '.cd-notes-input.edit-mode' : '.cd-notes-input.draft-mode')
+    const currentText = isEdit ? editContent : draft
+    const cursor = textarea ? textarea.selectionStart : currentText.length
+    
+    const textBefore = currentText.slice(0, cursor)
+    const textAfter = currentText.slice(cursor)
     
     const match = textBefore.match(/@(\w*)$/)
     if (match) {
       const newTextBefore = textBefore.slice(0, match.index) + `@${userName} `
-      setDraft(newTextBefore + textAfter)
+      const newText = newTextBefore + textAfter
+      if (isEdit) setEditContent(newText)
+      else setDraft(newText)
+      
       // Small timeout to move cursor after the inserted name
       setTimeout(() => {
-        if (textarea) textarea.setSelectionRange(newTextBefore.length, newTextBefore.length)
-        textarea.focus()
+        if (textarea) {
+          textarea.focus()
+          textarea.setSelectionRange(newTextBefore.length, newTextBefore.length)
+        }
       }, 0)
     }
     setMentionQuery(null)
+  }
+
+  const extractMentions = (text) => {
+    return orgUsers.filter(u => text.includes(`@${u.name}`)).map(u => u.id)
   }
 
   const handleSubmit = async () => {
     if (!draft.trim()) return
     setSubmitting(true)
     try {
-      const res = await notesApi.create(candidateId, { content: draft.trim() })
+      const mentions = extractMentions(draft)
+      const res = await notesApi.create(candidateId, { content: draft.trim(), mentions })
       setNotes(prev => [{ ...res.note, author_name: res.author_name, author_role: res.author_role }, ...prev])
       setDraft('')
       setToast({ message: 'Note added successfully', type: 'success' })
@@ -536,6 +550,29 @@ function NotesTab({ candidateId }) {
     } catch (e) { setToast({ message: `Update failed: ${e.message}`, type: 'error' }) }
   }
 
+  const renderMentionDropdown = (mode) => {
+    if (mentionQuery?.mode !== mode) return null
+    return (
+      <div className="cd-mention-dropdown" style={{
+        position: 'absolute', bottom: 'calc(100% - 10px)', left: '16px', background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, maxHeight: '150px', overflowY: 'auto', minWidth: '200px'
+      }}>
+        {orgUsers.filter(u => u.name.toLowerCase().includes(mentionQuery.text.toLowerCase())).map(u => (
+          <div key={u.id} className="cd-mention-item" style={{padding: '8px 12px', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-primary)'}}
+            onClick={() => insertMention(u.name)}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg-hover)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <strong>{u.name}</strong> <span style={{opacity:0.5, fontSize:'11px'}}>({u.department_name || 'Org'})</span>
+          </div>
+        ))}
+        {orgUsers.filter(u => u.name.toLowerCase().includes(mentionQuery.text.toLowerCase())).length === 0 && (
+          <div style={{padding: '8px 12px', fontSize: '13px', color: 'var(--color-text-tertiary)'}}>No users found</div>
+        )}
+      </div>
+    )
+  }
+
   const handleDelete = async () => {
     if (!noteDeleteId) return
     try {
@@ -550,26 +587,8 @@ function NotesTab({ candidateId }) {
     <div className="cd-notes-tab">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div className="cd-notes-compose" style={{position:'relative'}}>
-        <textarea className="cd-notes-input" placeholder="Add a note… (use @name to mention)" value={draft} onChange={handleDraftChange} rows={3} />
-        {mentionQuery !== null && (
-          <div className="cd-mention-dropdown" style={{
-            position: 'absolute', bottom: 'calc(100% - 10px)', left: '16px', background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, maxHeight: '150px', overflowY: 'auto', minWidth: '200px'
-          }}>
-            {orgUsers.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase())).map(u => (
-              <div key={u.id} className="cd-mention-item" style={{padding: '8px 12px', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-primary)'}}
-                onClick={() => insertMention(u.name)}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg-hover)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <strong>{u.name}</strong> <span style={{opacity:0.5, fontSize:'11px'}}>({u.department_name || 'Org'})</span>
-              </div>
-            ))}
-            {orgUsers.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase())).length === 0 && (
-              <div style={{padding: '8px 12px', fontSize: '13px', color: 'var(--color-text-tertiary)'}}>No users found</div>
-            )}
-          </div>
-        )}
+        <textarea className="cd-notes-input draft-mode" placeholder="Add a note… (use @name to mention)" value={draft} onChange={e => handleInputChange(e, 'draft')} rows={3} />
+        {renderMentionDropdown('draft')}
         <button className="cd-notes-submit" onClick={handleSubmit} disabled={submitting || !draft.trim()}>
           {submitting ? 'Saving…' : 'Add Note'}
         </button>
@@ -593,8 +612,9 @@ function NotesTab({ candidateId }) {
                 </div>
               </div>
               {editingId === note.id ? (
-                <div className="cd-note-edit">
-                  <textarea className="cd-notes-input" value={editContent} onChange={e => setEditContent(e.target.value)} rows={3} />
+                <div className="cd-note-edit" style={{position:'relative'}}>
+                  <textarea className="cd-notes-input edit-mode" value={editContent} onChange={e => handleInputChange(e, 'edit')} rows={3} />
+                  {renderMentionDropdown('edit')}
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                     <button className="cd-notes-submit" onClick={() => handleUpdate(note.id)}>Save</button>
                     <button className="cd-note-action" onClick={() => setEditingId(null)}>Cancel</button>

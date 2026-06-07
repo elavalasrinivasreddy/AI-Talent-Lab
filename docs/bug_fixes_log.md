@@ -3175,3 +3175,17 @@ Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, 
 - Updated `backend/dependencies.py` to inject `"id"` alongside `"user_id"` into the dependency payload for backward compatibility with older endpoints.
 - Updated `backend/routers/notes.py` to explicitly query the `users` table for the author's name (`author_name = await conn.fetchval("SELECT name FROM users WHERE id=$1", user["id"])`) instead of trying to read it from the JWT.
 
+
+---
+### 72. Note Mentions Not Dispatching Notifications & Missing Edit Mode UX
+**Symptom:** 
+1. When mentioning a user via `@name` in the Notes tab of a candidate's profile, the mentioned user never received a notification despite the UI indicating they were tagged.
+2. When editing an existing note, typing `@` did not trigger the user directory dropdown, making it impossible to tag users properly in edit mode.
+**Root Cause:** 
+1. The frontend `NotesTab` allowed users to type `@name` and visually inserted it into the textarea text, but it completely failed to extract the corresponding user IDs and attach them to the `mentions` array in the payload sent to the `notesApi.create` endpoint.
+2. The note edit state used a generic `onChange` handler that bypassed the sophisticated mention detection logic built for the draft creation mode.
+**Fix:**
+- Implemented `extractMentions()` to scan the draft text against the cached `orgUsers` directory and map them to their specific user IDs, which are now correctly passed in the API payload.
+- Unified the `handleDraftChange` into a bi-modal `handleInputChange(e, mode)` to support triggering the tagging logic in both `'draft'` and `'edit'` states.
+- Extracted the mention dropdown into a shared `renderMentionDropdown` function and injected it correctly beneath both the compose box and the inline edit box.
+
