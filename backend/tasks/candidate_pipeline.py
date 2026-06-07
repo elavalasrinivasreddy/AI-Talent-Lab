@@ -5,6 +5,7 @@ Triggered when recruiter saves a position or clicks "Run Search Now".
 """
 import json
 import logging
+import time
 from datetime import datetime, timedelta
 
 from backend.celery_app import celery_app
@@ -58,85 +59,119 @@ async def _run_pipeline(
     position_id: int, org_id: int, department_id: int, triggered_by: int = None
 ):
     """Async implementation of the candidate pipeline."""
-    logger.info(f"[Pipeline] Starting search for position {position_id} (org {org_id})")
+    _task_start = time.time()
+    _sourced_count = 0
+    _task_failed = False
 
-    async with get_connection() as conn:
-        position = await PositionRepository.get(conn, position_id, org_id)
-        org = await OrgRepository.get_by_id(conn, org_id)
-
-    if not position or position.get("status") not in ("open", "draft"):
-        logger.info(f"[Pipeline] Position {position_id} not open — skipping")
-        return
-
-    # ── Step 1: Source candidates ──────────────────────────────────────────────
-    adapter = get_candidate_source_adapter()
-    limit = 20  # MVP: 20 per run
     try:
-        raw_candidates = await adapter.search(position, org or {}, limit=limit)
-        logger.info(f"[Pipeline] Sourced {len(raw_candidates)} raw candidates")
-    except Exception as e:
-        logger.error(f"[Pipeline] Source adapter failed: {e}")
-        raw_candidates = []
+        logger.info(f"[Pipeline] Starting search for position {position_id} (org {org_id})")
 
-    sourced_count = 0
-    above_threshold_count = 0
-    ats_threshold = float(position.get("ats_threshold") or 80.0)
+        async with get_connection() as conn:
+            position = await PositionRepository.get(conn, position_id, org_id)
+            org = await OrgRepository.get_by_id(conn, org_id)
 
-    for raw in raw_candidates:
+        if not position or position.get("status") not in ("open", "draft"):
+            logger.info(f"[Pipeline] Position {position_id} not open — skipping")
+            return
+
+        # ── Step 1: Source candidates ──────────────────────────────────────────────
+        adapter = get_candidate_source_adapter()
+        limit = 20  # MVP: 20 per run
         try:
-            await _process_candidate(
-                raw, position, org or {}, position_id, org_id, department_id,
-                ats_threshold, triggered_by
-            )
-            sourced_count += 1
+            raw_candidates = await adapter.search(position, org or {}, limit=limit)
+            logger.info(f"[Pipeline] Sourced {len(raw_candidates)} raw candidates")
         except Exception as e:
-            logger.warning(f"[Pipeline] Failed to process candidate {raw.get('email')}: {e}")
-            continue
+            logger.error(f"[Pipeline] Source adapter failed: {e}")
+            raw_candidates = []
 
-    # ── Step 2: Update position search timestamps ──────────────────────────────
-    async with get_connection() as conn:
-        interval_hours = position.get("search_interval_hours") or 24
-        next_search = datetime.utcnow() + timedelta(hours=interval_hours)
-        await conn.execute(
-            """
-            UPDATE positions
-            SET last_search_at = NOW(), next_search_at = $1, updated_at = NOW()
-            WHERE id = $2 AND org_id = $3
-            """,
-            next_search, position_id, org_id
-        )
+        sourced_count = 0
+        above_threshold_count = 0
+        ats_threshold = float(position.get("ats_threshold") or 80.0)
 
-        # ── Step 3: Create "search completed" pipeline event ───────────────────
-        await PipelineEventRepository.create(conn, {
-            "org_id": org_id,
-            "position_id": position_id,
-            "user_id": None,  # system event
-            "event_type": "search_completed",
-            "event_data": {
-                "candidates_found": sourced_count,
-                "above_threshold": above_threshold_count,
-                "threshold": ats_threshold
-            }
-        })
+        for raw in raw_candidates:
+            try:
+                await _process_candidate(
+                    raw, position, org or {}, position_id, org_id, department_id,
+                    ats_threshold, triggered_by
+                )
+                sourced_count += 1
+            except Exception as e:
+                logger.warning(f"[Pipeline] Failed to process candidate {raw.get('email')}: {e}")
+                continue
 
-        # ── Step 4: Notify recruiter ───────────────────────────────────────────
-        if triggered_by:
-            await NotificationRepository.create(conn, {
+        # ── Step 2: Update position search timestamps ──────────────────────────────
+        async with get_connection() as conn:
+            interval_hours = position.get("search_interval_hours") or 24
+            next_search = datetime.utcnow() + timedelta(hours=interval_hours)
+            await conn.execute(
+                """
+                UPDATE positions
+                SET last_search_at = NOW(), next_search_at = $1, updated_at = NOW()
+                WHERE id = $2 AND org_id = $3
+                """,
+                next_search, position_id, org_id
+            )
+
+            # ── Step 3: Create "search completed" pipeline event ───────────────────
+            await PipelineEventRepository.create(conn, {
                 "org_id": org_id,
-                "user_id": triggered_by,
-                "type": "search_complete",
-                "title": f"Search complete — {position.get('role_name')}",
-                "message": (
-                    f"Found {sourced_count} candidate(s). "
-                    f"{above_threshold_count} scored above {ats_threshold:.0f}% threshold."
-                ),
-                "action_url": f"/positions/{position_id}?tab=pipeline"
+                "position_id": position_id,
+                "user_id": None,  # system event
+                "event_type": "search_completed",
+                "event_data": {
+                    "candidates_found": sourced_count,
+                    "above_threshold": above_threshold_count,
+                    "threshold": ats_threshold
+                }
             })
 
-    logger.info(
-        f"[Pipeline] Finished position {position_id}: "
-        f"{sourced_count} candidates, {above_threshold_count} above threshold"
-    )
+            # ── Step 4: Notify recruiter ───────────────────────────────────────────
+            if triggered_by:
+                await NotificationRepository.create(conn, {
+                    "org_id": org_id,
+                    "user_id": triggered_by,
+                    "type": "search_complete",
+                    "title": f"Search complete — {position.get('role_name')}",
+                    "message": (
+                        f"Found {sourced_count} candidate(s). "
+                        f"{above_threshold_count} scored above {ats_threshold:.0f}% threshold."
+                    ),
+                    "action_url": f"/positions/{position_id}?tab=pipeline"
+                })
+
+        _sourced_count = sourced_count
+        logger.info(
+            f"[Pipeline] Finished position {position_id}: "
+            f"{sourced_count} candidates, {above_threshold_count} above threshold"
+        )
+    except Exception as exc:
+        _task_failed = True
+        _duration = int((time.time() - _task_start) * 1000)
+        try:
+            async with get_connection() as conn:
+                await conn.execute(
+                    """INSERT INTO task_run_log
+                       (org_id, task_type, position_id, status, duration_ms, error_message)
+                       VALUES ($1, 'candidate_search', $2, 'failed', $3, $4)""",
+                    org_id, position_id, _duration, str(exc)[:500],
+                )
+        except Exception:
+            pass
+        raise
+    finally:
+        if not _task_failed:
+            _duration = int((time.time() - _task_start) * 1000)
+            try:
+                async with get_connection() as conn:
+                    await conn.execute(
+                        """INSERT INTO task_run_log
+                           (org_id, task_type, position_id, status,
+                            candidates_found, duration_ms)
+                           VALUES ($1, 'candidate_search', $2, 'success', $3, $4)""",
+                        org_id, position_id, _sourced_count, _duration,
+                    )
+            except Exception:
+                pass
 
 
 async def _process_candidate(
@@ -237,6 +272,11 @@ async def _process_candidate(
             "missing_skills": score_result.get("missing_skills", []),
             "extra_skills": score_result.get("extra_skills", []),
             "summary": score_result.get("summary", ""),
+            "emb_score": score_result.get("emb_score"),
+            "skills_match": score_result.get("skills_match"),
+            "experience_match": score_result.get("experience_match"),
+            "career_trajectory": score_result.get("career_trajectory", "unknown"),
+            "red_flags": score_result.get("red_flags", []),
             "method": score_result.get("method", ""),
         })
 
@@ -294,3 +334,101 @@ def source_candidates_for_position(position_id: int, org_id: int):
     run_candidate_search.delay(
         position_id, org_id, row["department_id"], row.get("created_by")
     )
+
+
+@celery_app.task(
+    name="tasks.score_candidate_application",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    acks_late=True
+)
+def score_candidate_application(self, candidate_id: int, application_id: int, position_id: int, org_id: int):
+    """
+    ATS Score an organic application after the candidate completes the apply chat.
+    """
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(
+            _score_application(candidate_id, application_id, position_id, org_id)
+        )
+    except RuntimeError:
+        asyncio.run(_score_application(candidate_id, application_id, position_id, org_id))
+    except Exception as exc:
+        logger.error(f"Organic ATS scoring failed for {application_id}: {exc}", exc_info=True)
+        raise self.retry(exc=exc)
+
+
+async def _score_application(candidate_id: int, application_id: int, position_id: int, org_id: int):
+    _start = time.time()
+    logger.info(f"Starting ATS scoring for organic application {application_id}")
+    try:
+        async with get_connection() as conn:
+            position = await PositionRepository.get(conn, position_id, org_id)
+            ats_threshold = float(position.get("ats_threshold") or 80.0)
+
+        score_result = await compute_ats_score(candidate_id, application_id, position_id, org_id)
+        score = score_result.get("score", 0)
+        skill_match_data = json.dumps({
+            "matched_skills": score_result.get("matched_skills", []),
+            "missing_skills": score_result.get("missing_skills", []),
+            "extra_skills": score_result.get("extra_skills", []),
+            "summary": score_result.get("summary", ""),
+            "emb_score": score_result.get("emb_score"),
+            "skills_match": score_result.get("skills_match"),
+            "experience_match": score_result.get("experience_match"),
+            "career_trajectory": score_result.get("career_trajectory", "unknown"),
+            "red_flags": score_result.get("red_flags", []),
+            "method": score_result.get("method", ""),
+        })
+
+        async with get_connection() as conn:
+            await CandidateRepository.update_application(
+                conn, application_id, org_id, {
+                    "skill_match_score": score,
+                    "skill_match_data": skill_match_data
+                }
+            )
+            await PipelineEventRepository.create(conn, {
+                "org_id": org_id,
+                "candidate_id": candidate_id,
+                "position_id": position_id,
+                "application_id": application_id,
+                "user_id": None,
+                "event_type": "ats_scored",
+                "event_data": {
+                    "score": score,
+                    "method": score_result.get("method"),
+                    "above_threshold": score >= ats_threshold,
+                    "source": "organic_apply"
+                }
+            })
+            logger.info(f"Organic application {application_id} scored: {score}")
+
+        _duration = int((time.time() - _start) * 1000)
+        try:
+            async with get_connection() as conn:
+                await conn.execute(
+                    """INSERT INTO task_run_log
+                       (org_id, task_type, position_id, status,
+                        candidates_processed, duration_ms)
+                       VALUES ($1, 'ats_scoring', $2, 'success', 1, $3)""",
+                    org_id, position_id, _duration,
+                )
+        except Exception:
+            pass
+    except Exception as exc:
+        _duration = int((time.time() - _start) * 1000)
+        try:
+            async with get_connection() as conn:
+                await conn.execute(
+                    """INSERT INTO task_run_log
+                       (org_id, task_type, position_id, status,
+                        duration_ms, error_message)
+                       VALUES ($1, 'ats_scoring', $2, 'failed', $3, $4)""",
+                    org_id, position_id, _duration, str(exc)[:500],
+                )
+        except Exception:
+            pass
+        raise

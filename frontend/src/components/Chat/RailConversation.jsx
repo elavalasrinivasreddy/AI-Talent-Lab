@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useChat } from '../../context/ChatContext';
+import { IconUser, IconBot } from './icons';
 
 /**
  * Supplementary chat feed (right rail, middle section).
@@ -70,16 +71,21 @@ function Bubble({ message }) {
 
   return (
     <li className={`rail-msg rail-msg--${role}`}>
-      <div className="rail-msg-meta">{role === 'user' ? 'You' : 'AI'}</div>
-      <div className="rail-msg-body">
-        {role === 'assistant' ? (
-          <>
-            <ReactMarkdown>{cleaned}</ReactMarkdown>
-            {!message.isComplete && <span className="rail-stream-cursor" aria-hidden="true" />}
-          </>
-        ) : (
-          cleaned
-        )}
+      <div className="rail-msg-avatar">
+        {role === 'user' ? <IconUser size={16} /> : <IconBot size={16} />}
+      </div>
+      <div className="rail-msg-bubble">
+        <div className="rail-msg-meta">{role === 'user' ? 'You' : 'AI'}</div>
+        <div className="rail-msg-body">
+          {role === 'assistant' ? (
+            <>
+              <ReactMarkdown>{cleaned}</ReactMarkdown>
+              {!message.isComplete && <span className="rail-stream-cursor" aria-hidden="true" />}
+            </>
+          ) : (
+            cleaned
+          )}
+        </div>
       </div>
     </li>
   );
@@ -88,9 +94,14 @@ function Bubble({ message }) {
 function TypingRow() {
   return (
     <li className="rail-msg rail-msg--assistant">
-      <div className="rail-msg-meta">AI</div>
-      <div className="rail-typing">
-        <span /><span /><span />
+      <div className="rail-msg-avatar">
+        <IconBot size={16} />
+      </div>
+      <div className="rail-msg-bubble">
+        <div className="rail-msg-meta">AI</div>
+        <div className="rail-typing">
+          <span /><span /><span />
+        </div>
       </div>
     </li>
   );

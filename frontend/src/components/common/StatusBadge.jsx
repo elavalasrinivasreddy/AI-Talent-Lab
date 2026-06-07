@@ -29,8 +29,8 @@ const STAGE_CSS_VARS = {
 export default function StatusBadge({ status, type = 'pipeline', size = 'sm' }) {
   const config =
     type === 'pipeline'
-      ? PIPELINE_STAGES[status] || { label: status, color: '#9ca3af', bg: 'rgba(156,163,175,0.12)' }
-      : POSITION_STATUSES[status] || { label: status, color: '#9ca3af' }
+      ? PIPELINE_STAGES[status] || { label: status, color: 'var(--color-text-muted, #9ca3af)', bg: 'rgba(156,163,175,0.12)' }
+      : POSITION_STATUSES[status] || { label: status, color: 'var(--color-text-muted, #9ca3af)' }
 
   // Prefer design-system CSS var; fall back to constants.js hex.
   const cssVar = type === 'pipeline' ? STAGE_CSS_VARS[status] : null

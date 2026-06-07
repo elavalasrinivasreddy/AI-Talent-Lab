@@ -435,7 +435,7 @@ class GDPRService:
         org_id: int, candidate_id: int, months: int = DATA_RETENTION_MONTHS
     ) -> None:
         """Set when candidate data should be auto-purged."""
-        retain_until = datetime.now(timezone.utc) + timedelta(days=months * 30)
+        retain_until = datetime.utcnow() + timedelta(days=months * 30)
         async with get_connection() as conn:
             await conn.execute(
                 """

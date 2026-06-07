@@ -133,8 +133,8 @@ async def test_approve_transitions_pending_to_approved():
 
     email_calls = []
 
-    async def _fake_send_approved(to_email, recipient_name, role_name, dept_name, approver_name, request_url):
-        email_calls.append({"to": to_email, "role_name": role_name})
+    async def _fake_send_approved(to_email, recipient_name, role_name, dept_name, approver_name, request_url, note=None):
+        email_calls.append({"to": to_email, "role_name": role_name, "note": note})
         return True
 
     with patch.object(hr_repo.HireRequestRepository, "approve", _fake_approve), \
@@ -156,6 +156,68 @@ async def test_approve_transitions_pending_to_approved():
     # Raiser email fired (HR list is empty in mock so only raiser email)
     assert any(e["to"] == "alice@example.com" for e in email_calls), \
         f"Expected raiser email; got {email_calls}"
+
+
+# ── Test 1b: approve WITH note surfaces the note to the raiser ────────────────
+
+
+@pytest.mark.asyncio
+async def test_approve_with_note_notifies_raiser_with_note():
+    """Regression (#2): when the approver supplies a note (e.g. they modified the
+    request before approving), the requester's in-app notification AND email must
+    include the note text — not just a generic "approved" message."""
+    req = _pending_request(dept_id=10, requested_by=99)
+    conn = _make_conn(req)
+
+    from backend.db.repositories import hire_requests as hr_repo
+
+    async def _fake_approve(c, request_id, org_id, approved_by):
+        return None
+
+    get_calls = []
+    approved_req = {**req, "status": "approved", "approved_by": 42, "approved_by_name": "Bob Manager"}
+
+    async def _fake_get_by_id(c, request_id, org_id):
+        get_calls.append(len(get_calls))
+        return req if len(get_calls) == 1 else approved_req
+
+    email_calls = []
+
+    async def _fake_send_approved(to_email, recipient_name, role_name, dept_name, approver_name, request_url, note=None):
+        email_calls.append({"to": to_email, "note": note})
+        return True
+
+    note_text = "Increased headcount to 2; trimmed comp band by 2 LPA"
+
+    with patch.object(hr_repo.HireRequestRepository, "approve", _fake_approve), \
+         patch.object(hr_repo.HireRequestRepository, "get_by_id", _fake_get_by_id), \
+         patch("backend.services.email_service.EmailService.send_hire_request_approved",
+               AsyncMock(side_effect=_fake_send_approved)):
+
+        await HireRequestService.approve_request(
+            conn,
+            request_id=1,
+            org_id=1,
+            user_id=42,
+            role="dept_admin",
+            dept_id=10,
+            note=note_text,
+        )
+
+    # Raiser email carries the note.
+    raiser_emails = [e for e in email_calls if e["to"] == "alice@example.com"]
+    assert raiser_emails and raiser_emails[0]["note"] == note_text, \
+        f"Expected raiser email to carry the note; got {email_calls}"
+
+    # Raiser in-app notification (user_id=99) message contains the note text.
+    # _notify calls conn.execute(sql, org_id, user_id, type, title, message, action_url).
+    notif_calls = [
+        c for c in conn.execute.call_args_list
+        if c.args and "INSERT INTO notifications" in c.args[0] and len(c.args) > 5 and c.args[2] == 99
+    ]
+    assert notif_calls, "Expected a notification to the raiser (user 99)"
+    assert any(note_text in c.args[5] for c in notif_calls), \
+        f"Expected note text in raiser notification; got {[c.args[5] for c in notif_calls]}"
 
 
 # ── Test 2: reject transitions pending → rejected with reason ─────────────────

@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from '../../context/ChatContext';
 import { IconPaperclip, IconSend, IconLoader } from './icons';
+import Toast from '../common/Toast';
 
 const MessageInput = () => {
-    const { sendMessage, isStreaming, workflowStage, currentSessionId, finalJdMarkdown } = useChat();
+    const { sendMessage, isStreaming, workflowStage, currentSessionId, finalJdMarkdown, isReadOnly } = useChat();
     const [input, setInput] = useState('');
     const [fileUploading, setFileUploading] = useState(false);
+    const [toast, setToast] = useState(null);
     const textareaRef = useRef(null);
     const fileInputRef = useRef(null);
 
@@ -17,9 +19,10 @@ const MessageInput = () => {
     }, [input]);
 
     const isComplete = workflowStage === 'complete';
-    const isDisabled = isStreaming || fileUploading;
+    const isDisabled = isStreaming || fileUploading || isReadOnly;
 
     const getPlaceholder = () => {
+        if (isReadOnly) return 'Chat is locked. Position is under review or open.';
         if (isComplete) return 'Position saved — manage it from the dashboard.';
         if (isStreaming) return 'AI is thinking…';
         if (workflowStage === 'intake') return 'Describe the role you want to hire for…';
@@ -69,7 +72,7 @@ const MessageInput = () => {
         if (!file) return;
 
         if (file.size > 10 * 1024 * 1024) {
-            alert('File too large. Maximum 10MB.');
+            setToast({ message: 'File too large. Maximum 10MB.', type: 'error' });
             return;
         }
 
@@ -94,11 +97,11 @@ const MessageInput = () => {
             if (response.ok) {
                 setInput(`I've uploaded a reference JD (${file.name}). Please use it to extract requirements.`);
             } else {
-                alert('Could not read this file. Please try a different PDF or paste the JD as text.');
+                setToast({ message: 'Could not read this file. Please try a different PDF or paste the JD as text.', type: 'error' });
             }
         } catch (err) {
             console.error('File upload error:', err);
-            alert('Upload failed. Please try again.');
+            setToast({ message: 'Upload failed. Please try again.', type: 'error' });
         } finally {
             setFileUploading(false);
             e.target.value = '';
@@ -109,6 +112,7 @@ const MessageInput = () => {
 
     return (
         <div className="composer">
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             <div className="composer-inner">
                 <div className="composer-shell">
                     <textarea
@@ -151,11 +155,9 @@ const MessageInput = () => {
                         </button>
                     </div>
                 </div>
-                <div className="composer-foot">
-                    <span>
-                        <span className="composer-foot-key">Enter</span> to send · <span className="composer-foot-key">Shift</span>+<span className="composer-foot-key">Enter</span> for a new line
-                    </span>
-                    <span>AI Talent Lab can make mistakes — verify requirements.</span>
+                <div className="composer-foot" style={{ fontSize: '10px', opacity: 0.7, display: 'flex', justifyContent: 'space-between', padding: '2px 10px 0 10px' }}>
+                    <span><kbd style={{ background: 'var(--color-bg-secondary)', padding: '2px 4px', borderRadius: '3px' }}>Enter</kbd> to send</span>
+                    <span>AI Talent Lab can make mistakes.</span>
                 </div>
             </div>
         </div>

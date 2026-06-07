@@ -5,7 +5,10 @@
  * Bell button → right drawer (not dropdown) → grouped by type → mark-read
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import { notificationsApi } from '../../utils/api'
+import { timeAgo } from '../../utils/date'
 import Icon from './Icon'
 import './NotificationBell.css'
 
@@ -22,6 +25,7 @@ export default function NotificationBell() {
   const [data, setData] = useState({ notifications: [], unread_count: 0 })
   const [open, setOpen] = useState(false)
   const drawerRef = useRef(null)
+  const navigate = useNavigate()
 
   const load = useCallback(async () => {
     try {
@@ -83,17 +87,6 @@ export default function NotificationBell() {
     grouped[type].push(n)
   })
 
-  const timeAgo = (dateStr) => {
-    if (!dateStr) return ''
-    const diff = Date.now() - new Date(dateStr).getTime()
-    const mins = Math.floor(diff / 60000)
-    if (mins < 1) return 'now'
-    if (mins < 60) return `${mins}m`
-    const hrs = Math.floor(mins / 60)
-    if (hrs < 24) return `${hrs}h`
-    return `${Math.floor(hrs / 24)}d`
-  }
-
   return (
     <>
       {/* Bell Button */}
@@ -109,7 +102,7 @@ export default function NotificationBell() {
       </button>
 
       {/* Backdrop + Drawer */}
-      {open && (
+      {open && createPortal(
         <>
           <div className="notif-backdrop" onClick={() => setOpen(false)} />
           <div className="notif-drawer" ref={drawerRef}>
@@ -131,7 +124,8 @@ export default function NotificationBell() {
             {/* Unread count banner */}
             {data.unread_count > 0 && (
               <div className="notif-unread-banner">
-                {data.unread_count} unread notification{data.unread_count !== 1 ? 's' : ''}
+                <Icon name="bell" size={14} />
+                <span>{data.unread_count} unread notification{data.unread_count !== 1 ? 's' : ''}</span>
               </div>
             )}
 
@@ -162,7 +156,17 @@ export default function NotificationBell() {
                         <div
                           key={n.id}
                           className={`notif-item ${n.is_read ? '' : 'unread'}`}
-                          onClick={() => !n.is_read && handleMarkRead(n.id)}
+                          onClick={() => {
+                            if (!n.is_read) handleMarkRead(n.id)
+                            if (n.action_url) {
+                              setOpen(false)
+                              if (n.action_url.startsWith('http')) {
+                                window.open(n.action_url, '_blank', 'noopener,noreferrer')
+                              } else {
+                                navigate(n.action_url)
+                              }
+                            }
+                          }}
                         >
                           <div className="notif-item-body">
                             <div className="notif-item-title">{n.title}</div>
@@ -180,7 +184,8 @@ export default function NotificationBell() {
               )}
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   )

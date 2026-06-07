@@ -13,6 +13,7 @@ const BLANK = {
   role_name: '',
   department_id: '',
   headcount: 1,
+  priority: 'normal',
   work_type: 'onsite',
   location: '',
   experience_min: '',
@@ -21,6 +22,7 @@ const BLANK = {
   comp_max: '',
   target_start: '',
   requirements: '',
+  notes: '',
 }
 
 const toNum = (v) => (v === '' || v == null ? null : Number(v))
@@ -37,7 +39,7 @@ export default function HireRequestForm({ mode }) {
   const { user } = useAuth()
   const isEdit = mode === 'edit'
 
-  const [form, setForm] = useState({ ...BLANK, department_id: user?.dept_id ?? '' })
+  const [form, setForm] = useState({ ...BLANK, department_id: user?.department_id ?? user?.dept_id ?? '' })
   const [existing, setExisting] = useState(null)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
@@ -70,6 +72,7 @@ export default function HireRequestForm({ mode }) {
           role_name: r.role_name || '',
           department_id: r.department_id ?? '',
           headcount: r.headcount ?? 1,
+          priority: r.priority || 'normal',
           work_type: r.work_type || 'onsite',
           location: r.location || '',
           experience_min: r.experience_min ?? '',
@@ -78,6 +81,7 @@ export default function HireRequestForm({ mode }) {
           comp_max: r.comp_max ?? '',
           target_start: r.target_start || '',
           requirements: r.requirements || '',
+          notes: r.notes || '',
         })
       })
       .catch(err => {
@@ -102,6 +106,7 @@ export default function HireRequestForm({ mode }) {
         role_name: form.role_name.trim(),
         department_id: form.department_id ? Number(form.department_id) : null,
         headcount: Number(form.headcount) || 1,
+        priority: form.priority,
         work_type: form.work_type,
         location: form.location.trim() || null,
         experience_min: toNum(form.experience_min),
@@ -110,6 +115,9 @@ export default function HireRequestForm({ mode }) {
         comp_max: toNum(form.comp_max),
         target_start: form.target_start || null,
         requirements: form.requirements.trim() || null,
+      }
+      if (isEdit && form.notes.trim()) {
+        payload.notes = form.notes.trim()
       }
       const res = isEdit
         ? await hireRequestsApi.update(id, payload)
@@ -150,7 +158,7 @@ export default function HireRequestForm({ mode }) {
 
       {/* Relay viz — for new, it's a preview of the path the request will take */}
       <RelayVisualization request={existing || {
-        status: 'pending',
+        status: 'draft',
         requested_by_name: user?.name || 'You',
       }} />
 
@@ -161,128 +169,176 @@ export default function HireRequestForm({ mode }) {
       )}
 
       <form className="hr-form" onSubmit={submit} noValidate>
-        <section className="hr-form-section">
-          <h2 className="hr-form-section-title">The role</h2>
+        <div className="hr-form-grid" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-          <div className="hr-field">
-            <label htmlFor="hr-role">Role title *</label>
-            <input
-              id="hr-role"
-              type="text"
-              value={form.role_name}
-              onChange={e => set('role_name', e.target.value)}
-              placeholder="e.g. Senior Backend Engineer (Go)"
-              autoFocus
-              maxLength={200}
-              required
-            />
-          </div>
+          <section className="hr-form-section">
+            <h2 className="hr-form-section-title">Role Basics</h2>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', margin: '-10px 0 16px' }}>
+              Define the core position details. The AI recruiter will use this as the foundation.
+            </p>
 
-          <div className="hr-field">
-            <label htmlFor="hr-dept">Department</label>
-            <select
-              id="hr-dept"
-              value={form.department_id}
-              onChange={e => set('department_id', e.target.value)}
-            >
-              <option value="">— None —</option>
-              {depts.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="hr-field-row">
-            <div className="hr-field">
-              <label htmlFor="hr-headcount">Headcount</label>
+            <div className="hr-field" style={{ marginBottom: '16px' }}>
+              <label htmlFor="hr-role">Role title <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <input
-                id="hr-headcount"
-                type="number" min={1} max={100}
-                value={form.headcount}
-                onChange={e => set('headcount', e.target.value)}
+                id="hr-role"
+                type="text"
+                value={form.role_name}
+                onChange={e => set('role_name', e.target.value)}
+                placeholder="e.g. Senior Backend Engineer (Go)"
+                autoFocus
+                maxLength={200}
+                required
               />
             </div>
-            <div className="hr-field">
-              <label htmlFor="hr-worktype">Work type</label>
-              <select id="hr-worktype" value={form.work_type} onChange={e => set('work_type', e.target.value)}>
-                <option value="onsite">Onsite</option>
-                <option value="hybrid">Hybrid</option>
-                <option value="remote">Remote</option>
-              </select>
-            </div>
-            <div className="hr-field">
-              <label htmlFor="hr-start">Target start</label>
-              <input
-                id="hr-start" type="date"
-                value={form.target_start}
-                onChange={e => set('target_start', e.target.value)}
-              />
-            </div>
-          </div>
 
-          <div className="hr-field">
-            <label htmlFor="hr-loc">Location</label>
-            <input
-              id="hr-loc" type="text"
-              value={form.location}
-              onChange={e => set('location', e.target.value)}
-              placeholder="Bangalore, India"
-            />
-          </div>
+            {user?.role === 'org_head' && (
+              <div className="hr-field">
+                <label htmlFor="hr-dept">Department</label>
+                <select
+                  id="hr-dept"
+                  value={form.department_id}
+                  onChange={e => set('department_id', e.target.value)}
+                >
+                  <option value="">— None —</option>
+                  {depts.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </section>
 
-          <div className="hr-field-row">
-            <div className="hr-field">
-              <label htmlFor="hr-emin">Min experience (years)</label>
-              <input
-                id="hr-emin" type="number" min={0} max={50}
-                value={form.experience_min}
-                onChange={e => set('experience_min', e.target.value)}
-                placeholder="3"
-              />
-            </div>
-            <div className="hr-field">
-              <label htmlFor="hr-emax">Max experience (years)</label>
-              <input
-                id="hr-emax" type="number" min={0} max={50}
-                value={form.experience_max}
-                onChange={e => set('experience_max', e.target.value)}
-                placeholder="8"
-              />
-            </div>
-          </div>
+          <section className="hr-form-section">
+            <h2 className="hr-form-section-title">Logistics & Compensation</h2>
 
-          <div className="hr-field-row">
-            <div className="hr-field">
-              <label htmlFor="hr-cmin">Comp min (LPA)</label>
-              <input
-                id="hr-cmin" type="number" min={0}
-                value={form.comp_min}
-                onChange={e => set('comp_min', e.target.value)}
-                placeholder="30"
-              />
+            <div className="hr-field-row" style={{ marginBottom: '16px' }}>
+              <div className="hr-field">
+                <label htmlFor="hr-headcount">Headcount</label>
+                <input
+                  id="hr-headcount"
+                  type="number" min={1} max={100}
+                  value={form.headcount}
+                  onChange={e => set('headcount', e.target.value)}
+                />
+              </div>
+              <div className="hr-field">
+                <label htmlFor="hr-priority">Priority</label>
+                <select id="hr-priority" value={form.priority} onChange={e => set('priority', e.target.value)}>
+                  <option value="urgent">Urgent</option>
+                  <option value="high">High</option>
+                  <option value="normal">Normal</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+              <div className="hr-field">
+                <label htmlFor="hr-worktype">Work type</label>
+                <select id="hr-worktype" value={form.work_type} onChange={e => set('work_type', e.target.value)}>
+                  <option value="onsite">Onsite</option>
+                  <option value="hybrid">Hybrid</option>
+                  <option value="remote">Remote</option>
+                </select>
+              </div>
             </div>
-            <div className="hr-field">
-              <label htmlFor="hr-cmax">Comp max (LPA)</label>
-              <input
-                id="hr-cmax" type="number" min={0}
-                value={form.comp_max}
-                onChange={e => set('comp_max', e.target.value)}
-                placeholder="55"
-              />
-            </div>
-          </div>
 
-          <div className="hr-field">
-            <label htmlFor="hr-req">Key requirements</label>
-            <textarea
-              id="hr-req"
-              rows={5}
-              value={form.requirements}
-              onChange={e => set('requirements', e.target.value)}
-              placeholder="Skills, constraints, must-haves. The AI will turn this into a JD — be concrete."
-            />
-          </div>
-        </section>
+            <div className="hr-field-row" style={{ marginBottom: '16px' }}>
+              <div className="hr-field">
+                <label htmlFor="hr-start">Target start</label>
+                <input
+                  id="hr-start" type="date"
+                  value={form.target_start}
+                  onChange={e => set('target_start', e.target.value)}
+                />
+              </div>
+              <div className="hr-field">
+                <label htmlFor="hr-loc">Location</label>
+                <input
+                  id="hr-loc" type="text"
+                  value={form.location}
+                  onChange={e => set('location', e.target.value)}
+                  placeholder="Bangalore, India"
+                />
+              </div>
+            </div>
+
+            <div className="hr-field-row" style={{ marginBottom: '16px' }}>
+              <div className="hr-field">
+                <label htmlFor="hr-emin">Min experience (years)</label>
+                <input
+                  id="hr-emin" type="number" min={0} max={50}
+                  value={form.experience_min}
+                  onChange={e => set('experience_min', e.target.value)}
+                  placeholder="3"
+                />
+              </div>
+              <div className="hr-field">
+                <label htmlFor="hr-emax">Max experience (years)</label>
+                <input
+                  id="hr-emax" type="number" min={0} max={50}
+                  value={form.experience_max}
+                  onChange={e => set('experience_max', e.target.value)}
+                  placeholder="8"
+                />
+              </div>
+            </div>
+
+            <div className="hr-field-row">
+              <div className="hr-field">
+                <label htmlFor="hr-cmin">Comp min (LPA)</label>
+                <input
+                  id="hr-cmin" type="number" min={0}
+                  value={form.comp_min}
+                  onChange={e => set('comp_min', e.target.value)}
+                  placeholder="30"
+                />
+              </div>
+              <div className="hr-field">
+                <label htmlFor="hr-cmax">Comp max (LPA)</label>
+                <input
+                  id="hr-cmax" type="number" min={0}
+                  value={form.comp_max}
+                  onChange={e => set('comp_max', e.target.value)}
+                  placeholder="55"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="hr-form-section">
+            <h2 className="hr-form-section-title">Requirements & Scope</h2>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', margin: '-10px 0 16px' }}>
+              Tell the AI exactly what you're looking for. Be concrete about must-haves, constraints, and daily responsibilities.
+            </p>
+            <div className="hr-field">
+              <label htmlFor="hr-req">Context for the AI</label>
+              <textarea
+                id="hr-req"
+                rows={6}
+                value={form.requirements}
+                onChange={e => set('requirements', e.target.value)}
+                placeholder="We need someone who has scaled Postgres in a fast-paced environment. Must have experience with event-driven architectures..."
+              />
+            </div>
+          </section>
+
+          {isEdit && (
+            <section className="hr-form-section" style={{ borderLeftColor: 'var(--color-primary)' }}>
+              <h2 className="hr-form-section-title">Edit Notes</h2>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', margin: '-10px 0 16px' }}>
+                If you are modifying this request, explain what was changed so the requester knows why.
+              </p>
+              <div className="hr-field">
+                <label htmlFor="hr-notes">Notes for Team Lead</label>
+                <textarea
+                  id="hr-notes"
+                  rows={3}
+                  value={form.notes}
+                  onChange={e => set('notes', e.target.value)}
+                  placeholder="e.g. Adjusted headcount to 2 as per Q3 budget. Raised max comp slightly."
+                />
+              </div>
+            </section>
+          )}
+        </div>
 
         <div className="hr-form-actions">
           <Link to="/hire-requests" className="hr-btn hr-btn-ghost">Cancel</Link>

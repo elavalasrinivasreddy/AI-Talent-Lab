@@ -7,12 +7,13 @@ import { PlusIcon, InboxIcon, AlertIcon, SpinnerIcon } from './icons'
 import './HireRequests.css'
 
 const FILTERS = [
-  { key: 'queue',     label: 'Pending pickup', scopeStatus: { scope: 'all', status: 'pending' }, roles: ['org_head', 'hr'] },
-  { key: 'mine',      label: 'Mine',           scopeStatus: { scope: 'mine' },                    roles: ['org_head', 'hr', 'team_lead', 'dept_admin'] },
-  { key: 'accepted',  label: 'In progress',    scopeStatus: { scope: 'all', status: 'accepted' }, roles: ['org_head', 'hr'] },
-  { key: 'fulfilled', label: 'Fulfilled',      scopeStatus: { scope: 'all', status: 'fulfilled' },roles: ['org_head', 'hr'] },
-  { key: 'cancelled', label: 'Cancelled',      scopeStatus: { scope: 'all', status: 'cancelled' },roles: ['org_head', 'hr'] },
-  { key: 'all',       label: 'All',            scopeStatus: { scope: 'all' },                     roles: ['org_head', 'hr'] },
+  { key: 'queue_approval', label: 'Pending approval', scopeStatus: { scope: 'default', status: 'pending' },  roles: ['dept_admin', 'org_head'] },
+  { key: 'queue_pickup',   label: 'Pending pickup',   scopeStatus: { scope: 'default', status: 'approved' }, roles: ['hr', 'org_head'] },
+  { key: 'mine',           label: 'Mine',             scopeStatus: { scope: 'mine' },                    roles: ['org_head', 'hr', 'team_lead', 'dept_admin'] },
+  { key: 'accepted',       label: 'In progress',      scopeStatus: { scope: 'default', status: 'accepted' }, roles: ['org_head', 'hr', 'dept_admin'] },
+  { key: 'fulfilled',      label: 'Fulfilled',        scopeStatus: { scope: 'default', status: 'fulfilled' },roles: ['org_head', 'hr', 'dept_admin'] },
+  { key: 'cancelled',      label: 'Cancelled',        scopeStatus: { scope: 'default', status: 'cancelled' },roles: ['org_head', 'hr', 'dept_admin'] },
+  { key: 'all',            label: 'All',              scopeStatus: { scope: 'default', status: 'all' },      roles: ['org_head', 'hr', 'dept_admin'] },
 ]
 
 /**
@@ -63,10 +64,12 @@ export default function HireRequestListPage() {
           <p className="hr-page-sub">
             {role === 'team_lead'
               ? 'Your open requests and their status.'
-              : 'Requests filed across the org — pick one up to start the JD.'}
+              : role === 'org_head'
+                ? 'Requests filed across the org — pick one up to start the JD.'
+                : 'Requests filed in your department — pick one up to start the JD.'}
           </p>
         </div>
-        {canFile && (
+        {canFile && (requests.length > 0 || loading) && (
           <Link to="/hire-requests/new" className="hr-btn hr-btn-primary">
             <PlusIcon /> New request
           </Link>

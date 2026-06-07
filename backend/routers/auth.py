@@ -4,10 +4,11 @@ Thin HTTP layer — validates input via Pydantic, calls AuthService.
 See docs/architecture/03_backend.md §5 Auth section.
 """
 from fastapi import APIRouter, Depends, Request
+import json
 
 import asyncpg
 
-from backend.dependencies import get_db, get_current_user, require_org_head
+from backend.dependencies import get_db, get_current_user, require_org_head, require_dept_admin
 from backend.services.auth_service import AuthService
 from backend.models.auth import (
     LoginRequest,
@@ -22,6 +23,7 @@ from backend.models.auth import (
     UpdateUserRequest,
 )
 from backend.middleware.rate_limiter import limiter
+from backend.exceptions import NotFoundError, InsufficientPermissionsError
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
@@ -47,6 +49,9 @@ def _user_response(user: dict) -> dict:
         "timezone": user.get("timezone", "Asia/Kolkata"),
         "is_active": user.get("is_active", True),
         "department_id": user.get("department_id"),
+        "auto_approve_jds": user.get("auto_approve_jds", False),
+        "notification_preferences": user.get("notification_preferences") if isinstance(user.get("notification_preferences"), dict) else (json.loads(user.get("notification_preferences", "{}")) if user.get("notification_preferences") else {}),
+        "last_login_at": user.get("last_login_at"),
         "created_at": user.get("created_at"),
     }
 
@@ -116,6 +121,21 @@ async def login(
     }
 
 
+# ── POST /logout ──────────────────────────────────────────────────────────────
+
+@router.post("/logout")
+async def logout(
+    request: Request,
+    user: dict = Depends(get_current_user),
+):
+    """Logout user by denylisting their JWT."""
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.removeprefix("Bearer ").strip()
+    if token:
+        await AuthService.logout(token)
+    return {"message": "Logged out successfully"}
+
+
 # ── POST /magic-link ─────────────────────────────────────────────────────────
 
 @router.post("/magic-link")
@@ -179,12 +199,34 @@ async def me(
 
 @router.get("/users")
 async def list_users(
-    user: dict = Depends(require_org_head),
+    user: dict = Depends(require_dept_admin),
     db: asyncpg.Connection = Depends(get_db),
 ):
-    """List all org users (admin only)."""
-    users = await AuthService.list_users(db, user["org_id"])
+    """List org users. dept_admin sees only their own department; org_head sees all."""
+    dept_id = user.get("dept_id") if user["role"] == "dept_admin" else None
+    users = await AuthService.list_users(db, user["org_id"], department_id=dept_id)
     return {"users": [_user_response(u) for u in users]}
+
+
+# ── GET /directory ────────────────────────────────────────────────────────────
+
+@router.get("/directory")
+async def list_directory(
+    user: dict = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """List basic info for all users in the org for @mentions. Available to all org users."""
+    users = await AuthService.list_users(db, user["org_id"])
+    return {
+        "users": [
+            {
+                "id": u["id"],
+                "name": u["name"],
+                "department_id": u.get("department_id")
+            }
+            for u in users
+        ]
+    }
 
 
 # ── POST /add-user (admin) ────────────────────────────────────────────────────
@@ -193,10 +235,18 @@ async def list_users(
 async def add_user(
     request: Request,
     body: AddUserRequest,
-    user: dict = Depends(require_org_head),
+    user: dict = Depends(require_dept_admin),
     db: asyncpg.Connection = Depends(get_db),
 ):
-    """Add a new team member (admin only)."""
+    """Add a new team member (dept admin or above)."""
+    if user["role"] == "dept_admin":
+        if body.role in ["org_head", "dept_admin"]:
+            raise InsufficientPermissionsError("Department admins can only add HR and Team Leads")
+        # Ensure they are adding to their own department
+        dept_admin_dept = user.get("dept_id")
+        if dept_admin_dept is None or body.department_id != dept_admin_dept:
+            raise InsufficientPermissionsError("You can only add users to your own department")
+
     new_user = await AuthService.add_user(
         conn=db,
         org_id=user["org_id"],
@@ -218,10 +268,25 @@ async def update_user(
     user_id: int,
     request: Request,
     body: UpdateUserRequest,
-    user: dict = Depends(require_org_head),
+    user: dict = Depends(require_dept_admin),
     db: asyncpg.Connection = Depends(get_db),
 ):
-    """Update user role, department, or active status (admin only)."""
+    """Update user role, department, or active status (dept admin or above)."""
+    if user["role"] == "dept_admin":
+        from backend.db.repositories.users import UserRepository
+        target = await UserRepository.get_by_id(db, user_id, user["org_id"])
+        if not target:
+            raise NotFoundError("User not found")
+        if target["role"] in ["org_head", "dept_admin"]:
+            raise InsufficientPermissionsError("Department admins cannot modify org heads or other dept admins")
+        if target["department_id"] != user.get("dept_id"):
+            raise InsufficientPermissionsError("You can only modify users in your own department")
+            
+        if body.role and body.role in ["org_head", "dept_admin"]:
+            raise InsufficientPermissionsError("Department admins cannot elevate roles to org_head or dept_admin")
+        if body.department_id is not None and body.department_id != user.get("dept_id"):
+            raise InsufficientPermissionsError("You can only assign users to your own department")
+
     fields = body.model_dump(exclude_none=True)
     updated = await AuthService.update_user(
         conn=db,
@@ -244,6 +309,16 @@ async def update_profile(
 ):
     """Update own name, phone, avatar."""
     fields = body.model_dump(exclude_none=True)
+    
+    if "auto_approve_jds" in fields and fields["auto_approve_jds"]:
+        from backend.services.settings_service import SettingsService
+        org = await SettingsService.get_org(db, user["org_id"])
+        if org.get("allow_auto_approve_jds") is False:
+            raise InsufficientPermissionsError("Organization policy forbids auto-approving JDs.")
+
+    if "notification_preferences" in fields:
+        fields["notification_preferences"] = json.dumps(fields["notification_preferences"])
+
     updated = await AuthService.update_profile(
         conn=db,
         user_id=user["user_id"],

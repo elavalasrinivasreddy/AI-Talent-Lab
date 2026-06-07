@@ -31,9 +31,9 @@ const ALL_NAV = [
   { section: 'Hiring', items: [
     { to: '/positions',     icon: Icons.briefcase, label: 'Positions' },
     { to: '/interviews',    icon: Icons.calendar,  label: 'Interviews' },
-    { to: '/hire-requests', icon: Icons.inbox,     label: 'Hire Requests', roles: ['org_head', 'dept_admin', 'hr', 'team_lead'], badge: 'hire_requests_pending' },
+    { to: '/hire-requests', icon: Icons.inbox,     label: 'Hire Requests', roles: ['dept_admin', 'hr', 'team_lead'], badge: 'hire_requests_pending' },
     { to: '/talent-pool',   icon: Icons.users,     label: 'Talent Pool',   roles: ['org_head', 'dept_admin', 'hr'] },
-    { to: '/analytics',     icon: Icons.trending,  label: 'Analytics',     roles: ['org_head', 'dept_admin', 'hr'] },
+    { to: '/analytics',     icon: Icons.trending,  label: 'Analytics',     roles: ['org_head', 'dept_admin'] },
   ]},
   { section: 'System', items: [
     { to: '/settings', icon: Icons.settings, label: 'Settings' },
@@ -64,14 +64,21 @@ export default function Sidebar() {
     if (!role) return
     // team_lead doesn't need the org-wide pending count; their "Mine"
     // tab is the meaningful one and we don't have a count for that yet.
-    if (!['org_head', 'dept_admin', 'hr'].includes(role)) return
+    if (!['dept_admin', 'hr', 'team_lead'].includes(role)) return
 
     let cancelled = false
     const refresh = async () => {
       try {
-        const data = await hireRequestsApi.pendingCount()
+        const [hrData, posData] = await Promise.all([
+          ['dept_admin', 'hr'].includes(role) ? hireRequestsApi.pendingCount() : Promise.resolve({ count: 0 }),
+          ['team_lead', 'dept_admin', 'org_head'].includes(role) ? import('../../utils/api').then(m => m.positionsApi.pendingCount()) : Promise.resolve({ count: 0 })
+        ])
         if (!cancelled) {
-          setBadges(b => ({ ...b, hire_requests_pending: data?.count ?? 0 }))
+          setBadges(b => ({ 
+            ...b, 
+            hire_requests_pending: (hrData?.count ?? 0) + (posData?.count ?? 0),
+            positions_pending: 0
+          }))
         }
       } catch {
         // sidebar badge is best-effort
@@ -88,18 +95,8 @@ export default function Sidebar() {
   }
 
   const handleNewHire = () => {
-    // Only reset if current session is drafted/complete or empty
-    // Or if user explicitly wants to start fresh
-    if (workflowStage === 'complete' || messages.length === 0) {
-      resetChat()
-      navigate('/chat')
-    } else {
-      // Optional: Show a toast or confirm if they want to abandon current progress
-      if (window.confirm("Abandon current JD generation and start a new one?")) {
-        resetChat()
-        navigate('/chat')
-      }
-    }
+    resetChat(user)
+    navigate('/chat')
   }
 
   const role = user?.role || 'hr'
@@ -159,6 +156,9 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-footer">
+        <div style={{ marginBottom: '12px', fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--color-primary)', textTransform: 'capitalize' }}>
+          Role: {role.replace('_', ' ')}
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div className="sidebar-avatar">{initials}</div>
           <div className="sidebar-user-info" style={{ flex: 1, minWidth: 0 }}>

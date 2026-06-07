@@ -540,11 +540,32 @@ async def run_migrations(conn) -> None:
         END IF;
     END $$;
 
+    -- Approval Rules
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='departments' AND column_name='auto_approve_hire_requests') THEN
+            ALTER TABLE departments ADD COLUMN auto_approve_hire_requests BOOLEAN DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='users' AND column_name='auto_approve_jds') THEN
+            ALTER TABLE users ADD COLUMN auto_approve_jds BOOLEAN DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='users' AND column_name='notification_preferences') THEN
+            ALTER TABLE users ADD COLUMN notification_preferences JSONB DEFAULT '{}'::jsonb;
+        END IF;
+    END $$;
+
     DO $$
     BEGIN
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                        WHERE table_name='organizations' AND column_name='hiring_contact_email') THEN
             ALTER TABLE organizations ADD COLUMN hiring_contact_email TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='organizations' AND column_name='allow_auto_approve_jds') THEN
+            ALTER TABLE organizations ADD COLUMN allow_auto_approve_jds BOOLEAN DEFAULT TRUE;
         END IF;
     END $$;
 
@@ -583,6 +604,16 @@ async def run_migrations(conn) -> None:
     UPDATE users SET role = 'hr'        WHERE role = 'recruiter';
     UPDATE users SET role = 'team_lead' WHERE role = 'hiring_manager';
     ALTER TABLE users ALTER COLUMN role SET DEFAULT 'hr';
+    
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='users' AND column_name='last_login_at') THEN
+            ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP;
+            ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0;
+            ALTER TABLE users ADD COLUMN locked_until TIMESTAMP;
+        END IF;
+    END $$;
     """
     await conn.execute(incremental_sql)
 
@@ -779,6 +810,7 @@ async def run_migrations(conn) -> None:
         accepted_by      INTEGER REFERENCES users(id),
         role_name        TEXT NOT NULL,
         headcount        INTEGER DEFAULT 1,
+        priority         TEXT DEFAULT 'normal',
         work_type        TEXT DEFAULT 'onsite',
         experience_min   INTEGER,
         experience_max   INTEGER,
@@ -830,6 +862,15 @@ async def run_migrations(conn) -> None:
         END IF;
     END $$;
 
+    -- hire_requests: priority
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='priority') THEN
+            ALTER TABLE hire_requests ADD COLUMN priority TEXT DEFAULT 'normal';
+        END IF;
+    END $$;
+
     -- consumed_magic_links: enforces single-use on magic-link JWTs (auth, password_reset, etc.)
     -- jti is the unique JWT id minted at issue time; on verify we INSERT and rely on UNIQUE
     -- to reject replays. Periodic cleanup removes rows older than 30 days.
@@ -844,5 +885,226 @@ async def run_migrations(conn) -> None:
     """
     await conn.execute(feature_sql)
     logger.info("  Feature schema additions (v2) applied.")
+
+    # ── AI Behavior Settings column ───────────────────────────────────────────
+    ai_behavior_sql = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='organizations' AND column_name='ai_behavior_settings') THEN
+            ALTER TABLE organizations ADD COLUMN ai_behavior_settings JSONB NOT NULL DEFAULT '{}';
+        END IF;
+    END $$;
+    """
+    await conn.execute(ai_behavior_sql)
+    logger.info("  AI behavior settings column ensured.")
+
+    # ── Competitors department_id column ───────────────────────────────────────────
+    competitors_dept_sql = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='competitors' AND column_name='department_id') THEN
+            ALTER TABLE competitors ADD COLUMN department_id INTEGER REFERENCES departments(id) ON DELETE CASCADE;
+        END IF;
+    END $$;
+    """
+    await conn.execute(competitors_dept_sql)
+    logger.info("  Competitors department_id column ensured.")
+
+    # ── Position review_notes column ──────────────────────────────────────────
+    review_notes_sql = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='review_notes') THEN
+            ALTER TABLE positions ADD COLUMN review_notes TEXT;
+        END IF;
+    END $$;
+    """
+    await conn.execute(review_notes_sql)
+    logger.info("  Position review_notes column ensured.")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # JD Generation Workflow — Design Rev 4  (state_machines.md)
+    # ══════════════════════════════════════════════════════════════════════
+
+    # ── positions: HR pickup tracking ─────────────────────────────────────
+    jd_wf_positions_sql = """
+    DO $$
+    BEGIN
+        -- Atomic CAS guard for HR pickup (Flow 1)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='picked_up_by') THEN
+            ALTER TABLE positions ADD COLUMN picked_up_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='picked_up_at') THEN
+            ALTER TABLE positions ADD COLUMN picked_up_at TIMESTAMPTZ;
+        END IF;
+
+        -- Revision cycle counter (increments on reviewer rejection only)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='revision_cycle') THEN
+            ALTER TABLE positions ADD COLUMN revision_cycle INTEGER NOT NULL DEFAULT 0;
+        END IF;
+
+        -- Server-resolved reviewer for pending_jd_approval
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='reviewer_id') THEN
+            ALTER TABLE positions ADD COLUMN reviewer_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+
+        -- Authority snapshotting at submit time
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='submitted_by_role') THEN
+            ALTER TABLE positions ADD COLUMN submitted_by_role TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='reviewer_role_at_submit') THEN
+            ALTER TABLE positions ADD COLUMN reviewer_role_at_submit TEXT;
+        END IF;
+
+        -- When the JD was submitted for approval
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='positions' AND column_name='submitted_at') THEN
+            ALTER TABLE positions ADD COLUMN submitted_at TIMESTAMPTZ;
+        END IF;
+    END $$;
+    """
+    await conn.execute(jd_wf_positions_sql)
+    logger.info("  JD workflow: positions columns ensured (pickup, revision, reviewer, authority).")
+
+    # ── hire_requests: admin_reviewing lock + modification tracking ────────
+    jd_wf_hire_requests_sql = """
+    DO $$
+    BEGIN
+        -- Atomic lock for admin review (30-min TTL, takeover after 10 min)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='reviewing_locked_by') THEN
+            ALTER TABLE hire_requests ADD COLUMN reviewing_locked_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='reviewing_locked_at') THEN
+            ALTER TABLE hire_requests ADD COLUMN reviewing_locked_at TIMESTAMPTZ;
+        END IF;
+
+        -- JSONB diff for approved_modified status
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='modification_diff') THEN
+            ALTER TABLE hire_requests ADD COLUMN modification_diff JSONB;
+        END IF;
+
+        -- General notes column (admin rejection/modification notes, TL cancel notes)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='hire_requests' AND column_name='notes') THEN
+            ALTER TABLE hire_requests ADD COLUMN notes TEXT;
+        END IF;
+    END $$;
+    """
+    await conn.execute(jd_wf_hire_requests_sql)
+    logger.info("  JD workflow: hire_requests columns ensured (admin lock, diff, notes).")
+
+    # ── chat_messages: feedback injection support ─────────────────────────
+    jd_wf_chat_messages_sql = """
+    DO $$
+    BEGIN
+        -- Distinguish feedback_injection from normal messages
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='chat_messages' AND column_name='message_type') THEN
+            ALTER TABLE chat_messages ADD COLUMN message_type TEXT;
+        END IF;
+
+        -- Ties feedback to a specific revision cycle
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='chat_messages' AND column_name='revision_cycle') THEN
+            ALTER TABLE chat_messages ADD COLUMN revision_cycle INTEGER NOT NULL DEFAULT 0;
+        END IF;
+    END $$;
+    """
+    await conn.execute(jd_wf_chat_messages_sql)
+    logger.info("  JD workflow: chat_messages columns ensured (message_type, revision_cycle).")
+
+    # ── Partial unique index: idempotent feedback injection guard ──────────
+    feedback_idx_sql = """
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_chat_feedback_injection
+        ON chat_messages (session_id, message_type, revision_cycle)
+        WHERE message_type = 'feedback_injection';
+    """
+    await conn.execute(feedback_idx_sql)
+    logger.info("  JD workflow: uq_chat_feedback_injection index ensured.")
+
+    actor_type_sql = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='pipeline_events' AND column_name='actor_type'
+        ) THEN
+            ALTER TABLE pipeline_events
+                ADD COLUMN actor_type VARCHAR(20) NOT NULL DEFAULT 'human';
+            COMMENT ON COLUMN pipeline_events.actor_type IS
+                'Who generated this event: human | ai_agent | system';
+        END IF;
+    END $$;
+    CREATE INDEX IF NOT EXISTS idx_pipeline_events_actor
+        ON pipeline_events(org_id, actor_type);
+    """
+    await conn.execute(actor_type_sql)
+    logger.info("  pipeline_events.actor_type column ensured.")
+
+    # ── Ops Intelligence tables ──────────────────────────────────────────────────
+    ops_sql = """
+    CREATE TABLE IF NOT EXISTS llm_usage_log (
+        id            SERIAL PRIMARY KEY,
+        org_id        INTEGER,
+        operation     VARCHAR(60) NOT NULL DEFAULT 'unknown',
+        model         VARCHAR(80) NOT NULL DEFAULT 'unknown',
+        input_tokens  INTEGER NOT NULL DEFAULT 0,
+        output_tokens INTEGER NOT NULL DEFAULT 0,
+        cost_usd      NUMERIC(12, 6) NOT NULL DEFAULT 0,
+        duration_ms   INTEGER,
+        success       BOOLEAN NOT NULL DEFAULT true,
+        error_code    VARCHAR(50),
+        created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_llm_usage_org_op
+        ON llm_usage_log(org_id, operation, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS task_run_log (
+        id                   SERIAL PRIMARY KEY,
+        org_id               INTEGER,
+        task_type            VARCHAR(60) NOT NULL,
+        position_id          INTEGER,
+        status               VARCHAR(20) NOT NULL DEFAULT 'success',
+        candidates_found     INTEGER,
+        candidates_processed INTEGER,
+        duration_ms          INTEGER,
+        error_message        TEXT,
+        celery_task_id       VARCHAR(200),
+        created_at           TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_task_run_org_type
+        ON task_run_log(org_id, task_type, created_at DESC);
+    """
+    await conn.execute(ops_sql)
+    logger.info("  llm_usage_log and task_run_log tables ensured.")
+
+    # Add jd_status to positions
+    await conn.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='positions' AND column_name='jd_status'
+        ) THEN
+            ALTER TABLE positions
+                ADD COLUMN jd_status VARCHAR(20) NOT NULL DEFAULT 'na';
+            COMMENT ON COLUMN positions.jd_status IS
+                'na | draft | pending_review | approved | rejected';
+        END IF;
+    END $$;
+    """)
+    logger.info("  positions.jd_status column ensured.")
 
     logger.info("Database migrations complete.")

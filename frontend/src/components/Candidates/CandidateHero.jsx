@@ -29,6 +29,7 @@ export default function CandidateHero({
   onMarkSelected,
   onSchedule,
   onDraftRejection,
+  onRetryAts,
 }) {
   const score = candidate.skill_match_score
   const scoreStyle = score != null ? getScoreStyle(score) : null
@@ -102,30 +103,37 @@ export default function CandidateHero({
         {/* Right: Action Panel */}
         <div className="cd-hero-actions">
           {candidate.application_id && positionId && (
-            <>
-              <button
-                className="cd-action-primary"
-                onClick={() => {
-                  const idx = VISIBLE_MOVE_STAGES.indexOf(candidate.pipeline_status)
-                  const next = VISIBLE_MOVE_STAGES[idx + 1]
-                  if (next) onStatusChange(next)
-                }}
-                disabled={movingStatus}
-              >
-                {nextStageLabel(candidate.pipeline_status)}
-              </button>
-              <button className="cd-action-secondary" onClick={onSchedule}>
-                <Icon name="calendar" size={13} /> Schedule
-              </button>
-              {candidate.pipeline_status !== 'selected' && (
-                <button className="cd-action-secondary" onClick={onMarkSelected}>
-                  <Icon name="check" size={13} /> Mark Selected
+            <div className="cd-action-group-vertical">
+              <div className="cd-action-row-main">
+                <button
+                  className="cd-btn cd-btn-primary"
+                  onClick={() => {
+                    const idx = VISIBLE_MOVE_STAGES.indexOf(candidate.pipeline_status)
+                    const next = VISIBLE_MOVE_STAGES[idx + 1]
+                    if (next) onStatusChange(next)
+                  }}
+                  disabled={movingStatus || !VISIBLE_MOVE_STAGES[VISIBLE_MOVE_STAGES.indexOf(candidate.pipeline_status) + 1]}
+                >
+                  {nextStageLabel(candidate.pipeline_status)}
                 </button>
-              )}
-              <button className="cd-action-ghost-danger" onClick={onDraftRejection}>
-                <Icon name="x" size={13} /> Draft Rejection
-              </button>
-            </>
+                <button className="cd-btn cd-btn-outline" onClick={onSchedule}>
+                  <Icon name="calendar" size={13} /> Schedule
+                </button>
+                {candidate.pipeline_status !== 'selected' && (
+                  <button className="cd-btn cd-btn-outline" onClick={onMarkSelected}>
+                    <Icon name="check" size={13} /> Mark Selected
+                  </button>
+                )}
+              </div>
+              <div className="cd-action-row-sub" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <button className="cd-btn cd-btn-outline" onClick={onRetryAts}>
+                  <Icon name="refresh-cw" size={13} /> Retry ATS Score
+                </button>
+                <button className="cd-btn cd-btn-outline" style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)' }} onClick={onDraftRejection}>
+                  <Icon name="x" size={13} /> Draft Rejection
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

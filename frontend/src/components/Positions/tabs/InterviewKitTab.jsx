@@ -4,14 +4,8 @@
  * Per docs/design/pages/12_career_page.md §Interview Kit
  */
 import React, { useState, useEffect } from 'react'
+import { positionsApi } from '../../../utils/api'
 import './InterviewKitTab.css'
-
-const API = '/api/v1'
-
-function authHeader() {
-  const t = localStorage.getItem('token')
-  return t ? { Authorization: `Bearer ${t}` } : {}
-}
 
 const TYPE_ICONS = {
   technical: '⚙️',
@@ -44,19 +38,18 @@ export default function InterviewKitTab({ positionId }) {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${API}/positions/${positionId}/interview-kit`, {
-        headers: authHeader(),
-      })
-      if (res.status === 404) {
-        setKit(null) // Not yet generated
-      } else if (!res.ok) {
-        throw new Error('Failed to load')
-      } else {
-        const data = await res.json()
+      const data = await positionsApi.getInterviewKit(positionId)
+      if (data) {
         setKit(data)
+      } else {
+        setKit(null)
       }
     } catch (e) {
-      setError(e.message)
+      if (e.status === 404) {
+        setKit(null)
+      } else {
+        setError(e.message)
+      }
     } finally {
       setLoading(false)
     }
@@ -66,15 +59,10 @@ export default function InterviewKitTab({ positionId }) {
     setGenerating(true)
     setError('')
     try {
-      const res = await fetch(`${API}/positions/${positionId}/interview-kit/generate`, {
-        method: 'POST',
-        headers: authHeader(),
-      })
-      if (!res.ok) throw new Error('Generation failed')
-      const data = await res.json()
+      const data = await positionsApi.generateInterviewKit(positionId)
       setKit(data)
     } catch (e) {
-      setError('AI generation failed. Please try again.')
+      setError(e.message || 'AI generation failed. Please try again.')
     } finally {
       setGenerating(false)
     }
@@ -83,7 +71,7 @@ export default function InterviewKitTab({ positionId }) {
   const handleCopyAll = async () => {
     if (!kit?.questions) return
     const text = kit.questions
-      .map((q, i) => `Q${i + 1}. ${q.question}\nType: ${q.type} | Difficulty: ${q.difficulty}\nLook for: ${q.what_to_look_for}`)
+      .map((q, i) => `Q${i + 1}. ${q.question}\nType: ${q.type} | Difficulty: ${q.difficulty}\nLook for: ${typeof q.what_to_look_for === 'string' ? q.what_to_look_for : ''}`)
       .join('\n\n')
     await navigator.clipboard.writeText(text)
     setCopied(true)
@@ -138,10 +126,18 @@ export default function InterviewKitTab({ positionId }) {
 
       {/* Questions by type */}
       <div className="ik-sections">
+        {questions.length === 0 && (
+          <div className="ik-empty-inline">
+            <p>No questions were generated. Try regenerating the kit.</p>
+            <button className="ik-regen-btn" onClick={handleGenerate} disabled={generating}>
+              {generating ? '⏳ Regenerating…' : '↺ Regenerate'}
+            </button>
+          </div>
+        )}
         {Object.entries(byType).map(([type, qs]) => (
           <div key={type} className="ik-type-group">
             <h4 className="ik-type-label">
-              {TYPE_ICONS[type] || '❓'} {type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+              {TYPE_ICONS[type] || '❓'} {String(type).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
               <span className="ik-type-count">{qs.length}</span>
             </h4>
             {qs.map((q, idx) => {
@@ -154,13 +150,13 @@ export default function InterviewKitTab({ positionId }) {
                 >
                   <div className="ik-question-header" onClick={() => setExpandedQ(isExpanded ? null : qId)}>
                     <div className="ik-question-num">{questions.indexOf(q) + 1}</div>
-                    <div className="ik-question-text">{q.question}</div>
+                    <div className="ik-question-text">{q?.question || 'Untitled Question'}</div>
                     <div className="ik-question-meta">
                       <span
                         className="ik-difficulty"
-                        style={{ color: DIFFICULTY_COLORS[q.difficulty] || '#94a3b8' }}
+                        style={{ color: DIFFICULTY_COLORS[q?.difficulty?.toLowerCase()] || '#94a3b8' }}
                       >
-                        {q.difficulty}
+                        {q?.difficulty || 'N/A'}
                       </span>
                       <span className="ik-expand-icon">{isExpanded ? '▲' : '▾'}</span>
                     </div>
@@ -169,14 +165,14 @@ export default function InterviewKitTab({ positionId }) {
                     <div className="ik-question-body">
                       <div className="ik-look-for">
                         <span className="ik-look-label">Look for:</span>
-                        <p>{q.what_to_look_for}</p>
+                        <p>{typeof q.what_to_look_for === 'string' ? q.what_to_look_for : String(q.what_to_look_for ?? '')}</p>
                       </div>
                       {q.follow_ups?.length > 0 && (
                         <div className="ik-follow-ups">
                           <span className="ik-follow-label">Follow-up questions:</span>
                           <ul>
                             {q.follow_ups.map((fu, fi) => (
-                              <li key={fi}>{fu}</li>
+                              <li key={fi}>{typeof fu === 'string' ? fu : String(fu ?? '')}</li>
                             ))}
                           </ul>
                         </div>
@@ -197,11 +193,11 @@ export default function InterviewKitTab({ positionId }) {
           <div className="ik-scorecard-grid">
             {scorecard.map((dim, i) => (
               <div key={i} className="ik-scorecard-dim">
-                <div className="ik-dim-name">{dim.dimension}</div>
-                <div className="ik-dim-desc">{dim.description}</div>
+                <div className="ik-dim-name">{dim?.dimension || 'Dimension'}</div>
+                <div className="ik-dim-desc">{dim?.description || ''}</div>
                 <div className="ik-rating-scale">
-                  {dim.rating_scale?.map((r, ri) => (
-                    <span key={ri} className={`ik-rating-pill ik-r${ri + 1}`}>{r.split(' - ')[0]}</span>
+                  {Array.isArray(dim?.rating_scale) && dim.rating_scale.map((r, ri) => (
+                    <span key={ri} className={`ik-rating-pill ik-r${ri + 1}`}>{String(r).split(' - ')[0]}</span>
                   ))}
                 </div>
               </div>

@@ -30,11 +30,22 @@ const STAGES = [
 const RUNNING_STAGES = STAGES.map((s) => s.key);
 
 function statePerStage(currentStage, gs, skipped) {
-  const currentIdx = RUNNING_STAGES.indexOf(currentStage);
+  let effectiveStage = currentStage;
+  // If bias check has issues defined, it means it has finished running.
+  // Visually advance the stepper to the final 'Save' stage.
+  if (currentStage === 'bias_check' && gs?.bias_issues !== undefined) {
+    effectiveStage = 'complete';
+  }
+
+  const currentIdx = RUNNING_STAGES.indexOf(effectiveStage);
   const map = {};
   RUNNING_STAGES.forEach((key, idx) => {
     if (skipped.has(key)) {
       map[key] = 'skipped';
+      return;
+    }
+    if (currentStage === 'complete') {
+      map[key] = 'done';
       return;
     }
     if (idx < currentIdx) {
@@ -42,28 +53,25 @@ function statePerStage(currentStage, gs, skipped) {
       return;
     }
     if (idx === currentIdx) {
-      // `complete` is "done" only after explicit save; before then it's `current`
-      if (key === 'complete') map[key] = 'current';
-      else map[key] = 'current';
+      map[key] = 'current';
       return;
     }
     map[key] = 'pending';
   });
-  // Derived: if final_jd has a saved JD and we're not in bias/complete, leave as is.
-  // If bias_check ran and finished, mark it done unless still active.
-  if (gs?.bias_issues !== undefined && currentStage !== 'bias_check') {
-    map.bias_check = gs.bias_skipped ? 'skipped' : 'done';
+
+  if (gs?.bias_skipped && currentIdx > RUNNING_STAGES.indexOf('bias_check')) {
+    map.bias_check = 'skipped';
   }
   return map;
 }
 
-export default function JDStepper() {
-  const { workflowStage, stageSkipped } = useChat();
+export default function JDStepper({ isRailOpen, onToggleRail }) {
+  const { workflowStage, stageSkipped, graphState } = useChat();
   const skipped = useMemo(() => new Set(stageSkipped || []), [stageSkipped]);
 
   const states = useMemo(
-    () => statePerStage(workflowStage, {}, skipped),
-    [workflowStage, skipped]
+    () => statePerStage(workflowStage, graphState, skipped),
+    [workflowStage, graphState, skipped]
   );
 
   return (
@@ -106,6 +114,26 @@ export default function JDStepper() {
           );
         })}
       </ol>
+      <div className="jd-stepper-actions">
+        <button 
+          onClick={onToggleRail} 
+          className="icon-btn toggle-rail-btn" 
+          title={isRailOpen ? "Hide Rail" : "Show Rail"}
+          aria-label={isRailOpen ? "Hide Rail" : "Show Rail"}
+        >
+          {isRailOpen ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="15" y1="3" x2="15" y2="21"></line>
+              </svg>
+          ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="9" y1="3" x2="9" y2="21"></line>
+              </svg>
+          )}
+        </button>
+      </div>
     </nav>
   );
 }

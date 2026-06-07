@@ -12,6 +12,7 @@ import StageHealthHeader from './StageHealthHeader'
 import CandidateRankedRow from './CandidateRankedRow'
 import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts'
 import Icon from '../common/Icon'
+import Toast from '../common/Toast'
 
 const VISIBLE_STAGES = ['sourced', 'emailed', 'applied', 'screening', 'interview', 'selected', 'rejected']
 
@@ -27,6 +28,7 @@ export default function PipelineStackView({
   const [focusedIndex, setFocusedIndex] = useState(0)
   const [showHelp, setShowHelp] = useState(false)
   const [viewMode, setViewMode] = useState('stack') // 'stack' or 'kanban'
+  const [toast, setToast] = useState(null)
 
   const load = useCallback(async () => {
     try {
@@ -60,14 +62,16 @@ export default function PipelineStackView({
         position_id: positionId,
       })
       load()
+      setToast({ message: 'Candidate moved', type: 'success' })
     } catch (e) {
-      alert(`Move failed: ${e.message}`)
+      setToast({ message: `Move failed: ${e.message}`, type: 'error' })
     }
   }
 
   const handleOpen = (candidate) => {
     navigate(`/candidates/${candidate.id}`, {
       state: {
+        positionId,
         from: `/positions/${positionId}`,
         fromTab: 'pipeline',
         fromLabel: 'Back to Position',
@@ -106,6 +110,8 @@ export default function PipelineStackView({
 
   return (
     <div className="pd-stack-view">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      
       {/* View toggle */}
       <div className="pd-stack-toolbar">
         <div className="pd-view-toggle">

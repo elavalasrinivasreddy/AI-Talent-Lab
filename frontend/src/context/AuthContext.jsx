@@ -125,6 +125,9 @@ export function AuthProvider({ children }) {
   }, [_applySession])
 
   const logout = useCallback(() => {
+    api.post('/auth/logout').catch(() => {
+      // Ignore network errors on logout, we still want to clear local state
+    })
     setToken(null)
     setUser(null)
     setOrg(null)

@@ -5,7 +5,7 @@ import AgentBlockIntake from './blocks/AgentBlockIntake';
 import AgentBlockInternal from './blocks/AgentBlockInternal';
 import AgentBlockMarket from './blocks/AgentBlockMarket';
 import AgentBlockVariants from './blocks/AgentBlockVariants';
-import AgentBlockBias from './blocks/AgentBlockBias';
+import FinalJDCard from './cards/FinalJDCard';
 import { IconFileText, IconSparkles } from './icons';
 
 /**
@@ -56,15 +56,9 @@ export default function JDCanvas() {
       {marketCard && <AgentBlockMarket />}
       {variantsCard && <AgentBlockVariants />}
 
-      {jdBody && (
-        <article className="jd-body">
-          <ReactMarkdown>{jdBody}</ReactMarkdown>
-          {isJdStreaming && <span className="jd-stream-cursor" aria-hidden="true" />}
-        </article>
+      {(jdBody || isJdStreaming) && (
+          <FinalJDCard />
       )}
-
-      {/* Bias block renders itself only when there's a final JD to check. */}
-      <AgentBlockBias />
     </div>
   );
 }
@@ -102,17 +96,12 @@ function EmptyCanvas() {
         <span className="jd-empty-eyebrow">
           <IconSparkles size={12} /> Empty canvas
         </span>
-        <h2>Your job description will appear here.</h2>
-        <p>
-          Start by telling the AI which role you&apos;re hiring for in the chat on
-          the right. The JD will build itself in this space as we go — skills,
-          variants, bias check, all inline.
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 500, textTransform: 'none', margin: '12px 0 8px 0', letterSpacing: 'normal' }}>
+          Your job description will appear here.
+        </h3>
+        <p style={{ opacity: 0.8, fontSize: '14px', lineHeight: 1.5 }}>
+          Start chatting with the AI on the right to begin building your requirements. The JD will draft itself inline automatically.
         </p>
-        <ul className="jd-empty-points">
-          <li>The agent records intake fields as a captured-data block.</li>
-          <li>Internal + market skills appear as chip clouds you can toggle.</li>
-          <li>Variants render side-by-side; pick one and the full JD streams in.</li>
-        </ul>
       </div>
     </div>
   );

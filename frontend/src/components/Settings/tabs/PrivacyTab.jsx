@@ -4,12 +4,19 @@
  */
 import React, { useState, useEffect, useCallback } from 'react'
 import { gdprApi } from '../../../utils/api'
+import { useAuth } from '../../../context/AuthContext'
+import SlideOver from '../../common/SlideOver'
+import ConfirmModal from '../../common/ConfirmModal'
 
 export default function PrivacyTab() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'org_head' || user?.role === 'dept_admin'
+
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(null)
   const [exportModal, setExportModal] = useState(null)
+  const [anonymizeConfirmId, setAnonymizeConfirmId] = useState(null)
 
   const loadRequests = useCallback(async () => {
     try {
@@ -24,16 +31,17 @@ export default function PrivacyTab() {
 
   useEffect(() => { loadRequests() }, [loadRequests])
 
-  const handleProcess = async (id) => {
-    if (!confirm('This will permanently anonymize the candidate\'s data. Continue?')) return
-    setProcessing(id)
+  const handleProcess = async () => {
+    if (!anonymizeConfirmId) return
+    setProcessing(anonymizeConfirmId)
     try {
-      await gdprApi.processDeletion(id)
+      await gdprApi.processDeletion(anonymizeConfirmId)
       await loadRequests()
     } catch (err) {
       alert('Failed to process deletion. ' + (err.message || ''))
     } finally {
       setProcessing(null)
+      setAnonymizeConfirmId(null)
     }
   }
 
@@ -64,8 +72,9 @@ export default function PrivacyTab() {
         </p>
       </div>
 
-      {/* Quick stats */}
-      <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+      {/* Quick stats (Admin Only) */}
+      {isAdmin && (
+        <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
         <div className="settings-card" style={{ flex: 1, minWidth: 160 }}>
           <h4>📋 Total Requests</h4>
           <p style={{ fontSize: '28px', fontWeight: 800, color: 'var(--color-text-primary)', margin: '4px 0 0' }}>
@@ -84,11 +93,13 @@ export default function PrivacyTab() {
             {requests.filter(r => r.status === 'completed').length}
           </p>
         </div>
-      </div>
+        </div>
+      )}
 
-      {/* Deletion Requests Table */}
-      <div className="settings-form-section">
-        <div className="section-header">
+      {/* Deletion Requests Table (Admin Only) */}
+      {isAdmin && (
+        <div className="settings-form-section">
+          <div className="section-header">
           <h3>Data Deletion Requests</h3>
           <button className="btn btn-secondary btn-sm" onClick={loadRequests}>↻ Refresh</button>
         </div>
@@ -140,7 +151,7 @@ export default function PrivacyTab() {
                       {(req.status === 'verified') && (
                         <button
                           className="btn btn-danger btn-sm"
-                          onClick={() => handleProcess(req.id)}
+                          onClick={() => setAnonymizeConfirmId(req.id)}
                           disabled={processing === req.id}
                         >
                           {processing === req.id ? '…' : '🗑 Process'}
@@ -160,6 +171,7 @@ export default function PrivacyTab() {
           </table>
         )}
       </div>
+      )}
 
       {/* Data Retention Policy */}
       <div className="settings-form-section">
@@ -210,50 +222,59 @@ export default function PrivacyTab() {
       </div>
 
       {/* Export Modal */}
-      {exportModal && (
-        <div className="modal-overlay" onClick={() => setExportModal(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h2>📦 Candidate Data Export</h2>
-            <p className="section-desc">
-              This is the full Subject Access Request (SAR) data export for this candidate.
-            </p>
-            <textarea
-              readOnly
-              value={exportModal}
-              style={{
-                width: '100%',
-                height: '400px',
-                background: 'var(--color-bg-input)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--color-text-primary)',
-                fontFamily: 'monospace',
-                fontSize: '12px',
-                padding: 'var(--space-3)',
-                resize: 'vertical',
-              }}
-            />
-            <div className="btn-row">
-              <button className="btn btn-secondary" onClick={() => {
-                navigator.clipboard.writeText(exportModal)
-                alert('Copied to clipboard!')
-              }}>
-                📋 Copy JSON
-              </button>
-              <button className="btn btn-primary" onClick={() => {
-                const blob = new Blob([exportModal], { type: 'application/json' })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url; a.download = 'candidate_data_export.json'
-                a.click(); URL.revokeObjectURL(url)
-              }}>
-                💾 Download
-              </button>
-              <button className="btn btn-ghost" onClick={() => setExportModal(null)}>Close</button>
-            </div>
-          </div>
+      <SlideOver
+        isOpen={!!exportModal}
+        onClose={() => setExportModal(null)}
+        title="Candidate Data Export"
+      >
+        <p className="section-desc">
+          This is the full Subject Access Request (SAR) data export for this candidate.
+        </p>
+        <textarea
+          readOnly
+          value={exportModal || ''}
+          style={{
+            width: '100%',
+            height: '400px',
+            background: 'var(--color-bg-input)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            color: 'var(--color-text-primary)',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            padding: 'var(--space-3)',
+            resize: 'vertical',
+          }}
+        />
+        <div className="btn-row" style={{ marginTop: 'var(--space-6)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--color-border)' }}>
+          <button className="btn btn-secondary" onClick={() => {
+            navigator.clipboard.writeText(exportModal)
+            alert('Copied to clipboard!')
+          }}>
+            📋 Copy JSON
+          </button>
+          <button className="btn btn-primary" onClick={() => {
+            const blob = new Blob([exportModal], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url; a.download = 'candidate_data_export.json'
+            a.click(); URL.revokeObjectURL(url)
+          }}>
+            💾 Download
+          </button>
+          <button className="btn btn-ghost" onClick={() => setExportModal(null)}>Close</button>
         </div>
-      )}
+      </SlideOver>
+
+      <ConfirmModal
+        isOpen={!!anonymizeConfirmId}
+        onClose={() => setAnonymizeConfirmId(null)}
+        onConfirm={handleProcess}
+        title="Anonymize Data"
+        message="This will permanently anonymize the candidate's data. Continue?"
+        confirmText="Anonymize"
+        confirmVariant="danger"
+      />
     </div>
   )
 }

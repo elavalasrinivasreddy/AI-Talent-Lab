@@ -1,0 +1,298 @@
+/* OpsTab.css — System Health tab layout and card styles */
+
+.ops-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+.ops-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4, 16px);
+}
+
+@media (max-width: 900px) {
+  .ops-row-2col { grid-template-columns: 1fr; }
+}
+
+/* ── CeleryHealthCard ── */
+.ops-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+.ops-task-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ops-task-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ops-task-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary, #F1F5F9);
+}
+
+.ops-task-count {
+  font-size: 11px;
+  color: var(--color-text-secondary, #94A3B8);
+}
+
+.ops-rate-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ops-rate-bar {
+  flex: 1;
+  height: 8px;
+  background: var(--color-bg-card, #111827);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ops-rate-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.ops-rate-label {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 38px;
+  text-align: right;
+}
+
+.ops-task-detail {
+  display: flex;
+  gap: var(--space-3, 12px);
+  font-size: 11px;
+  color: var(--color-text-secondary, #94A3B8);
+}
+
+.ops-task-fail { color: var(--color-danger, #EF4444); }
+
+/* ── LLMCostCard ── */
+.ops-llm-summary {
+  display: flex;
+  gap: var(--space-6, 24px);
+  margin-bottom: var(--space-3, 12px);
+}
+
+.ops-llm-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ops-llm-val {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary, #F1F5F9);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.ops-llm-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary, #94A3B8);
+}
+
+.ops-token-row {
+  display: flex;
+  gap: var(--space-4, 16px);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary, #94A3B8);
+  margin-bottom: var(--space-4, 16px);
+  padding-bottom: var(--space-4, 16px);
+  border-bottom: 1px solid var(--color-border, #1E3047);
+}
+
+.ops-token-in  { color: var(--color-primary, #0D9488); }
+.ops-token-out { color: var(--color-text-secondary, #94A3B8); }
+
+.ops-op-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ops-op-row {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.ops-op-name {
+  font-size: 12px;
+  color: var(--color-text-secondary, #94A3B8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ops-op-bar-wrap { flex: 1; }
+
+.ops-op-bar {
+  height: 6px;
+  background: var(--color-bg-card, #111827);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ops-op-fill {
+  height: 100%;
+  background: var(--color-primary, #0D9488);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+  opacity: 0.8;
+}
+
+.ops-op-cost {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-primary, #F1F5F9);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  min-width: 52px;
+  text-align: right;
+}
+
+/* ── JDMetricsCard ── */
+.ops-jd-card { grid-column: 1 / -1; }
+
+.ops-jd-gen-row {
+  display: flex;
+  gap: var(--space-6, 24px);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4, 16px);
+  padding-bottom: var(--space-4, 16px);
+  border-bottom: 1px solid var(--color-border, #1E3047);
+}
+
+.ops-jd-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ops-jd-val {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-text-primary, #F1F5F9);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.ops-jd-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary, #94A3B8);
+}
+
+.ops-jd-status-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4, 16px);
+}
+
+.ops-jd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid;
+  border-radius: 9999px;
+  font-size: 12px;
+}
+
+.ops-jd-chip strong {
+  font-weight: 700;
+  color: var(--color-text-primary, #F1F5F9);
+}
+
+.ops-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary, #94A3B8);
+  margin-bottom: var(--space-3, 12px);
+}
+
+.ops-pos-section { margin-bottom: var(--space-4, 16px); }
+
+.ops-pos-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ops-pos-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--color-bg-card, #111827);
+  border: 1px solid var(--color-border, #1E3047);
+  border-radius: var(--radius-md, 10px);
+  font-size: 12px;
+}
+
+.ops-pos-chip-label { color: var(--color-text-secondary, #94A3B8); }
+
+.ops-pos-chip-count {
+  font-weight: 700;
+  color: var(--color-text-primary, #F1F5F9);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Shared table ── */
+.ops-monthly-table { margin-top: 8px; }
+
+.ops-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ops-table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary, #94A3B8);
+  border-bottom: 1px solid var(--color-border, #1E3047);
+}
+
+.ops-table td {
+  padding: 8px;
+  color: var(--color-text-primary, #F1F5F9);
+  border-bottom: 1px solid var(--color-border-light, #182238);
+  font-variant-numeric: tabular-nums;
+}
+
+.ops-table tr:last-child td { border-bottom: none; }

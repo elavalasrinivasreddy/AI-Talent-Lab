@@ -14,6 +14,7 @@ export default function CandidateStatusPage() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     fetch(`/api/v1/status/${token}`)
@@ -49,13 +50,38 @@ export default function CandidateStatusPage() {
   const rejected = data.internal_status === 'rejected'
   const pct = rejected ? 0 : Math.round(((currentStepIdx + 1) / STATUS_STEPS.length) * 100)
 
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {
+      // Fallback for browsers that block clipboard without HTTPS
+      const input = document.createElement('input')
+      input.value = window.location.href
+      document.body.appendChild(input)
+      input.select()
+      document.execCommand('copy')
+      document.body.removeChild(input)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    }
+  }
+
   return (
     <div className="cs-page">
       <div className="cs-card">
         {/* Header */}
         <div className="cs-header">
-          <h1 className="cs-role">{data.position?.role_name}</h1>
-          <p className="cs-org">{data.org_name}</p>
+          <div className="cs-header-top">
+            <div>
+              <h1 className="cs-role">{data.position?.role_name}</h1>
+              <p className="cs-org">{data.org_name}</p>
+            </div>
+            <button className="status-share-btn" onClick={handleShare}>
+              {copied ? '✓ Copied!' : '🔗 Share Status'}
+            </button>
+          </div>
           <div className="cs-meta">
             {data.position?.location && <span>📍 {data.position.location}</span>}
             {data.position?.work_type && <span>🏢 {data.position.work_type}</span>}

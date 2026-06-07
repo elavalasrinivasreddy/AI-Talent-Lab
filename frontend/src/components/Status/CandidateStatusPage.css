@@ -49,6 +49,34 @@
   margin-bottom: 24px;
 }
 
+.cs-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.status-share-btn {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  background: transparent;
+  border: 1.5px solid var(--color-teal, #0D9488);
+  border-radius: 8px;
+  color: var(--color-teal, #0D9488);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.status-share-btn:hover {
+  background: var(--color-teal, #0D9488);
+  color: white;
+}
+
 .cs-role {
   font-size: 22px;
   font-weight: 800;

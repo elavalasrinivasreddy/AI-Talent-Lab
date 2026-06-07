@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
 import { IconLoader, IconAlertCircle, IconCheck, IconRefreshCw } from './icons';
 
@@ -15,7 +16,9 @@ const STAGE_META = {
 
 export default function RailStateCard() {
   const { workflowStage, isStreaming, error, graphState, sendMessage } = useChat();
+  const { user } = useAuth();
   const stage = STAGE_META[workflowStage] || STAGE_META.intake;
+  const stageHint = stage.hint.replace('TechCorp', user?.org_name || 'your company');
   const showActive = isStreaming || workflowStage !== 'complete';
   const errorStage = graphState?.error_stage;
 
@@ -32,11 +35,11 @@ export default function RailStateCard() {
       </div>
       <p className="rail-state-hint">
         {workflowStage === 'complete' ? (
-          <span className="rail-state-done"><IconCheck size={14} /> {stage.hint}</span>
+          <span className="rail-state-done"><IconCheck size={14} /> {stageHint}</span>
         ) : isStreaming ? (
           <span><IconLoader size={14} /> Working…</span>
         ) : (
-          stage.hint
+          stageHint
         )}
       </p>
 

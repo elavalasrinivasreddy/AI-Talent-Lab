@@ -23,7 +23,7 @@ class DeptRepository:
             """
             INSERT INTO departments (org_id, name, description, parent_dept_id, head_user_id)
             VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, org_id, name, description, parent_dept_id, head_user_id, created_at
+            RETURNING id, org_id, name, description, parent_dept_id, head_user_id, auto_approve_hire_requests, created_at
             """,
             org_id, name.strip(), description, parent_dept_id, head_user_id,
         )

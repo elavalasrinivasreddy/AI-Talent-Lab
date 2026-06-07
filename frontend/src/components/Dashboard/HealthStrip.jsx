@@ -20,7 +20,7 @@ function HealthSkeleton() {
   )
 }
 
-export default function HealthStrip({ health, loading, error }) {
+export default function HealthStrip({ health, loading, error, role }) {
   if (loading) return <HealthSkeleton />
 
   if (error) {
@@ -36,31 +36,29 @@ export default function HealthStrip({ health, loading, error }) {
 
   const cards = [
     {
-      label: 'Org Health',
-      value: health.org_health_score != null ? `${health.org_health_score}%` : '—',
-      accent: 'var(--color-primary, #0D9488)',
-      icon: <Icon name="bar-chart" size={16} />,
-      delta: health.org_health_delta
-        ? { value: health.org_health_delta, direction: health.org_health_delta > 0 ? 'up' : 'down', good: health.org_health_delta > 0 }
-        : undefined,
-    },
-    {
-      label: 'Open Reqs',
-      value: health.open_reqs ?? health.active_positions ?? '—',
+      label: role === 'dept_admin' ? 'Dept Open Reqs' : 'Org Open Reqs',
+      value: health.active_positions ?? '—',
       accent: 'var(--color-info, #3B82F6)',
       icon: <Icon name="briefcase" size={16} />,
     },
     {
       label: 'Avg Time to Hire',
-      value: health.time_to_hire != null ? `${health.time_to_hire}d` : (health.avg_time_to_hire != null ? `${health.avg_time_to_hire}d` : '—'),
+      value: health.avg_time_to_hire ? `${health.avg_time_to_hire}d` : '—',
+      delta: !health.avg_time_to_hire ? 'No hires this period' : undefined,
       accent: 'var(--color-warning, #D97706)',
       icon: <Icon name="clock" size={16} />,
     },
     {
-      label: 'Cost per Hire',
-      value: health.cost_per_hire != null ? `$${Number(health.cost_per_hire).toLocaleString()}` : '—',
+      label: 'Interviews Active',
+      value: health.interviews_this_period ?? '—',
+      accent: 'var(--color-primary, #0D9488)',
+      icon: <Icon name="calendar" size={16} />,
+    },
+    {
+      label: 'Offers Extended',
+      value: health.offers_this_period ?? '—',
       accent: 'var(--color-success, #10B981)',
-      icon: <Icon name="users" size={16} />,
+      icon: <Icon name="check-circle" size={16} />,
     },
   ]
 

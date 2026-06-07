@@ -1,15 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../../../utils/api'
+import SlideOver from '../../common/SlideOver'
+import ConfirmModal from '../../common/ConfirmModal'
+import Icon from '../../common/Icon'
 
 export default function DepartmentsTab() {
   const [depts, setDepts] = useState([])
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', parent_dept_id: '', head_user_id: '' })
+  const [form, setForm] = useState({ name: '', description: '', parent_dept_id: '' })
   const [editing, setEditing] = useState(null)
   const [msg, setMsg] = useState('')
   const [formMsg, setFormMsg] = useState('')
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [deptToDelete, setDeptToDelete] = useState(null)
 
   const fetchDepts = useCallback(async () => {
     try {
@@ -46,7 +51,7 @@ export default function DepartmentsTab() {
   const tree = flatTree(buildTree(depts))
 
   const getUserName = (id) => {
-    const u = users.find(u => u.id === id)
+    const u = users.find(u => u.id == id)
     return u ? u.name : ''
   }
 
@@ -57,9 +62,8 @@ export default function DepartmentsTab() {
         name: form.name,
         description: form.description || null,
         parent_dept_id: form.parent_dept_id ? Number(form.parent_dept_id) : null,
-        head_user_id: form.head_user_id ? Number(form.head_user_id) : null,
       })
-      setForm({ name: '', description: '', parent_dept_id: '', head_user_id: '' })
+      setForm({ name: '', description: '', parent_dept_id: '' })
       fetchDepts()
       setShowModal(false)
     } catch (e) {
@@ -67,13 +71,23 @@ export default function DepartmentsTab() {
     }
   }
 
-  const handleDelete = async (id) => {
+  const confirmDelete = (id) => {
+    setDeptToDelete(id)
+    setShowConfirm(true)
+  }
+
+  const executeDelete = async () => {
+    if (!deptToDelete) return
     setMsg('')
     try {
-      await api.delete(`/settings/departments/${id}`)
+      await api.delete(`/settings/departments/${deptToDelete}`)
+      setShowConfirm(false)
+      setDeptToDelete(null)
       fetchDepts()
     } catch (e) {
       setMsg(e.message || 'Cannot delete — has dependencies')
+      setShowConfirm(false)
+      setDeptToDelete(null)
     }
   }
 
@@ -100,90 +114,113 @@ export default function DepartmentsTab() {
         </div>
 
         {depts.length > 0 ? (
-          <>
+          <div className="premium-list">
             {msg && <p className="form-msg error">{msg}</p>}
             {tree.map(d => (
-              <div key={d.id} className="dept-tree-row">
-                <div className="dept-indent" style={{'--depth': d.depth}}>
-                  {d.depth > 0 && <span className="tree-connector">└─</span>}
-                  {editing?.id === d.id ? (
-                    <input value={editing.name} className="inline-edit"
-                           onChange={e => setEditing({...editing, name: e.target.value})}
-                           onKeyDown={e => { if (e.key === 'Enter') handleUpdate(d.id) }} />
-                  ) : (
-                    <span className="dept-name">{d.name}</span>
-                  )}
+              <div key={d.id} className="premium-list-item" style={{ marginLeft: `${d.depth * 24}px` }}>
+                <div className="premium-list-item-left">
+                  <div className="avatar-placeholder" style={{ background: 'var(--color-primary-bg)', color: 'var(--color-primary)' }}>
+                    🏢
+                  </div>
+                  <div>
+                    {editing?.id === d.id ? (
+                      <input value={editing.name} className="inline-edit"
+                             autoFocus
+                             style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '4px 8px', color: 'var(--color-text)' }}
+                             onChange={e => setEditing({...editing, name: e.target.value})}
+                             onKeyDown={e => { if (e.key === 'Enter') handleUpdate(d.id) }} />
+                    ) : (
+                      <span className="item-title">
+                        {d.depth > 0 && <span style={{ color: 'var(--color-text-muted)', marginRight: '6px' }}>└─</span>}
+                        {d.name}
+                      </span>
+                    )}
+                    <span className="item-subtitle">
+                      {d.user_count > 0 ? `${d.user_count} members` : 'No members yet'}
+                    </span>
+                  </div>
                 </div>
-                <span className="dept-meta">
-                  {d.head_user_id ? `👤 ${getUserName(d.head_user_id)}` : ''}
-                  {d.user_count > 0 && ` · ${d.user_count} members`}
-                </span>
-                <div className="row-actions">
+                
+                <div className="premium-list-item-right">
                   {editing?.id === d.id ? (
-                    <>
+                    <div style={{ display: 'flex', gap: '4px' }}>
                       <button className="btn btn-sm btn-primary" onClick={() => handleUpdate(d.id)}>Save</button>
                       <button className="btn btn-sm btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
-                    </>
+                    </div>
                   ) : (
-                    <>
-                      <button className="btn btn-sm btn-ghost" onClick={() => setEditing({id: d.id, name: d.name})} title="Edit">✏️</button>
-                      <button className="btn btn-sm btn-ghost" onClick={() => handleDelete(d.id)} title="Delete">🗑️</button>
-                    </>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button className="action-menu-btn" onClick={() => setEditing({id: d.id, name: d.name})} title="Edit">
+                        <Icon name="edit-2" size={16} />
+                      </button>
+                      <button className="action-menu-btn" onClick={() => confirmDelete(d.id)} title="Delete">
+                        <Icon name="trash" size={16} />
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
             ))}
-          </>
+          </div>
         ) : (
-          <div className="empty-state">
-            <div className="empty-icon">🏗</div>
+          <div className="premium-empty">
+            <div className="premium-empty-icon">
+              <Icon name="grid" size={32} />
+            </div>
             <h4>No departments yet</h4>
-            <p>Create departments to organize your hiring by team.</p>
+            <p>Create departments to organize your hiring pipelines by team.</p>
+            <button className="btn btn-primary" onClick={() => { setShowModal(true); setFormMsg('') }}>
+              + Add Department
+            </button>
           </div>
         )}
       </div>
 
-      {/* Add Department Modal */}
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>➕ Add Department</h2>
-              <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Name</label>
-                <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Engineering" />
-              </div>
-              <div className="form-group">
-                <label>Description</label>
-                <input value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Parent Department</label>
-                <select value={form.parent_dept_id} onChange={e => setForm({...form, parent_dept_id: e.target.value})}>
-                  <option value="">None (Top Level)</option>
-                  {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Department Head</label>
-                <select value={form.head_user_id} onChange={e => setForm({...form, head_user_id: e.target.value})}>
-                  <option value="">Select user</option>
-                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
-              </div>
-            </div>
-            {formMsg && <p className="form-msg error">{formMsg}</p>}
-            <div className="btn-row">
-              <button className="btn btn-primary" onClick={handleAdd}>Add</button>
-              <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-            </div>
+      <SlideOver 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+        title="Add Department"
+      >
+        <div className="form-row">
+          <div className="form-group full-width">
+            <label>Name</label>
+            <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Engineering" />
           </div>
         </div>
+        <div className="form-row">
+          <div className="form-group full-width">
+            <label>Description</label>
+            <input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Responsible for product development" />
+          </div>
+        </div>
+        <div className="form-row">
+          <div className="form-group full-width">
+            <label>Parent Department</label>
+            <select value={form.parent_dept_id} onChange={e => setForm({...form, parent_dept_id: e.target.value})}>
+              <option value="">None (Top Level)</option>
+              {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </div>
+        </div>
+        {formMsg && <p className="form-msg error">{formMsg}</p>}
+        <div className="btn-row" style={{ marginTop: 'var(--space-6)', paddingTop: 'var(--space-4)', borderTop: '1px solid var(--color-border)' }}>
+          <button className="btn btn-primary" onClick={handleAdd}>Add Department</button>
+          <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+        </div>
+      </SlideOver>
+
+      {showConfirm && (
+        <ConfirmModal
+          isOpen={showConfirm}
+          title="Delete Department?"
+          message="Are you sure you want to delete this department? This action cannot be undone."
+          confirmText="Yes, Delete"
+          confirmVariant="danger"
+          onConfirm={executeDelete}
+          onClose={() => {
+            setShowConfirm(false)
+            setDeptToDelete(null)
+          }}
+        />
       )}
     </div>
   )

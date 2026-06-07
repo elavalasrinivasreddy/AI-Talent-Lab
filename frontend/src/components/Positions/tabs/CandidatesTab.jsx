@@ -8,6 +8,7 @@ import { candidatesApi } from '../../../utils/api'
 import { PIPELINE_STAGES, getScoreStyle } from '../../../utils/constants'
 import StatusBadge from '../../common/StatusBadge'
 import ScoreCircle from '../../common/ScoreCircle'
+import Toast from '../../common/Toast'
 import './CandidatesTab.css'
 
 const FILTER_STAGES = ['all', 'sourced', 'emailed', 'applied', 'screening', 'interview', 'selected', 'rejected']
@@ -17,6 +18,7 @@ export default function CandidatesTab({ positionId }) {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [page, setPage] = useState(1)
+  const [toast, setToast] = useState(null)
   const navigate = useNavigate()
 
   const load = useCallback(async () => {
@@ -39,15 +41,17 @@ export default function CandidatesTab({ positionId }) {
   const handleSendOutreach = async (applicationId) => {
     try {
       await candidatesApi.sendOutreach([applicationId])
-      alert('✅ Outreach email queued!')
+      setToast({ message: 'Outreach email queued!', type: 'success' })
       load()
     } catch (e) {
-      alert(`❌ ${e.message}`)
+      setToast({ message: e.message, type: 'error' })
     }
   }
 
   return (
     <div className="cands-tab">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      
       {/* Filters */}
       <div className="cands-filter-bar">
         {FILTER_STAGES.map(s => (
@@ -81,7 +85,7 @@ export default function CandidatesTab({ positionId }) {
               key={c.application_id || c.id}
               candidate={c}
               onView={() => navigate(`/candidates/${c.id}`, {
-                state: { from: `/positions/${positionId}`, fromLabel: 'Back to Position', fromTab: 'candidates' }
+                state: { positionId, from: `/positions/${positionId}`, fromLabel: 'Back to Position', fromTab: 'candidates' }
               })}
               onSendOutreach={() => handleSendOutreach(c.application_id)}
             />

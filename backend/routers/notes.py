@@ -65,6 +65,8 @@ async def create_note(candidate_id: int, body: NoteCreate, user=Depends(get_curr
             user["id"], body.content, json.dumps(body.mentions),
         )
 
+        author_name = await conn.fetchval("SELECT name FROM users WHERE id=$1", user["id"])
+
         # Notify mentioned users
         if body.mentions:
             candidate_name = await conn.fetchval(
@@ -77,12 +79,12 @@ async def create_note(candidate_id: int, body: NoteCreate, user=Depends(get_curr
                     VALUES ($1,$2,'note_mention',$3,$4,$5)
                     """,
                     user["org_id"], uid,
-                    f"{user['name']} mentioned you",
+                    f"{author_name} mentioned you",
                     f"In a note about {candidate_name}: \"{body.content[:80]}{'…' if len(body.content) > 80 else ''}\"",
                     f"/candidates/{candidate_id}",
                 )
 
-    return {"note": dict(row), "author_name": user["name"], "author_role": user.get("role")}
+    return {"note": dict(row), "author_name": author_name, "author_role": user.get("role")}
 
 
 @router.patch("/{note_id}")

@@ -37,20 +37,22 @@ export default function BriefingLane({
   maxRows = 8,
 }) {
   const visible = rows.slice(0, maxRows)
+  const isEmpty = !loading && !error && rows.length === 0
+  const effectiveTint = isEmpty ? 'var(--color-success, #10B981)' : tint
 
   return (
     <div
-      className="tb-lane"
+      className={`tb-lane${isEmpty ? ' tb-lane--empty' : ''}`}
       style={{
-        '--lane-tint': tint,
-        borderTop: `3px solid ${tint}`,
+        '--lane-tint': effectiveTint,
+        borderTop: `3px solid ${effectiveTint}`,
       }}
     >
       {/* Lane header */}
       <div className="tb-lane-header">
-        <span className="tb-lane-label" style={{ color: tint }}>{label}</span>
+        <span className="tb-lane-label" style={{ color: effectiveTint }}>{label}</span>
         {!loading && !error && (
-          <span className="tb-lane-count" style={{ background: `${tint}22`, color: tint }}>
+          <span className="tb-lane-count" style={{ background: `${effectiveTint}22`, color: effectiveTint }}>
             {rows.length}
           </span>
         )}

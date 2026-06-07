@@ -12,6 +12,8 @@ import os
 
 from backend.adapters.llm.factory import get_llm
 from backend.agents.state import AgentState
+from backend.config import settings
+from backend.services.llm_usage_logger import llm_context
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +22,59 @@ _PROMPT_PATH = os.path.join(os.path.dirname(__file__), "..", "prompts", "draftin
 def _load_prompt() -> str:
     with open(_PROMPT_PATH, "r") as f:
         return f.read()
+
+async def extract_state_updates(state: AgentState, feedback_text: str) -> dict:
+    """Quick LLM call to extract structured state updates (like new skills) from user feedback."""
+    try:
+        llm = get_llm(temperature=0.0)
+        current_skills = state.get("skills_required", [])
+        prompt = f"""You are an AI extracting state updates from user feedback on a Job Description.
+Current required skills: {', '.join(current_skills)}
+User Feedback: {feedback_text}
+
+Extract any new skills or core requirements explicitly requested by the user that are not in the current required skills list.
+Return a JSON object with:
+{{
+  "new_skills": ["Skill 1", "Skill 2"]
+}}
+If no new skills are mentioned, return an empty array. Do not include markdown formatting, just the raw JSON or wrapped in ```json.
+"""
+        response = await llm.ainvoke([{"role": "user", "content": prompt}])
+        
+        content_raw = response.content
+        if isinstance(content_raw, list):
+            # Extract text blocks if the model returns a list (e.g. multimodal blocks)
+            content_raw = " ".join(
+                str(b.get("text", b)) if isinstance(b, dict) else b 
+                for b in content_raw
+            )
+        content = content_raw.strip()
+        
+        if "```json" in content:
+            json_str = content.split("```json")[-1].split("```")[0].strip()
+        elif "```" in content:
+            json_str = content.split("```")[-2].split("```")[-1].strip()
+        else:
+            json_str = content
+            
+        try:
+            result = json.loads(json_str)
+        except json.JSONDecodeError:
+            result = {}
+            
+        if not isinstance(result, dict):
+            return {"new_skills": []}
+            
+        new_skills = result.get("new_skills", [])
+        if not isinstance(new_skills, list):
+            new_skills = [new_skills] if isinstance(new_skills, str) else []
+            
+        return {"new_skills": new_skills}
+    except Exception as e:
+        logger.error(f"State extraction failed: {e}")
+        return {"new_skills": []}
+
+
 
 
 async def run_drafting_variants(state: AgentState) -> AgentState:
@@ -32,9 +87,9 @@ async def run_drafting_variants(state: AgentState) -> AgentState:
         system_prompt = _load_prompt()
 
         role_name = state.get("role_name", "")
-        skills_required = state.get("skills_required", [])
-        internal_accepted = state.get("internal_skills_accepted", [])
-        market_accepted = state.get("market_skills_accepted", [])
+        skills_required = state.get("skills_required") or []
+        internal_accepted = state.get("internal_skills_accepted") or []
+        market_accepted = state.get("market_skills_accepted") or []
         
         all_skills = skills_required + internal_accepted + market_accepted
         
@@ -64,8 +119,16 @@ Generate the 3 JD variants now."""
         ]
 
         logger.info(f"Generating 3 JD variants for {role_name}")
-        response = await llm.ainvoke(messages)
-        content = response.content.strip()
+        with llm_context(org_id=state.get("org_id"), operation="jd_generation", model=settings.LLM_PROVIDER):
+            response = await llm.ainvoke(messages)
+        
+        content_raw = response.content
+        if isinstance(content_raw, list):
+            content_raw = " ".join(
+                str(b.get("text", b)) if isinstance(b, dict) else b 
+                for b in content_raw
+            )
+        content = content_raw.strip()
 
         if "```json" in content:
             json_str = content.split("```json")[-1].split("```")[0].strip()
@@ -96,7 +159,7 @@ Generate the 3 JD variants now."""
         state["retry_count"] = state.get("retry_count", 0) + 1
 
         if state["retry_count"] >= 2:
-            state["error_stage"] = "variants"
+            state["error_stage"] = "jd_variants"
             state["error_code"] = "VARIANTS_FAILED"
             state["error_message"] = "Trouble generating JD variants. Click Retry to try again."
             state["jd_variants"] = []
@@ -130,9 +193,9 @@ async def run_drafting_final(state: AgentState, token_queue=None) -> AgentState:
             (v.get("summary") for v in variants if v.get("type") == selected_style), ""
         )
 
-        skills_required = state.get("skills_required", [])
-        internal_accepted = state.get("internal_skills_accepted", [])
-        market_accepted = state.get("market_skills_accepted", [])
+        skills_required = state.get("skills_required") or []
+        internal_accepted = state.get("internal_skills_accepted") or []
+        market_accepted = state.get("market_skills_accepted") or []
         all_skills = skills_required + internal_accepted + market_accepted
 
         about_us = state.get("org_about_us", "An innovative tech company.")
@@ -143,16 +206,38 @@ async def run_drafting_final(state: AgentState, token_queue=None) -> AgentState:
         # rewrite_section action handler.
         feedback = ""
         section_rewrite = state.get("section_rewrite")
+        current_jd = state.get("final_jd", "")
+        
         if section_rewrite and section_rewrite.get("instruction"):
             section = section_rewrite.get("section") or "the entire JD"
-            feedback = (
-                f"\n\nUSER REWRITE REQUEST for {section}:\n"
-                f"{section_rewrite['instruction']}"
-            )
+            if current_jd:
+                feedback = (
+                    f"\n\nCURRENT JD DRAFT:\n{current_jd}\n\nUSER REWRITE REQUEST for {section}:\n"
+                    f"{section_rewrite['instruction']}\n\nUpdate the current JD draft to address the request, preserving other existing content."
+                )
+            else:
+                feedback = (
+                    f"\n\nUSER REWRITE REQUEST for {section}:\n"
+                    f"{section_rewrite['instruction']}"
+                )
         else:
             user_msgs = [m for m in state.get("messages", []) if m["role"] == "user"]
             if user_msgs and state.get("user_action") == "message" and state.get("stage") == "final_jd":
-                feedback = f"\n\nUSER REFINEMENT REQUEST:\n{user_msgs[-1]['content']}"
+                feedback_text = user_msgs[-1]["content"]
+                
+                # 1. State Extraction
+                extracted = await extract_state_updates(state, feedback_text)
+                new_skills = extracted.get("new_skills", [])
+                if new_skills:
+                    state["skills_required"] = list(set(skills_required + new_skills))
+                    skills_required = state["skills_required"]
+                    all_skills = skills_required + internal_accepted + market_accepted
+                    
+                # 2. Smart Re-compiler prompt
+                if current_jd:
+                    feedback = f"\n\nCURRENT JD DRAFT:\n{current_jd}\n\nUSER REVISION REQUEST:\n{feedback_text}\n\nUpdate the current JD draft to address the user's request, preserving existing content where appropriate. Integrate any new requirements seamlessly."
+                else:
+                    feedback = f"\n\nUSER REFINEMENT REQUEST:\n{feedback_text}"
 
         user_content = f"""Mode: FINAL_GENERATION
 Selected Style: {selected_style}
@@ -183,8 +268,22 @@ Generate the final polished JD in markdown now."""
                     await token_queue.put(text)
             content = "".join(parts).strip()
         else:
-            response = await llm.ainvoke(messages)
-            content = response.content.strip()
+            with llm_context(org_id=state.get("org_id"), operation="jd_generation", model=settings.LLM_PROVIDER):
+                response = await llm.ainvoke(messages)
+
+            content_raw = response.content
+            if isinstance(content_raw, list):
+                content_raw = " ".join(
+                    str(b.get("text", b)) if isinstance(b, dict) else b 
+                    for b in content_raw
+                )
+            content = content_raw.strip()
+
+        # An empty completion (e.g. a filtered/blank model response) must be treated
+        # as a failure, not stored as the JD — otherwise the orchestrator re-enters
+        # this node every loop until max_iterations with no error surfaced.
+        if not (content or "").strip():
+            raise ValueError("Model returned an empty final JD")
 
         state["final_jd"] = content
         state["stage"] = "final_jd"

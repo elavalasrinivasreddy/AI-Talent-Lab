@@ -15,6 +15,34 @@ from backend.db.repositories.sessions import ChatSessionRepository
 router = APIRouter(prefix="/api/v1/chat", tags=["Recruiter Chat"])
 
 
+# A linked position's JD is only editable in chat while it's a fresh draft or
+# was sent back for revision. This mirrors the frontend's read-only definition
+# (ChatContext.jsx) so lock behavior is identical on both sides: once the JD is
+# submitted for approval (approval_status='pending') or has moved on to any
+# non-editable status (approved/live/fulfilled/cancelled), the chat is read-only.
+_EDITABLE_POSITION_STATUSES = {"draft", "jd_in_progress", "draft_needs_revision"}
+
+
+def _position_lock_detail(session: Optional[dict]) -> Optional[dict]:
+    """Return an HTTPException detail dict if the session's linked position is
+    locked for editing, else None. Single source of truth for both /stream and
+    /save-draft so the two endpoints can't drift apart."""
+    if not session or not session.get("position_id"):
+        return None
+    if session.get("position_approval_status") == "pending":
+        return {
+            "code": "POSITION_PENDING_APPROVAL",
+            "message": "This JD is pending approval. Chat is read-only until the reviewer decides.",
+        }
+    pos_status = session.get("position_status")
+    if pos_status and pos_status not in _EDITABLE_POSITION_STATUSES:
+        return {
+            "code": "POSITION_LOCKED",
+            "message": "This position is no longer editable.",
+        }
+    return None
+
+
 class StreamRequest(BaseModel):
     session_id: str
     message: Optional[str] = None
@@ -24,7 +52,7 @@ class StreamRequest(BaseModel):
 
 
 class SavePositionRequest(BaseModel):
-    department_id: int
+    department_id: Optional[int] = None
     headcount: int = 1
     priority: str = "normal"
     ats_threshold: float = 80.0
@@ -95,6 +123,12 @@ async def run_chat_stream(
         department_id=req.department_id or user.get("dept_id"),
     )
 
+    # Guard: reject edits when the linked position is locked (pending approval or live).
+    session = await ChatSessionRepository.get(req.session_id, user["org_id"])
+    lock_detail = _position_lock_detail(session)
+    if lock_detail:
+        raise HTTPException(status_code=409, detail=lock_detail)
+
     # Return SSE Response
     generator = ChatService.run_chat_stream(
         session_id=req.session_id,
@@ -163,7 +197,12 @@ async def save_position(
             setup_data=req.model_dump(exclude={"as_draft"}),
             as_draft=req.as_draft,
         )
-        return {"status": "ok", "position_id": position["id"]}
+        return {
+            "status": "ok",
+            "position_id": position["id"],
+            "auto_submitted": position.get("auto_submitted", True),
+            "auto_submit_error": position.get("auto_submit_error"),
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -188,6 +227,11 @@ async def save_draft(
     session = await ChatSessionRepository.get(session_id, org_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    # Guard: reject draft saves when the linked position is locked (same rule as /stream).
+    lock_detail = _position_lock_detail(session)
+    if lock_detail:
+        raise HTTPException(status_code=409, detail=lock_detail)
 
     state = session.get("graph_state_parsed", {})
     state["final_jd"] = req.content

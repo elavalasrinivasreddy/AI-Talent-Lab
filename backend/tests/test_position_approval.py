@@ -51,6 +51,20 @@ class _FakeConn:
     async def fetch(self, query, *args):
         return []
 
+    def transaction(self):
+        # record_approval_decision wraps its writes in `async with conn.transaction()`.
+        return _FakeTxn()
+
+
+class _FakeTxn:
+    """No-op async context manager standing in for asyncpg's transaction()."""
+
+    async def __aenter__(self):
+        return None
+
+    async def __aexit__(self, *args):
+        return False
+
 
 class _FakeConnCtx:
     """Context manager that yields a _FakeConn."""
@@ -125,7 +139,9 @@ async def test_finish_and_save_does_not_fire_sourcing(monkeypatch):
     from backend.db.repositories import positions as pos_repo_mod
 
     async def _fake_create(conn, **kwargs):
-        assert kwargs.get("status") == "draft", "Position must be created with status=draft"
+        # Non-draft finalize creates the position as 'jd_in_progress' (editable
+        # until it auto-submits for approval); only as_draft=True saves 'draft'.
+        assert kwargs.get("status") == "jd_in_progress", "Non-draft finalize must create status=jd_in_progress"
         return _make_position()
 
     async def _fake_insert_variants(conn, position_id, variants):
@@ -221,15 +237,25 @@ async def test_approval_decision_approved_fires_sourcing(monkeypatch):
     """
     celery_delay_calls = []
 
-    # Build a fake conn that returns position row and user rows on fetchrow
+    # Build a fake conn that returns position row and user rows on fetchrow.
+    # Rows must carry every column the current record_approval_decision reads:
+    #   approver (from users): name, role, department_id
+    #   position (from positions): role_name, created_by, department_id,
+    #                              approval_status, status, reviewer_id
+    # approver role 'org_head' bypasses the reviewer-match permission check.
     fetchrow_map = {
         "from positions": {
             "role_name": "Senior Engineer",
             "created_by": 10,
             "department_id": 3,
+            "approval_status": "pending",
+            "status": "pending_jd_approval",
+            "reviewer_id": None,
         },
         "from users": {
             "name": "Alice Smith",
+            "role": "org_head",
+            "department_id": 3,
             "email": "alice@example.com",
         },
     }
@@ -240,6 +266,15 @@ async def test_approval_decision_approved_fires_sourcing(monkeypatch):
         _pos_service_module, "get_connection",
         lambda: _FakeConnCtx(fake_conn),
     )
+
+    # Patch the Rev 4 CAS repo methods invoked inside the transaction.
+    from backend.db.repositories import positions as pos_repo_mod
+
+    async def _cas_ok(*args, **kwargs):
+        return True
+
+    monkeypatch.setattr(pos_repo_mod.PositionRepository, "approve_and_open", staticmethod(_cas_ok))
+    monkeypatch.setattr(pos_repo_mod.PositionRepository, "fulfill_hire_request", staticmethod(_cas_ok))
 
     # Patch AuditLogRepository
     from backend.db.repositories import audit as audit_repo_mod
@@ -308,9 +343,14 @@ async def test_approval_decision_changes_requested_no_sourcing(monkeypatch):
             "role_name": "Senior Engineer",
             "created_by": 10,
             "department_id": 3,
+            "approval_status": "pending",
+            "status": "pending_jd_approval",
+            "reviewer_id": None,
         },
         "from users": {
             "name": "Alice Smith",
+            "role": "org_head",
+            "department_id": 3,
             "email": "alice@example.com",
         },
     }
@@ -320,6 +360,18 @@ async def test_approval_decision_changes_requested_no_sourcing(monkeypatch):
         _pos_service_module, "get_connection",
         lambda: _FakeConnCtx(fake_conn),
     )
+
+    # Patch the Rev 4 CAS repo methods for the rejection path.
+    from backend.db.repositories import positions as pos_repo_mod
+
+    async def _reject_ok(*args, **kwargs):
+        return True
+
+    async def _bump_cycle(*args, **kwargs):
+        return 1
+
+    monkeypatch.setattr(pos_repo_mod.PositionRepository, "reject_to_revision", staticmethod(_reject_ok))
+    monkeypatch.setattr(pos_repo_mod.PositionRepository, "increment_revision_cycle", staticmethod(_bump_cycle))
 
     from backend.db.repositories import audit as audit_repo_mod
 
@@ -355,3 +407,70 @@ async def test_approval_decision_changes_requested_no_sourcing(monkeypatch):
     assert len(celery_delay_calls) == 0, (
         "run_candidate_search.delay must NOT be called when changes are requested"
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Test 4 — resolve_reviewer reads ai_behavior_settings, NOT a "settings" column
+# Regression: the old query `SELECT settings FROM organizations` threw
+# 'column "settings" does not exist', which aborted submit_for_approval so the
+# team lead was never notified and the stage stayed at "JD generation".
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class _ReviewerFakeConn:
+    """Fake conn that raises if the non-existent `settings` column is queried,
+    mirroring Postgres UndefinedColumnError. Returns proper rows otherwise."""
+
+    async def fetchrow(self, query, *args):
+        q = query.lower()
+        # The bug: querying a plain `settings` column that doesn't exist.
+        if "settings from organizations" in q and "ai_behavior_settings" not in q:
+            raise Exception('column "settings" does not exist')
+        if "from users where id" in q:
+            return {"id": 36, "role": "hr", "name": "HR Person", "department_id": 3}
+        if "ai_behavior_settings" in q:
+            # JSONB returned as a str (asyncpg default) — get_ai_behavior decodes it.
+            return {"ai_behavior_settings": "{}"}
+        if "from hire_requests" in q:
+            return {"id": 99, "name": "Team Lead"}
+        return None
+
+    async def fetch(self, query, *args):
+        return []
+
+    async def execute(self, query, *args):
+        return None
+
+
+@pytest.mark.asyncio
+async def test_resolve_reviewer_uses_ai_behavior_settings_column(monkeypatch):
+    """resolve_reviewer must not query a non-existent `settings` column.
+
+    Before the fix it issued `SELECT settings FROM organizations`, which raised
+    and bubbled up to abort submit_for_approval (no team-lead notification,
+    stage stuck at JD generation). After the fix it reads ai_behavior_settings,
+    so an HR-created position with a linked hire request resolves to the team
+    lead as reviewer.
+    """
+    fake_conn = _ReviewerFakeConn()
+    monkeypatch.setattr(
+        _pos_service_module, "get_connection",
+        lambda: _FakeConnCtx(fake_conn),
+    )
+
+    from backend.db.repositories import positions as pos_repo_mod
+
+    async def _fake_get(conn, position_id, org_id):
+        return _make_position(position_id)
+
+    monkeypatch.setattr(pos_repo_mod.PositionRepository, "get", staticmethod(_fake_get))
+
+    # Must not raise, and must resolve the team lead (id=99) as the reviewer.
+    result = await PositionService.resolve_reviewer(
+        position_id=7, org_id=1, user_id=36,
+    )
+
+    assert result.get("reviewer_id") == 99, (
+        f"Expected team lead (99) as reviewer; got {result}"
+    )
+    assert not result.get("is_bypass"), "HR submission should require review, not bypass"

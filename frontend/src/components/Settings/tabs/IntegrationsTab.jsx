@@ -3,9 +3,9 @@ export default function IntegrationsTab() {
     {
       title: 'Job Portals',
       items: [
-        { name: 'LinkedIn', phase: 'Phase 3' },
-        { name: 'Naukri', phase: 'Phase 3' },
-        { name: 'Indeed', phase: 'Phase 3' },
+        { name: 'LinkedIn', phase: 'P3' },
+        { name: 'Naukri', phase: 'P3' },
+        { name: 'Indeed', phase: 'P3' },
       ],
     },
     {
@@ -18,20 +18,20 @@ export default function IntegrationsTab() {
     {
       title: 'Communication (Phase 2)',
       items: [
-        { name: 'WhatsApp Business API', phase: 'Phase 2' },
+        { name: 'WhatsApp Business API', phase: 'P2' },
       ],
     },
     {
       title: 'Calendar (Phase 2)',
       items: [
-        { name: 'Google Calendar', phase: 'Phase 2' },
-        { name: 'Outlook', phase: 'Phase 2' },
+        { name: 'Google Calendar', phase: 'P2' },
+        { name: 'Outlook', phase: 'P2' },
       ],
     },
     {
       title: 'Notifications',
       items: [
-        { name: 'Slack', phase: 'Phase 3' },
+        { name: 'Slack', phase: 'P3' },
       ],
     },
   ]
@@ -50,7 +50,12 @@ export default function IntegrationsTab() {
                     <div className="int-name">{item.name}</div>
                     <div className="int-status">
                       {item.phase ? (
-                        <span className={`int-badge ${item.phase === 'Phase 2' ? 'phase2' : 'phase3'}`}>
+                        <span style={{
+                          color: item.phase === 'P2' ? 'var(--color-warning)' : 'var(--color-text-secondary)',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          letterSpacing: '0.05em'
+                        }}>
                           {item.phase}
                         </span>
                       ) : (

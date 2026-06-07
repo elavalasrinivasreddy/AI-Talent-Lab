@@ -9,7 +9,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
-import { candidatesApi, notesApi } from '../../utils/api'
+import api, { candidatesApi, notesApi } from '../../utils/api'
 import { PIPELINE_STAGES, PIPELINE_EVENT_ICONS } from '../../utils/constants'
 
 import CandidateHero from './CandidateHero'
@@ -17,6 +17,9 @@ import TagsRow from './TagsRow'
 import ScoreBreakdownBand from './ScoreBreakdownBand'
 import CompareToIdealGrid from './CompareToIdealGrid'
 import InterviewsTab from './tabs/InterviewsTab'
+import ConfirmModal from '../common/ConfirmModal'
+import ScheduleInterviewModal from '../Interviews/ScheduleInterviewModal'
+import Toast from '../common/Toast'
 import Icon from '../common/Icon'
 import Chip from '../common/Chip'
 import './CandidateDetailPage.css'
@@ -43,6 +46,13 @@ export default function CandidateDetailPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('skills')
   const [movingStatus, setMovingStatus] = useState(false)
+  const [selectConfirmOpen, setSelectConfirmOpen] = useState(false)
+  const [statusConfirmOpen, setStatusConfirmOpen] = useState(false)
+  const [pendingStatus, setPendingStatus] = useState(null)
+  const [retryAtsConfirmOpen, setRetryAtsConfirmOpen] = useState(false)
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false)
+  const [draftRejectionModalOpen, setDraftRejectionModalOpen] = useState(false)
+  const [toast, setToast] = useState(null)
 
   const load = useCallback(async () => {
     try {
@@ -67,34 +77,57 @@ export default function CandidateDetailPage() {
 
   useEffect(() => { load() }, [load])
 
-  const handleStatusChange = async (newStatus) => {
+  const handleStatusChange = (newStatus) => {
     if (!candidate?.application_id) return
+    setPendingStatus(newStatus)
+    setStatusConfirmOpen(true)
+  }
+
+  const confirmStatusChange = async () => {
+    if (!pendingStatus) return
     setMovingStatus(true)
+    setStatusConfirmOpen(false)
     try {
       await candidatesApi.updateStatus(candidate.id, {
-        status: newStatus,
+        status: pendingStatus,
         application_id: candidate.application_id,
-        position_id: positionId,
+        position_id: parseInt(positionId, 10),
       })
-      setCandidate(prev => ({ ...prev, pipeline_status: newStatus }))
+      setCandidate(prev => ({ ...prev, pipeline_status: pendingStatus }))
       load()
     } catch (e) {
-      alert(`Move failed: ${e.message}`)
+      setToast({ message: `Move failed: ${e.message}`, type: 'error' })
     } finally {
       setMovingStatus(false)
+      setPendingStatus(null)
     }
   }
 
   const handleMarkSelected = async () => {
-    if (!window.confirm('Mark this candidate as selected? This action will be logged.')) return
     try {
       await candidatesApi.markSelected(candidate.id, {
         application_id: candidate.application_id,
-        position_id: positionId,
+        position_id: parseInt(positionId, 10),
       })
+      setSelectConfirmOpen(false)
       setCandidate(prev => ({ ...prev, pipeline_status: 'selected' }))
+      load()
+      setToast({ message: 'Candidate marked as selected!', type: 'success' })
     } catch (e) {
-      alert(`Error: ${e.message}`)
+      setToast({ message: `Action failed: ${e.message}`, type: 'error' })
+    }
+  }
+
+  const handleRetryAts = () => setRetryAtsConfirmOpen(true)
+
+  const confirmRetryAts = async () => {
+    setRetryAtsConfirmOpen(false)
+    try {
+      setToast({ message: 'ATS scoring triggered. Updating...', type: 'success' })
+      await candidatesApi.retryAts(candidate.id, candidate.application_id, parseInt(positionId, 10))
+      setTimeout(() => load(), 4000)
+    } catch (e) {
+      setToast({ message: `Error: ${e.message}`, type: 'error' })
     }
   }
 
@@ -125,6 +158,8 @@ export default function CandidateDetailPage() {
 
   return (
     <div className="cd-page">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      
       {/* Hero */}
       <CandidateHero
         candidate={candidate}
@@ -132,9 +167,10 @@ export default function CandidateDetailPage() {
         positionId={positionId}
         movingStatus={movingStatus}
         onStatusChange={handleStatusChange}
-        onMarkSelected={handleMarkSelected}
-        onSchedule={() => {}} // TODO: schedule modal
-        onDraftRejection={() => {}} // TODO: rejection draft modal
+        onMarkSelected={() => setSelectConfirmOpen(true)}
+        onSchedule={() => setScheduleModalOpen(true)}
+        onDraftRejection={() => setDraftRejectionModalOpen(true)}
+        onRetryAts={handleRetryAts}
       />
 
       {/* Tags + Status row */}
@@ -228,6 +264,65 @@ export default function CandidateDetailPage() {
         {activeTab === 'timeline' && <TimelineTab events={timeline} />}
         {activeTab === 'notes' && <NotesTab candidateId={parseInt(id)} />}
       </div>
+
+      <ConfirmModal
+        isOpen={selectConfirmOpen}
+        onClose={() => setSelectConfirmOpen(false)}
+        onConfirm={handleMarkSelected}
+        title="Mark Selected"
+        message="Mark this candidate as selected? This action will be logged."
+        confirmText="Mark Selected"
+        confirmVariant="primary"
+      />
+
+      <ConfirmModal
+        isOpen={statusConfirmOpen}
+        onClose={() => { setStatusConfirmOpen(false); setPendingStatus(null); }}
+        onConfirm={confirmStatusChange}
+        title="Change Status"
+        message={`Are you sure you want to change the candidate's status to "${pendingStatus && PIPELINE_STAGES[pendingStatus] ? PIPELINE_STAGES[pendingStatus].label : pendingStatus}"?`}
+        confirmText="Change Status"
+        confirmVariant="primary"
+      />
+
+      <ConfirmModal
+        isOpen={retryAtsConfirmOpen}
+        onClose={() => setRetryAtsConfirmOpen(false)}
+        onConfirm={confirmRetryAts}
+        title="Retry ATS Score"
+        message="Are you sure you want to re-run the ATS scoring? This will overwrite the current AI analysis."
+        confirmText="Retry Score"
+        confirmVariant="primary"
+      />
+
+      {scheduleModalOpen && (
+        <ScheduleInterviewModal
+          open={scheduleModalOpen}
+          onClose={() => setScheduleModalOpen(false)}
+          onCreated={() => {
+            load()
+            setToast({ message: 'Interview scheduled successfully', type: 'success' })
+          }}
+          positionId={parseInt(positionId, 10)}
+          candidateId={candidate.id}
+          applicationId={candidate.application_id}
+          candidateName={candidate.name}
+          positionTitle={candidate.position_title || 'Position'}
+        />
+      )}
+
+      <ConfirmModal
+        isOpen={draftRejectionModalOpen}
+        onClose={() => setDraftRejectionModalOpen(false)}
+        onConfirm={async () => {
+          setDraftRejectionModalOpen(false)
+          setToast({ message: 'Rejection draft feature coming soon!', type: 'info' })
+        }}
+        title="Draft Rejection"
+        message="Are you sure you want to draft a rejection email for this candidate?"
+        confirmText="Draft Rejection"
+        confirmVariant="danger"
+      />
     </div>
   )
 }
@@ -293,6 +388,20 @@ function ApplicationTab({ candidate }) {
     ? (typeof candidate.screening_responses === 'string' ? JSON.parse(candidate.screening_responses) : candidate.screening_responses)
     : null
 
+  // Group responses into standard vs dynamic
+  const standardFields = {
+    'compensation_current': 'Current CTC',
+    'compensation_expected': 'Expected CTC',
+    'notice_period': 'Notice Period',
+    'experience_total': 'Total Experience',
+    'experience_relevant': 'Relevant Experience'
+  }
+
+  const formatKey = (key) => {
+    if (standardFields[key]) return standardFields[key];
+    return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
   return (
     <div className="cd-application-tab">
       <div className="cd-section">
@@ -306,8 +415,10 @@ function ApplicationTab({ candidate }) {
       {responses && (
         <div className="cd-section" style={{marginTop: 16}}>
           <h3 className="cd-section-title">Screening Responses</h3>
-          {Object.entries(responses).map(([q, a]) => (
-            <InfoRow key={q} label={q} value={String(a)} />
+          {Object.entries(responses)
+            .filter(([q, a]) => a !== null && a !== undefined && a !== '' && q !== 'compensation_declined')
+            .map(([q, a]) => (
+            <InfoRow key={q} label={formatKey(q)} value={String(a)} />
           ))}
         </div>
       )}
@@ -392,19 +503,75 @@ function NotesTab({ candidateId }) {
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [editContent, setEditContent] = useState('')
+  const [noteDeleteId, setNoteDeleteId] = useState(null)
+  const [toast, setToast] = useState(null)
+  
+  // Tagging feature state
+  const [orgUsers, setOrgUsers] = useState([])
+  const [mentionQuery, setMentionQuery] = useState(null)
 
   useEffect(() => {
     notesApi.list(candidateId).then(d => setNotes(d.notes || [])).catch(() => {})
+    api.get('/auth/directory').then(res => setOrgUsers(res.data.users || [])).catch(() => {})
   }, [candidateId])
+
+  const handleInputChange = (e, mode) => {
+    const val = e.target.value
+    if (mode === 'draft') setDraft(val)
+    else setEditContent(val)
+    
+    // Check if the cursor is right after an @ symbol and a word
+    const cursor = e.target.selectionStart
+    const textBefore = val.slice(0, cursor)
+    const match = textBefore.match(/@(\w*)$/)
+    if (match) {
+      setMentionQuery({ text: match[1], mode })
+    } else {
+      setMentionQuery(null)
+    }
+  }
+
+  const insertMention = (userName) => {
+    const isEdit = mentionQuery?.mode === 'edit'
+    const textarea = document.querySelector(isEdit ? '.cd-notes-input.edit-mode' : '.cd-notes-input.draft-mode')
+    const currentText = isEdit ? editContent : draft
+    const cursor = textarea ? textarea.selectionStart : currentText.length
+    
+    const textBefore = currentText.slice(0, cursor)
+    const textAfter = currentText.slice(cursor)
+    
+    const match = textBefore.match(/@(\w*)$/)
+    if (match) {
+      const newTextBefore = textBefore.slice(0, match.index) + `@${userName} `
+      const newText = newTextBefore + textAfter
+      if (isEdit) setEditContent(newText)
+      else setDraft(newText)
+      
+      // Small timeout to move cursor after the inserted name
+      setTimeout(() => {
+        if (textarea) {
+          textarea.focus()
+          textarea.setSelectionRange(newTextBefore.length, newTextBefore.length)
+        }
+      }, 0)
+    }
+    setMentionQuery(null)
+  }
+
+  const extractMentions = (text) => {
+    return orgUsers.filter(u => text.includes(`@${u.name}`)).map(u => u.id)
+  }
 
   const handleSubmit = async () => {
     if (!draft.trim()) return
     setSubmitting(true)
     try {
-      const res = await notesApi.create(candidateId, { content: draft.trim() })
+      const mentions = extractMentions(draft)
+      const res = await notesApi.create(candidateId, { content: draft.trim(), mentions })
       setNotes(prev => [{ ...res.note, author_name: res.author_name, author_role: res.author_role }, ...prev])
       setDraft('')
-    } catch (e) { alert(`Failed to save note: ${e.message}`) }
+      setToast({ message: 'Note added successfully', type: 'success' })
+    } catch (e) { setToast({ message: `Failed to save note: ${e.message}`, type: 'error' }) }
     finally { setSubmitting(false) }
   }
 
@@ -413,21 +580,49 @@ function NotesTab({ candidateId }) {
       const res = await notesApi.update(nid, editContent)
       setNotes(prev => prev.map(n => n.id === nid ? { ...n, content: res.note.content, updated_at: res.note.updated_at } : n))
       setEditingId(null)
-    } catch (e) { alert(`Update failed: ${e.message}`) }
+      setToast({ message: 'Note updated', type: 'success' })
+    } catch (e) { setToast({ message: `Update failed: ${e.message}`, type: 'error' }) }
   }
 
-  const handleDelete = async (nid) => {
-    if (!window.confirm('Delete this note?')) return
+  const renderMentionDropdown = (mode) => {
+    if (mentionQuery?.mode !== mode) return null
+    return (
+      <div className="cd-mention-dropdown" style={{
+        position: 'absolute', bottom: 'calc(100% - 10px)', left: '16px', background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, maxHeight: '150px', overflowY: 'auto', minWidth: '200px'
+      }}>
+        {orgUsers.filter(u => u.name.toLowerCase().includes(mentionQuery.text.toLowerCase())).map(u => (
+          <div key={u.id} className="cd-mention-item" style={{padding: '8px 12px', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-primary)'}}
+            onClick={() => insertMention(u.name)}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg-hover)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <strong>{u.name}</strong> <span style={{opacity:0.5, fontSize:'11px'}}>({u.department_name || 'Org'})</span>
+          </div>
+        ))}
+        {orgUsers.filter(u => u.name.toLowerCase().includes(mentionQuery.text.toLowerCase())).length === 0 && (
+          <div style={{padding: '8px 12px', fontSize: '13px', color: 'var(--color-text-tertiary)'}}>No users found</div>
+        )}
+      </div>
+    )
+  }
+
+  const handleDelete = async () => {
+    if (!noteDeleteId) return
     try {
-      await notesApi.delete(nid)
-      setNotes(prev => prev.filter(n => n.id !== nid))
-    } catch (e) { alert(`Delete failed: ${e.message}`) }
+      await notesApi.delete(noteDeleteId)
+      setNotes(prev => prev.filter(n => n.id !== noteDeleteId))
+      setNoteDeleteId(null)
+      setToast({ message: 'Note deleted', type: 'success' })
+    } catch (e) { setToast({ message: `Delete failed: ${e.message}`, type: 'error' }) }
   }
 
   return (
     <div className="cd-notes-tab">
-      <div className="cd-notes-compose">
-        <textarea className="cd-notes-input" placeholder="Add a note… (use @name to mention)" value={draft} onChange={e => setDraft(e.target.value)} rows={3} />
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <div className="cd-notes-compose" style={{position:'relative'}}>
+        <textarea className="cd-notes-input draft-mode" placeholder="Add a note… (use @name to mention)" value={draft} onChange={e => handleInputChange(e, 'draft')} rows={3} />
+        {renderMentionDropdown('draft')}
         <button className="cd-notes-submit" onClick={handleSubmit} disabled={submitting || !draft.trim()}>
           {submitting ? 'Saving…' : 'Add Note'}
         </button>
@@ -447,12 +642,13 @@ function NotesTab({ candidateId }) {
                 <div className="cd-note-meta">
                   <span className="cd-note-time">{new Date(note.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}</span>
                   <button className="cd-note-action" onClick={() => { setEditingId(note.id); setEditContent(note.content) }}>Edit</button>
-                  <button className="cd-note-action cd-note-delete" onClick={() => handleDelete(note.id)}>Delete</button>
+                  <button className="cd-note-action cd-note-delete" onClick={() => setNoteDeleteId(note.id)}>Delete</button>
                 </div>
               </div>
               {editingId === note.id ? (
-                <div className="cd-note-edit">
-                  <textarea className="cd-notes-input" value={editContent} onChange={e => setEditContent(e.target.value)} rows={3} />
+                <div className="cd-note-edit" style={{position:'relative'}}>
+                  <textarea className="cd-notes-input edit-mode" value={editContent} onChange={e => handleInputChange(e, 'edit')} rows={3} />
+                  {renderMentionDropdown('edit')}
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                     <button className="cd-notes-submit" onClick={() => handleUpdate(note.id)}>Save</button>
                     <button className="cd-note-action" onClick={() => setEditingId(null)}>Cancel</button>
@@ -465,6 +661,16 @@ function NotesTab({ candidateId }) {
           ))}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!noteDeleteId}
+        onClose={() => setNoteDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete Note"
+        message="Are you sure you want to delete this note?"
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   )
 }

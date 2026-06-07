@@ -5,7 +5,7 @@ import InternalCheckCard from './cards/InternalCheckCard';
 import MarketResearchCard from './cards/MarketResearchCard';
 import JDVariantsCard from './cards/JDVariantsCard';
 import BiasCheckCard from './cards/BiasCheckCard';
-import { IconArrowRight, IconAlertCircle } from './icons';
+import { IconArrowRight, IconAlertCircle, IconUser, IconBot } from './icons';
 
 const SAMPLE_PROMPTS = [
     'I need a Senior Python Developer with FastAPI experience.',
@@ -39,6 +39,26 @@ const MessageBubble = ({ message }) => {
     const isSystem = message.role === 'system';
 
     if (isSystem) {
+        // Item 14: Render feedback_injection messages as styled cards
+        if (message.message_type === 'feedback_injection') {
+            return (
+                <div className="msg msg--feedback-injection">
+                    <div className="feedback-injection-card">
+                        <div className="feedback-injection-header">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="2">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                            </svg>
+                            <span className="feedback-injection-title">
+                                Reviewer Feedback{message.revision_cycle ? ` — Revision ${message.revision_cycle}` : ''}
+                            </span>
+                        </div>
+                        <div className="feedback-injection-body">
+                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
         return <div className="msg msg--system">{message.content}</div>;
     }
 
@@ -50,16 +70,21 @@ const MessageBubble = ({ message }) => {
 
     return (
         <div className={`msg ${isUser ? 'msg--user' : 'msg--ai'}`}>
-            <div className="msg-meta">{isUser ? 'You' : 'AI Assistant'}</div>
-            <div className="msg-body">
-                {isUser ? (
-                    cleanContent
-                ) : (
-                    <>
-                        <ReactMarkdown>{cleanContent}</ReactMarkdown>
-                        {!message.isComplete && <span className="stream-cursor" aria-hidden="true" />}
-                    </>
-                )}
+            <div className="msg-avatar">
+                {isUser ? <IconUser size={16} /> : <IconBot size={16} />}
+            </div>
+            <div className="msg-content-wrapper">
+                <div className="msg-meta">{isUser ? 'You' : 'AI Assistant'}</div>
+                <div className="msg-body">
+                    {isUser ? (
+                        cleanContent
+                    ) : (
+                        <>
+                            <ReactMarkdown>{cleanContent}</ReactMarkdown>
+                            {!message.isComplete && <span className="stream-cursor" aria-hidden="true" />}
+                        </>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -67,12 +92,15 @@ const MessageBubble = ({ message }) => {
 
 const TypingRow = () => (
     <div className="msg msg--ai">
-        <div className="msg-meta">AI Assistant</div>
-        <div className="typing-row">
-            <span className="typing-dots" aria-hidden="true">
-                <span /><span /><span />
-            </span>
-            <span className="typing-label">Thinking</span>
+        <div className="msg-avatar"><IconBot size={16} /></div>
+        <div className="msg-content-wrapper">
+            <div className="msg-meta">AI Assistant</div>
+            <div className="typing-row">
+                <span className="typing-dots" aria-hidden="true">
+                    <span /><span /><span />
+                </span>
+                <span className="typing-label">Thinking</span>
+            </div>
         </div>
     </div>
 );

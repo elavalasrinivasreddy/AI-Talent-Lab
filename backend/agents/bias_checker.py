@@ -8,6 +8,7 @@ import logging
 import os
 
 from backend.adapters.llm.factory import get_llm
+from backend.agents.state import BiasIssue
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ def _load_prompt() -> str:
         return f.read()
 
 
-async def check_bias(jd_text: str) -> list[dict]:
+async def check_bias(jd_text: str) -> list[BiasIssue]:
     """
     Check JD text for biased/exclusionary language.
     Returns: List of dicts with {"phrase", "category", "suggestion"}
@@ -38,7 +39,14 @@ async def check_bias(jd_text: str) -> list[dict]:
 
         logger.info("Running bias check on final JD")
         response = await llm.ainvoke(messages)
-        content = response.content.strip()
+        
+        content_raw = response.content
+        if isinstance(content_raw, list):
+            content_raw = " ".join(
+                str(b.get("text", b)) if isinstance(b, dict) else b 
+                for b in content_raw
+            )
+        content = content_raw.strip()
 
         # Robust JSON extraction
         json_str = content
@@ -56,14 +64,14 @@ async def check_bias(jd_text: str) -> list[dict]:
         issues = result.get("issues", [])
 
         # Validate issue format
-        valid_issues = []
+        valid_issues: list[BiasIssue] = []
         for i in issues:
             if "phrase" in i and "suggestion" in i:
-                valid_issues.append({
-                    "phrase": i["phrase"],
-                    "suggestion": i["suggestion"],
-                    "category": i.get("category", "other")
-                })
+                valid_issues.append(BiasIssue(
+                    phrase=i["phrase"],
+                    suggestion=i["suggestion"],
+                    category=i.get("category", "other")
+                ))
 
         return valid_issues
 

@@ -1,5 +1,33 @@
 /* JDTab.css */
 .jd-tab { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.jd-approval-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4);
+  background-color: var(--color-warning-bg, #fff3cd);
+  border: 1px solid var(--color-warning-border, #ffeeba);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+.jd-approval-text strong {
+  display: block;
+  color: var(--color-warning-text, #856404);
+  font-size: var(--font-size-base);
+  margin-bottom: var(--space-1);
+}
+.jd-approval-text p {
+  margin: 0;
+  color: var(--color-warning-text, #856404);
+  font-size: var(--font-size-sm);
+  opacity: 0.9;
+}
+.jd-approval-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
 .jd-header { display: flex; justify-content: space-between; align-items: center; }
 .jd-title { font-size: var(--font-size-lg); font-weight: 600; color: var(--color-text-primary); margin: 0; }
 .jd-actions { display: flex; gap: var(--space-2); }
@@ -46,3 +74,50 @@
   margin: 0;
 }
 .jd-empty { color: var(--color-text-muted); text-align: center; padding: var(--space-8); }
+
+/* Markdown Render Styling */
+.jd-markdown-render {
+  font-family: var(--font-primary);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-relaxed);
+}
+.jd-markdown-render h1, .jd-markdown-render h2, .jd-markdown-render h3 {
+  color: var(--color-text-primary);
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-3);
+  font-weight: 600;
+}
+.jd-markdown-render h1 { font-size: 1.75em; border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-2); }
+.jd-markdown-render h2 { font-size: 1.5em; }
+.jd-markdown-render h3 { font-size: 1.25em; }
+.jd-markdown-render p { margin-bottom: var(--space-4); }
+.jd-markdown-render ul, .jd-markdown-render ol {
+  margin-bottom: var(--space-4);
+  padding-left: var(--space-5);
+}
+.jd-markdown-render li { margin-bottom: var(--space-2); }
+.jd-markdown-render blockquote {
+  border-left: 4px solid var(--color-border-focus);
+  padding-left: var(--space-3);
+  color: var(--color-text-secondary);
+  margin-left: 0;
+  margin-right: 0;
+}
+.jd-markdown-render code {
+  background: var(--color-bg-input);
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+.jd-markdown-render pre {
+  background: var(--color-bg-input);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+.jd-markdown-render pre code {
+  background: transparent;
+  padding: 0;
+}

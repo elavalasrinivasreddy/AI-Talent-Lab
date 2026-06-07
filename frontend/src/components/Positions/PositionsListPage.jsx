@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { positionsApi } from '../../utils/api'
+import { positionsApi, settingsApi } from '../../utils/api'
 import { useAuth } from '../../context/AuthContext'
 import PositionGarden from './PositionGarden'
 import PositionsToolbar from './PositionsToolbar'
@@ -27,7 +27,8 @@ function totalCount(p) {
 export default function PositionsListPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const isAdmin = user?.role === 'admin' || user?.role === 'org_admin' || user?.role === 'org_head'
+  // Only show department filters if the user has cross-department visibility
+  const canFilterByDept = user?.role === 'org_head' || (user?.role === 'hr' && !user?.department_id)
 
   const [positions, setPositions]     = useState([])
   const [loading, setLoading]         = useState(true)
@@ -42,8 +43,16 @@ export default function PositionsListPage() {
     setLoading(true)
     setError(null)
     try {
-      const raw = await positionsApi.list({})
-      const list = Array.isArray(raw) ? raw : (raw.positions || [])
+      const [rawPositions, rawDepts] = await Promise.all([
+        positionsApi.list({}),
+        canFilterByDept ? settingsApi.getDepartments() : Promise.resolve({ departments: [] })
+      ])
+      
+      const list = Array.isArray(rawPositions) ? rawPositions : (rawPositions.positions || [])
+      
+      if (canFilterByDept && rawDepts.departments) {
+        setDepartments(rawDepts.departments.map(d => ({ id: d.id, name: d.name })))
+      }
 
       // Enrich each card with sparkline + stage counts in parallel
       const enriched = await Promise.all(
@@ -60,21 +69,12 @@ export default function PositionsListPage() {
         })
       )
       setPositions(enriched)
-
-      // Extract unique departments for admin filter
-      const deptMap = {}
-      enriched.forEach(p => {
-        if (p.department_id && p.department_name) {
-          deptMap[p.department_id] = p.department_name
-        }
-      })
-      setDepartments(Object.entries(deptMap).map(([id, name]) => ({ id, name })))
     } catch (e) {
       setError('Failed to load positions.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [canFilterByDept])
 
   useEffect(() => { load() }, [load])
 
@@ -84,6 +84,7 @@ export default function PositionsListPage() {
     critical: positions.filter(p => p.priority === 'urgent' && p.status === 'open').length,
     active:   positions.filter(p => p.status === 'open').length,
     stable:   positions.filter(p => p.status === 'open' && !isStalled(p)).length,
+    draft:    positions.filter(p => p.status === 'draft').length,
     closed:   positions.filter(p => p.status === 'closed' || p.status === 'archived').length,
   }
 
@@ -94,6 +95,7 @@ export default function PositionsListPage() {
     if (segment === 'critical') return p.priority === 'urgent' && p.status === 'open'
     if (segment === 'active')   return p.status === 'open'
     if (segment === 'stable')   return p.status === 'open' && !isStalled(p)
+    if (segment === 'draft')    return p.status === 'draft'
     if (segment === 'closed')   return p.status === 'closed' || p.status === 'archived'
     return true
   })
@@ -120,10 +122,9 @@ export default function PositionsListPage() {
         <div>
           <h1 className="positions-list-title">Positions</h1>
           <p className="positions-list-sub">
-            Pipeline Garden{openCount > 0 ? ` · ${openCount} active roles` : ''}
+            Pipeline Garden{openCount > 0 ? ` · ${openCount} active role${openCount !== 1 ? 's' : ''}` : ''}
           </p>
         </div>
-        <Link to="/chat" className="btn-primary positions-new-btn">+ New Position</Link>
       </div>
 
       <PositionsToolbar
@@ -133,7 +134,7 @@ export default function PositionsListPage() {
         sort={sort}            onSort={setSort}
         segmentCounts={segmentCounts}
         departments={departments}
-        isAdmin={isAdmin}
+        isAdmin={canFilterByDept}
       />
 
       {error && (
@@ -143,7 +144,7 @@ export default function PositionsListPage() {
       )}
 
       {!loading && sorted.length === 0 && !error && (
-        <EmptyPositions segment={segment} onClear={() => setSegment('')} />
+        <EmptyPositions segment={segment} onClear={() => setSegment('')} role={user?.role} />
       )}
 
       <PositionGarden
@@ -155,14 +156,54 @@ export default function PositionsListPage() {
   )
 }
 
-function EmptyPositions({ segment, onClear }) {
+const SEGMENT_LABELS = {
+  critical: 'Critical', active: 'Active', stable: 'Stable', draft: 'Drafts', closed: 'Closed',
+}
+
+function EmptyPositions({ segment, onClear, role }) {
+  const segmentLabel = segment ? (SEGMENT_LABELS[segment] || segment) : null
+
   return (
     <div className="positions-empty">
-      <h3>{segment ? 'No positions in this filter.' : 'No positions found.'}</h3>
-      {segment
-        ? <button className="btn-ghost" onClick={onClear}>Clear filters</button>
-        : <Link to="/chat" className="btn-primary">+ Create New Position</Link>
-      }
+      <div className="positions-empty-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+        </svg>
+      </div>
+
+      <h3 className="positions-empty-title">
+        {segmentLabel ? `No ${segmentLabel} positions` : 'No positions yet'}
+      </h3>
+
+      {segmentLabel ? (
+        <>
+          <p className="positions-empty-desc">
+            There are no positions in the <strong>{segmentLabel}</strong> category right now.
+          </p>
+          <button className="positions-empty-cta positions-empty-cta--ghost" onClick={onClear}>
+            Show all positions
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="positions-empty-desc">
+            {role === 'team_lead'
+              ? 'Positions are created by HR once a hire request is approved.'
+              : 'Start a hire conversation with the AI to create your first position.'}
+          </p>
+          {role !== 'team_lead' && (
+            <Link to="/chat" className="positions-empty-cta positions-empty-cta--primary">
+              Start a hire conversation
+            </Link>
+          )}
+          {role === 'team_lead' && (
+            <Link to="/hire-requests/new" className="positions-empty-cta positions-empty-cta--primary">
+              File a hire request
+            </Link>
+          )}
+        </>
+      )}
     </div>
   )
 }

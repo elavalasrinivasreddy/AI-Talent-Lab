@@ -131,7 +131,7 @@ class ApplyService:
                 FROM screening_questions
                 WHERE org_id=$1 AND (department_id=$2 OR department_id IS NULL)
                   AND is_active=TRUE
-                ORDER BY order_index
+                ORDER BY sort_order
                 """,
                 org_id, data.get("department_id")
             )
@@ -172,6 +172,7 @@ class ApplyService:
                 "employment_type": data["employment_type"],
             },
             "org": {
+                "id": org_id,
                 "name": data["org_name"],
                 "logo_url": data["logo_url"],
                 "about_us": data["about_us"],
@@ -214,20 +215,31 @@ class ApplyService:
         else:
             ai_response, session_state = await controller.process_message(user_message)
 
-        # Save user message and AI response
-        await ApplyService._append_message(session_id, "user", user_message, None)
-        await ApplyService._append_message(session_id, "assistant", ai_response, session_state)
+        # Save user message and AI response — non-fatal: warn candidate if DB write fails
+        session_warning = None
+        try:
+            await ApplyService._append_message(session_id, "user", user_message, None)
+            await ApplyService._append_message(session_id, "assistant", ai_response, session_state)
+        except Exception as e:
+            logger.warning(f"Session persistence failed for session {session_id}: {e}")
+            session_warning = (
+                "Progress could not be saved — your answers are still visible "
+                "but may be lost on refresh."
+            )
 
         # Check for not_interested → don't advance to applied
         step = session_state.get("step")
 
-        return {
+        result = {
             "response": ai_response,
             "step": step,
             "session_state": session_state,
             "completed": step == "completion",
             "not_interested": step == "declined",
         }
+        if session_warning:
+            result["session_warning"] = session_warning
+        return result
 
     @staticmethod
     async def handle_resume_upload(
@@ -286,13 +298,24 @@ class ApplyService:
             controller = CandidateChatController(session_state, context)
             ai_response, session_state = await controller._step_complete()
 
-        await ApplyService._append_message(session_id, "assistant", ai_response, session_state)
-        await ApplyService._save_session(session_id, session_state)
+        session_warning = None
+        try:
+            await ApplyService._append_message(session_id, "assistant", ai_response, session_state)
+            await ApplyService._save_session(session_id, session_state)
+        except Exception as e:
+            logger.warning(f"Session persistence failed after resume upload (session {session_id}): {e}")
+            session_warning = (
+                "Progress could not be saved — your answers are still visible "
+                "but may be lost on refresh."
+            )
 
-        return {
+        result = {
             "response": ai_response,
             "step": session_state.get("step"),
         }
+        if session_warning:
+            result["session_warning"] = session_warning
+        return result
 
     @staticmethod
     async def complete_application(token: str) -> dict:
@@ -365,7 +388,7 @@ class ApplyService:
             # Notify recruiter — find who created the position
             app_row = await conn.fetchrow(
                 """
-                SELECT p.created_by, c.name AS candidate_name, p.role_name
+                SELECT p.created_by, c.name AS candidate_name, p.role_name, ca.position_id
                 FROM candidate_applications ca
                 JOIN positions p ON p.id = ca.position_id
                 JOIN candidates c ON c.id = ca.candidate_id
@@ -373,6 +396,9 @@ class ApplyService:
                 """,
                 application_id
             )
+            
+            position_id = app_row["position_id"] if app_row else None
+
             if app_row and app_row["created_by"]:
                 await NotificationRepository.create(conn, {
                     "org_id": org_id,
@@ -380,7 +406,7 @@ class ApplyService:
                     "type": "application_received",
                     "title": f"New Application — {app_row['role_name']}",
                     "message": f"{app_row['candidate_name']} has submitted their application via chat.",
-                    "action_url": f"/positions/{payload.get('position_id')}?tab=candidates",
+                    "action_url": f"/positions/{position_id}?tab=candidates",
                 })
 
         # ── GDPR: Record consent + set data retention ────────────────────────
@@ -395,6 +421,19 @@ class ApplyService:
             await GDPRService.set_retention_period(org_id, candidate_id)
         except Exception as e:
             logger.warning(f"GDPR consent recording failed: {e}")
+
+        # ── Trigger ATS Scoring Background Task ──────────────────────────────
+        try:
+            from backend.tasks.candidate_pipeline import score_candidate_application
+            score_candidate_application.delay(
+                candidate_id,
+                application_id,
+                position_id,
+                org_id
+            )
+            logger.info(f"Dispatched ATS scoring task for application {application_id}")
+        except Exception as e:
+            logger.error(f"Failed to dispatch ATS scoring task: {e}")
 
         return {"completed": True}
 
@@ -428,7 +467,7 @@ class ApplyService:
                 SELECT field_key, label, field_type, options, is_required
                 FROM screening_questions
                 WHERE org_id=$1 AND (department_id=$2 OR department_id IS NULL) AND is_active=TRUE
-                ORDER BY order_index
+                ORDER BY sort_order
                 """,
                 org_id, data.get("department_id")
             )
@@ -470,16 +509,17 @@ class ApplyService:
                 return state, session["id"]
 
             # Create new session
-            row = await conn.fetchrow(
+            import uuid as _uuid
+            session_id = str(_uuid.uuid4())
+            await conn.execute(
                 """
                 INSERT INTO candidate_sessions
-                    (org_id, candidate_id, application_id, session_state, messages, status)
-                VALUES ($1, $2, $3, $4, $5, 'active')
-                RETURNING id
+                    (id, org_id, candidate_id, application_id, session_state, messages, status)
+                VALUES ($1, $2, $3, $4, $5, $6, 'active')
                 """,
-                org_id, candidate_id, application_id, "{}", "[]"
+                session_id, org_id, candidate_id, application_id, "{}", "[]"
             )
-            return {}, row["id"]
+            return {}, session_id
 
     @staticmethod
     async def _append_message(

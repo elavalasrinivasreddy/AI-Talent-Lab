@@ -6,6 +6,7 @@ const SEGMENTS = [
   { key: 'critical', label: 'Critical' },
   { key: 'active',   label: 'Active' },
   { key: 'stable',   label: 'Stable' },
+  { key: 'draft',    label: 'Drafts' },
   { key: 'closed',   label: 'Closed' },
 ]
 
@@ -48,7 +49,7 @@ export default function PositionsToolbar({
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+      <div className="positions-toolbar-right">
         {/* Dept filter — admin only */}
         {isAdmin && departments.length > 0 && (
           <select
@@ -64,15 +65,18 @@ export default function PositionsToolbar({
         )}
 
         {/* Sort */}
-        <select
-          className="positions-select"
-          value={sort}
-          onChange={e => onSort(e.target.value)}
-        >
-          <option value="urgency">Urgency</option>
-          <option value="newest">Newest</option>
-          <option value="activity">Activity</option>
-        </select>
+        <div className="positions-sort-wrap">
+          <span className="positions-sort-label">Sort:</span>
+          <select
+            className="positions-select"
+            value={sort}
+            onChange={e => onSort(e.target.value)}
+          >
+            <option value="urgency">Urgency</option>
+            <option value="newest">Newest</option>
+            <option value="activity">Activity</option>
+          </select>
+        </div>
       </div>
     </div>
   )

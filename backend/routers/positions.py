@@ -25,13 +25,80 @@ async def list_positions(
     current_user=Depends(get_current_user),
 ):
     """List all positions for the org with optional filters."""
+    # Enforce department scoping for roles bound to a specific department.
+    role = current_user["role"]
+    team_lead_id = None
+    
+    if role in ("hr", "dept_admin") and current_user.get("dept_id"):
+        department_id = current_user["dept_id"]
+        
+    if role == "team_lead":
+        team_lead_id = current_user["user_id"]
+        # Team lead gets restricted to only what they created, reviewed, or requested via hire requests.
+        department_id = None  # Ignore dept filter for team_lead, rely strictly on their involvement.
+
     positions = await PositionService.list_positions(
         org_id=current_user["org_id"],
         department_id=department_id,
         status=status,
         page=page,
+        team_lead_id=team_lead_id,
+        team_lead_dept_id=current_user.get("dept_id") if role == "team_lead" else None,
     )
     return {"positions": positions, "page": page}
+
+
+@router.get("/pending-count")
+async def pending_count(current_user=Depends(get_current_user)):
+    """Count positions pending approval for this user."""
+    from backend.db.connection import get_connection
+    org_id = current_user["org_id"]
+    role = current_user.get("role")
+    # JWT user dict uses key "dept_id" (not "department_id"); reading the wrong key
+    # made team_lead/dept_admin always fall through to the org-wide count.
+    dept_id = current_user.get("dept_id")
+    
+    async with get_connection() as conn:
+        if role == "org_head":
+            row = await conn.fetchrow(
+                "SELECT COUNT(*) FROM positions WHERE org_id=$1 AND approval_status='pending'",
+                org_id
+            )
+        elif role in ("team_lead", "dept_admin"):
+            row = await conn.fetchrow(
+                "SELECT COUNT(*) FROM positions WHERE org_id=$1 AND approval_status='pending' AND reviewer_id=$2",
+                org_id, current_user["user_id"]
+            )
+        else:
+            return {"count": 0}
+            
+        return {"count": row["count"] if row else 0}
+
+
+# ── Item 16: Reviewer preview — must be declared before /{position_id} ────────
+# FastAPI matches routes in declaration order; a static path like /resolve-reviewer
+# would be captured by /{position_id} as position_id="resolve-reviewer" otherwise.
+
+@router.get("/resolve-reviewer")
+async def resolve_reviewer(
+    position_id: int = Query(...),
+    current_user=Depends(get_current_user),
+):
+    """
+    Resolve who will review the JD. Called when chat reaches final_jd stage.
+    Returns: { reviewer_id, reviewer_name, reviewer_role, department, is_bypass, warning }
+    """
+    try:
+        result = await PositionService.resolve_reviewer(
+            position_id=position_id,
+            org_id=current_user["org_id"],
+            user_id=current_user["user_id"],
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail={
+            "error": {"code": "NOT_FOUND", "message": str(e), "details": None}
+        })
 
 
 @router.get("/{position_id}")
@@ -171,39 +238,39 @@ async def generate_interview_kit(
 # ── Approval workflow ─────────────────────────────────────────────────────────
 
 @router.post("/{position_id}/submit-for-approval")
-async def submit_for_approval(position_id: int, current_user=Depends(get_current_user)):
+async def submit_for_approval(
+    position_id: int,
+    body: Optional[dict] = None,
+    current_user=Depends(get_current_user),
+):
     """
-    Recruiter submits a position for hiring manager approval.
-    Sets approval_status = 'pending'.
+    HR submits a position for JD approval.
+    Body (optional): { ats_threshold?: float, search_interval_hours?: int }
+
+    The service acquires a FOR UPDATE lock on the position row inside a transaction,
+    so the status guard is atomic — no stale pre-check needed here.
     """
+    body = body or {}
+    try:
+        await PositionService.submit_for_approval(
+            position_id=position_id,
+            org_id=current_user["org_id"],
+            submitted_by_user_id=current_user["user_id"],
+            ats_threshold=body.get("ats_threshold"),
+            search_interval_hours=body.get("search_interval_hours"),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail={"error": {"code": "INVALID_TRANSITION", "message": str(e), "details": None}})
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail={"error": {"code": "FORBIDDEN", "message": str(e), "details": None}})
+
     from backend.db.connection import get_connection
     async with get_connection() as conn:
-        row = await conn.fetchrow(
-            "SELECT id, requires_approval, approval_status FROM positions WHERE id=$1 AND org_id=$2",
+        final_status = await conn.fetchval(
+            "SELECT approval_status FROM positions WHERE id=$1 AND org_id=$2",
             position_id, current_user["org_id"],
         )
-        if not row:
-            raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": "Position not found", "details": None}})
-        if not row["requires_approval"]:
-            raise HTTPException(status_code=400, detail={"error": {"code": "APPROVAL_NOT_REQUIRED", "message": "This position does not require approval", "details": None}})
-        await conn.execute(
-            "UPDATE positions SET approval_status='pending', updated_at=NOW() WHERE id=$1",
-            position_id,
-        )
-        # Notify hiring managers in the org
-        await conn.execute(
-            """
-            INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-            SELECT $1, u.id, 'approval_requested',
-                   'Position approval requested',
-                   (SELECT role_name FROM positions WHERE id=$2) || ' is pending your approval',
-                   '/positions/' || $2
-            FROM users u
-            WHERE u.org_id=$1 AND u.role IN ('org_head', 'team_lead', 'dept_admin')
-            """,
-            current_user["org_id"], position_id,
-        )
-    return {"ok": True, "approval_status": "pending"}
+    return {"ok": True, "approval_status": final_status or "pending"}
 
 
 @router.post("/{position_id}/approval-decision")
@@ -225,6 +292,8 @@ async def approval_decision(
         raise HTTPException(status_code=422, detail={"error": {"code": "INVALID_DECISION", "message": "decision must be 'approved' or 'changes_requested'", "details": None}})
 
     notes = body.get("notes", "") or ""
+    if decision == "changes_requested" and not notes.strip():
+        raise HTTPException(status_code=422, detail={"error": {"code": "NOTES_REQUIRED", "message": "A feedback note is required when requesting changes. Please explain what needs to be updated.", "details": None}})
     try:
         await PositionService.record_approval_decision(
             position_id=position_id,
@@ -235,9 +304,128 @@ async def approval_decision(
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": str(e), "details": None}})
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail={"error": {"code": "FORBIDDEN", "message": str(e), "details": None}})
 
-    return {"ok": True, "approval_status": decision}
+    # State transitions are deterministic — derive from decision instead of re-fetching
+    # (avoids a TOCTOU window between the commit and a second DB round-trip).
+    _result = {
+        "approved": {"status": "open", "approval_status": "approved"},
+        "changes_requested": {"status": "draft_needs_revision", "approval_status": "changes_requested"},
+    }[decision]
+    return {"ok": True, **_result}
 
+
+# ── Item 6: TL cancel-after-pickup ────────────────────────────────────────────
+
+@router.post("/{position_id}/cancel-jd")
+async def cancel_jd_in_progress(
+    position_id: int,
+    body: dict,
+    current_user=Depends(get_current_user),
+):
+    """
+    Team lead cancels a position in jd_in_progress (before HR submits).
+    Body: { notes: str } — mandatory cancellation notes.
+    """
+    notes = body.get("notes", "")
+    try:
+        result = await PositionService.cancel_jd_in_progress(
+            position_id=position_id,
+            org_id=current_user["org_id"],
+            user_id=current_user["user_id"],
+            role=current_user.get("role", ""),
+            notes=notes,
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail={
+            "error": {"code": "INVALID_TRANSITION", "message": str(e), "details": None}
+        })
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail={
+            "error": {"code": "FORBIDDEN", "message": str(e), "details": None}
+        })
+
+
+# ── Item 7: HR withdraw submission ───────────────────────────────────────────
+
+@router.post("/{position_id}/withdraw-submission")
+async def withdraw_submission(
+    position_id: int,
+    current_user=Depends(get_current_user),
+):
+    """
+    HR withdraws a submitted JD (pending_jd_approval → jd_in_progress).
+    Bias resets on withdraw. revision_cycle does NOT increment.
+    """
+    try:
+        result = await PositionService.withdraw_submission(
+            position_id=position_id,
+            org_id=current_user["org_id"],
+            user_id=current_user["user_id"],
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail={
+            "error": {"code": "INVALID_TRANSITION", "message": str(e), "details": None}
+        })
+
+
+# ── Item 24: ATS config update post-open ─────────────────────────────────────
+
+@router.patch("/{position_id}/ats-config")
+async def update_ats_config(
+    position_id: int,
+    body: dict,
+    current_user=Depends(get_current_user),
+):
+    """
+    Update ATS config on open positions. Only org_head/dept_admin allowed.
+    Body: { ats_threshold?: float, search_interval_hours?: int }
+    """
+    try:
+        result = await PositionService.update_ats_config_post_open(
+            position_id=position_id,
+            org_id=current_user["org_id"],
+            user_id=current_user["user_id"],
+            role=current_user.get("role", ""),
+            ats_threshold=body.get("ats_threshold"),
+            search_interval_hours=body.get("search_interval_hours"),
+        )
+        return result
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail={
+            "error": {"code": "FORBIDDEN", "message": str(e), "details": None}
+        })
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail={
+            "error": {"code": "INVALID_REQUEST", "message": str(e), "details": None}
+        })
+
+
+# ── Item 22: Same-title duplicate check ──────────────────────────────────────
+
+@router.get("/{position_id}/same-title-check")
+async def same_title_check(
+    position_id: int,
+    current_user=Depends(get_current_user),
+):
+    """Check if a position with the same title already exists in the org."""
+    from backend.db.connection import get_connection
+    from backend.db.repositories.positions import PositionRepository as PosRepo
+    async with get_connection() as conn:
+        pos = await PosRepo.get(conn, position_id, current_user["org_id"])
+        if not pos:
+            raise HTTPException(status_code=404, detail={
+                "error": {"code": "NOT_FOUND", "message": "Position not found", "details": None}
+            })
+        matches = await PosRepo.find_same_title(
+            conn, current_user["org_id"], pos["role_name"],
+        )
+    # Exclude the current position from results
+    matches = [m for m in matches if m["id"] != position_id]
+    return {"has_duplicates": len(matches) > 0, "matches": matches}
 
 # ── Sparkline + stage counts for Pipeline Garden cards ────────────────────────
 
@@ -358,14 +546,14 @@ async def get_pipeline_summary(
         # We approximate via pipeline_events
         pass_rows = await conn.fetch(
             """
-            SELECT event_data->>'from_status' AS from_status,
+            SELECT event_data::jsonb->>'from_status' AS from_status,
                    COUNT(*) AS moved_count
             FROM pipeline_events
             WHERE position_id = $1 AND org_id = $2
               AND event_type = 'status_changed'
               AND created_at >= NOW() - INTERVAL '30 days'
-              AND event_data->>'from_status' IS NOT NULL
-            GROUP BY event_data->>'from_status'
+              AND event_data::jsonb->>'from_status' IS NOT NULL
+            GROUP BY event_data::jsonb->>'from_status'
             """,
             position_id, current_user["org_id"],
         )
@@ -373,14 +561,14 @@ async def get_pipeline_summary(
 
         enter_rows = await conn.fetch(
             """
-            SELECT event_data->>'to_status' AS to_status,
+            SELECT event_data::jsonb->>'to_status' AS to_status,
                    COUNT(*) AS entered_count
             FROM pipeline_events
             WHERE position_id = $1 AND org_id = $2
               AND event_type = 'status_changed'
               AND created_at >= NOW() - INTERVAL '30 days'
-              AND event_data->>'to_status' IS NOT NULL
-            GROUP BY event_data->>'to_status'
+              AND event_data::jsonb->>'to_status' IS NOT NULL
+            GROUP BY event_data::jsonb->>'to_status'
             """,
             position_id, current_user["org_id"],
         )
@@ -422,129 +610,3 @@ async def get_pipeline_summary(
         return {"stages": stages}
 
 
-# ── Hire Requests (legacy shims — see routers/hire_requests.py for the real impl) ───
-# Kept so the existing Dashboard widgets that call /api/v1/positions/requests/*
-# keep working. New clients should hit /api/v1/hire-requests/* directly.
-
-from backend.services.hire_request_service import HireRequestService
-from backend.dependencies import get_db
-
-
-def _to_int_or_none(v):
-    """Coerce raw dict values to int for the legacy untyped-body shim."""
-    try:
-        return int(v) if v is not None else None
-    except (TypeError, ValueError):
-        return None
-
-
-def _client_ip(request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For") if request else None
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if (request and request.client) else "unknown"
-
-
-@router.post("/requests")
-async def submit_hire_request(
-    request: Request,
-    body: dict,
-    current_user=Depends(get_current_user),
-    db=Depends(get_db),
-):
-    """Legacy: prefer POST /api/v1/hire-requests/."""
-    created = await HireRequestService.create(
-        db,
-        org_id=current_user["org_id"],
-        user_id=current_user["user_id"],
-        role=current_user["role"],
-        ip_address=_client_ip(request),
-        role_name=(body.get("role_name") or "").strip(),
-        department_id=body.get("department_id"),
-        headcount=int(body.get("headcount") or 1),
-        work_type=body.get("work_type") or "onsite",
-        experience_min=_to_int_or_none(body.get("experience_min")),
-        experience_max=_to_int_or_none(body.get("experience_max")),
-        target_start=body.get("target_start"),
-        requirements=body.get("requirements"),
-        comp_min=_to_int_or_none(body.get("comp_min")),
-        comp_max=_to_int_or_none(body.get("comp_max")),
-        location=body.get("location"),
-    )
-    return created
-
-
-@router.get("/requests")
-async def list_hire_requests(
-    status: Optional[str] = Query(None),
-    current_user=Depends(get_current_user),
-    db=Depends(get_db),
-):
-    """Legacy: prefer GET /api/v1/hire-requests/."""
-    rows = await HireRequestService.list_for_user(
-        db,
-        org_id=current_user["org_id"],
-        user_id=current_user["user_id"],
-        role=current_user["role"],
-        scope="default",
-        status=status,
-    )
-    return {"requests": rows}
-
-
-@router.patch("/requests/{request_id}/accept")
-async def accept_hire_request(
-    request_id: int,
-    request: Request,
-    body: dict = {},
-    current_user=Depends(get_current_user),
-    db=Depends(get_db),
-):
-    """Legacy: prefer POST /api/v1/hire-requests/{id}/accept."""
-    updated = await HireRequestService.accept(
-        db, request_id, current_user["org_id"],
-        user_id=current_user["user_id"],
-        role=current_user["role"],
-        chat_session_id=body.get("chat_session_id"),
-        ip_address=_client_ip(request),
-    )
-    return {"ok": True, "status": updated["status"]}
-
-
-@router.patch("/requests/{request_id}/link-session")
-async def link_hire_request_to_position(
-    request_id: int,
-    request: Request,
-    body: dict,
-    current_user=Depends(get_current_user),
-    db=Depends(get_db),
-):
-    """Legacy: prefer POST /api/v1/hire-requests/{id}/link-session."""
-    session_id = body.get("session_id")
-    if not session_id:
-        from backend.exceptions import ValidationError
-        raise ValidationError("session_id is required.")
-    updated = await HireRequestService.link_session_to_position(
-        db, request_id, current_user["org_id"],
-        user_id=current_user["user_id"],
-        session_id=session_id,
-        ip_address=_client_ip(request),
-    )
-    return {"ok": True, "position_id": updated.get("position_id")}
-
-
-@router.patch("/requests/{request_id}/cancel")
-async def cancel_hire_request(
-    request_id: int,
-    request: Request,
-    current_user=Depends(get_current_user),
-    db=Depends(get_db),
-):
-    """Legacy: prefer POST /api/v1/hire-requests/{id}/cancel."""
-    updated = await HireRequestService.cancel(
-        db, request_id, current_user["org_id"],
-        user_id=current_user["user_id"],
-        role=current_user["role"],
-        ip_address=_client_ip(request),
-    )
-    return {"ok": True, "status": updated["status"]}

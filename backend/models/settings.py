@@ -1,12 +1,15 @@
 """
 models/settings.py – Pydantic schemas for settings request/response validation.
 """
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, List
 from datetime import datetime
 
 
 # ── Organization ───────────────────────────────────────────────────────────────
+
+class AutoDraftRequest(BaseModel):
+    url: str
 
 class OrgProfileUpdate(BaseModel):
     segment: Optional[str] = None
@@ -23,6 +26,7 @@ class OrgProfileUpdate(BaseModel):
     career_primary_color: Optional[str] = None
     career_banner_url: Optional[str] = None
     career_tagline: Optional[str] = None
+    allow_auto_approve_jds: Optional[bool] = None
 
     @field_validator("size")
     @classmethod
@@ -47,6 +51,7 @@ class OrgProfileResponse(BaseModel):
     glassdoor_url: Optional[str] = None
     hiring_contact_email: Optional[str] = None
     logo_url: Optional[str] = None
+    allow_auto_approve_jds: bool = True
     created_at: Optional[datetime] = None
 
 
@@ -57,6 +62,7 @@ class DepartmentCreate(BaseModel):
     description: Optional[str] = None
     parent_dept_id: Optional[int] = None
     head_user_id: Optional[int] = None
+    auto_approve_hire_requests: bool = False
 
     @field_validator("name")
     @classmethod
@@ -72,6 +78,7 @@ class DepartmentUpdate(BaseModel):
     description: Optional[str] = None
     parent_dept_id: Optional[int] = None
     head_user_id: Optional[int] = None
+    auto_approve_hire_requests: Optional[bool] = None
 
 
 class DepartmentResponse(BaseModel):
@@ -82,6 +89,7 @@ class DepartmentResponse(BaseModel):
     parent_dept_id: Optional[int] = None
     head_user_id: Optional[int] = None
     head_name: Optional[str] = None
+    auto_approve_hire_requests: bool = False
     user_count: int = 0
     position_count: int = 0
     created_at: Optional[datetime] = None
@@ -91,6 +99,14 @@ class DepartmentResponse(BaseModel):
 
 class CompetitorCreate(BaseModel):
     name: str
+    department_id: int
+    website: Optional[str] = None
+    industry: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class CompetitorUpdate(BaseModel):
+    name: Optional[str] = None
     website: Optional[str] = None
     industry: Optional[str] = None
     notes: Optional[str] = None
@@ -99,6 +115,7 @@ class CompetitorCreate(BaseModel):
 class CompetitorResponse(BaseModel):
     id: int
     org_id: int
+    department_id: int
     name: str
     website: Optional[str] = None
     industry: Optional[str] = None
@@ -211,3 +228,10 @@ class ScorecardTemplateResponse(BaseModel):
     dimensions: str
     is_default: bool = False
     created_at: Optional[datetime] = None
+
+
+# ── AI Behavior Settings ───────────────────────────────────────────────────────
+
+class AiBehaviorBody(BaseModel):
+    """Accepts any JSON key/value pairs for AI behavior settings."""
+    model_config = ConfigDict(extra="allow")

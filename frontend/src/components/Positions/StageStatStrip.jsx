@@ -13,7 +13,7 @@ export default function StageStatStrip({ summary, activeStage, onStageClick }) {
   return (
     <div className="pd-stage-strip">
       {STAGES.map(key => {
-        const cfg = PIPELINE_STAGES[key] || { label: key, color: '#94A3B8' }
+        const cfg = PIPELINE_STAGES[key] || { label: key, color: 'var(--color-text-muted, #94A3B8)' }
         const data = summary?.stages?.[key] || { count: 0, delta_today: 0 }
         const isActive = activeStage === key
 

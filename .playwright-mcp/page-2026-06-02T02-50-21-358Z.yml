@@ -1,0 +1,69 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - link "AI Talent Lab home" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img [ref=e8]
+        - generic [ref=e12]: AI Talent Lab
+      - generic [ref=e13]:
+        - heading "Hire is a verb. Let's make it your favorite." [level=1] [ref=e14]:
+          - text: Hire is a verb.
+          - text: Let's make it your favorite.
+        - paragraph [ref=e15]: AI sources, screens, scores and schedules. You make the call. Together you ship 10× more hires — without the busywork.
+        - list "Product highlights" [ref=e16]:
+          - listitem [ref=e17]:
+            - strong [ref=e18]: 200+
+            - generic [ref=e19]: Hiring teams onboard
+          - listitem [ref=e20]:
+            - strong [ref=e21]: 38d
+            - generic [ref=e22]: Avg time saved per req
+          - listitem [ref=e23]:
+            - strong [ref=e24]: 94%
+            - generic [ref=e25]: Candidate response NPS
+      - generic [ref=e26]:
+        - generic [ref=e27]: SOC 2 Type II
+        - generic [ref=e28]: GDPR + DPDP
+        - generic [ref=e29]: ISO 27001 (in progress)
+  - main [ref=e30]:
+    - generic [ref=e31]:
+      - navigation "Authentication mode" [ref=e32]:
+        - link "Sign in" [ref=e33] [cursor=pointer]:
+          - /url: /login
+        - link "Create workspace" [ref=e34] [cursor=pointer]:
+          - /url: /register
+      - generic [ref=e35]:
+        - heading "Welcome back" [level=2] [ref=e36]
+        - paragraph [ref=e37]: Sign in to your workspace.
+      - button "Continue with magic link No password — we email you a one-tap sign-in link." [ref=e38] [cursor=pointer]:
+        - img [ref=e40]
+        - generic [ref=e42]:
+          - generic [ref=e43]: Continue with magic link
+          - generic [ref=e44]: No password — we email you a one-tap sign-in link.
+        - img [ref=e45]
+      - generic [ref=e48]: OR
+      - alert [ref=e73]:
+        - img [ref=e74]
+        - generic [ref=e76]: Invalid email or password
+      - generic [ref=e49]:
+        - generic [ref=e50]:
+          - generic [ref=e51]: Work email
+          - textbox "Work email" [ref=e52]:
+            - /placeholder: you@company.com
+            - text: elavalasrinivasreddy@gmail.com
+        - generic [ref=e53]:
+          - generic [ref=e54]: Password
+          - generic [ref=e55]:
+            - textbox "Password" [ref=e56]:
+              - /placeholder: Enter your password
+              - text: admin123
+            - button "Show password" [ref=e57] [cursor=pointer]:
+              - img [ref=e58]
+          - link "Forgot password?" [ref=e61] [cursor=pointer]:
+            - /url: /forgot-password
+        - button "Sign in" [ref=e62] [cursor=pointer]:
+          - text: Sign in
+          - img [ref=e77]
+      - paragraph [ref=e65]:
+        - text: New here?
+        - link "Create a workspace" [ref=e66] [cursor=pointer]:
+          - /url: /register

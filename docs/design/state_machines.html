@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>State Machines — AI Talent Lab</title>
+<style>
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; margin: 0; padding: 24px 40px; }
+  h1 { text-align: center; font-size: 26px; color: #a78bfa; margin-bottom: 4px; }
+  .subtitle { text-align: center; color: #888; font-size: 13px; margin-bottom: 28px; }
+  h2 { color: #818cf8; margin: 36px 0 12px; font-size: 20px; border-bottom: 1px solid #333; padding-bottom: 8px; }
+  .diagram { background: #0f0f23; border: 1px solid #333; border-radius: 12px; padding: 24px; margin-bottom: 32px; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0 32px; font-size: 13px; }
+  th { background: #2a2a4a; color: #a78bfa; text-align: left; padding: 10px 12px; border: 1px solid #333; }
+  td { padding: 8px 12px; border: 1px solid #333; vertical-align: top; }
+  tr:nth-child(even) { background: #16162a; }
+  code { background: #2a2a4a; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #f59e0b; }
+  .warn { color: #f59e0b; }
+  .yes { color: #ef4444; font-weight: 600; }
+  .note { background: #1e1e3a; border-left: 3px solid #6366f1; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0; font-size: 13px; color: #bbb; }
+</style>
+</head>
+<body>
+
+<h1>State Machine Diagrams</h1>
+<p class="subtitle">AI Talent Lab · Design Rev 4 · JD Generation & Position Approval Workflow</p>
+
+<!-- ═══════════════════════ POSITION STATUS ═══════════════════════ -->
+<h2>1. position.status</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+    direction LR
+
+    [*] --> jd_in_progress : HR pickup (Flow 1)\nor New Hire (Flow 2)
+
+    jd_in_progress --> pending_jd_approval : HR submits JD
+    jd_in_progress --> open : org_head bypass
+    jd_in_progress --> cancelled : TL cancels\n(notes required)
+
+    pending_jd_approval --> open : Reviewer approves
+    pending_jd_approval --> draft_needs_revision : Reviewer rejects\n(notes required)
+    pending_jd_approval --> jd_in_progress : HR withdraws
+
+    draft_needs_revision --> pending_jd_approval : HR re-submits
+</pre>
+</div>
+
+<table>
+<tr><th>#</th><th>From</th><th>→ To</th><th>Triggered by</th><th>Data required</th><th>Notes req?</th><th>Side effects</th></tr>
+<tr><td>1</td><td>— (entry)</td><td><code>jd_in_progress</code></td><td>hr (pickup CAS)</td><td>Atomic CAS on <code>picked_up_by</code></td><td>—</td><td>hire_request stays approved</td></tr>
+<tr><td>2</td><td>— (entry)</td><td><code>jd_in_progress</code></td><td>hr / dept_admin / org_head</td><td>—</td><td>—</td><td>Position created directly (Flow 2)</td></tr>
+<tr><td>3</td><td><code>jd_in_progress</code></td><td><code>pending_jd_approval</code></td><td>hr / dept_admin</td><td>ats_threshold, sourcing_freq, reviewer_id, submitted_by_role, submitted_at</td><td>—</td><td>Reviewer notified</td></tr>
+<tr><td>4</td><td><code>jd_in_progress</code></td><td><code>open</code></td><td>org_head (Flow 2)</td><td>—</td><td>—</td><td>Career page + ATS start immediately</td></tr>
+<tr><td>5</td><td><code>jd_in_progress</code></td><td><code>cancelled</code></td><td>team_lead</td><td>—</td><td class="yes">YES</td><td>HR notified</td></tr>
+<tr><td>6</td><td><code>pending_jd_approval</code></td><td><code>open</code></td><td>resolved reviewer</td><td>—</td><td>—</td><td>Txn: position→open + hire_request→fulfilled. Async: career, ATS, notifs</td></tr>
+<tr><td>7</td><td><code>pending_jd_approval</code></td><td><code>draft_needs_revision</code></td><td>resolved reviewer</td><td>—</td><td class="yes">YES</td><td>revision_cycle++, bias resets, feedback injected</td></tr>
+<tr><td>8</td><td><code>pending_jd_approval</code></td><td><code>jd_in_progress</code></td><td>hr (withdraw)</td><td>—</td><td>—</td><td>Reviewer notified, bias resets, revision_cycle unchanged</td></tr>
+<tr><td>9</td><td><code>draft_needs_revision</code></td><td><code>pending_jd_approval</code></td><td>hr (re-submit)</td><td>—</td><td>—</td><td>Bias must pass again</td></tr>
+</table>
+
+<div class="note">
+<strong>Chat permissions per state:</strong><br>
+<code>jd_in_progress</code> → Chat R/W, Finalize gated on bias check, Save Draft always available<br>
+<code>pending_jd_approval</code> → Chat READ-ONLY, Delete disabled<br>
+<code>draft_needs_revision</code> → Chat R/W reopened, Bias reset, Feedback card injected<br>
+<code>open</code> → Chat permanently locked, Only ats_threshold + sourcing_freq editable (org_head/dept_admin)<br>
+<code>cancelled</code> → Terminal
+</div>
+
+<!-- ═══════════════════════ HIRE REQUEST STATUS ═══════════════════════ -->
+<h2>2. hire_request.status</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+    direction LR
+
+    [*] --> draft : TL creates
+
+    draft --> submitted : TL submits
+
+    submitted --> admin_reviewing : Admin begins review\n(atomic CAS lock)
+    submitted --> cancelled : TL cancels\n(notes required)
+
+    admin_reviewing --> approved : Admin approves
+    admin_reviewing --> approved_modified : Admin approves\n+ modifies (diff JSONB)
+    admin_reviewing --> rejected : Admin rejects\n(notes required)
+    admin_reviewing --> submitted : Close without action\nor 30-min TTL expires
+
+    approved --> cancelled : TL cancels\n(before HR pickup)
+    approved_modified --> cancelled : TL cancels\n(before HR pickup)
+
+    note right of approved : HR picks up → position created
+    note right of approved_modified : HR picks up → position created
+</pre>
+</div>
+
+<table>
+<tr><th>#</th><th>From</th><th>→ To</th><th>Triggered by</th><th>Data required</th><th>Notes req?</th><th>Side effects</th></tr>
+<tr><td>1</td><td>— (entry)</td><td><code>draft</code></td><td>team_lead</td><td>role_name, dept, headcount</td><td>—</td><td>Not visible to admins yet</td></tr>
+<tr><td>2</td><td><code>draft</code></td><td><code>submitted</code></td><td>team_lead</td><td>—</td><td>—</td><td>Dept admins notified</td></tr>
+<tr><td>3</td><td><code>submitted</code></td><td><code>admin_reviewing</code></td><td>dept_admin</td><td>Atomic CAS (zero rows = beaten)</td><td>—</td><td>Lock set: reviewing_locked_by + reviewing_locked_at</td></tr>
+<tr><td>4</td><td><code>submitted</code></td><td><code>cancelled</code></td><td>team_lead</td><td>—</td><td class="yes">YES</td><td>Admin notified if lock active</td></tr>
+<tr><td>5</td><td><code>admin_reviewing</code></td><td><code>approved</code></td><td>dept_admin</td><td>—</td><td>—</td><td>Visible in HR pickup queue</td></tr>
+<tr><td>6</td><td><code>admin_reviewing</code></td><td><code>approved_modified</code></td><td>dept_admin</td><td>Modified fields</td><td class="yes">YES (diff JSONB)</td><td>TL notified with diff summary</td></tr>
+<tr><td>7</td><td><code>admin_reviewing</code></td><td><code>rejected</code></td><td>dept_admin</td><td>—</td><td class="yes">YES</td><td>TL sees rejection notes</td></tr>
+<tr><td>8</td><td><code>admin_reviewing</code></td><td><code>submitted</code></td><td>dept_admin (close) / system (TTL 30m)</td><td>—</td><td>—</td><td>Lock released</td></tr>
+<tr><td>9</td><td><code>approved</code></td><td><code>cancelled</code></td><td>team_lead (before HR pickup)</td><td>—</td><td class="yes">YES</td><td>Dept HRs notified</td></tr>
+<tr><td>10</td><td><code>approved_modified</code></td><td><code>cancelled</code></td><td>team_lead (before HR pickup)</td><td>—</td><td class="yes">YES</td><td>—</td></tr>
+<tr><td>11</td><td><code>approved</code> / <code>approved_modified</code></td><td><em>(no status change)</em></td><td>hr (picks up)</td><td>Atomic CAS on position.picked_up_by</td><td>—</td><td>position → jd_in_progress</td></tr>
+</table>
+
+<div class="note">
+<strong>Key rule:</strong> <code>hr_pickup</code> is NOT a hire_request status. The hire_request stays <code>approved</code> / <code>approved_modified</code>. Pickup is tracked on the <strong>position</strong> via <code>picked_up_by</code>.
+</div>
+
+<!-- ═══════════════════════ CROSS-ENTITY ═══════════════════════ -->
+<h2>3. Cross-Entity Connection</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    A["hire_request\napproved / approved_modified"] -->|"HR picks up\n(atomic CAS)"| B["position\njd_in_progress"]
+    B -->|"HR submits\n(reviewer resolved)"| C["position\npending_jd_approval"]
+    C -->|"Reviewer approves\n(txn: open + fulfilled)"| D["position\nopen"]
+
+    style A fill:#6366f1,stroke:#818cf8,color:#fff
+    style B fill:#16a34a,stroke:#22c55e,color:#fff
+    style C fill:#d97706,stroke:#f59e0b,color:#fff
+    style D fill:#dc2626,stroke:#ef4444,color:#fff
+</pre>
+</div>
+
+<!-- ═══════════════════════ AMBIGUITY AUDIT ═══════════════════════ -->
+<h2>4. Ambiguity Audit</h2>
+
+<table>
+<tr><th>Question</th><th>Answer</th></tr>
+<tr><td>Can TL cancel after <code>pending_jd_approval</code>?</td><td><strong>NO</strong> — must reject at review step</td></tr>
+<tr><td>Can TL cancel after <code>open</code>?</td><td><strong>NO</strong> — terminal in Phase 1</td></tr>
+<tr><td>Is <code>hr_pickup</code> a hire_request status?</td><td><strong>NO</strong> — tracked on position.picked_up_by</td></tr>
+<tr><td>Does <code>revision_cycle</code> increment on HR withdraw?</td><td><strong>NO</strong> — only on reviewer rejection</td></tr>
+<tr><td>Does bias reset on HR withdraw?</td><td><strong>YES</strong></td></tr>
+<tr><td>Can two admins review same hire_request simultaneously?</td><td><strong>NO</strong> — atomic CAS lock</td></tr>
+<tr><td>What happens on 30-min TTL?</td><td>Status reverts to <code>submitted</code>, lock columns nulled</td></tr>
+<tr><td>Can admin take over?</td><td><strong>YES</strong> — after 10 min, same atomic CAS</td></tr>
+<tr><td>Who can edit ATS config after <code>open</code>?</td><td><code>org_head</code> and <code>dept_admin</code> only</td></tr>
+<tr><td>What if no reviewer exists?</td><td><strong>Hard-block submit</strong>. Show setup CTA.</td></tr>
+</table>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#6366f1',
+      primaryTextColor: '#fff',
+      primaryBorderColor: '#818cf8',
+      lineColor: '#888',
+      secondaryColor: '#1e1e3a',
+      tertiaryColor: '#2a2a4a',
+      fontFamily: 'Segoe UI, system-ui, sans-serif',
+      fontSize: '14px'
+    }
+  });
+</script>
+</body>
+</html>

@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from backend.db.repositories.departments import DeptRepository
 from backend.dependencies import get_current_user, get_db
 from backend.services.dashboard_service import DashboardService
+from backend.services.ops_service import OpsService
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["Dashboard"])
 logger = logging.getLogger(__name__)
@@ -37,9 +38,27 @@ async def _resolve_dept_id(
     return requested
 
 
+@router.get("/briefing")
+async def get_briefing(
+    period: str = Query("week", pattern="^(today|week|month)$"),
+    dept_id: Optional[int] = Query(None),
+    current_user=Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Unified V3 dashboard briefing payload (stats, positions, activity, suggestions)."""
+    effective_dept = await _resolve_dept_id(dept_id, current_user, db)
+    return await DashboardService.get_briefing(
+        org_id=current_user["org_id"],
+        user_id=current_user["user_id"],
+        role=current_user["role"],
+        department_id=effective_dept,
+        period=period
+    )
+
+
 @router.get("/stats")
 async def get_stats(
-    period: str = Query("week", regex="^(today|week|month)$"),
+    period: str = Query("week", pattern="^(today|week|month)$"),
     dept_id: Optional[int] = Query(None),
     current_user=Depends(get_current_user),
     db: asyncpg.Connection = Depends(get_db),
@@ -105,11 +124,79 @@ async def get_activity(
 
 @router.get("/analytics")
 async def get_analytics(
-    period: str = Query("month", regex="^(week|month|quarter|year)$"),
+    period: str = Query("month", pattern="^(week|month|quarter|year)$"),
     current_user=Depends(get_current_user),
 ):
     """Full hiring analytics: velocity, source breakdown, conversion rates, time-to-hire."""
     return await DashboardService.get_analytics(
+        org_id=current_user["org_id"],
+        period=period,
+    )
+
+@router.get("/agent-roi")
+async def get_agent_roi(
+    period: str = Query("quarter", pattern="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    return await DashboardService.get_agent_roi(
+        org_id=current_user["org_id"],
+        period=period,
+    )
+
+@router.get("/recruiter-performance")
+async def get_recruiter_performance(
+    period: str = Query("quarter", pattern="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    return await DashboardService.get_per_recruiter(
+        org_id=current_user["org_id"],
+        role=current_user["role"],
+        dept_id=current_user.get("dept_id"),
+        period=period,
+    )
+
+@router.get("/bottlenecks")
+async def get_bottlenecks(
+    period: str = Query("quarter", pattern="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    return await DashboardService.get_bottleneck_radar(
+        org_id=current_user["org_id"],
+        period=period,
+    )
+
+
+@router.get("/ops/celery")
+async def get_celery_stats(
+    period: str = Query("quarter", pattern="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    """Celery task health: success rate, candidate yield, timing."""
+    return await OpsService.get_celery_stats(
+        org_id=current_user["org_id"],
+        period=period,
+    )
+
+
+@router.get("/ops/llm")
+async def get_llm_stats(
+    period: str = Query("quarter", pattern="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    """LLM token usage and cost breakdown by operation."""
+    return await OpsService.get_llm_stats(
+        org_id=current_user["org_id"],
+        period=period,
+    )
+
+
+@router.get("/ops/jd")
+async def get_jd_stats(
+    period: str = Query("quarter", pattern="^(week|month|quarter|year)$"),
+    current_user=Depends(get_current_user),
+):
+    """JD generation performance + position lifecycle stats."""
+    return await OpsService.get_jd_stats(
         org_id=current_user["org_id"],
         period=period,
     )

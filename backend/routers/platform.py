@@ -5,7 +5,7 @@ No org_id scoping — queries span all tenants.
 """
 import logging
 import asyncpg
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.dependencies import require_platform_admin, get_db
 
@@ -67,6 +67,37 @@ async def list_platform_orgs(
         """
     )
     return {"orgs": [dict(r) for r in rows]}
+
+
+@router.get("/orgs/{org_id}")
+async def get_org_detail(
+    org_id: int,
+    _=Depends(require_platform_admin),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Get detailed info for one org (platform admin only)."""
+    row = await db.fetchrow(
+        """
+        SELECT o.id, o.name, o.slug, o.segment, o.size,
+               o.website, o.about_us, o.headquarters,
+               o.linkedin_url, o.glassdoor_url, o.hiring_contact_email,
+               o.created_at,
+               COUNT(DISTINCT u.id)                                       AS user_count,
+               COUNT(DISTINCT p.id)                                       AS position_count,
+               COUNT(DISTINCT CASE WHEN p.status = 'open' THEN p.id END) AS active_positions,
+               COUNT(DISTINCT ca.id)                                      AS application_count
+        FROM organizations o
+        LEFT JOIN users u  ON u.org_id = o.id AND u.is_active = TRUE
+        LEFT JOIN positions p ON p.org_id = o.id
+        LEFT JOIN candidate_applications ca ON ca.org_id = o.id
+        WHERE o.id = $1
+        GROUP BY o.id
+        """,
+        org_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Org not found")
+    return {"org": dict(row)}
 
 
 @router.get("/activity")

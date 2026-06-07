@@ -42,47 +42,63 @@ const SidebarSessions = () => {
             <div className="sidebar-section-label">Chat History</div>
 
             <div className="sidebar-history-list" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {sessions.map(session => (
-                    <div key={session.id} className="session-item-row">
-                        <NavLink
-                            to={`/chat/${session.id}`}
-                            className={({ isActive }) =>
-                                `sidebar-link ${isActive ? 'active' : ''}`
-                            }
-                            style={{ flex: 1, paddingRight: 28 }}
-                        >
-                            <span
-                                style={{
-                                    width: 6, height: 6,
-                                    borderRadius: '50%',
-                                    backgroundColor: session.position_id
-                                        ? 'var(--color-success)'
-                                        : session.workflow_stage === 'complete'
-                                            ? 'var(--color-success)'
-                                            : 'var(--color-text-muted)',
-                                    marginRight: 'var(--space-2)',
-                                    flexShrink: 0
-                                }}
-                            />
-                            <span
-                                className="truncate"
-                                style={{ flex: 1 }}
-                                title={session.title}
-                            >
-                                {session.title || 'New Hire'}
-                            </span>
-                        </NavLink>
+                    {sessions.map(session => {
+                        // Item 18: Chat deletion locking by position status
+                        const posStatus = session.position_status;
+                        const isDeleteHidden = posStatus === 'open';
+                        const isDeleteDisabled = posStatus === 'pending_jd_approval';
+                        const deleteTooltip = isDeleteDisabled
+                            ? 'Cannot delete while under review'
+                            : isDeleteHidden
+                                ? ''
+                                : 'Delete this draft';
 
-                        {/* Visible on row hover */}
-                        <button
-                            className="session-delete-btn"
-                            title="Delete this draft"
-                            onClick={(e) => handleDeleteClick(e, session.id)}
-                        >
-                            🗑
-                        </button>
-                    </div>
-                ))}
+                        return (
+                        <div key={session.id} className="session-item-row">
+                            <NavLink
+                                to={`/chat/${session.id}`}
+                                className={({ isActive }) =>
+                                    `sidebar-link ${isActive ? 'active' : ''}`
+                                }
+                                style={{ flex: 1, paddingRight: 28 }}
+                            >
+                                <span
+                                    style={{
+                                        width: 6, height: 6,
+                                        borderRadius: '50%',
+                                        backgroundColor: session.position_id
+                                            ? 'var(--color-success)'
+                                            : session.workflow_stage === 'complete'
+                                                ? 'var(--color-success)'
+                                                : 'var(--color-text-muted)',
+                                        marginRight: 'var(--space-2)',
+                                        flexShrink: 0
+                                    }}
+                                />
+                                <span
+                                    className="truncate"
+                                    style={{ flex: 1 }}
+                                    title={session.title}
+                                >
+                                    {session.title || 'New Hire'}
+                                </span>
+                            </NavLink>
+
+                            {/* Item 18: Conditionally render delete button */}
+                            {!isDeleteHidden && (
+                                <button
+                                    className="session-delete-btn"
+                                    title={deleteTooltip}
+                                    onClick={(e) => handleDeleteClick(e, session.id)}
+                                    disabled={isDeleteDisabled}
+                                    style={isDeleteDisabled ? { opacity: 0.35, cursor: 'not-allowed' } : {}}
+                                >
+                                    🗑
+                                </button>
+                            )}
+                        </div>
+                        );
+                    })}
             </div>
 
             {/* Confirm Delete Modal */}

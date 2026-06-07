@@ -3,9 +3,10 @@
  * Route: /platform  (no sidebar — standalone page)
  * Requires role: platform_admin
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import { timeAgo } from '../../utils/date'
 import './PlatformPage.css'
 
 const BASE = '/api/v1/platform'
@@ -158,7 +159,7 @@ export default function PlatformPage() {
               <div className="plat-loading">Loading organisations…</div>
             ) : (
               <div className="plat-card">
-                <OrgTable orgs={orgs} />
+                <OrgTable orgs={orgs} expandable token={token} />
               </div>
             )}
           </div>
@@ -213,7 +214,31 @@ function GrowthCard({ label, value, icon }) {
   )
 }
 
-function OrgTable({ orgs, compact = false }) {
+function OrgTable({ orgs, compact = false, expandable = false, token }) {
+  const [expandedId, setExpandedId] = useState(null)
+  const [detailCache, setDetailCache] = useState({})
+  const [loadingId, setLoadingId] = useState(null)
+
+  const toggleRow = useCallback(async (orgId) => {
+    if (expandedId === orgId) { setExpandedId(null); return }
+    setExpandedId(orgId)
+    if (detailCache[orgId]) return
+    setLoadingId(orgId)
+    try {
+      const res = await fetch(`/api/v1/platform/orgs/${orgId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setDetailCache(prev => ({ ...prev, [orgId]: data.org }))
+      }
+    } finally {
+      setLoadingId(null)
+    }
+  }, [expandedId, detailCache, token])
+
+  const colCount = compact ? 4 : 8
+
   return (
     <table className="plat-table">
       <thead>
@@ -230,26 +255,83 @@ function OrgTable({ orgs, compact = false }) {
       </thead>
       <tbody>
         {orgs.map(org => (
-          <tr key={org.id}>
-            <td>
-              <div className="plat-org-name">{org.name}</div>
-              <div className="plat-org-slug">/{org.slug}</div>
-            </td>
-            {!compact && <td>{org.segment || '—'}</td>}
-            {!compact && <td>{org.size || '—'}</td>}
-            <td>{org.user_count}</td>
-            <td>{org.position_count}</td>
-            <td>
-              <span className={`plat-badge ${org.active_positions > 0 ? 'green' : 'dim'}`}>
-                {org.active_positions}
-              </span>
-            </td>
-            <td>{org.application_count}</td>
-            {!compact && <td>{org.created_at ? new Date(org.created_at).toLocaleDateString() : '—'}</td>}
-          </tr>
+          <Fragment key={org.id}>
+            <tr
+              className={`${expandable ? 'plat-org-row-clickable' : ''} ${expandedId === org.id ? 'plat-org-row-expanded' : ''}`}
+              onClick={expandable ? () => toggleRow(org.id) : undefined}
+            >
+              <td>
+                <div className="plat-org-name">{org.name}</div>
+                <div className="plat-org-slug">/{org.slug}</div>
+              </td>
+              {!compact && <td>{org.segment || '—'}</td>}
+              {!compact && <td>{org.size || '—'}</td>}
+              <td>{org.user_count}</td>
+              <td>{org.position_count}</td>
+              <td>
+                <span className={`plat-badge ${org.active_positions > 0 ? 'green' : 'dim'}`}>
+                  {org.active_positions}
+                </span>
+              </td>
+              <td>{org.application_count}</td>
+              {!compact && <td>{org.created_at ? new Date(org.created_at).toLocaleDateString() : '—'}</td>}
+            </tr>
+            {expandable && expandedId === org.id && (
+              <tr className="plat-org-detail-row">
+                <td colSpan={colCount}>
+                  {loadingId === org.id ? (
+                    <div className="plat-detail-loading">Loading details…</div>
+                  ) : detailCache[org.id] ? (
+                    <OrgDetailPanel org={detailCache[org.id]} />
+                  ) : (
+                    <div className="plat-detail-loading">Failed to load details.</div>
+                  )}
+                </td>
+              </tr>
+            )}
+          </Fragment>
         ))}
       </tbody>
     </table>
+  )
+}
+
+function OrgDetailPanel({ org }) {
+  return (
+    <div className="plat-org-detail-panel">
+      <div className="plat-detail-grid">
+        {org.website && (
+          <div className="plat-detail-item">
+            <span className="plat-detail-label">Website</span>
+            <a href={org.website} target="_blank" rel="noreferrer" className="plat-detail-link">{org.website}</a>
+          </div>
+        )}
+        {org.headquarters && (
+          <div className="plat-detail-item">
+            <span className="plat-detail-label">HQ</span>
+            <span>{org.headquarters}</span>
+          </div>
+        )}
+        {org.hiring_contact_email && (
+          <div className="plat-detail-item">
+            <span className="plat-detail-label">Contact</span>
+            <span>{org.hiring_contact_email}</span>
+          </div>
+        )}
+        {org.linkedin_url && (
+          <div className="plat-detail-item">
+            <span className="plat-detail-label">LinkedIn</span>
+            <a href={org.linkedin_url} target="_blank" rel="noreferrer" className="plat-detail-link">View profile</a>
+          </div>
+        )}
+      </div>
+      {org.about_us && (
+        <div className="plat-detail-about">
+          <span className="plat-detail-label">About</span>
+          <p>{org.about_us}</p>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -265,16 +347,6 @@ function formatEvent(evt) {
   return t.replace(/_/g, ' ')
 }
 
-function timeAgo(dateStr) {
-  if (!dateStr) return ''
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
-}
 
 function HealthIndicator({ label, status }) {
   const colors = {

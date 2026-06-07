@@ -12,6 +12,7 @@ from fastapi import FastAPI
 
 from backend.config import settings
 from backend.db.connection import init_db, close_pool, health_check
+from backend.db.vector_store import startup_probe as chroma_probe
 from backend.exceptions import register_exception_handlers
 from backend.middleware.cors import setup_cors
 from backend.middleware.rate_limiter import setup_rate_limiter
@@ -52,6 +53,7 @@ async def lifespan(app: FastAPI):
     """Startup: init DB + run migrations. Shutdown: close pool."""
     logger.info("Starting AI Talent Lab API...")
     await init_db(settings.DATABASE_URL)
+    chroma_probe()
     logger.info("API ready.")
     yield
     logger.info("Shutting down...")

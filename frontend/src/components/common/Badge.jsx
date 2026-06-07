@@ -6,7 +6,7 @@ import { PIPELINE_STAGES } from '../../utils/constants'
  * See docs/architecture/05_frontend.md §2 rule 10.
  */
 export default function Badge({ status, size = 'sm' }) {
-  const stage = PIPELINE_STAGES[status] || { label: status, color: '#6b7280', bg: 'rgba(107,114,128,0.12)' }
+  const stage = PIPELINE_STAGES[status] || { label: status, color: 'var(--color-text-muted, #6b7280)', bg: 'rgba(107,114,128,0.12)' }
 
   const sizeStyles = {
     xs: { fontSize: '0.6875rem', padding: '2px 6px' },

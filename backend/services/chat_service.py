@@ -12,6 +12,7 @@ from backend.agents.state import create_initial_state
 from backend.agents.streaming import StreamHandler
 from backend.db.repositories.sessions import ChatSessionRepository
 from backend.db.repositories.organizations import OrgRepository
+from backend.db.repositories.competitors import CompetitorRepository
 from backend.db.repositories.positions import PositionRepository
 from backend.db.repositories.pipeline_events import PipelineEventRepository
 from backend.db.repositories.audit import AuditLogRepository
@@ -51,12 +52,20 @@ class ChatService:
         # Pull org context for Drafting and Intake
         async with get_connection() as conn:
             org_row = await OrgRepository.get_by_id(conn, org_id)
+            # Load the org's configured competitors (Settings → Competitor Intel)
+            # so the market-research stage benchmarks against them instead of
+            # falling back to industry defaults. Prefer competitors scoped to this
+            # department; fall back to all org competitors when none are scoped.
+            competitors = await CompetitorRepository.list_by_org(conn, org_id, department_id)
+            if not competitors and department_id:
+                competitors = await CompetitorRepository.list_by_org(conn, org_id, None)
 
         state = create_initial_state(session_id, org_id, user_id, department_id)
         if org_row:
             state["org_about_us"] = org_row.get("about_us")
             state["org_culture_keywords"] = org_row.get("culture_keywords")
             state["org_benefits_text"] = org_row.get("benefits_text")
+        state["competitors_used"] = [c["name"] for c in competitors if c.get("name")]
 
         # Add greeting message to state per docs/12_chat_flows.md §1.1
         state["messages"] = [
@@ -69,7 +78,10 @@ class ChatService:
         await ChatSessionRepository.add_message(session_id, "assistant", GREETING_MESSAGE)
 
         # Re-fetch full structured session
-        return await ChatSessionRepository.get(session_id, org_id)
+        new_session = await ChatSessionRepository.get(session_id, org_id)
+        if not new_session:
+            raise RuntimeError("Failed to retrieve session after creation")
+        return new_session
 
 
     @staticmethod
@@ -90,7 +102,7 @@ class ChatService:
 
         state = session_row.get("graph_state_parsed", {})
         if not state:
-            state = create_initial_state(session_id, org_id, session_row.get("user_id"))
+            state = create_initial_state(session_id, org_id, session_row["user_id"])
 
         # Save user message to DB message log immediately
         if user_message:
@@ -105,8 +117,8 @@ class ChatService:
             #   (b) we're already on final_jd and getting a refinement/rewrite.
             will_stream_final = (
                 action == "select_variant"
-                or action in {"rewrite_section", "regenerate_variants"}
-                or (state.get("stage") == "final_jd" and user_message)
+                or action == "rewrite_section"
+                or (state.get("stage") in ("final_jd", "bias_check", "complete") and user_message)
             )
 
             if will_stream_final:
@@ -142,7 +154,7 @@ class ChatService:
                     action_data=action_data,
                 )
 
-            current_stage = new_state.get("stage")
+            current_stage = new_state.get("stage", "intake")
 
             # ── Emit one stage_change per actual transition ──────────
             # Orchestrator stamps `_run_meta.transitions` with every stage it
@@ -167,8 +179,8 @@ class ChatService:
             # ── Emit errors ───────────────────────────────────────────
             if new_state.get("error_stage"):
                 yield StreamHandler.emit_error(
-                    new_state["error_code"],
-                    new_state["error_message"]
+                    new_state.get("error_code") or "UNKNOWN_ERROR",
+                    new_state.get("error_message") or "An unknown error occurred."
                 )
 
             # ── Title update (role extracted) ──────────────────────────
@@ -193,19 +205,18 @@ class ChatService:
                 market_skills = new_state.get("market_skills_found", [])
                 jd_variants = new_state.get("jd_variants", [])
 
-                if internal_skills and current_stage in ("internal_check", "market_research"):
-                    # Internal card — stage may have already been set to market_research
-                    # but we still need to show the card if awaiting
-                    if not new_state.get("internal_skipped") and not new_state.get("internal_skills_accepted"):
-                        yield StreamHandler.emit_card_internal(internal_skills)
+                if current_stage == "internal_check" and not new_state.get("internal_skills_accepted"):
+                    yield StreamHandler.emit_card_internal(internal_skills)
 
                 if market_skills and current_stage == "market_research":
                     if not new_state.get("market_skipped") and not new_state.get("market_skills_accepted"):
-                        competitors = new_state.get("competitors_used", [])
+                        # Generalize: never surface raw competitor names on the card
+                        # (item 51 — the LLM prompt was generalized; the SSE payload must match).
+                        scanned = ["Industry Benchmark"] if new_state.get("competitors_used") else []
                         yield StreamHandler.emit_card_market(
                             market_skills,
                             "Market Analysis Complete.",
-                            competitors
+                            scanned
                         )
 
                 if jd_variants and current_stage == "jd_variants":
@@ -223,6 +234,13 @@ class ChatService:
                     yield StreamHandler.emit_metadata({
                         "final_jd": new_state.get("final_jd", "")
                     })
+            
+            # Emit metadata for the newly generated final_jd if we streamed it
+            # or if the stage is final_jd and it was just regenerated.
+            if will_stream_final or (current_stage == "final_jd" and new_state.get("final_jd")):
+                yield StreamHandler.emit_metadata({
+                    "final_jd": new_state.get("final_jd", "")
+                })
 
             # ── Persist state back to DB ──────────────────────────────
             await ChatSessionRepository.update_state(
@@ -267,31 +285,68 @@ class ChatService:
         final_jd = state.get("final_jd")
 
         async with get_connection() as conn:
-            position = await PositionRepository.create(
-                conn=conn,
-                org_id=org_id,
-                department_id=department_id,
-                session_id=session_id,
-                role_name=role_name,
-                jd_markdown=final_jd,
-                jd_variant_selected=state.get("selected_variant"),
-                status="draft",  # Stays draft until team_lead approves
-                headcount=setup_data.get("headcount", 1),
-                priority=setup_data.get("priority", "normal"),
-                ats_threshold=setup_data.get("ats_threshold", 80.0),
-                search_interval_hours=setup_data.get("search_interval_hours", 24),
-                created_by=user_id,
-                location=state.get("location"),
-                work_type=state.get("work_type", "onsite"),
-                employment_type=state.get("employment_type", "full_time"),
-                experience_min=state.get("experience_min"),
-                experience_max=state.get("experience_max")
-            )
+            existing_position_id = session_row.get("position_id")
+            
+            if existing_position_id:
+                # Update existing position
+                update_data = {
+                    "department_id": department_id,
+                    "role_name": role_name,
+                    "jd_markdown": final_jd,
+                    "jd_variant_selected": state.get("selected_variant"),
+                    "status": "draft" if as_draft else "jd_in_progress",
+                    "headcount": setup_data.get("headcount", 1),
+                    "priority": setup_data.get("priority", "normal"),
+                    "ats_threshold": setup_data.get("ats_threshold", 80.0),
+                    "search_interval_hours": setup_data.get("search_interval_hours", 24),
+                    "location": state.get("location"),
+                    "work_type": state.get("work_type", "onsite"),
+                    "employment_type": state.get("employment_type", "full_time"),
+                    "experience_min": state.get("experience_min"),
+                    "experience_max": state.get("experience_max")
+                }
+                position = await PositionRepository.update(
+                    conn=conn, position_id=existing_position_id, org_id=org_id, data=update_data
+                )
+                if not position:
+                    raise ValueError("Position not found to update")
+                position_id = existing_position_id
+                
+                # Clear existing variants to replace them
+                await conn.execute("DELETE FROM jd_variants WHERE position_id = $1", position_id)
+                audit_action = "position_updated"
+            else:
+                user_row = await conn.fetchrow("SELECT role FROM users WHERE id = $1", user_id)
+                user_role = user_row["role"] if user_row else "hr"
+                assigned_to = user_id if user_role == "hr" else None
 
-            position_id = position["id"]
-
-            # Link session -> position
-            await ChatSessionRepository.link_position(session_id, org_id, position_id)
+                position = await PositionRepository.create(
+                    conn=conn,
+                    org_id=org_id,
+                    department_id=department_id,
+                    session_id=session_id,
+                    role_name=role_name,
+                    jd_markdown=final_jd,
+                    jd_variant_selected=state.get("selected_variant"),
+                    status="draft" if as_draft else "jd_in_progress",  # jd_in_progress allows submit_for_approval
+                    headcount=setup_data.get("headcount", 1),
+                    priority=setup_data.get("priority", "normal"),
+                    ats_threshold=setup_data.get("ats_threshold", 80.0),
+                    search_interval_hours=setup_data.get("search_interval_hours", 24),
+                    created_by=user_id,
+                    assigned_to=assigned_to,
+                    location=state.get("location"),
+                    work_type=state.get("work_type", "onsite"),
+                    employment_type=state.get("employment_type", "full_time"),
+                    experience_min=state.get("experience_min"),
+                    experience_max=state.get("experience_max")
+                )
+    
+                position_id = position["id"]
+    
+                # Link session -> position
+                await ChatSessionRepository.link_position(session_id, org_id, position_id)
+                audit_action = "position_created"
 
             # Insert variants
             variants = state.get("jd_variants", [])
@@ -301,12 +356,12 @@ class ChatService:
                         v["is_selected"] = True
                 await PositionRepository.insert_variants(conn, position_id, variants)
 
-            # Pipeline event: JD created
+            # Pipeline event: JD created or updated
             await PipelineEventRepository.create(conn, {
                 "org_id": org_id,
                 "position_id": position_id,
                 "user_id": user_id,
-                "event_type": "jd_generated",
+                "event_type": "jd_updated" if existing_position_id else "jd_generated",
                 "event_data": {"role_name": role_name, "variant": state.get("selected_variant")}
             })
 
@@ -314,7 +369,7 @@ class ChatService:
             await AuditLogRepository.create(conn, {
                 "org_id": org_id,
                 "user_id": user_id,
-                "action": "position_created",
+                "action": audit_action,
                 "entity_type": "position",
                 "entity_id": str(position_id),
                 "details": json.dumps({"role_name": role_name, "department_id": department_id})
@@ -323,13 +378,16 @@ class ChatService:
         # ── Generate JD embedding for ATS scoring (§15) ──────────────────────
         try:
             embedding_model = get_embedding_model()
-            jd_text_for_embedding = f"{role_name} {final_jd or ''}"
-            embedding = await embedding_model.aembed_query(jd_text_for_embedding[:8000])
-            async with get_connection() as conn:
-                await PositionRepository.update_embedding(
-                    conn, position_id, org_id, json.dumps(embedding)
-                )
-            logger.info(f"JD embedding stored for position {position_id}")
+            if embedding_model:
+                jd_text_for_embedding = f"{role_name} {final_jd or ''}"
+                embedding = await embedding_model.aembed_query(jd_text_for_embedding[:8000])
+                async with get_connection() as conn:
+                    await PositionRepository.update_embedding(
+                        conn, position_id, org_id, json.dumps(embedding)
+                    )
+                logger.info(f"JD embedding stored for position {position_id}")
+            else:
+                logger.info(f"No embedding model configured; skipping JD embedding for position {position_id}")
         except Exception as e:
             logger.warning(f"JD embedding (ATS) failed (non-blocking): {e}")
 
@@ -357,8 +415,13 @@ class ChatService:
                     submitted_by_user_id=user_id,
                 )
                 logger.info(f"Position {position_id} auto-submitted for team_lead approval")
+                position = dict(position)
+                position["auto_submitted"] = True
             except Exception as e:
-                logger.warning(f"Auto-submit for approval failed (non-blocking): {e}")
+                logger.warning(f"Auto-submit for approval failed: {e}")
+                position = dict(position)
+                position["auto_submitted"] = False
+                position["auto_submit_error"] = str(e)
         else:
             logger.info(f"Position {position_id} saved as draft — approval skipped")
 

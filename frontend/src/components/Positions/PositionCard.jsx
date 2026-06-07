@@ -4,6 +4,7 @@ import Icon from '../common/Icon'
 import SparklineApplicants from './SparklineApplicants'
 import StagePipeStrip from './StagePipeStrip'
 import { positionsApi } from '../../utils/api'
+import { timeAgo } from '../../utils/date'
 
 const PRIORITY_CHIP = {
   urgent: { variant: 'danger',  label: 'Urgent' },
@@ -18,16 +19,10 @@ const STATUS_CHIP = {
   archived: 'neutral',
 }
 
-function timeAgo(iso) {
-  if (!iso) return null
-  const diff = Date.now() - new Date(iso).getTime()
-  const h = Math.floor(diff / 3600000)
-  if (h < 24) return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
-}
-
 function daysOpen(iso) {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+  if (!iso) return 0
+  const ds = iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z'
+  return Math.floor((Date.now() - new Date(ds).getTime()) / 86400000)
 }
 
 function getCardState(position) {
@@ -36,7 +31,10 @@ function getCardState(position) {
   const stageCounts = position.stageCounts || {}
   if ((stageCounts.interview || 0) > 0) return 'hot'
   if (position.last_search_at) {
-    const daysSince = (Date.now() - new Date(position.last_search_at).getTime()) / 86400000
+    const ds = position.last_search_at.endsWith('Z') || position.last_search_at.includes('+') 
+      ? position.last_search_at 
+      : position.last_search_at + 'Z'
+    const daysSince = (Date.now() - new Date(ds).getTime()) / 86400000
     if (daysSince > 7) return 'stalled'
   } else if (position.status === 'open') {
     return 'stalled'

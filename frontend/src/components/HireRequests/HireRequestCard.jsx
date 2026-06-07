@@ -5,7 +5,7 @@ import {
 } from './helpers'
 import {
   BriefcaseIcon, BuildingIcon, ClockIcon, MapPinIcon, RupeeIcon,
-  UserIcon, ChevronRight,
+  UserIcon, UsersIcon, ChevronRight,
 } from './icons'
 
 /**
@@ -27,7 +27,8 @@ export default function HireRequestCard({ request }) {
         <ul className="hr-card-meta">
           <li><BuildingIcon /> {request.department_name || 'No department'}</li>
           {request.location && <li><MapPinIcon /> {request.location}</li>}
-          <li><BriefcaseIcon size={16} /> {WORK_TYPE_LABEL[request.work_type] || request.work_type} · {request.headcount} headcount</li>
+          <li><BriefcaseIcon size={16} /> {WORK_TYPE_LABEL[request.work_type] || request.work_type}</li>
+          <li><UsersIcon /> {request.headcount}</li>
           {exp && <li><ClockIcon /> {exp}</li>}
           {comp && <li><RupeeIcon /> {comp}</li>}
         </ul>

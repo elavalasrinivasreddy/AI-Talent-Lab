@@ -10,6 +10,8 @@ import json
 import logging
 from typing import Optional
 from backend.adapters.llm.factory import get_llm
+from backend.config import settings
+from backend.services.llm_usage_logger import llm_context
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +43,8 @@ Rules:
 - Return ONLY valid JSON: {{"strengths": "...", "concerns": "..."}}"""
 
     try:
-        resp = await llm.ainvoke([{"role": "user", "content": prompt}])
+        with llm_context(org_id=None, operation="candidate_evaluation", model=settings.LLM_PROVIDER):
+            resp = await llm.ainvoke([{"role": "user", "content": prompt}])
         content = resp.content.strip()
         # Strip markdown fences if present
         if "```" in content:
@@ -120,7 +123,8 @@ Write a structured debrief report in markdown with these sections:
 Be factual, evidence-based, and balanced. Do not fabricate observations."""
 
     try:
-        resp = await llm.ainvoke([{"role": "user", "content": prompt}])
+        with llm_context(org_id=None, operation="interview_debrief", model=settings.LLM_PROVIDER):
+            resp = await llm.ainvoke([{"role": "user", "content": prompt}])
         return resp.content.strip()
     except Exception as e:
         logger.error(f"Debrief generation failed: {e}", exc_info=True)
@@ -167,7 +171,8 @@ Rules:
 - Return ONLY valid JSON: {{"subject": "...", "body": "..."}}"""
 
     try:
-        resp = await llm.ainvoke([{"role": "user", "content": prompt}])
+        with llm_context(org_id=None, operation="rejection_draft", model=settings.LLM_PROVIDER):
+            resp = await llm.ainvoke([{"role": "user", "content": prompt}])
         content = resp.content.strip()
         if "```" in content:
             content = content.split("```")[1].strip()
@@ -227,7 +232,8 @@ Structure the summary in markdown with these sections:
 Keep it objective and professional."""
 
     try:
-        resp = await llm.ainvoke([{"role": "user", "content": prompt}])
+        with llm_context(org_id=None, operation="interview_summary", model=settings.LLM_PROVIDER):
+            resp = await llm.ainvoke([{"role": "user", "content": prompt}])
         return resp.content.strip()
     except Exception as e:
         logger.error(f"Interview summary failed: {e}", exc_info=True)

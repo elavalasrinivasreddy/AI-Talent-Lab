@@ -7,14 +7,13 @@ Stateless; operates on the connection passed in. Enforces:
   • notification fan-out
   • audit log
 
-Status lifecycle:
-    pending → approved  (dept_admin or org_head approves)
-       │         │
-       │         └→ accepted (HR pickup) → fulfilled (JD chat saves position)
-       │         │
-       │         └→ cancelled
-       └→ rejected  (terminal; dept_admin/org_head rejects with reason)
-       └→ cancelled
+Status lifecycle (Design Rev 4):
+    pending → submitted → admin_reviewing → approved | approved_modified | rejected
+                │                │
+                └→ cancelled     └→ submitted (close/TTL release)
+    approved / approved_modified → accepted (HR pickup) → fulfilled (JD chat saves position)
+                                 │
+                                 └→ cancelled
 
 Email touchpoints:
     create   → send_hire_request_raised        → dept_admins of the dept (or org_head)
@@ -36,7 +35,11 @@ from backend.exceptions import (
 
 # ── Status constants ───────────────────────────────────────────────────────────
 
-STATUSES = {"pending", "approved", "rejected", "accepted", "cancelled", "fulfilled"}
+STATUSES = {
+    "pending", "submitted", "admin_reviewing",
+    "approved", "approved_modified", "rejected",
+    "accepted", "cancelled", "fulfilled",
+}
 
 # Roles allowed to file a hire request.
 _FILER_ROLES = {"team_lead", "dept_admin", "org_head"}
@@ -96,9 +99,13 @@ class HireRequestService:
         scope: str = "default",
         status: Optional[str] = None,
         department_id: Optional[int] = None,
-    ) -> List[dict]:
+        cursor_created_at: Optional[str] = None,
+        cursor_id: Optional[int] = None,
+        limit: int = 50,
+    ):
         """
         Role-aware list. Caller can override with explicit `status`/`department_id`.
+        Returns (rows, next_cursor) for seek pagination.
 
         scope:
           "default" — role-appropriate default view:
@@ -111,10 +118,21 @@ class HireRequestService:
         """
         eff_status = status
 
+        # If no status is provided, apply role-based defaults for the work queue
+        if eff_status is None:
+            if role in ("hr", "org_head") and scope not in ("mine", "all"):
+                eff_status = "approved"
+
+        # If the user explicitly asks for "all" statuses, translate it to None (no filter)
+        if eff_status == "all":
+            eff_status = None
+
         if scope == "mine":
             return await HireRequestRepository.list_for_org(
                 conn, org_id, status=eff_status, requested_by=user_id,
                 department_id=department_id,
+                cursor_created_at=cursor_created_at, cursor_id=cursor_id,
+                limit=limit,
             )
 
         if scope == "all":
@@ -124,12 +142,16 @@ class HireRequestService:
                 )
             return await HireRequestRepository.list_for_org(
                 conn, org_id, status=eff_status, department_id=department_id,
+                cursor_created_at=cursor_created_at, cursor_id=cursor_id,
+                limit=limit,
             )
 
         # scope == "default"
         if role == "team_lead":
             return await HireRequestRepository.list_for_org(
                 conn, org_id, status=eff_status, requested_by=user_id,
+                cursor_created_at=cursor_created_at, cursor_id=cursor_id,
+                limit=limit,
             )
         if role == "dept_admin":
             # dept_admin sees their dept; if they have no dept they see nothing
@@ -139,11 +161,56 @@ class HireRequestService:
             return await HireRequestRepository.list_for_org(
                 conn, org_id, status=eff_status,
                 department_id=(user or {}).get("department_id"),
+                cursor_created_at=cursor_created_at, cursor_id=cursor_id,
+                limit=limit,
             )
-        # hr / org_head — default to the approved work queue (ready for pickup)
+        if role == "hr":
+            # hr sees approved requests for their dept; if they have no dept they see nothing
+            from backend.db.repositories.users import UserRepository
+            user = await UserRepository.get_by_id(conn, user_id, org_id)
+            hr_dept_id = (user or {}).get("department_id")
+            if hr_dept_id is None:
+                return []
+            return await HireRequestRepository.list_for_org(
+                conn, org_id, status=eff_status,
+                department_id=hr_dept_id,
+                cursor_created_at=cursor_created_at, cursor_id=cursor_id,
+                limit=limit,
+            )
+        # org_head — default to the approved work queue (ready for pickup) across the org
         return await HireRequestRepository.list_for_org(
-            conn, org_id, status=eff_status or "approved",
+            conn, org_id, status=eff_status,
+            cursor_created_at=cursor_created_at, cursor_id=cursor_id,
+            limit=limit,
         )
+
+    @staticmethod
+    async def get_pending_count_for_user(
+        conn: asyncpg.Connection,
+        *,
+        org_id: int,
+        user_id: int,
+        role: str,
+    ) -> int:
+        from backend.db.repositories.users import UserRepository
+        user = await UserRepository.get_by_id(conn, user_id, org_id)
+        department_id = (user or {}).get("department_id")
+
+        if role == "dept_admin":
+            return await HireRequestRepository.count_pending(
+                conn, org_id, department_id=department_id, status="pending"
+            )
+        elif role == "hr":
+            # HR sees approved requests for their dept (or all if no dept)
+            return await HireRequestRepository.count_pending(
+                conn, org_id, department_id=department_id, status="approved"
+            )
+        elif role == "org_head":
+            # org_head defaults to the approved work queue across the org
+            return await HireRequestRepository.count_pending(
+                conn, org_id, status="approved"
+            )
+        return 0
 
     # ── Get one ───────────────────────────────────────────────────────────
 
@@ -156,7 +223,7 @@ class HireRequestService:
         row = await HireRequestRepository.get_by_id(conn, request_id, org_id)
         if not row:
             raise NotFoundError("Hire request not found")
-        return row
+        return dict(row)
 
     # ── Create ────────────────────────────────────────────────────────────
 
@@ -171,6 +238,7 @@ class HireRequestService:
         role_name: str,
         department_id: Optional[int] = None,
         headcount: int = 1,
+        priority: str = "normal",
         work_type: str = "onsite",
         experience_min: Optional[int] = None,
         experience_max: Optional[int] = None,
@@ -194,6 +262,9 @@ class HireRequestService:
             comp_max=comp_max,
         )
 
+        is_auto_approved = False
+        created = None
+        
         async with conn.transaction():
             created = await HireRequestRepository.create(
                 conn,
@@ -202,6 +273,7 @@ class HireRequestService:
                 role_name=role_name,
                 department_id=department_id,
                 headcount=headcount,
+                priority=priority,
                 work_type=work_type,
                 experience_min=experience_min,
                 experience_max=experience_max,
@@ -212,31 +284,64 @@ class HireRequestService:
                 location=location,
             )
 
-            # Notify dept_admins (or org_head if no dept_admins) about new request.
-            action_url = f"/hire-requests/{created['id']}"
-            msg = f"New hire request: {role_name} ({headcount} headcount)"
-            if department_id:
+            if department_id is not None:
+                from backend.db.repositories.departments import DeptRepository
+                dept = await DeptRepository.get_by_id(conn, department_id, org_id)
+                if dept and dept.get("auto_approve_hire_requests"):
+                    is_auto_approved = True
+
+            if is_auto_approved:
+                # Bypass pending, go straight to approved
+                await HireRequestRepository.approve(conn, created["id"], org_id, approved_by=None)
+                
+                await AuditLogRepository.create(
+                    conn,
+                    org_id=org_id,
+                    user_id=user_id,
+                    action="hire_request_auto_approved",
+                    entity_type="hire_request",
+                    entity_id=str(created["id"]),
+                    details={"role_name": role_name, "headcount": headcount},
+                    ip_address=ip_address,
+                )
+                
+                # Notify HR directly
                 await HireRequestService._notify_role(
                     conn,
                     org_id=org_id,
-                    role="dept_admin",
-                    type="hire_request_pending",
-                    title="New hire request awaiting approval",
-                    message=msg,
-                    action_url=action_url,
+                    role="hr",
+                    type="hire_request_approved",
+                    title="Hire request ready for pickup (Auto-approved)",
+                    message=f"{role_name} hire request is ready for pickup.",
+                    action_url=f"/hire-requests/{created['id']}",
                     department_id=department_id,
                 )
             else:
-                # No dept — notify org_head
-                await HireRequestService._notify_role(
-                    conn,
-                    org_id=org_id,
-                    role="org_head",
-                    type="hire_request_pending",
-                    title="New hire request awaiting approval",
-                    message=msg,
-                    action_url=action_url,
-                )
+                # Notify dept_admins (or org_head if no dept_admins) about new request.
+                action_url = f"/hire-requests/{created['id']}"
+                msg = f"New hire request: {role_name} ({headcount} headcount)"
+                if department_id:
+                    await HireRequestService._notify_role(
+                        conn,
+                        org_id=org_id,
+                        role="dept_admin",
+                        type="hire_request_pending",
+                        title="New hire request awaiting approval",
+                        message=msg,
+                        action_url=action_url,
+                        department_id=department_id,
+                    )
+                else:
+                    # No dept — notify org_head
+                    await HireRequestService._notify_role(
+                        conn,
+                        org_id=org_id,
+                        role="org_head",
+                        type="hire_request_pending",
+                        title="New hire request awaiting approval",
+                        message=msg,
+                        action_url=action_url,
+                    )
 
             await AuditLogRepository.create(
                 conn,
@@ -249,16 +354,25 @@ class HireRequestService:
                 ip_address=ip_address,
             )
 
-        # Fire email to dept_admins (or org_head) — outside transaction so it
-        # doesn't block / roll back the create on email failure.
-        await HireRequestService._notify_approvers_on_create(
-            conn,
-            org_id=org_id,
-            request_id=created["id"],
-            role_name=role_name,
-            department_id=department_id,
-            action_url=f"/hire-requests/{created['id']}",
-        )
+        if not is_auto_approved:
+            # Fire email to dept_admins (or org_head) — outside transaction so it
+            # doesn't block / roll back the create on email failure.
+            await HireRequestService._notify_approvers_on_create(
+                conn,
+                org_id=org_id,
+                request_id=created["id"],
+                role_name=role_name,
+                department_id=department_id,
+                action_url=f"/hire-requests/{created['id']}",
+            )
+        else:
+            # Need to reload it to get the updated status for response
+            reloaded = await HireRequestRepository.get_by_id(conn, created["id"], org_id)
+            if reloaded is not None:
+                created = reloaded
+
+        if created is None:
+            raise RuntimeError("Failed to process hire request")
 
         return created
 
@@ -277,8 +391,9 @@ class HireRequestService:
 
         # Get raiser info from the request itself
         req = await HireRequestRepository.get_by_id(conn, request_id, org_id)
-        raiser_name = req.get("requested_by_name") or "A team member"
-        dept_name = req.get("department_name") or "General"
+        req_dict = dict(req) if req else {}
+        raiser_name = req_dict.get("requested_by_name") or "A team member"
+        dept_name = req_dict.get("department_name") or "General"
 
         if department_id:
             approvers = await conn.fetch(
@@ -329,6 +444,7 @@ class HireRequestService:
         user_id: int,
         role: str,
         dept_id: Optional[int],
+        note: Optional[str] = None,
         ip_address: Optional[str] = None,
     ) -> dict:
         """
@@ -336,13 +452,22 @@ class HireRequestService:
 
         Permission: dept_admin whose dept matches the request's department_id,
         or org_head (can approve any request).
+
+        If `note` is provided (e.g. the approver modified the request before
+        approving), it is surfaced to the requester in both the in-app
+        notification and the approval email so they're aware of the changes.
         """
+        note = note.strip() if note else None
         if role not in _APPROVER_ROLES:
             raise InsufficientPermissionsError(
                 "Only dept_admin or org_head can approve hire requests."
             )
 
         existing = await HireRequestService.get(conn, request_id, org_id)
+        
+        # Fallback to the notes saved during an Edit
+        if not note and existing.get("notes"):
+            note = existing["notes"].strip()
 
         # dept_admin can only approve requests scoped to their own department.
         # Org-level requests (department_id is NULL) must be approved by org_head.
@@ -356,9 +481,9 @@ class HireRequestService:
                     "You can only approve hire requests for your own department."
                 )
 
-        if existing["status"] != "pending":
+        if existing["status"] not in ("pending", "submitted", "admin_reviewing"):
             raise _BadTransitionError(
-                f"Can only approve a pending request; current status is '{existing['status']}'."
+                f"Can only approve a pending/reviewing request; current status is '{existing['status']}'."
             )
 
         async with conn.transaction():
@@ -366,15 +491,28 @@ class HireRequestService:
                 conn, request_id, org_id, approved_by=user_id,
             )
 
-            # Notify raiser
+            # Notify raiser. When the approver left a note (typically because they
+            # modified the request before approving), surface it so the team lead
+            # knows their request changed — not just that it was approved.
             if existing["requested_by"]:
+                if note:
+                    raiser_title = "Your hire request was reviewed and approved"
+                    raiser_message = (
+                        f"Your request for {existing['role_name']} was approved with a "
+                        f"note from the reviewer: {note}"
+                    )
+                else:
+                    raiser_title = "Your hire request was approved"
+                    raiser_message = (
+                        f"Your request for {existing['role_name']} has been approved."
+                    )
                 await HireRequestService._notify(
                     conn,
                     org_id=org_id,
                     user_id=existing["requested_by"],
                     type="hire_request_approved",
-                    title="Your hire request was approved",
-                    message=f"Your request for {existing['role_name']} has been approved.",
+                    title=raiser_title,
+                    message=raiser_message,
                     action_url=f"/hire-requests/{request_id}",
                 )
 
@@ -397,6 +535,7 @@ class HireRequestService:
                 action="hire_request_approved",
                 entity_type="hire_request",
                 entity_id=str(request_id),
+                details={"note": note} if note else None,
                 ip_address=ip_address,
             )
 
@@ -408,7 +547,7 @@ class HireRequestService:
         approver_name = updated.get("approved_by_name") or "Your approver"
         request_url = f"/hire-requests/{request_id}"
 
-        # Email raiser
+        # Email raiser (team lead) — include the approver's note if present.
         if existing.get("requested_by_email"):
             await EmailService.send_hire_request_approved(
                 to_email=existing["requested_by_email"],
@@ -417,6 +556,7 @@ class HireRequestService:
                 dept_name=existing.get("department_name") or "General",
                 approver_name=approver_name,
                 request_url=request_url,
+                note=note,
             )
 
         # Email all HR users in org
@@ -475,9 +615,9 @@ class HireRequestService:
                     "You can only reject hire requests for your own department."
                 )
 
-        if existing["status"] != "pending":
+        if existing["status"] not in ("pending", "submitted", "admin_reviewing"):
             raise _BadTransitionError(
-                f"Can only reject a pending request; current status is '{existing['status']}'."
+                f"Can only reject a pending/reviewing request; current status is '{existing['status']}'."
             )
 
         async with conn.transaction():
@@ -604,12 +744,12 @@ class HireRequestService:
             raise _BadTransitionError(
                 f"Already picked up by {existing.get('accepted_by_name') or 'someone'}."
             )
-        if existing["status"] == "pending":
+        if existing["status"] in ("pending", "submitted", "admin_reviewing"):
             raise _BadTransitionError(
-                "This request is still awaiting dept_admin approval. "
+                "This request is still awaiting admin approval. "
                 "It must be approved before HR can pick it up."
             )
-        if existing["status"] != "approved":
+        if existing["status"] not in ("approved", "approved_modified"):
             raise _BadTransitionError(
                 f"Request is {existing['status']} — cannot pick up."
             )
@@ -672,6 +812,7 @@ class HireRequestService:
         *,
         user_id: int,
         role: str,
+        caller_dept_id: Optional[int] = None,
         ip_address: Optional[str] = None,
     ) -> dict:
         existing = await HireRequestService.get(conn, request_id, org_id)
@@ -681,13 +822,36 @@ class HireRequestService:
             raise InsufficientPermissionsError(
                 "You can only cancel your own hire requests."
             )
+        # dept_admin can only cancel requests in their own department
+        if role == "dept_admin" and caller_dept_id != existing.get("department_id"):
+            raise InsufficientPermissionsError(
+                "You can only cancel hire requests in your department."
+            )
         if existing["status"] in ("cancelled", "fulfilled", "rejected"):
             raise _BadTransitionError(
                 f"Request is already {existing['status']}."
             )
 
         async with conn.transaction():
-            await HireRequestRepository.cancel(conn, request_id, org_id)
+            cancelled = await HireRequestRepository.cancel(conn, request_id, org_id, notes=None)
+            # Guard: concurrent cancel already landed — skip notifications to avoid phantom alerts
+            if not cancelled:
+                return await HireRequestService.get(conn, request_id, org_id)
+
+            # Notify the requester if someone else (e.g. dept admin) cancelled it
+            if existing["requested_by"] and existing["requested_by"] != user_id:
+                canceller_row = await conn.fetchrow("SELECT name FROM users WHERE id = $1", user_id)
+                canceller_name = (canceller_row["name"] if canceller_row else None) or "An admin"
+                
+                await HireRequestService._notify(
+                    conn,
+                    org_id=org_id,
+                    user_id=existing["requested_by"],
+                    type="hire_request_cancelled",
+                    title="Hire request cancelled",
+                    message=f"Your request for {existing['role_name']} was cancelled by {canceller_name}.",
+                    action_url=f"/hire-requests/{request_id}",
+                )
 
             # Notify the recruiter who had it (if accepted)
             if existing["status"] == "accepted" and existing["accepted_by"]:
@@ -782,6 +946,225 @@ class HireRequestService:
             )
         return await HireRequestService.get(conn, request_id, org_id)
 
+    # ── Admin Reviewing Flow (Design Rev 4) ──────────────────────────────
+
+    @staticmethod
+    async def begin_review(
+        conn: asyncpg.Connection,
+        request_id: int,
+        org_id: int,
+        *,
+        user_id: int,
+        role: str,
+        ip_address: Optional[str] = None,
+    ) -> dict:
+        """Atomic CAS: submitted → admin_reviewing, locked to this admin.
+
+        If the request is already being reviewed by another admin, we check
+        whether the lock is stale (> 10 min) and attempt a takeover. If the
+        lock is fresh, we raise an error.
+        """
+        if role not in _APPROVER_ROLES:
+            raise InsufficientPermissionsError(
+                "Only dept_admin or org_head can review hire requests."
+            )
+
+        # Attempt atomic CAS first — eliminates TOCTOU from a pre-read get.
+        # If the request is unclaimed (pending/submitted) this will succeed.
+        acquired = await HireRequestRepository.begin_review(
+            conn, request_id, org_id, admin_user_id=user_id,
+        )
+        if acquired:
+            await AuditLogRepository.create(
+                conn,
+                org_id=org_id,
+                user_id=user_id,
+                action="hire_request_review_started",
+                entity_type="hire_request",
+                entity_id=str(request_id),
+                ip_address=ip_address,
+            )
+            return await HireRequestService.get(conn, request_id, org_id)
+
+        # CAS failed — read current state to decide whether this is idempotent
+        # re-entry, a stale lock takeover, or a genuine bad transition.
+        existing = await HireRequestService.get(conn, request_id, org_id)
+
+        if existing["status"] == "admin_reviewing":
+            if existing.get("reviewing_locked_by") == user_id:
+                return existing  # Idempotent re-entry by same admin
+
+            took = await HireRequestRepository.takeover_review(
+                conn, request_id, org_id, admin_user_id=user_id,
+            )
+            if not took:
+                locked_name = existing.get("reviewing_locked_by_name") or "another admin"
+                raise _BadTransitionError(
+                    f"This request is currently being reviewed by {locked_name}. "
+                    "Try again in a few minutes."
+                )
+
+            await AuditLogRepository.create(
+                conn,
+                org_id=org_id,
+                user_id=user_id,
+                action="hire_request_review_takeover",
+                entity_type="hire_request",
+                entity_id=str(request_id),
+                ip_address=ip_address,
+            )
+            return await HireRequestService.get(conn, request_id, org_id)
+
+        raise _BadTransitionError(
+            f"Can only begin review on a submitted request; current status is '{existing['status']}'."
+        )
+
+    @staticmethod
+    async def release_review(
+        conn: asyncpg.Connection,
+        request_id: int,
+        org_id: int,
+        *,
+        user_id: int,
+        ip_address: Optional[str] = None,
+    ) -> dict:
+        """Release admin lock: admin_reviewing → submitted."""
+        existing = await HireRequestService.get(conn, request_id, org_id)
+
+        if existing["status"] != "admin_reviewing":
+            raise _BadTransitionError("Request is not currently under review.")
+
+        # Only the locked admin or org_head can release
+        if existing.get("reviewing_locked_by") != user_id:
+            from backend.db.repositories.users import UserRepository
+            user = await UserRepository.get_by_id(conn, user_id, org_id)
+            if not user or user.get("role") != "org_head":
+                raise InsufficientPermissionsError(
+                    "Only the reviewing admin or org_head can release this lock."
+                )
+
+        await HireRequestRepository.release_review_lock(conn, request_id, org_id)
+
+        await AuditLogRepository.create(
+            conn,
+            org_id=org_id,
+            user_id=user_id,
+            action="hire_request_review_released",
+            entity_type="hire_request",
+            entity_id=str(request_id),
+            ip_address=ip_address,
+        )
+        return await HireRequestService.get(conn, request_id, org_id)
+
+    @staticmethod
+    async def approve_modified(
+        conn: asyncpg.Connection,
+        request_id: int,
+        org_id: int,
+        *,
+        user_id: int,
+        role: str,
+        dept_id: Optional[int],
+        notes: str,
+        modification_diff: dict,
+        ip_address: Optional[str] = None,
+    ) -> dict:
+        """Approve with modifications: admin_reviewing/pending → approved_modified.
+
+        Stores the JSONB diff so HR sees exactly what changed.
+        """
+        if role not in _APPROVER_ROLES:
+            raise InsufficientPermissionsError(
+                "Only dept_admin or org_head can approve hire requests."
+            )
+        if not notes or not notes.strip():
+            raise ValidationError("Notes are required when approving with modifications.")
+
+        existing = await HireRequestService.get(conn, request_id, org_id)
+
+        # dept_admin scoping
+        if role == "dept_admin":
+            if not existing.get("department_id"):
+                raise InsufficientPermissionsError(
+                    "Org-level hire requests can only be approved by org_head."
+                )
+            if dept_id != existing["department_id"]:
+                raise InsufficientPermissionsError(
+                    "You can only approve hire requests for your own department."
+                )
+
+        if existing["status"] not in ("pending", "submitted", "admin_reviewing"):
+            raise _BadTransitionError(
+                f"Can only approve a pending/reviewing request; current status is '{existing['status']}'."
+            )
+
+        async with conn.transaction():
+            await HireRequestRepository.approve_modified(
+                conn, request_id, org_id,
+                approved_by=user_id,
+                notes=notes.strip(),
+                modification_diff=modification_diff,
+            )
+
+            # Notify raiser — surface the actual note so the team lead sees what changed.
+            if existing["requested_by"]:
+                await HireRequestService._notify(
+                    conn,
+                    org_id=org_id,
+                    user_id=existing["requested_by"],
+                    type="hire_request_approved_modified",
+                    title="Your hire request was approved with modifications",
+                    message=(
+                        f"Your request for {existing['role_name']} was approved with a "
+                        f"note from the reviewer: {notes.strip()}"
+                    ),
+                    action_url=f"/hire-requests/{request_id}",
+                )
+
+            # Notify HR users
+            await HireRequestService._notify_role(
+                conn,
+                org_id=org_id,
+                role="hr",
+                type="hire_request_approved",
+                title="Hire request ready for pickup (modified)",
+                message=f"{existing['role_name']} hire request is ready for pickup with modifications.",
+                action_url=f"/hire-requests/{request_id}",
+                department_id=existing.get("department_id"),
+            )
+
+            await AuditLogRepository.create(
+                conn,
+                org_id=org_id,
+                user_id=user_id,
+                action="hire_request_approved_modified",
+                entity_type="hire_request",
+                entity_id=str(request_id),
+                details={"notes": notes.strip()},
+                ip_address=ip_address,
+            )
+
+        updated = await HireRequestService.get(conn, request_id, org_id)
+
+        # Send emails outside transaction
+        from backend.services.email_service import EmailService
+        approver_name = updated.get("approved_by_name") or "Your approver"
+        request_url = f"/hire-requests/{request_id}"
+
+        # Email raiser (team lead) — include the modification note.
+        if existing.get("requested_by_email"):
+            await EmailService.send_hire_request_approved(
+                to_email=existing["requested_by_email"],
+                recipient_name=existing.get("requested_by_name") or "Team member",
+                role_name=existing["role_name"],
+                dept_name=existing.get("department_name") or "General",
+                approver_name=approver_name,
+                request_url=request_url,
+                note=notes.strip(),
+            )
+
+        return updated
+
     # ── Helpers ───────────────────────────────────────────────────────────
 
     @staticmethod
@@ -795,9 +1178,9 @@ class HireRequestService:
         comp_min: Optional[int],
         comp_max: Optional[int],
     ) -> None:
-        if not role_name or not str(role_name).strip():
+        if not role_name or not role_name.strip():
             raise ValidationError("Role name is required.")
-        if len(str(role_name).strip()) > 200:
+        if len(role_name.strip()) > 200:
             raise ValidationError("Role name is too long.")
         if headcount is not None and (headcount < 1 or headcount > 100):
             raise ValidationError("Headcount must be between 1 and 100.")

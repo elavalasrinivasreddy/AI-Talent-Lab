@@ -49,6 +49,7 @@ def create_access_token(
         "role": role,
         "exp": exp,
         "iat": datetime.now(timezone.utc),
+        "jti": secrets.token_urlsafe(16),
     }
     if department_id is not None:
         payload["dept_id"] = department_id

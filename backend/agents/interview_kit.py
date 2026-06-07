@@ -6,6 +6,8 @@ import json
 import logging
 
 from backend.adapters.llm.factory import get_llm
+from backend.config import settings
+from backend.services.llm_usage_logger import llm_context
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +55,8 @@ Generate 8-10 diverse questions covering:
 
 Scorecard: 5 evaluation dimensions relevant to this role."""
 
-        response = await llm.ainvoke([{"role": "user", "content": prompt}])
+        with llm_context(org_id=None, operation="interview_kit", model=settings.LLM_PROVIDER):
+            response = await llm.ainvoke([{"role": "user", "content": prompt}])
         content = response.content.strip()
 
         if "```json" in content:

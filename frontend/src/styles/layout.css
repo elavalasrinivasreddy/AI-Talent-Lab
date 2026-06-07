@@ -2,7 +2,8 @@
 
 .app-layout {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* ── Global Top Bar (notification bell, etc.) ─── */
@@ -27,10 +28,16 @@
 
 .app-main {
   flex: 1;
+  min-height: 0;
   margin-left: var(--sidebar-width);
   padding: calc(52px + var(--space-6)) var(--space-8) var(--space-8);
+  overflow-y: auto;
   transition: margin-left var(--transition-normal);
   animation: fadeIn 300ms ease;
+}
+
+.app-main.app-main--full {
+  padding: 0;
 }
 
 @keyframes fadeIn {

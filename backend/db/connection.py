@@ -32,9 +32,17 @@ async def create_pool(database_url: str) -> asyncpg.Pool:
 
 
 async def get_pool() -> asyncpg.Pool:
-    """Return the existing pool or raise if not initialized."""
+    """Return the existing pool, initializing it automatically if needed."""
+    global _pool
     if _pool is None:
-        raise RuntimeError("Database pool not initialized. Call create_pool() first.")
+        from backend.config import settings
+        logger.info("Auto-initializing database connection pool...")
+        _pool = await asyncpg.create_pool(
+            dsn=settings.DATABASE_URL,
+            min_size=2,
+            max_size=10,
+            command_timeout=60,
+        )
     return _pool
 
 

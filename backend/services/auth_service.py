@@ -153,6 +153,12 @@ class AuthService:
         from backend.services.settings_service import SettingsService
         await SettingsService.seed_defaults(conn, org["id"])
 
+        # Mark user as having logged in (sets last_login_at)
+        await UserRepository.reset_login_state(conn, user["id"])
+        # Patch in-memory dict so the response reflects the real timestamp,
+        # not the NULL default from UserRepository.create.
+        user["last_login_at"] = datetime.now(timezone.utc).replace(tzinfo=None)
+
         token = create_access_token(
             user_id=user["id"],
             org_id=org["id"],
@@ -263,6 +269,19 @@ class AuthService:
             )
             return
 
+        # Per-user rate limit: max 3 requests per minute to prevent spam
+        recent_requests = await conn.fetchval(
+            """
+            SELECT COUNT(*) FROM audit_log
+            WHERE user_id = $1 AND action = 'magic_link_requested'
+            AND created_at > NOW() - INTERVAL '1 minute'
+            """,
+            user["id"]
+        ) or 0
+        if recent_requests >= 3:
+            logger.warning(f"[magic-link] rate limit exceeded for user {user['id']}")
+            return
+
         token = create_magic_link_token(
             token_type="auth_magic",
             entity_id=user["id"],
@@ -315,7 +334,7 @@ class AuthService:
         user_row = await conn.fetchrow(
             """
             SELECT id, org_id, email, name, role, phone, avatar_url, timezone,
-                   is_active, department_id, created_at
+                   is_active, department_id, last_login_at, created_at
             FROM users WHERE id = $1
             """,
             user_id,
@@ -365,9 +384,13 @@ class AuthService:
         return {"user": user, "org": org}
 
     @staticmethod
-    async def list_users(conn: asyncpg.Connection, org_id: int) -> list:
-        """List all users in an org (admin only)."""
-        return await UserRepository.list_by_org(conn, org_id)
+    async def list_users(
+        conn: asyncpg.Connection,
+        org_id: int,
+        department_id: Optional[int] = None,
+    ) -> list:
+        """List users in an org; scoped to a department when dept_admin calls."""
+        return await UserRepository.list_by_org(conn, org_id, department_id=department_id)
 
     @staticmethod
     async def add_user(
@@ -592,3 +615,29 @@ class AuthService:
         await UserRepository.update_password(conn, user_id, new_hash)
         # Clear lockout / failed-attempt counters so the user can sign in immediately
         await UserRepository.reset_login_state(conn, user_id)
+
+    @staticmethod
+    async def logout(token: str) -> None:
+        """Denylist the given access token until its expiry."""
+        from backend.config import settings
+        import redis.asyncio as redis
+        from backend.utils.security import decode_access_token
+        from datetime import datetime, timezone
+
+        try:
+            payload = decode_access_token(token)
+            jti = payload.get("jti")
+            exp = payload.get("exp")
+            if not jti or not exp:
+                return
+
+            now = datetime.now(timezone.utc).timestamp()
+            ttl = int(exp - now)
+            if ttl > 0:
+                r = redis.from_url(settings.REDIS_URL)
+                try:
+                    await r.setex(f"denylist:{jti}", ttl, "1")
+                finally:
+                    await r.aclose()
+        except Exception as e:
+            logger.warning(f"Logout failed to decode token: {e}")

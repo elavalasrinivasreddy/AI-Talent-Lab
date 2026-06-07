@@ -220,6 +220,30 @@ Non-admin users see the rail but disallowed sections are greyed out with a "Admi
 4. The new section structure makes it easier to add **Phase 2 features** (audit log viewer, career page branding form, video intro toggle) — those should ship inside the new shell, not as standalone tabs.
 5. Update `frontend/src/router.jsx` to support `/settings/ats-rules`, `/settings/sourcing`, etc. as deep links.
 
+---
+
+## 11. Premium UI/UX Enhancements (V3.1)
+
+To elevate the AI Behavior Console from a functional MVP to a premium enterprise experience, the following UI/UX patterns are enforced across all tabs:
+
+### 11.1 Right-Side Drawers (Slide-overs)
+- **Replaces:** Centered modals.
+- **Why:** Sliding panels from the right (`<SlideOver>`) preserve the user's context of the underlying table, provide more vertical space for forms, and match modern SaaS standards.
+- **Usage:** Used for "+ Add Team Member", "+ Add Question", "+ New Template", etc.
+
+### 11.2 Modern List Views
+- **Replaces:** Basic HTML `<table className="settings-table">`.
+- **Why:** Raw tables look brutalist. Modern lists use Avatar clusters, colored role badges (matching Pipeline Garden), and clean `...` overflow menus for actions (Edit, Deactivate, Delete) that appear on hover.
+- **Usage:** `TeamTab`, `DepartmentsTab`, `ScreeningQuestionsTab`.
+
+### 11.3 AI Auto-Draft (The "Wow" Factor)
+- **Feature:** A `✨ Auto-draft` button injected into manual data-entry fields.
+- **Why:** Instead of forcing the user to write their own "About Us" or "Benefits Template", they can paste their website URL, and the system extracts and summarizes the data.
+- **Usage:** `OrganizationTab` (Culture Keywords, About Us), `MessageTemplatesTab`.
+
+### 11.4 Premium Empty States
+- **Replaces:** Dashed-border boxes with emojis.
+- **Why:** Empty states should be inviting. They now use subtle glassmorphism, soft gradient backgrounds, and branded illustrations with clear CTAs.
 
 ---
 

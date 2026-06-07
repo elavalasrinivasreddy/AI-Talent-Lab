@@ -96,8 +96,20 @@ def _wrap_html(content_html: str) -> str:
 </html>"""
 
 
+
+def _safe_url(url: str) -> str:
+    """Resolve a relative path to a full URL using FRONTEND_URL and HTML-escape it."""
+    if not url:
+        return ""
+    # Auto-resolve relative paths (e.g. /hire-requests/8) to absolute URLs.
+    if url.startswith("/"):
+        url = f"{settings.FRONTEND_URL}{url}"
+    if not url.startswith(("http://", "https://")):
+        raise ValueError(f"Unsafe URL scheme: {url}")
+    return html.escape(url, quote=True)
+
 def _button(label: str, url: str) -> str:
-    _url = html.escape(url, quote=True)
+    _url = _safe_url(url)
     _label = html.escape(label)
     return f"""\
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
@@ -147,7 +159,7 @@ class EmailService:
     ) -> bool:
         _user_name = html.escape(user_name) if user_name else None
         _org_name = html.escape(org_name) if org_name else None
-        _magic_link_url = html.escape(magic_link_url, quote=True)
+        _magic_link_url = _safe_url(magic_link_url)
         greeting = f"Hi {_user_name}," if _user_name else "Hi,"
         org_line = (
             f"You're signing in to <strong>{_org_name}</strong> on AI Talent Lab."
@@ -189,7 +201,7 @@ class EmailService:
         expires_hours: int = 24,
     ) -> bool:
         _user_name = html.escape(user_name) if user_name else None
-        _reset_url = html.escape(reset_url, quote=True)
+        _reset_url = _safe_url(reset_url)
         greeting = f"Hi {_user_name}," if _user_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
@@ -237,7 +249,7 @@ class EmailService:
         _inviter_name = html.escape(inviter_name)
         _org_name = html.escape(org_name)
         _role_label = html.escape(role_label)
-        _set_password_url = html.escape(set_password_url, quote=True)
+        _set_password_url = _safe_url(set_password_url)
         greeting = f"Hi {_invitee_name},"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
@@ -292,7 +304,7 @@ class EmailService:
         _candidate_name = html.escape(candidate_name) if candidate_name else None
         _role_name = html.escape(role_name)
         _org_name = html.escape(org_name)
-        _apply_url = html.escape(apply_url, quote=True)
+        _apply_url = _safe_url(apply_url)
         greeting = f"Hi {_candidate_name}," if _candidate_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
@@ -333,7 +345,7 @@ class EmailService:
         _candidate_name = html.escape(candidate_name) if candidate_name else None
         _role_name = html.escape(role_name)
         _org_name = html.escape(org_name)
-        _apply_url = html.escape(apply_url, quote=True)
+        _apply_url = _safe_url(apply_url)
         greeting = f"Hi {_candidate_name}," if _candidate_name else "Hi,"
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
@@ -386,7 +398,7 @@ class EmailService:
 
         meet_section = ""
         if meeting_link:
-            _meeting_link = html.escape(meeting_link, quote=True)
+            _meeting_link = _safe_url(meeting_link)
             meet_section = f"""
 <p style="margin:16px 0 8px;font-size:13px;color:#64748B;">Meeting link:</p>
 <p style="margin:0 0 16px;">
@@ -664,13 +676,24 @@ class EmailService:
         dept_name: str,
         approver_name: str,
         request_url: str,
+        note: Optional[str] = None,
     ) -> bool:
-        """Notify raiser (and HR users) that the request has been approved."""
+        """Notify raiser (and HR users) that the request has been approved.
+
+        When `note` is supplied (the approver modified the request before approving),
+        it is rendered as a highlighted block so the requester sees what changed."""
         _recipient_name = html.escape(recipient_name) if recipient_name else None
         _role_name = html.escape(role_name)
         _dept_name = html.escape(dept_name)
         _approver_name = html.escape(approver_name)
         greeting = f"Hi {_recipient_name}," if _recipient_name else "Hi,"
+        note_html = ""
+        if note and note.strip():
+            _note = html.escape(note.strip())
+            note_html = f"""
+<p style="margin:0 0 16px;padding:12px 16px;background:#F1F5F9;border-radius:8px;border-left:3px solid {_BRAND_TEAL};">
+  <strong>Note from {_approver_name}:</strong><br/>{_note}
+</p>"""
         content_html = f"""\
 <p style="margin:0 0 16px;">{greeting}</p>
 <p style="margin:0 0 16px;">
@@ -679,6 +702,7 @@ class EmailService:
   <span style="color:{_BRAND_TEAL};font-weight:600;">approved</span>
   by <strong>{_approver_name}</strong>.
 </p>
+{note_html}
 <p style="margin:0 0 16px;">
   The request is now in the HR queue and will be picked up shortly to begin the
   job description process.
@@ -687,9 +711,10 @@ class EmailService:
 <p style="margin:0;font-size:13px;color:#64748B;">
   You'll receive another update when HR picks up the request and begins drafting the JD.
 </p>"""
+        _note_text = f"\n\nNote from {approver_name}: {note.strip()}" if note and note.strip() else ""
         body_text = (
             f"{greeting}\n\nThe hire request for {role_name} in {dept_name} has been "
-            f"approved by {approver_name}.\n\nView it: {request_url}"
+            f"approved by {approver_name}.{_note_text}\n\nView it: {request_url}"
         )
         return await EmailService._send(
             to_email=to_email,

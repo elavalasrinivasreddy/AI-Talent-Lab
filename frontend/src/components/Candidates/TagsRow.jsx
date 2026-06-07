@@ -6,6 +6,8 @@
 import React, { useState } from 'react'
 import Chip from '../common/Chip'
 import Icon from '../common/Icon'
+import Toast from '../common/Toast'
+import StatusBadge from '../common/StatusBadge'
 import { candidatesApi } from '../../utils/api'
 import { PIPELINE_STAGES } from '../../utils/constants'
 
@@ -21,6 +23,7 @@ export default function TagsRow({
 }) {
   const [adding, setAdding] = useState(false)
   const [tagInput, setTagInput] = useState('')
+  const [toast, setToast] = useState(null)
 
   const handleAddTag = async () => {
     const tag = tagInput.trim().toLowerCase()
@@ -31,7 +34,7 @@ export default function TagsRow({
       setTagInput('')
       setAdding(false)
     } catch (e) {
-      alert(`Failed to add tag: ${e.message}`)
+      setToast({ message: `Failed to add tag: ${e.message}`, type: 'error' })
     }
   }
 
@@ -40,7 +43,7 @@ export default function TagsRow({
       await candidatesApi.removeTag(candidateId, tag)
       onTagsChange(tags.filter(t => t !== tag))
     } catch (e) {
-      alert(`Failed to remove tag: ${e.message}`)
+      setToast({ message: `Failed to remove tag: ${e.message}`, type: 'error' })
     }
   }
 
@@ -55,16 +58,44 @@ export default function TagsRow({
     <div className="cd-tags-row">
       <div className="cd-tags-left">
         <span className="cd-tags-status-label">Status:</span>
-        <select
-          className="cd-tags-status-select"
-          value={pipelineStatus || 'sourced'}
-          onChange={e => onStatusChange(e.target.value)}
-          disabled={movingStatus}
-        >
-          {Object.entries(PIPELINE_STAGES).map(([key, { label }]) => (
-            <option key={key} value={key}>{label}</option>
-          ))}
-        </select>
+        <div style={{ position: 'relative' }}>
+          <div
+            className="cd-status-dropdown-trigger"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '2px 6px 2px 2px',
+              borderRadius: '6px',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-bg-input)',
+              cursor: 'pointer',
+              transition: 'all var(--transition-fast)'
+            }}
+          >
+            <StatusBadge status={pipelineStatus || 'sourced'} />
+            <Icon name="chevron-down" size={12} style={{ color: 'var(--color-text-muted)' }} />
+          </div>
+          <select
+            className="cd-tags-status-select-overlay"
+            value={pipelineStatus || 'sourced'}
+            onChange={e => onStatusChange(e.target.value)}
+            disabled={movingStatus}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              opacity: 0,
+              cursor: 'pointer'
+            }}
+          >
+            {Object.entries(PIPELINE_STAGES).map(([key, { label }]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
+        </div>
         {stageEnteredAt && (
           <span className="cd-tags-timing">
             <Icon name="clock" size={11} />
@@ -104,6 +135,7 @@ export default function TagsRow({
           </button>
         )}
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }

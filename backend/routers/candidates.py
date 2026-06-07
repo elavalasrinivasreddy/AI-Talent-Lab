@@ -132,6 +132,30 @@ async def mark_candidate_selected(
     return result
 
 
+@router.post("/{candidate_id}/retry-ats")
+async def retry_ats_scoring(
+    candidate_id: int,
+    body: dict,
+    current_user=Depends(get_current_user),
+):
+    """Manually retry ATS scoring for an application via background task."""
+    application_id = body.get("application_id")
+    position_id = body.get("position_id")
+    if not application_id or not position_id:
+        raise HTTPException(status_code=422, detail={
+            "error": {"code": "MISSING_FIELDS",
+                      "message": "application_id and position_id are required", "details": None}
+        })
+    from backend.tasks.candidate_pipeline import score_candidate_application
+    task = score_candidate_application.delay(
+        candidate_id,
+        int(application_id),
+        int(position_id),
+        current_user["org_id"]
+    )
+    return {"queued": True, "task_id": task.id}
+
+
 @router.get("/{candidate_id}/tags")
 async def get_tags(
     candidate_id: int,

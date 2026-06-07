@@ -15,9 +15,10 @@
  * Roles: org_head | dept_admin | hr | team_lead | platform_admin
  * See backend/models/auth.py for canonical role list.
  */
-import { useState, useMemo, lazy, Suspense } from 'react'
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { settingsApi } from '../../utils/api'
 
 // Legacy dashboard — loaded lazily only when ?legacy_dashboard=1
 const LegacyDashboard = lazy(() => import('./legacy/LegacyDashboard'))
@@ -51,7 +52,8 @@ function greetingSuffix(role, data) {
   const pendingApprovalCount = 0 // not fetched at page level; can wire later
   if (role === 'org_head' || role === 'dept_admin') {
     const openReqs = health?.open_reqs ?? health?.active_positions ?? (positions?.length || 0)
-    return `Org-wide health · ${openReqs} open req${openReqs !== 1 ? 's' : ''}`
+    const scope = role === 'org_head' ? 'Org-wide' : 'Department'
+    return `${scope} health · ${openReqs} open req${openReqs !== 1 ? 's' : ''}`
   }
   if (role === 'hr') {
     const nowCount  = lanes?.now?.rows?.length  || 0
@@ -73,17 +75,6 @@ function getGreeting() {
   return 'Good evening'
 }
 
-// Derive unique dept names from positions list
-function deriveDepts(positions) {
-  const seen = new Set()
-  const depts = []
-  for (const p of positions) {
-    const d = p.department_name
-    if (d && !seen.has(d)) { seen.add(d); depts.push(d) }
-  }
-  return depts.sort()
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -94,19 +85,36 @@ export default function DashboardPage() {
   const legacyMode = searchParams.get('legacy_dashboard') === '1'
 
   const role   = user?.role || 'hr'
-  const [period, setPeriod] = useState('week')
+  const [period, setPeriod] = useState('today')
   const [selectedDept, setSelectedDept] = useState('all')
 
   const data = useDashboardData(role, period, selectedDept)
   const { lanes, suggestions, positions, health, loading, error, dismiss, dismissAll } = data
 
-  const depts   = useMemo(() => deriveDepts(positions), [positions])
+  const [depts, setDepts] = useState([])
+  const [deptsError, setDeptsError] = useState(false)
+
+  useEffect(() => {
+    if (role === 'org_head') {
+      setDeptsError(false)
+      settingsApi.getDepartments()
+        .then(res => setDepts(res?.departments || []))
+        .catch(err => {
+          console.error('Failed to load depts', err)
+          setDeptsError(true)
+        })
+    }
+  }, [role])
   const suffix  = greetingSuffix(role, { positions, health, lanes })
   const roleLabel = ROLE_LABELS[role] || role
 
   // New Hire button label per spec §5
   const newHireLabel = role === 'team_lead' ? 'File Hire Request' : 'New Hire'
   const newHireTo    = role === 'team_lead' ? '/hire-requests/new' : '/chat'
+
+  const allLanesLoading = lanes.now.loading && lanes.next.loading && lanes.pulse.loading
+  const hasPositions = Array.isArray(positions) && positions.some(p => p.status === 'open' || p.status === 'active')
+  const isOnboarding = !allLanesLoading && !hasPositions && positions !== undefined && positions.length === 0
 
   if (legacyMode) {
     return (
@@ -130,11 +138,16 @@ export default function DashboardPage() {
         </div>
 
         <div className="dash-topbar-actions">
-          <Link to={newHireTo} className="dash-new-hire-btn">
-            <Icon name="plus" size={14} />
-            {newHireLabel}
-          </Link>
-          <div className="dash-period-switcher">
+          {!isOnboarding && (
+            <Link to={newHireTo} className="dash-new-hire-btn">
+              <Icon name="plus" size={14} />
+              {newHireLabel}
+            </Link>
+          )}
+          <div
+            className="dash-period-switcher"
+            title="Period controls the health metrics above. Lane content refreshes in real-time."
+          >
             {['today', 'week', 'month'].map(p => (
               <button
                 key={p}
@@ -149,21 +162,33 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Dept Chip Bar — admin only ── */}
-      <RoleGate roles={['org_head', 'dept_admin', 'platform_admin']}>
-        <DeptChipBar
-          departments={depts}
-          selected={selectedDept}
-          onChange={setSelectedDept}
-        />
+      {/* ── Dept Chip Bar — org_head only ── */}
+      <RoleGate roles={['org_head']}>
+        {deptsError ? (
+          <p className="dash-dept-load-error">
+            Couldn't load departments — <button type="button" className="dash-dept-retry" onClick={() => {
+              setDeptsError(false)
+              settingsApi.getDepartments()
+                .then(res => setDepts(res?.departments || []))
+                .catch(() => setDeptsError(true))
+            }}>retry</button>
+          </p>
+        ) : (
+          <DeptChipBar
+            departments={depts}
+            selected={selectedDept}
+            onChange={setSelectedDept}
+          />
+        )}
       </RoleGate>
 
       {/* ── Health Strip — admin only ── */}
-      <RoleGate roles={['org_head', 'dept_admin', 'platform_admin']}>
+      <RoleGate roles={['org_head', 'dept_admin']}>
         <HealthStrip
           health={health}
           loading={loading.health}
           error={error.health}
+          role={role}
         />
       </RoleGate>
 
@@ -178,20 +203,23 @@ export default function DashboardPage() {
       <TodaysBriefing
         lanes={lanes}
         positions={positions}
+        role={role}
       />
 
       {/* ── Bottom row: Velocity + Position Pulse ── */}
-      <div className="dash-bottom-row">
-        <VelocitySparkline
-          activity={lanes.pulse.rows}
-          health={health}
-        />
-        <PositionPulse
-          positions={positions}
-          loading={loading.positions}
-          error={error.positions}
-        />
-      </div>
+      {!isOnboarding && (
+        <div className="dash-bottom-row">
+          <VelocitySparkline
+            activity={lanes.pulse.rows}
+            health={health}
+          />
+          <PositionPulse
+            positions={positions}
+            loading={loading.positions}
+            error={error.positions}
+          />
+        </div>
+      )}
 
     </div>
   )

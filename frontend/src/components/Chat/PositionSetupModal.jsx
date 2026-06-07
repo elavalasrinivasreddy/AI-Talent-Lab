@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../context/ChatContext';
+import { hireRequestsApi } from '../../utils/api';
 import { IconX, IconCheck, IconArrowRight } from './icons';
 
 /**
@@ -10,9 +11,16 @@ import { IconX, IconCheck, IconArrowRight } from './icons';
  * Calm two-column layout, no emoji, restrained success state.
  */
 const PositionSetupModal = ({ show, onClose }) => {
-    const { token } = useAuth();
-    const { currentSessionId, fetchSessions } = useChat();
+    const { token, user } = useAuth();
+    const { currentSessionId, fetchSessions, sendMessage } = useChat();
     const navigate = useNavigate();
+    const location = useLocation();
+    const req = location.state?.hireRequest;
+
+    // Most recruiters chat off an accepted hire request, so the session already
+    // carries a department and the backend uses it. Only users without a department
+    // of their own (e.g. an org_head starting a fresh JD chat) must pick one here.
+    const needsDept = !user?.department_id;
 
     const [departments, setDepartments] = useState([]);
     const [formData, setFormData] = useState({
@@ -41,7 +49,10 @@ const PositionSetupModal = ({ show, onClose }) => {
                 if (res.ok) {
                     const data = await res.json();
                     setDepartments(data.departments || []);
-                    if (data.departments?.length > 0) {
+                    // Only pre-select a department when the user actually needs to
+                    // choose one. Pre-filling it for everyone silently overrode the
+                    // session's (hire request's) department on save.
+                    if (needsDept && data.departments?.length > 0) {
                         setFormData((prev) => ({ ...prev, department_id: data.departments[0].id }));
                     }
                 }
@@ -50,13 +61,9 @@ const PositionSetupModal = ({ show, onClose }) => {
             }
         };
         fetchDeps();
-    }, [show, token]);
+    }, [show, token, needsDept]);
 
     const _savePosition = async (asDraft) => {
-        if (!formData.department_id) {
-            setError('Please select a department.');
-            return;
-        }
 
         if (asDraft) setIsDraftLoading(true);
         else setIsLoading(true);
@@ -70,7 +77,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    department_id: parseInt(formData.department_id),
+                    ...(formData.department_id && { department_id: parseInt(formData.department_id) }),
                     headcount: parseInt(formData.headcount),
                     priority: formData.priority,
                     ats_threshold: parseFloat(formData.ats_threshold),
@@ -80,6 +87,8 @@ const PositionSetupModal = ({ show, onClose }) => {
             });
 
             if (res.ok) {
+                // Read body immediately — before any async work that might outlive the stream.
+                const data = await res.json();
                 fetchSessions();
                 if (asDraft) {
                     setDraftSuccess(true);
@@ -88,12 +97,25 @@ const PositionSetupModal = ({ show, onClose }) => {
                         navigate('/dashboard');
                     }, 1800);
                 } else {
-                    const data = await res.json();
+                    sendMessage({ action: 'finalize_jd', action_data: { status: 'complete' } });
+                    if (req && req.id) {
+                        try {
+                            await hireRequestsApi.linkSession(req.id, currentSessionId);
+                        } catch (linkErr) {
+                            console.error('Failed to link session:', linkErr);
+                        }
+                    }
                     setSuccess(true);
+                    // auto_submitted=false means position was saved but approval submission failed.
+                    // HR can manually submit from the JD tab.
+                    const delay = data.auto_submitted === false ? 3500 : 1200;
+                    if (data.auto_submitted === false) {
+                        setError("JD saved, but couldn't auto-submit for approval. Open the JD tab and submit manually.");
+                    }
                     setTimeout(() => {
                         onClose();
-                        navigate(data.position_id ? `/positions/${data.position_id}` : '/positions');
-                    }, 1200);
+                        navigate(data.position_id ? `/positions/${data.position_id}/jd` : '/positions');
+                    }, delay);
                 }
             } else {
                 const errData = await res.json();
@@ -168,49 +190,29 @@ const PositionSetupModal = ({ show, onClose }) => {
                         <div className="pmodal-body">
                             {error && <div className="pmodal-error">{error}</div>}
 
-                            <div className="pfield">
-                                <label className="pfield-label" htmlFor="pf-dept">Department</label>
-                                <select
-                                    id="pf-dept"
-                                    className="pfield-select"
-                                    value={formData.department_id}
-                                    onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
-                                    required
-                                >
-                                    <option value="" disabled>Select a department…</option>
-                                    {departments.map((d) => (
-                                        <option key={d.id} value={d.id}>{d.name}</option>
-                                    ))}
-                                </select>
-                            </div>
 
-                            <div className="pmodal-row">
-                                <div className="pfield">
-                                    <label className="pfield-label" htmlFor="pf-hc">Headcount</label>
-                                    <input
-                                        id="pf-hc"
-                                        type="number"
-                                        className="pfield-input"
-                                        min="1"
-                                        value={formData.headcount}
-                                        onChange={(e) => setFormData({ ...formData, headcount: e.target.value })}
-                                    />
+
+                            {needsDept && (
+                                <div className="pmodal-row">
+                                    <div className="pfield">
+                                        <label className="pfield-label" htmlFor="pf-dept">Department</label>
+                                        <select
+                                            id="pf-dept"
+                                            className="pfield-select"
+                                            value={formData.department_id}
+                                            onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
+                                            disabled={isLoading || isDraftLoading}
+                                            required
+                                        >
+                                            <option value="" disabled>Select a department…</option>
+                                            {departments.map((d) => (
+                                                <option key={d.id} value={d.id}>{d.name}</option>
+                                            ))}
+                                        </select>
+                                        <span className="pfield-hint">Which department this role belongs to</span>
+                                    </div>
                                 </div>
-                                <div className="pfield">
-                                    <label className="pfield-label" htmlFor="pf-pri">Priority</label>
-                                    <select
-                                        id="pf-pri"
-                                        className="pfield-select"
-                                        value={formData.priority}
-                                        onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                                    >
-                                        <option value="low">Low</option>
-                                        <option value="normal">Normal</option>
-                                        <option value="high">High</option>
-                                        <option value="critical">Critical</option>
-                                    </select>
-                                </div>
-                            </div>
+                            )}
 
                             <div className="pmodal-row">
                                 <div className="pfield">
@@ -222,6 +224,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                                         min="0" max="100" step="0.1"
                                         value={formData.ats_threshold}
                                         onChange={(e) => setFormData({ ...formData, ats_threshold: e.target.value })}
+                                        disabled={isLoading || isDraftLoading}
                                     />
                                     <span className="pfield-hint">Min score to advance to screening</span>
                                 </div>
@@ -232,6 +235,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                                         className="pfield-select"
                                         value={formData.search_interval_hours}
                                         onChange={(e) => setFormData({ ...formData, search_interval_hours: e.target.value })}
+                                        disabled={isLoading || isDraftLoading}
                                     >
                                         <option value="12">Every 12 hours</option>
                                         <option value="24">Every 24 hours</option>
@@ -247,7 +251,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                             <button
                                 type="button"
                                 className="btn-ghost"
-                                disabled={isDraftLoading || isLoading || !formData.department_id}
+                                disabled={isDraftLoading || isLoading || (needsDept && !formData.department_id)}
                                 onClick={handleSaveAsDraft}
                             >
                                 {isDraftLoading ? 'Saving…' : 'Save as draft'}
@@ -255,7 +259,7 @@ const PositionSetupModal = ({ show, onClose }) => {
                             <button
                                 type="submit"
                                 className="btn-primary"
-                                disabled={isLoading || isDraftLoading || !formData.department_id}
+                                disabled={isLoading || isDraftLoading || (needsDept && !formData.department_id)}
                             >
                                 {isLoading ? 'Submitting…' : (
                                     <>Submit for approval <IconArrowRight size={14} /></>

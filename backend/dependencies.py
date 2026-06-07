@@ -53,8 +53,21 @@ async def get_current_user(request: Request) -> dict:
         raise InvalidCredentialsError("Missing token")
 
     payload = decode_access_token(token)
+    
+    jti = payload.get("jti")
+    if jti:
+        import redis.asyncio as redis
+        from backend.config import settings
+        r = redis.from_url(settings.REDIS_URL)
+        try:
+            is_blacklisted = await r.get(f"denylist:{jti}")
+            if is_blacklisted:
+                raise InvalidCredentialsError("Token has been revoked")
+        finally:
+            await r.aclose()
 
     return {
+        "id": int(payload["sub"]),
         "user_id": int(payload["sub"]),
         "org_id": payload["org_id"],
         "role": payload["role"],
@@ -116,11 +129,24 @@ async def require_platform_admin(request: Request) -> dict:
 
     token = auth_header.removeprefix("Bearer ").strip()
     payload = decode_access_token(token)
+    
+    jti = payload.get("jti")
+    if jti:
+        import redis.asyncio as redis
+        from backend.config import settings
+        r = redis.from_url(settings.REDIS_URL)
+        try:
+            is_blacklisted = await r.get(f"denylist:{jti}")
+            if is_blacklisted:
+                raise InvalidCredentialsError("Token has been revoked")
+        finally:
+            await r.aclose()
 
     if payload.get("role") != PLATFORM_ADMIN:
         raise InsufficientPermissionsError("Platform admin access required")
 
     return {
+        "id": int(payload["sub"]),
         "user_id": int(payload["sub"]),
         "org_id": payload.get("org_id", 0),
         "role": PLATFORM_ADMIN,

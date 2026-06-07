@@ -8,7 +8,7 @@ Pipeline: INTAKE → INTERNAL_CHECK → MARKET_RESEARCH → BENCHMARKING → JD_
 import logging
 from typing import Optional
 
-from backend.agents.state import AgentState
+from backend.agents.state import AgentState, ChatMessage
 from backend.agents.nodes.interviewer import run_interviewer
 from backend.agents.nodes.internal_analyst import run_internal_analyst
 from backend.agents.nodes.market_intelligence import run_market_intelligence
@@ -43,11 +43,16 @@ async def run_agent(
     # ── 1. Apply incoming user input to state ──────────────────────────
     if user_message:
         state["messages"] = state.get("messages", []) + [
-            {"role": "user", "content": user_message}
+            ChatMessage(role="user", content=user_message)
         ]
         state["user_action"] = "message"
         state["user_action_data"] = {}
         state["awaiting_user_input"] = False
+        
+        # If user sends a refinement message, force the stage back to final_jd
+        # so the agent will run the drafting_final node and actually regenerate it.
+        if state.get("stage") in ("bias_check", "complete"):
+            state["stage"] = "final_jd"
 
     elif action:
         state["user_action"] = action
@@ -101,7 +106,7 @@ async def run_agent(
         elif action == "apply_bias_fix":
             phrase = action_data.get("phrase", "")
             suggestion = action_data.get("suggestion", "")
-            jd = state.get("final_jd", "")
+            jd = state.get("final_jd") or ""
             if phrase and phrase in jd:
                 state["final_jd"] = jd.replace(phrase, suggestion, 1)
             # Drop one matching issue (the first occurrence) from the list
@@ -123,10 +128,13 @@ async def run_agent(
                 if v.get("type") == variant_type:
                     if new_summary is not None:
                         v["summary"] = new_summary
-                    # Allow overwriting description / tone / skills_count if provided
-                    for key in ("description", "tone", "skills_count"):
-                        if key in action_data:
-                            v[key] = action_data[key]
+                    # Allow overwriting content / tone / skills_count if provided
+                    if "content" in action_data:
+                        v["content"] = action_data["content"]
+                    if "tone" in action_data:
+                        v["tone"] = action_data["tone"]
+                    if "skills_count" in action_data:
+                        v["skills_count"] = action_data["skills_count"]
                     break
             state["jd_variants"] = variants
             state["stage"] = "jd_variants"
@@ -227,16 +235,22 @@ async def run_agent(
 
         elif current_stage == "final_jd":
             state = await run_drafting_final(state, token_queue=token_queue)
-            if not state.get("error_stage"):
-                # No longer run bias check automatically. Wait for user to trigger or finalize.
-                state["awaiting_user_input"] = True
-                state["stage"] = "final_jd"
+            if state.get("error_stage"):
+                break
+            
+            # If it failed but didn't set error_stage (retry_count < 2), loop again!
+            if not state.get("final_jd") or state.get("retry_count", 0) > 0:
+                continue
+                
+            # Success
+            state["awaiting_user_input"] = True
+            state["stage"] = "final_jd"
             break
 
         elif current_stage == "bias_check":
             # Manual trigger for bias check
             try:
-                issues = await check_bias(state.get("final_jd", ""))
+                issues = await check_bias(state.get("final_jd") or "")
                 state["bias_issues"] = issues
                 state["bias_skipped"] = False
             except Exception as e:

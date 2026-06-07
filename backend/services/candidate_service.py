@@ -8,6 +8,8 @@ import math
 from typing import Optional, Any
 
 from backend.adapters.llm.factory import get_llm, get_embedding_model
+from backend.config import settings
+from backend.services.llm_usage_logger import llm_context
 from backend.db.connection import get_connection
 from backend.db.repositories.candidates import CandidateRepository
 from backend.db.repositories.positions import PositionRepository
@@ -87,6 +89,11 @@ async def compute_ats_score(
             "missing_skills": [],
             "extra_skills": [],
             "summary": "Candidate profile does not closely match the role requirements.",
+            "emb_score": round(emb_score * 100, 1),
+            "skills_match": 0.0,
+            "experience_match": 0.0,
+            "career_trajectory": "unknown",
+            "red_flags": [],
             "method": "embedding_only"
         }
 
@@ -103,6 +110,11 @@ async def compute_ats_score(
             "missing_skills": [],
             "extra_skills": [],
             "summary": "No resume available. Score based on profile similarity only.",
+            "emb_score": round(emb_score * 100, 1),
+            "skills_match": 0.0,
+            "experience_match": 0.0,
+            "career_trajectory": "unknown",
+            "red_flags": [],
             "method": "embedding_only"
         }
 
@@ -123,7 +135,9 @@ Return this exact JSON structure:
   "extra_skills": ["GraphQL"],
   "experience_match": 0.85,
   "skills_match": 0.78,
-  "summary": "One paragraph AI analysis of candidate fit"
+  "summary": "One paragraph AI analysis of candidate fit",
+  "career_trajectory": "steady_growth",
+  "red_flags": ["Short tenure at recent job"]
 }}
 
 Rules:
@@ -131,9 +145,12 @@ Rules:
 - missing_skills: skills required by JD but absent in resume
 - extra_skills: candidate skills not mentioned in JD (bonuses)
 - experience_match: 0.0-1.0 score for experience alignment
-- skills_match: 0.0-1.0 score for overall skills fit"""
+- skills_match: 0.0-1.0 score for overall skills fit
+- career_trajectory: must be one of "steady_growth", "job_hopper", or "unknown"
+- red_flags: list of potential issues, or empty list if none"""
 
-        response = await llm.ainvoke([{"role": "user", "content": prompt}])
+        with llm_context(org_id=org_id, operation="ats_scoring", model=settings.LLM_PROVIDER):
+            response = await llm.ainvoke([{"role": "user", "content": prompt}])
         content = response.content.strip()
         if "```json" in content:
             content = content.split("```json")[-1].split("```")[0].strip()
@@ -157,6 +174,11 @@ Rules:
             "missing_skills": parsed.get("missing_skills", []),
             "extra_skills": parsed.get("extra_skills", []),
             "summary": parsed.get("summary", ""),
+            "emb_score": round(emb_score * 100, 1),
+            "skills_match": round(skills_match * 100, 1),
+            "experience_match": round(experience_match * 100, 1),
+            "career_trajectory": parsed.get("career_trajectory", "unknown"),
+            "red_flags": parsed.get("red_flags", []),
             "method": "semantic_full"
         }
 
@@ -168,7 +190,12 @@ Rules:
             "matched_skills": [],
             "missing_skills": [],
             "extra_skills": [],
-            "summary": "Score computed from profile similarity.",
+            "summary": "LLM ATS scoring failed. Falling back to embedding score.",
+            "emb_score": round(emb_score * 100, 1),
+            "skills_match": 0.0,
+            "experience_match": 0.0,
+            "career_trajectory": "unknown",
+            "red_flags": [],
             "method": "embedding_fallback"
         }
 

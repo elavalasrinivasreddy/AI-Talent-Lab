@@ -31,7 +31,7 @@ class ChatSessionRepository:
                 """,
                 session_id, org_id, department_id, user_id
             )
-            return dict(row)
+            return dict(row) if row else {}
 
     @staticmethod
     async def get(session_id: str, org_id: int) -> Optional[dict[str, Any]]:
@@ -39,8 +39,10 @@ class ChatSessionRepository:
         async with get_connection() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT * FROM chat_sessions
-                WHERE id = $1 AND org_id = $2
+                SELECT cs.*, p.status as position_status, p.approval_status as position_approval_status
+                FROM chat_sessions cs
+                LEFT JOIN positions p ON cs.position_id = p.id
+                WHERE cs.id = $1 AND cs.org_id = $2
                 """,
                 session_id, org_id
             )
@@ -52,7 +54,8 @@ class ChatSessionRepository:
             # Fetch messages
             msgs = await conn.fetch(
                 """
-                SELECT id, role, content, extras, created_at
+                SELECT id, role, content, extras, created_at,
+                       message_type, revision_cycle
                 FROM chat_messages
                 WHERE session_id = $1
                 ORDER BY created_at ASC
@@ -85,7 +88,7 @@ class ChatSessionRepository:
         session_id: str,
         org_id: int,
         workflow_stage: str,
-        graph_state: dict,
+        graph_state: Any,
     ) -> None:
         """Save the LangGraph state JSON."""
         state_json = json.dumps(graph_state)
@@ -120,35 +123,25 @@ class ChatSessionRepository:
     ) -> list[dict[str, Any]]:
         """
         List visible sessions for sidebar history.
-        - Admin: all org sessions
-        - Department users: sessions within same department + their own legacy sessions without department
-        - Users without department: only their own sessions
+        - hr: sessions within same department + their own legacy sessions
+        - org_head / dept_admin / team_lead: only their own sessions
         """
         async with get_connection() as conn:
-            if role == "org_head":
+            if role == "hr" and dept_id is not None:
                 rows = await conn.fetch(
                     """
-                    SELECT id, title, workflow_stage, updated_at, position_id, department_id, user_id
-                    FROM chat_sessions
-                    WHERE org_id = $1
-                      AND (status IS NULL OR status != 'deleted')
-                    ORDER BY updated_at DESC
-                    LIMIT 200
-                    """,
-                    org_id,
-                )
-            elif dept_id is not None:
-                rows = await conn.fetch(
-                    """
-                    SELECT id, title, workflow_stage, updated_at, position_id, department_id, user_id
-                    FROM chat_sessions
-                    WHERE org_id = $1
+                    SELECT cs.id, cs.title, cs.workflow_stage, cs.updated_at,
+                           cs.position_id, cs.department_id, cs.user_id,
+                           p.status AS position_status
+                    FROM chat_sessions cs
+                    LEFT JOIN positions p ON cs.position_id = p.id
+                    WHERE cs.org_id = $1
                       AND (
-                        department_id = $2
-                        OR (department_id IS NULL AND user_id = $3)
+                        cs.department_id = $2
+                        OR (cs.department_id IS NULL AND cs.user_id = $3)
                       )
-                      AND (status IS NULL OR status != 'deleted')
-                    ORDER BY updated_at DESC
+                      AND (cs.status IS NULL OR cs.status != 'deleted')
+                    ORDER BY cs.updated_at DESC
                     LIMIT 200
                     """,
                     org_id, dept_id, user_id
@@ -156,11 +149,14 @@ class ChatSessionRepository:
             else:
                 rows = await conn.fetch(
                     """
-                    SELECT id, title, workflow_stage, updated_at, position_id, department_id, user_id
-                    FROM chat_sessions
-                    WHERE user_id = $1 AND org_id = $2
-                      AND (status IS NULL OR status != 'deleted')
-                    ORDER BY updated_at DESC
+                    SELECT cs.id, cs.title, cs.workflow_stage, cs.updated_at,
+                           cs.position_id, cs.department_id, cs.user_id,
+                           p.status AS position_status
+                    FROM chat_sessions cs
+                    LEFT JOIN positions p ON cs.position_id = p.id
+                    WHERE cs.user_id = $1 AND cs.org_id = $2
+                      AND (cs.status IS NULL OR cs.status != 'deleted')
+                    ORDER BY cs.updated_at DESC
                     LIMIT 200
                     """,
                     user_id, org_id
@@ -202,7 +198,7 @@ class ChatSessionRepository:
                 """,
                 session_id, role, content, extras_json
             )
-            return dict(row)
+            return dict(row) if row else {}
 
     @staticmethod
     async def link_position(session_id: str, org_id: int, position_id: int) -> None:

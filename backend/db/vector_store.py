@@ -5,7 +5,7 @@ Uses persistent local storage at data/chroma/
 """
 import logging
 import os
-from typing import Optional
+from typing import Optional, Any
 
 from backend.adapters.llm.factory import get_embedding_model
 
@@ -46,9 +46,21 @@ class LangChainEmbeddingFunctionAdapter:
     def __init__(self, lc_embeddings):
         self.lc_embeddings = lc_embeddings
         
-    def __call__(self, input: list[str]) -> list[list[float]]:
+    def name(self) -> str:
+        return "LangChainEmbeddingFunctionAdapter"
+        
+    def __call__(self, input: Any) -> Any:
         # Chroma passes a list of texts
         return self.lc_embeddings.embed_documents(input)
+        
+    def embed_query(self, input: Any) -> Any:
+        return self.lc_embeddings.embed_query(input)
+        
+    def embed_documents(self, input: Any) -> Any:
+        return self.lc_embeddings.embed_documents(input)
+
+    def embed_with_retries(self, input: Any, **kwargs: Any) -> Any:
+        return self.__call__(input)
 
 
 def get_jd_collection():
@@ -67,7 +79,7 @@ def get_jd_collection():
     # Get or create
     return client.get_or_create_collection(
         name="job_descriptions",
-        embedding_function=embedding_fn
+        embedding_function=embedding_fn # type: ignore
     )
 
 
@@ -79,10 +91,11 @@ async def embed_jd(position_id: int, org_id: int, department_id: Optional[int], 
     if not collection:
         return
 
+    metadata = {"org_id": org_id, "role_name": role_name}
+    if department_id:
+        metadata["department_id"] = department_id
+
     try:
-        metadata = {"org_id": org_id, "role_name": role_name}
-        if department_id:
-            metadata["department_id"] = department_id
             
         collection.upsert(
             documents=[jd_text],
@@ -91,7 +104,26 @@ async def embed_jd(position_id: int, org_id: int, department_id: Optional[int], 
         )
         logger.info(f"Embedded JD for position {position_id} (org {org_id})")
     except Exception as e:
-        logger.error(f"Failed to embed JD: {e}")
+        # Auto-recover from dimension mismatch (e.g. collection was created
+        # with 384-dim default embeddings, but now we're using 1536-dim OpenAI).
+        if "dimension" in str(e).lower():
+            logger.warning(f"Dimension mismatch in ChromaDB — recreating collection: {e}")
+            try:
+                client = get_chroma_client()
+                if client:
+                    client.delete_collection("job_descriptions")
+                new_collection = get_jd_collection()
+                if new_collection:
+                    new_collection.upsert(
+                        documents=[jd_text],
+                        metadatas=[metadata],
+                        ids=[f"pos_{position_id}"]
+                    )
+                    logger.info(f"Embedded JD for position {position_id} after collection reset")
+            except Exception as retry_err:
+                logger.error(f"Failed to embed JD after collection reset: {retry_err}")
+        else:
+            logger.error(f"Failed to embed JD: {e}")
 
 
 async def search_similar(query_text: str, org_id: int, department_id: Optional[int] = None, top_k: int = 3) -> list[dict]:
@@ -104,26 +136,28 @@ async def search_similar(query_text: str, org_id: int, department_id: Optional[i
 
     try:
         # Enforce tenant isolation (only search within the same org)
-        where_clause = {"org_id": org_id}
-        
         # Optional: Boost/filter by department if provided
         # Or we can just search the whole org. We'll search the whole org for internal check.
         
         results = collection.query(
             query_texts=[query_text],
             n_results=top_k,
-            where=where_clause
+            where={"org_id": org_id} # type: ignore
         )
         
         matched_jds = []
         if results and results.get("documents") and len(results["documents"]) > 0:
             docs = results["documents"][0]
-            metadatas = results["metadatas"][0]
-            distances = results["distances"][0] if "distances" in results else [0]*len(docs)
+            raw_metas = results.get("metadatas")
+            metadatas = raw_metas[0] if raw_metas else [{}] * len(docs)
+            
+            raw_dists = results.get("distances")
+            distances = raw_dists[0] if raw_dists else [0] * len(docs)
             
             for doc, meta, dist in zip(docs, metadatas, distances):
+                meta = meta or {}
                 matched_jds.append({
-                    "id": meta.get("id"), # Might not be in metadata if we used purely chromadb ID
+                    "id": meta.get("id"),
                     "role_name": meta.get("role_name", "Unknown Role"),
                     "department": meta.get("department_id"),
                     "text": doc,
@@ -142,9 +176,32 @@ async def delete_jd(position_id: int):
     collection = get_jd_collection()
     if not collection:
         return
-        
+
     try:
         collection.delete(ids=[f"pos_{position_id}"])
         logger.info(f"Deleted vector for position {position_id}")
     except Exception as e:
         logger.error(f"Failed to delete vector: {e}")
+
+
+def startup_probe() -> bool:
+    """Validate ChromaDB connectivity at startup.
+
+    Returns True when ready, False when gracefully absent (not installed).
+    Logs clearly so operators know vector search is degraded without crashing
+    the app — all vector call-sites already guard for None/empty returns.
+    """
+    if not HAS_CHROMA:
+        logger.warning("ChromaDB not installed — vector search disabled.")
+        return False
+    client = get_chroma_client()
+    if client is None:
+        logger.error("ChromaDB installed but client failed to initialize — vector search unavailable.")
+        return False
+    try:
+        client.heartbeat()
+        logger.info("ChromaDB startup probe: OK")
+        return True
+    except Exception as e:
+        logger.error(f"ChromaDB startup probe failed: {e} — vector search unavailable.")
+        return False

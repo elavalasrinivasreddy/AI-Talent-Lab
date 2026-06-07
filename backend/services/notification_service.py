@@ -98,12 +98,12 @@ class NotificationService:
         return [dict(r) for r in rows]
 
     @staticmethod
-    async def mark_read(org_id: int, notification_id: int) -> bool:
+    async def mark_read(org_id: int, user_id: int, notification_id: int) -> bool:
         """Mark a single notification as read."""
         async with get_connection() as conn:
             result = await conn.execute(
-                "UPDATE notifications SET is_read=TRUE WHERE id=$1 AND org_id=$2",
-                notification_id, org_id,
+                "UPDATE notifications SET is_read=TRUE WHERE id=$1 AND org_id=$2 AND user_id=$3",
+                notification_id, org_id, user_id,
             )
         return "UPDATE 1" in (result or "")
 

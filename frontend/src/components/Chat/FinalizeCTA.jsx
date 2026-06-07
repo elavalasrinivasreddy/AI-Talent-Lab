@@ -13,35 +13,27 @@ import { IconCheck, IconArrowRight } from './icons';
  * Spec: docs/design/pages/05_jd_chat.md §6.C.
  */
 export default function FinalizeCTA() {
-  const { workflowStage, finalJdMarkdown } = useChat();
+  const { workflowStage, finalJdMarkdown, isReadOnly } = useChat();
   const [open, setOpen] = useState(false);
 
   // Allow saving once we have a final JD — the orchestrator marks stage as
   // `complete` on explicit `finalize_jd`, but we let the user finalize as
   // soon as the JD exists, matching today's behavior.
-  const canFinalize = Boolean(finalJdMarkdown) && workflowStage !== 'intake';
+  // Disabled while position is pending approval or live (isReadOnly).
+  const canFinalize = Boolean(finalJdMarkdown) && workflowStage !== 'intake' && !isReadOnly;
   const isComplete = workflowStage === 'complete';
 
   return (
     <>
       <button
         type="button"
-        className="rail-finalize"
-        data-ready={canFinalize || undefined}
+        className="btn btn-secondary btn-sm"
         onClick={() => setOpen(true)}
         disabled={!canFinalize}
+        style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
       >
-        <span className="rail-finalize-icon" aria-hidden="true">
-          {isComplete ? <IconCheck size={14} /> : <IconArrowRight size={14} />}
-        </span>
-        <span className="rail-finalize-body">
-          <strong>Save &amp; find candidates</strong>
-          <small>
-            {canFinalize
-              ? 'Creates the position and starts sourcing.'
-              : 'Enabled once the JD is drafted.'}
-          </small>
-        </span>
+        {isComplete ? <IconCheck size={14} /> : null}
+        <span>Finalize JD</span>
       </button>
 
       <PositionSetupModal

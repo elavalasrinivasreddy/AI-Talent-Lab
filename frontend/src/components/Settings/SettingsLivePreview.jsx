@@ -39,7 +39,88 @@ const PREVIEW_CARDS = {
   ],
 }
 
-export default function SettingsLivePreview({ activeSection }) {
+export default function SettingsLivePreview({ activeSection, previewData }) {
+  if (activeSection === 'career-brand' && previewData) {
+    const { career_primary_color, career_banner_url, career_tagline, name } = previewData
+    const brandColor = career_primary_color || 'var(--color-primary)'
+    
+    return (
+      <div className="st-preview" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="st-preview-header" style={{ padding: 'var(--space-4)', borderBottom: '1px solid var(--color-border)' }}>
+          <Icon name="eye" size={14} />
+          <span>Live Career Page Preview</span>
+        </div>
+        
+        {/* Mini Career Page View */}
+        <div style={{ background: 'var(--color-bg-base)', height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          {/* Hero */}
+          <div 
+            style={{ 
+              height: 140,
+              padding: 16,
+              background: career_banner_url 
+                ? `linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.8)), url(${career_banner_url})` 
+                : `linear-gradient(135deg, ${brandColor}dd, ${brandColor})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'flex-end',
+              color: 'white'
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: 20, color: 'white', fontWeight: 700 }}>{name || 'Company Name'}</h3>
+            {career_tagline && <p style={{ margin: '4px 0 0 0', fontSize: 13, opacity: 0.9, lineHeight: 1.3 }}>{career_tagline}</p>}
+          </div>
+          
+          <div style={{ padding: 16, flex: 1 }}>
+            {/* Fake text block */}
+            <div style={{ width: '30%', height: 14, background: 'var(--color-bg-elevated)', borderRadius: 4, marginBottom: 12 }} />
+            <div style={{ width: '100%', height: 8, background: 'var(--color-border)', borderRadius: 4, marginBottom: 6 }} />
+            <div style={{ width: '90%', height: 8, background: 'var(--color-border)', borderRadius: 4, marginBottom: 6 }} />
+            <div style={{ width: '60%', height: 8, background: 'var(--color-border)', borderRadius: 4, marginBottom: 20 }} />
+            
+            <div style={{ width: '40%', height: 14, background: 'var(--color-bg-elevated)', borderRadius: 4, marginBottom: 12 }} />
+            
+            {/* Fake Job Card 1 */}
+            <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: 12, marginBottom: 12, background: 'var(--color-bg-surface)' }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Senior Engineer</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 8 }}>Engineering · Remote</div>
+              <div style={{ 
+                background: brandColor, 
+                color: 'white', 
+                fontSize: 10, 
+                fontWeight: 500,
+                padding: '4px 10px', 
+                borderRadius: 4,
+                display: 'inline-block' 
+              }}>
+                Apply via chat →
+              </div>
+            </div>
+            
+            {/* Fake Job Card 2 */}
+             <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: 12, background: 'var(--color-bg-surface)' }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Product Designer</div>
+              <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 8 }}>Design · Hybrid</div>
+              <div style={{ 
+                background: brandColor, 
+                color: 'white', 
+                fontSize: 10,
+                fontWeight: 500, 
+                padding: '4px 10px', 
+                borderRadius: 4,
+                display: 'inline-block' 
+              }}>
+                Apply via chat →
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const cards = PREVIEW_CARDS[activeSection] || []
 
   return (

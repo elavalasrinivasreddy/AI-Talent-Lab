@@ -1,0 +1,185 @@
+- generic [ref=e83]:
+  - complementary [ref=e84]:
+    - generic [ref=e85]:
+      - img [ref=e87]
+      - generic [ref=e91]:
+        - text: AI
+        - generic [ref=e92]: Talent
+        - text: Lab
+    - navigation [ref=e93]:
+      - generic [ref=e94]:
+        - generic [ref=e95]: Main
+        - button "New Hire" [ref=e96] [cursor=pointer]:
+          - img [ref=e98]
+          - text: New Hire
+        - link "Dashboard" [ref=e100] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e102]
+          - generic [ref=e107]: Dashboard
+      - generic [ref=e108]:
+        - generic [ref=e109]: Hiring
+        - link "Positions" [ref=e110] [cursor=pointer]:
+          - /url: /positions
+          - img [ref=e112]
+          - generic [ref=e115]: Positions
+        - link "Interviews" [ref=e116] [cursor=pointer]:
+          - /url: /interviews
+          - img [ref=e118]
+          - generic [ref=e120]: Interviews
+        - link "Hire Requests" [ref=e121] [cursor=pointer]:
+          - /url: /hire-requests
+          - img [ref=e123]
+          - generic [ref=e126]: Hire Requests
+        - link "Talent Pool" [ref=e127] [cursor=pointer]:
+          - /url: /talent-pool
+          - img [ref=e129]
+          - generic [ref=e134]: Talent Pool
+        - link "Analytics" [ref=e135] [cursor=pointer]:
+          - /url: /analytics
+          - img [ref=e137]
+          - generic [ref=e140]: Analytics
+      - generic [ref=e141]:
+        - generic [ref=e142]: System
+        - link "Settings" [ref=e143] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e145]
+          - generic [ref=e148]: Settings
+    - generic [ref=e150]:
+      - generic [ref=e151]: SR
+      - generic [ref=e152]:
+        - generic [ref=e153]: Srinivas Reddy
+        - generic [ref=e154]: TechCorp Demo
+      - button "Logout" [ref=e155] [cursor=pointer]:
+        - img [ref=e156]
+  - button "Notifications" [ref=e161] [cursor=pointer]: 🔔
+  - main [ref=e162]:
+    - generic [ref=e163]:
+      - generic [ref=e164]:
+        - generic [ref=e165]:
+          - heading "Good morning, Srinivas Org Head" [level=1] [ref=e166]:
+            - text: Good morning, Srinivas
+            - generic [ref=e167]: Org Head
+          - paragraph [ref=e168]: TechCorp Demo hiring overview
+        - generic [ref=e170]:
+          - button "Today" [ref=e171] [cursor=pointer]
+          - button "Week" [ref=e172] [cursor=pointer]
+          - button "Month" [ref=e173] [cursor=pointer]
+      - generic [ref=e174]:
+        - generic [ref=e175]:
+          - generic [ref=e177]: 💼
+          - generic [ref=e178]:
+            - generic [ref=e179]: "0"
+            - generic [ref=e180]: Open Positions
+        - generic [ref=e181]:
+          - generic [ref=e183]: 👥
+          - generic [ref=e184]:
+            - generic [ref=e185]: "0"
+            - generic [ref=e186]: Total Candidates
+        - generic [ref=e187]:
+          - generic [ref=e189]: 📋
+          - generic [ref=e190]:
+            - generic [ref=e191]: "0"
+            - generic [ref=e192]: Applications
+        - generic [ref=e193]:
+          - generic [ref=e195]: 🎯
+          - generic [ref=e196]:
+            - generic [ref=e197]: "0"
+            - generic [ref=e198]: Interviews
+        - generic [ref=e199]:
+          - generic [ref=e201]: 🎉
+          - generic [ref=e202]:
+            - generic [ref=e203]: "0"
+            - generic [ref=e204]: Offers
+        - generic [ref=e205]:
+          - generic [ref=e207]: ⏱
+          - generic [ref=e208]:
+            - generic [ref=e209]: —
+            - generic [ref=e210]: Avg. Time to Hire
+      - generic [ref=e211]:
+        - generic [ref=e212]:
+          - generic [ref=e213]:
+            - generic [ref=e214]:
+              - heading "Hiring Funnel" [level=3] [ref=e215]
+              - generic [ref=e216]: Org-wide
+            - generic [ref=e217]:
+              - generic [ref=e218]:
+                - generic [ref=e219]:
+                  - generic [ref=e220]: 🔍
+                  - generic [ref=e221]: Sourced
+                - generic [ref=e224]: "0"
+              - generic [ref=e225]:
+                - generic [ref=e226]: ↓
+                - generic [ref=e227]: 0%
+              - generic [ref=e228]:
+                - generic [ref=e229]:
+                  - generic [ref=e230]: 📧
+                  - generic [ref=e231]: Outreach
+                - generic [ref=e234]: "0"
+              - generic [ref=e235]:
+                - generic [ref=e236]: ↓
+                - generic [ref=e237]: 0%
+              - generic [ref=e238]:
+                - generic [ref=e239]:
+                  - generic [ref=e240]: 📋
+                  - generic [ref=e241]: Applied
+                - generic [ref=e244]: "0"
+              - generic [ref=e245]:
+                - generic [ref=e246]: ↓
+                - generic [ref=e247]: 0%
+              - generic [ref=e248]:
+                - generic [ref=e249]:
+                  - generic [ref=e250]: 🔎
+                  - generic [ref=e251]: Screening
+                - generic [ref=e254]: "0"
+              - generic [ref=e255]:
+                - generic [ref=e256]: ↓
+                - generic [ref=e257]: 0%
+              - generic [ref=e258]:
+                - generic [ref=e259]:
+                  - generic [ref=e260]: 🎙
+                  - generic [ref=e261]: Interview
+                - generic [ref=e264]: "0"
+              - generic [ref=e265]:
+                - generic [ref=e266]: ↓
+                - generic [ref=e267]: 0%
+              - generic [ref=e268]:
+                - generic [ref=e269]:
+                  - generic [ref=e270]: ✅
+                  - generic [ref=e271]: Selected
+                - generic [ref=e274]: "0"
+          - generic [ref=e275]:
+            - generic [ref=e276]:
+              - heading "All Open Positions" [level=3] [ref=e277]
+              - link "View all →" [ref=e278] [cursor=pointer]:
+                - /url: /positions
+            - generic [ref=e279]:
+              - generic [ref=e280]: 💼
+              - paragraph [ref=e281]: No open positions yet
+              - paragraph [ref=e282]: Create your first position to start hiring
+              - link "✨ Create position" [ref=e283] [cursor=pointer]:
+                - /url: /chat
+        - generic [ref=e284]:
+          - generic [ref=e285]:
+            - heading "Pipeline Health" [level=3] [ref=e286]
+            - generic [ref=e287]:
+              - generic [ref=e288]:
+                - generic [ref=e289]: "0"
+                - generic [ref=e290]: Candidates per position
+              - generic [ref=e291]:
+                - generic [ref=e292]: "0"
+                - generic [ref=e293]: Applications this period
+              - generic [ref=e294]:
+                - generic [ref=e295]: "0"
+                - generic [ref=e296]: Active positions
+          - generic [ref=e297]:
+            - heading "Activity Feed" [level=3] [ref=e298]
+            - generic [ref=e299]:
+              - generic [ref=e300]: 📋
+              - paragraph [ref=e301]: No recent activity
+              - paragraph [ref=e302]: Events appear as candidates move through the pipeline
+          - generic [ref=e303]:
+            - heading "Drafts" [level=3] [ref=e305]
+            - generic [ref=e306]:
+              - generic [ref=e307]: 📝
+              - paragraph [ref=e308]: No drafts yet.
+              - paragraph [ref=e309]: Save a JD as draft from the chat to resume it here.

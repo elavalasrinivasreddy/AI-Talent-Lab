@@ -3,6 +3,7 @@
  * Only functional when backend DEV_MODE=true.
  */
 import { useState, useEffect, useCallback } from 'react'
+import ConfirmModal from '../common/ConfirmModal'
 import './DevAdminPage.css'
 
 const API = '/api/v1/dev'
@@ -37,6 +38,7 @@ export default function DevAdminPage() {
   const [users, setUsers]             = useState([])
   const [loading, setLoading]         = useState(false)
   const [log, setLog]                 = useState([])
+  const [resetConfirmParams, setResetConfirmParams] = useState(null)
 
   const addLog = (msg, type = 'info') =>
     setLog(prev => [{ msg, type, time: new Date().toLocaleTimeString() }, ...prev.slice(0, 49)])
@@ -94,14 +96,23 @@ export default function DevAdminPage() {
 
   const handleTabChange = (tab) => setActiveTab(tab)
 
-  const handleReset = async (type, label) => {
-    if (!selectedOrgId) return addLog('Select an org first', 'error')
-    if (!window.confirm(`⚠️ This will permanently delete ${label}. Are you sure?`)) return
+  const handleReset = (type, label) => {
+    setResetConfirmParams({ type, label })
+  }
+
+  const executeReset = async () => {
+    if (!resetConfirmParams) return
+    const { type, label } = resetConfirmParams
+    setResetConfirmParams(null)
+    
+    const scopeLabel = selectedOrgId ? `for org ${selectedOrgId}` : `GLOBALLY for ALL ORGS`;
     setLoading(true)
     try {
-      await apiFetch(`/reset/${type}?org_id=${selectedOrgId}`, { method: 'DELETE' })
-      addLog(`✅ ${label} reset for org ${selectedOrgId}`, 'success')
+      const params = selectedOrgId ? `?org_id=${selectedOrgId}` : ''
+      await apiFetch(`/reset/${type}${params}`, { method: 'DELETE' })
+      addLog(`✅ ${label} reset ${scopeLabel}`, 'success')
       await loadStats()
+      await loadOrgs() // Refresh org dropdown list since orgs might have been deleted
     } catch (e) {
       addLog(`❌ Reset failed: ${e.message}`, 'error')
     } finally {
@@ -294,7 +305,7 @@ export default function DevAdminPage() {
           <div>
             {!selectedOrgId && (
               <div className="dev-warning-banner">
-                ⚠️ Select an org from the dropdown above before resetting data.
+                ⚠️ GLOBAL MODE: No org selected. Resetting here will delete data for ALL organizations.
               </div>
             )}
             <div className="dev-section-header">
@@ -305,25 +316,25 @@ export default function DevAdminPage() {
                 title="Chat Sessions" icon="💬"
                 desc="Delete all JD chat sessions and messages."
                 onClick={() => handleReset('chat-sessions', 'all chat sessions')}
-                loading={loading} disabled={!selectedOrgId}
+                loading={loading} disabled={false}
               />
               <ResetCard
                 title="Positions" icon="💼"
                 desc="Delete all positions, applications, pipeline events."
                 onClick={() => handleReset('positions', 'all positions')}
-                loading={loading} disabled={!selectedOrgId}
+                loading={loading} disabled={false}
               />
               <ResetCard
                 title="Notifications" icon="🔔"
                 desc="Clear all in-app notifications."
                 onClick={() => handleReset('notifications', 'all notifications')}
-                loading={loading} disabled={!selectedOrgId}
+                loading={loading} disabled={false}
               />
               <ResetCard
                 title="Reset All" icon="☢️" danger
                 desc="Nuclear: deletes everything except org, users, and departments."
                 onClick={() => handleReset('all', 'ALL business data')}
-                loading={loading} disabled={!selectedOrgId}
+                loading={loading} disabled={false}
               />
             </div>
           </div>
@@ -351,6 +362,16 @@ export default function DevAdminPage() {
         )}
 
       </div>
+
+      <ConfirmModal
+        isOpen={!!resetConfirmParams}
+        onClose={() => setResetConfirmParams(null)}
+        onConfirm={executeReset}
+        title="Confirm Reset"
+        message={`⚠️ This will permanently delete ${resetConfirmParams?.label} ${selectedOrgId ? `for org ${selectedOrgId}` : 'GLOBALLY for ALL ORGS'}. Are you sure?`}
+        confirmText="Reset Data"
+        confirmVariant="danger"
+      />
     </div>
   )
 }

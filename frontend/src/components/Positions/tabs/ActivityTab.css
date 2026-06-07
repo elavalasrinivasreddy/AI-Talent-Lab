@@ -1,43 +1,149 @@
-/* ActivityTab.css */
-.act-timeline { display: flex; flex-direction: column; gap: var(--space-2); }
+/* ActivityTab.css - Vertical Timeline Design */
+.act-timeline {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) 0;
+  position: relative;
+}
+
+/* The vertical connecting line */
+.act-timeline::before {
+  content: '';
+  position: absolute;
+  top: var(--space-4);
+  bottom: var(--space-4);
+  left: 20px; /* Aligns with the center of the nodes */
+  width: 2px;
+  background-color: var(--color-border);
+  z-index: 0;
+}
 
 .act-event {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  gap: var(--space-4);
+  position: relative;
+  z-index: 1;
+  padding-bottom: var(--space-6);
+}
+
+.act-event:last-child {
+  padding-bottom: 0;
+}
+
+/* Timeline Node */
+.act-node {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--color-bg-surface);
+  border: 2px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  z-index: 2;
+  box-shadow: 0 0 0 4px var(--color-bg-base);
+  transition: all var(--transition-fast);
+}
+
+.act-event:hover .act-node {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-bg);
+  transform: scale(1.05);
+}
+
+/* Content Box */
+.act-content-box {
+  flex: 1;
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  transition: background var(--transition-fast);
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
-.act-event:hover { background: var(--color-bg-hover); }
 
-.act-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
-.act-body { flex: 1; min-width: 0; }
-.act-main { font-size: var(--font-size-sm); color: var(--color-text-primary); margin-bottom: 2px; }
-.act-type { font-weight: 600; }
-.act-candidate { color: var(--color-primary); }
-.act-user { color: var(--color-text-muted); }
-.act-detail { font-size: 12px; color: var(--color-text-secondary); }
-.act-detail strong { color: var(--color-text-primary); }
-.act-time { font-size: 11px; color: var(--color-text-muted); flex-shrink: 0; white-space: nowrap; margin-top: 2px; }
+.act-event:hover .act-content-box {
+  border-color: var(--color-border-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.act-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.act-main {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+.act-type {
+  font-weight: 600;
+}
+
+.act-candidate {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.act-user {
+  color: var(--color-text-muted);
+}
+
+.act-time-badge {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-bg-surface);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.act-detail {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+.act-detail strong {
+  color: var(--color-text-primary);
+}
 
 .act-empty {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 280px;
-  gap: var(--space-3); text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  gap: var(--space-3);
+  text-align: center;
 }
+
 .act-empty span { font-size: 2.5rem; }
 .act-empty h3 { font-size: var(--font-size-lg); color: var(--color-text-primary); margin: 0; }
 .act-empty p { margin: 0; color: var(--color-text-muted); }
 
-.act-skeleton {}
+.act-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+}
+
 .skeleton-block {
   background: linear-gradient(90deg, var(--color-bg-card) 25%, var(--color-bg-hover) 50%, var(--color-bg-card) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }

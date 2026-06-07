@@ -10,14 +10,14 @@ const VARIANT_LABELS = {
 };
 
 export default function AgentBlockVariants() {
-  const { variantsCard, sendMessage, isStreaming, graphState } = useChat();
+  const { variantsCard, sendMessage, isStreaming, graphState, isReadOnly } = useChat();
   const [editing, setEditing] = useState(null);     // variant_type currently being edited
   const [draftSummary, setDraftSummary] = useState('');
   const [refinement, setRefinement] = useState('');
 
   const variants = variantsCard?.variants || [];
   const alreadySelected = graphState?.selected_variant || variantsCard?.selected || null;
-  const isLocked = Boolean(alreadySelected);
+  const isLocked = Boolean(alreadySelected) || isReadOnly;
 
   if (!variants.length) return null;
 
@@ -141,22 +141,25 @@ export default function AgentBlockVariants() {
       </div>
 
       {!isLocked && (
-        <div className="variant-regenerate">
+        <div className="variant-refine-bar">
           <input
             type="text"
-            className="variant-regenerate-input"
-            placeholder="Optional refinement (e.g. 'make Hybrid more senior-leaning')"
+            className="variant-refine-input"
+            placeholder="Refine all variants (e.g. 'make more senior-leaning', 'emphasise remote-first')"
             value={refinement}
             onChange={(e) => setRefinement(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !isStreaming) onRegenerate(); }}
             disabled={isStreaming}
           />
           <button
             type="button"
-            className="btn btn--sm btn--ghost"
+            className="variant-refine-btn"
             disabled={isStreaming}
             onClick={onRegenerate}
+            title="Regenerate variants"
           >
-            Regenerate variants
+            <IconArrowRight size={13} />
+            Regenerate
           </button>
         </div>
       )}

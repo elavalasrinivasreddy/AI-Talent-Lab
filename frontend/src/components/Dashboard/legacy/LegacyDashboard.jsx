@@ -12,6 +12,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
 import { dashboardApi, copilotApi, positionsApi, hireRequestsApi } from '../../../utils/api'
 import StatusBadge from '../../common/StatusBadge'
+import { timeAgo } from '../../../utils/date'
 import './LegacyDashboard.css'
 
 export default function LegacyDashboard() {
@@ -455,26 +456,32 @@ function HireRequestsQueue({ requests, navigate, onAccepted }) {
 function MyHireRequests({ requests, onCancelled }) {
   const [cancelling, setCancelling] = useState(null)
   const [approving, setApproving] = useState(null)
+  const [changesOpenId, setChangesOpenId] = useState(null)
+  const [changesNotes, setChangesNotes] = useState({})
 
   const handleCancel = async (id) => {
     setCancelling(id)
     try {
-      await positionsApi.cancelRequest(id)
+      await hireRequestsApi.cancel(id)
       onCancelled()
     } catch {
       setCancelling(null)
     }
   }
 
-  const handleApproval = async (req, decision) => {
+  const handleApproval = async (req, decision, notes = '') => {
+    if (decision === 'changes_requested' && !notes.trim()) return
     setApproving(`${req.id}-${decision}`)
     try {
-      await positionsApi.approvalDecision(req.position_id, decision)
+      await positionsApi.approvalDecision(req.position_id, decision, notes)
+      setChangesOpenId(null)
+      setChangesNotes(prev => { const n = { ...prev }; delete n[req.id]; return n })
       onCancelled() // reload
     } catch {
       setApproving(null)
     }
   }
+
 
   const lifecycleLabel = (req) => {
     if (req.status === 'cancelled') return { text: 'Cancelled', color: 'var(--color-text-secondary)' }
@@ -538,28 +545,68 @@ function MyHireRequests({ requests, onCancelled }) {
 
               {/* JD approval actions */}
               {needsApproval && (
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button
-                    className="btn btn-primary"
-                    style={{ fontSize: 11, padding: '4px 10px', flex: 1 }}
-                    onClick={() => handleApproval(req, 'approved')}
-                    disabled={!!approving}
-                  >
-                    {approving === `${req.id}-approved` ? '…' : 'Approve JD'}
-                  </button>
-                  <button
-                    style={{
-                      fontSize: 11, padding: '4px 10px', flex: 1, borderRadius: 6,
-                      background: 'transparent', border: '1px solid var(--color-border)',
-                      cursor: 'pointer', color: 'var(--color-text-secondary)',
-                    }}
-                    onClick={() => handleApproval(req, 'changes_requested')}
-                    disabled={!!approving}
-                  >
-                    {approving === `${req.id}-changes_requested` ? '…' : 'Request Changes'}
-                  </button>
-                </div>
+                changesOpenId === req.id ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <textarea
+                      rows={2}
+                      placeholder="Describe what needs to be changed in the JD…"
+                      value={changesNotes[req.id] || ''}
+                      onChange={e => setChangesNotes(prev => ({ ...prev, [req.id]: e.target.value }))}
+                      style={{
+                        width: '100%', padding: '6px 8px', fontSize: 12,
+                        borderRadius: 6, border: '1px solid rgba(239,68,68,0.4)',
+                        background: 'var(--color-bg-primary)', fontFamily: 'inherit',
+                        color: 'var(--color-text-primary)', resize: 'none', boxSizing: 'border-box',
+                      }}
+                      autoFocus
+                    />
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        className="btn btn-primary"
+                        style={{ fontSize: 11, padding: '4px 10px', flex: 1, background: '#EF4444', borderColor: '#EF4444' }}
+                        onClick={() => handleApproval(req, 'changes_requested', changesNotes[req.id] || '')}
+                        disabled={!!approving || !(changesNotes[req.id] || '').trim()}
+                      >
+                        {approving === `${req.id}-changes_requested` ? '…' : 'Send Feedback'}
+                      </button>
+                      <button
+                        style={{
+                          fontSize: 11, padding: '4px 10px', borderRadius: 6, flex: 1,
+                          background: 'transparent', border: '1px solid var(--color-border)',
+                          cursor: 'pointer', color: 'var(--color-text-secondary)',
+                        }}
+                        onClick={() => setChangesOpenId(null)}
+                        disabled={!!approving}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      className="btn btn-primary"
+                      style={{ fontSize: 11, padding: '4px 10px', flex: 1 }}
+                      onClick={() => handleApproval(req, 'approved')}
+                      disabled={!!approving}
+                    >
+                      {approving === `${req.id}-approved` ? '…' : 'Approve JD'}
+                    </button>
+                    <button
+                      style={{
+                        fontSize: 11, padding: '4px 10px', flex: 1, borderRadius: 6,
+                        background: 'transparent', border: '1px solid rgba(239,68,68,0.4)',
+                        cursor: 'pointer', color: '#EF4444',
+                      }}
+                      onClick={() => setChangesOpenId(req.id)}
+                      disabled={!!approving}
+                    >
+                      Request Changes
+                    </button>
+                  </div>
+                )
               )}
+
 
               {/* Cancel option for pending requests */}
               {req.status === 'pending' && (
@@ -608,7 +655,7 @@ function HireRequestModal({ onClose, onSubmitted }) {
     setSaving(true)
     setError('')
     try {
-      await positionsApi.submitRequest({
+      await hireRequestsApi.create({
         ...form,
         headcount: parseInt(form.headcount) || 1,
         experience_min: form.experience_min ? parseInt(form.experience_min) : null,
@@ -1102,16 +1149,6 @@ function formatEvent(evt) {
   return t.replace(/_/g, ' ')
 }
 
-function timeAgo(dateStr) {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  return `${days}d ago`
-}
 
 // ── AI Copilot Bar ──────────────────────────────────────────────────────────
 

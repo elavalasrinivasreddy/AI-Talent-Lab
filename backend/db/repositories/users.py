@@ -27,10 +27,12 @@ class UserRepository:
             INSERT INTO users (org_id, email, password_hash, name, role, department_id, phone)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING id, org_id, email, name, role, phone, avatar_url, timezone,
-                      is_active, department_id, created_at
+                      is_active, department_id, auto_approve_jds, notification_preferences, last_login_at, created_at
             """,
             org_id, email, password_hash, name, role, department_id, phone,
         )
+        if not row:
+            raise RuntimeError("Database INSERT returned no rows. Schema migration may be pending.")
         return dict(row)
 
     @staticmethod
@@ -39,7 +41,7 @@ class UserRepository:
         row = await conn.fetchrow(
             """
             SELECT id, org_id, email, name, role, phone, avatar_url, timezone,
-                   is_active, department_id, failed_login_attempts, locked_until,
+                   is_active, department_id, auto_approve_jds, notification_preferences, failed_login_attempts, locked_until,
                    last_login_at, created_at
             FROM users WHERE id = $1 AND org_id = $2
             """,
@@ -53,7 +55,7 @@ class UserRepository:
         row = await conn.fetchrow(
             """
             SELECT id, org_id, email, password_hash, name, role, phone, avatar_url,
-                   timezone, is_active, department_id, failed_login_attempts,
+                   timezone, is_active, department_id, auto_approve_jds, notification_preferences, failed_login_attempts,
                    locked_until, last_login_at, created_at
             FROM users WHERE email = $1
             """,
@@ -62,16 +64,30 @@ class UserRepository:
         return dict(row) if row else None
 
     @staticmethod
-    async def list_by_org(conn: asyncpg.Connection, org_id: int) -> List[dict]:
-        """List all users in an org."""
-        rows = await conn.fetch(
-            """
-            SELECT id, org_id, email, name, role, phone, avatar_url, timezone,
-                   is_active, department_id, created_at
-            FROM users WHERE org_id = $1 ORDER BY created_at DESC
-            """,
-            org_id,
-        )
+    async def list_by_org(
+        conn: asyncpg.Connection,
+        org_id: int,
+        department_id: Optional[int] = None,
+    ) -> List[dict]:
+        """List users in an org, optionally scoped to a single department."""
+        if department_id is not None:
+            rows = await conn.fetch(
+                """
+                SELECT id, org_id, email, name, role, phone, avatar_url, timezone,
+                       is_active, department_id, auto_approve_jds, notification_preferences, last_login_at, created_at
+                FROM users WHERE org_id = $1 AND department_id = $2 ORDER BY created_at DESC
+                """,
+                org_id, department_id,
+            )
+        else:
+            rows = await conn.fetch(
+                """
+                SELECT id, org_id, email, name, role, phone, avatar_url, timezone,
+                       is_active, department_id, auto_approve_jds, notification_preferences, last_login_at, created_at
+                FROM users WHERE org_id = $1 ORDER BY created_at DESC
+                """,
+                org_id,
+            )
         return [dict(r) for r in rows]
 
     @staticmethod
@@ -96,7 +112,7 @@ class UserRepository:
             UPDATE users SET {', '.join(set_clauses)}
             WHERE id = ${len(values) - 1} AND org_id = ${len(values)}
             RETURNING id, org_id, email, name, role, phone, avatar_url, timezone,
-                      is_active, department_id, created_at
+                      is_active, department_id, auto_approve_jds, notification_preferences, last_login_at, created_at
         """
         row = await conn.fetchrow(query, *values)
         return dict(row) if row else None

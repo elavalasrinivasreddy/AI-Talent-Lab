@@ -10,6 +10,7 @@ import {
 import {
   ArrowLeftIcon, AlertIcon, SpinnerIcon, CheckIcon, XIcon,
 } from './icons'
+import ConfirmModal from '../common/ConfirmModal'
 import './HireRequests.css'
 
 /**
@@ -24,8 +25,11 @@ export default function HireRequestDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(null)
+  const [approveOpen, setApproveOpen] = useState(false)
+  const [approveNote, setApproveNote] = useState('')
   const [rejectOpen, setRejectOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [cancelModalOpen, setCancelModalOpen] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -62,14 +66,16 @@ export default function HireRequestDetailPage() {
 
   const canEdit = (isOwner || isAdmin) && req.status === 'pending'
   const canCancel = (isOwner || isAdmin) && !['cancelled', 'fulfilled', 'rejected'].includes(req.status)
-  const canPickup = isRecruiter && req.status === 'approved'
+  const canPickup = isRecruiter && ['approved', 'approved_modified'].includes(req.status)
   const canApprove = isAdmin && req.status === 'pending'
 
   const handleApprove = async () => {
     setBusy('approve')
     try {
-      const res = await hireRequestsApi.approve(req.id)
+      const res = await hireRequestsApi.approve(req.id, approveNote.trim() || undefined)
       setReq(res?.request || null)
+      setApproveOpen(false)
+      setApproveNote('')
       setError('')
     } catch (err) {
       setError(err?.message || 'Couldn\'t approve request.')
@@ -127,8 +133,11 @@ export default function HireRequestDetailPage() {
     }
   }
 
-  const handleCancel = async () => {
-    if (!window.confirm('Cancel this hire request? You can\'t undo this.')) return
+  const handleCancel = () => {
+    setCancelModalOpen(true)
+  }
+
+  const confirmCancel = async () => {
     setBusy('cancel')
     try {
       await hireRequestsApi.cancel(req.id)
@@ -158,6 +167,15 @@ export default function HireRequestDetailPage() {
       </header>
 
       <RelayVisualization request={req} />
+
+      {req.notes && (
+        <div className="hr-banner" style={{ backgroundColor: 'var(--color-surface)', borderLeft: '4px solid var(--color-primary)', marginTop: '24px' }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--color-text)' }}>Edit Notes</h3>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-secondary)', whiteSpace: 'pre-wrap' }}>
+            {req.notes}
+          </p>
+        </div>
+      )}
 
       {error && (
         <div className="hr-banner tone-danger" role="alert">
@@ -207,7 +225,7 @@ export default function HireRequestDetailPage() {
               </li>
             </ul>
             {req.position_id && (
-              <Link to={`/positions/${req.position_id}`} className="hr-btn hr-btn-secondary hr-btn-block">
+              <Link to={`/positions/${req.position_id}/jd`} className="hr-btn hr-btn-secondary hr-btn-block">
                 Open position →
               </Link>
             )}
@@ -219,16 +237,60 @@ export default function HireRequestDetailPage() {
             {/* dept_admin / org_head: approve or reject while pending */}
             {canApprove && (
               <>
-                <button
-                  type="button"
-                  className="hr-btn hr-btn-primary hr-btn-block"
-                  onClick={handleApprove}
-                  disabled={busy !== null}
-                >
-                  {busy === 'approve' ? <><SpinnerIcon /> Approving…</> : <><CheckIcon /> Approve request</>}
-                </button>
+                {!approveOpen && !rejectOpen && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                    <button
+                      type="button"
+                      className="hr-btn hr-btn-primary"
+                      onClick={() => setApproveOpen(true)}
+                      disabled={busy !== null}
+                    >
+                      <CheckIcon /> Approve request
+                    </button>
+                    <button
+                      type="button"
+                      className="hr-btn hr-btn-danger"
+                      onClick={() => setRejectOpen(true)}
+                      disabled={busy !== null}
+                    >
+                      <XIcon /> Reject request
+                    </button>
+                  </div>
+                )}
 
-                {rejectOpen ? (
+                {approveOpen && (
+                  <div className="hr-reject-inline">
+                    <label className="hr-reject-label">Approval note (optional)</label>
+                    <textarea
+                      className="hr-reject-textarea"
+                      rows={3}
+                      value={approveNote}
+                      onChange={e => setApproveNote(e.target.value)}
+                      placeholder="Any notes for the team lead or recruiter…"
+                      autoFocus
+                    />
+                    <div className="hr-reject-actions">
+                      <button
+                        type="button"
+                        className="hr-btn hr-btn-primary"
+                        onClick={handleApprove}
+                        disabled={busy !== null}
+                      >
+                        {busy === 'approve' ? <><SpinnerIcon /> Approving…</> : 'Confirm approval'}
+                      </button>
+                      <button
+                        type="button"
+                        className="hr-btn hr-btn-ghost"
+                        onClick={() => { setApproveOpen(false); setApproveNote('') }}
+                        disabled={busy !== null}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {rejectOpen && (
                   <div className="hr-reject-inline">
                     <label className="hr-reject-label">Reason for rejection</label>
                     <textarea
@@ -258,15 +320,6 @@ export default function HireRequestDetailPage() {
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="hr-btn hr-btn-ghost-danger hr-btn-block"
-                    onClick={() => setRejectOpen(true)}
-                    disabled={busy !== null}
-                  >
-                    <XIcon /> Reject request
-                  </button>
                 )}
               </>
             )}
@@ -280,6 +333,35 @@ export default function HireRequestDetailPage() {
                 disabled={busy !== null}
               >
                 {busy === 'pickup' ? <><SpinnerIcon /> Picking up…</> : <><CheckIcon /> Pick up & start JD chat</>}
+              </button>
+            )}
+
+            {/* HR / org_head: resume JD chat if picked up but position not created yet */}
+            {isRecruiter && req.status === 'accepted' && !req.position_id && (
+              <button
+                type="button"
+                className="hr-btn hr-btn-primary hr-btn-block"
+                onClick={() => navigate('/chat', {
+                  state: {
+                    hireRequest: {
+                      id: req.id,
+                      role_name: req.role_name,
+                      department_name: req.department_name,
+                      headcount: req.headcount,
+                      work_type: req.work_type,
+                      location: req.location,
+                      experience_min: req.experience_min,
+                      experience_max: req.experience_max,
+                      comp_min: req.comp_min,
+                      comp_max: req.comp_max,
+                      target_start: req.target_start,
+                      requirements: req.requirements,
+                      requested_by_name: req.requested_by_name,
+                    },
+                  },
+                })}
+              >
+                <CheckIcon /> Resume JD chat
               </button>
             )}
 
@@ -298,7 +380,7 @@ export default function HireRequestDetailPage() {
                 {busy === 'cancel' ? <><SpinnerIcon /> Cancelling…</> : <><XIcon /> Cancel request</>}
               </button>
             )}
-            {!canApprove && !canPickup && !canEdit && !canCancel && (
+            {!canApprove && !canPickup && !canEdit && !canCancel && !(isRecruiter && req.status === 'accepted' && !req.position_id) && (
               <p className="hr-side-empty">No actions available for this request.</p>
             )}
 
@@ -312,6 +394,16 @@ export default function HireRequestDetailPage() {
           </div>
         </aside>
       </div>
+
+      <ConfirmModal
+        isOpen={cancelModalOpen}
+        onClose={() => setCancelModalOpen(false)}
+        onConfirm={confirmCancel}
+        title="Cancel Hire Request"
+        message="Are you sure you want to cancel this hire request? You cannot undo this action."
+        confirmText="Yes, Cancel Request"
+        confirmVariant="danger"
+      />
     </div>
   )
 }

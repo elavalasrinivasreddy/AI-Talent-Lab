@@ -1,5 +1,35 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { useAuth } from './AuthContext';
+
+/**
+ * Item 15: Dynamic greeting — replaces static GREETING constant.
+ * Uses time-of-day, user name, and session context.
+ */
+function buildGreeting(user, locationState, sessionData) {
+    const hour = new Date().getHours();
+    let timeGreet = 'Hi';
+    if (hour >= 5 && hour < 12) timeGreet = 'Good morning';
+    else if (hour >= 12 && hour < 17) timeGreet = 'Good afternoon';
+    else if (hour >= 17 && hour < 22) timeGreet = 'Good evening';
+
+    const firstName = user?.name?.split(' ')[0];
+    const nameGreet = firstName ? `${timeGreet}, ${firstName}!` : `${timeGreet}!`;
+
+    // Context-aware greeting body.
+    // Note: the greeting is intentionally identical for the "New Hire" tab and the
+    // hire-request pickup — a SaaS product should feel consistent across entry points.
+    // The only contextual variant is a session resumed for revision.
+    let body;
+    if (sessionData?.position_status === 'draft_needs_revision') {
+        body = `Your JD has feedback from the reviewer. Let's revise it together.`;
+    } else {
+        body = `Tell me about the role you're hiring for. I'll help you craft the perfect job description.`;
+    }
+
+    return { role: 'assistant', content: `${nameGreet} ${body}`, isComplete: true };
+}
+
+const DEFAULT_GREETING = { role: 'assistant', content: "Hi! Tell me about the role you're hiring for.", isComplete: true };
 
 const ChatContext = createContext();
 
@@ -14,9 +44,11 @@ export const ChatProvider = ({ children }) => {
     const [sessionTitle, setSessionTitle] = useState('New Hire');
     const [isTitleAnimating, setIsTitleAnimating] = useState(false);
 
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState([DEFAULT_GREETING]);
     const [isStreaming, setIsStreaming] = useState(false);
     const [workflowStage, setWorkflowStage] = useState('intake');
+    const [isReadOnly, setIsReadOnly] = useState(false);
+    const [readOnlyReason, setReadOnlyReason] = useState(null);
 
     // ── Interactive card states ────────────────────────────────
     const [internalCard, setInternalCard] = useState(null);
@@ -30,15 +62,20 @@ export const ChatProvider = ({ children }) => {
     const [stageSkipped, setStageSkipped] = useState([]); // stages soft-skipped during this session
     const [graphState, setGraphState] = useState({});     // mirror of backend graph_state_parsed (for intake block etc.)
     const [error, setError] = useState(null);
+    const [sessionLoaded, setSessionLoaded] = useState(false);
+    const abortControllerRef = useRef(null);
 
     // ── Reset all chat state ──────────────────────────────────
-    const resetChat = useCallback(() => {
+    const resetChat = useCallback((user, locationState, sessionData = null) => {
         setCurrentSessionId(null);
         setSessionTitle('New Hire');
-        // Greeting comes from backend on first session fetch — no longer hardcoded here.
-        setMessages([]);
+        // Item 15: Dynamic greeting based on context
+        const greeting = buildGreeting(user, locationState, sessionData);
+        setMessages([greeting]);
         setIsStreaming(false);
         setWorkflowStage('intake');
+        setIsReadOnly(false);
+        setReadOnlyReason(null);
         setInternalCard(null);
         setMarketCard(null);
         setVariantsCard(null);
@@ -50,6 +87,7 @@ export const ChatProvider = ({ children }) => {
         setStageSkipped([]);
         setGraphState({});
         setError(null);
+        setSessionLoaded(true);
     }, []);
 
     // ── Fetch sessions list ───────────────────────────────────
@@ -71,6 +109,7 @@ export const ChatProvider = ({ children }) => {
     // ── Load a specific session ───────────────────────────────
     const loadSession = useCallback(async (sessionId) => {
         if (!token) return;
+        setSessionLoaded(false);
         // Reset all card states on load
         setInternalCard(null);
         setMarketCard(null);
@@ -89,22 +128,45 @@ export const ChatProvider = ({ children }) => {
                 setCurrentSessionId(data.id);
                 setSessionTitle(data.title || 'New Hire');
                 setWorkflowStage(data.workflow_stage || 'intake');
+                
+                // Read-only when position is submitted for approval (approval_status='pending')
+                // or already live (status not in editable set: draft/jd_in_progress/rejected/draft_needs_revision).
+                const pendingApproval = data.position_approval_status === 'pending';
+                const statusLocked = data.position_status && !['draft', 'jd_in_progress', 'draft_needs_revision'].includes(data.position_status);
+                setIsReadOnly(pendingApproval || !!statusLocked);
+                
+                if (pendingApproval) {
+                    setReadOnlyReason('pending_approval');
+                } else if (data.position_approval_status === 'approved' || data.position_status === 'open') {
+                    setReadOnlyReason('approved_and_open');
+                } else if (statusLocked) {
+                    setReadOnlyReason('locked');
+                } else {
+                    setReadOnlyReason(null);
+                }
 
                 // Restore messages from DB
                 const dbMessages = (data.messages || []).map(m => ({
                     role: m.role,
                     content: m.content,
-                    isComplete: true
+                    isComplete: true,
+                    // Item 14: Preserve message_type for feedback_injection rendering
+                    message_type: m.message_type || null,
+                    revision_cycle: m.revision_cycle || null,
                 }));
-                setMessages(dbMessages);
+                if (dbMessages.length === 0 && (!data.workflow_stage || data.workflow_stage === 'intake')) {
+                    setMessages([buildGreeting(null, null, data)]);
+                } else {
+                    setMessages(dbMessages);
+                }
 
                 // Restore interactive cards from graph_state_parsed
                 // Show cards even if already acted upon (they render in dismissed state)
                 const gs = data.graph_state_parsed || {};
                 setGraphState(gs);
 
-                // Internal check card — show if data exists
-                if (gs.internal_skills_found?.length) {
+                // Internal check card — show if stage reached and user hasn't acted yet
+                if (Array.isArray(gs.internal_skills_found) && !gs.internal_skipped && !(gs.internal_skills_accepted?.length)) {
                     setInternalCard(gs.internal_skills_found);
                 }
 
@@ -143,16 +205,17 @@ export const ChatProvider = ({ children }) => {
                 if (gs.bias_skipped) skips.push('bias_check');
                 setStageSkipped(skips);
             } else if (res.status === 404) {
-                // Session doesn't exist yet — fresh chat. Backend creates it
-                // (with greeting) on the first POST /chat/stream call.
                 setCurrentSessionId(sessionId);
-                setMessages([]);
+                setMessages([buildGreeting(null, null)]);
                 setWorkflowStage('intake');
                 setSessionTitle('New Hire');
             }
         } catch (err) {
             console.error("Failed to load session", err);
             setCurrentSessionId(sessionId);
+            setMessages([DEFAULT_GREETING]);
+        } finally {
+            setSessionLoaded(true);
         }
     }, [token]);
 
@@ -166,6 +229,19 @@ export const ChatProvider = ({ children }) => {
             if (res.ok) {
                 const data = await res.json();
                 if (data.graph_state_parsed) setGraphState(data.graph_state_parsed);
+                // #132: keep read-only state reactive (e.g. TL approves while chat is open)
+                const pendingApproval = data.position_approval_status === 'pending';
+                const statusLocked = data.position_status && !['draft', 'jd_in_progress', 'draft_needs_revision'].includes(data.position_status);
+                setIsReadOnly(pendingApproval || !!statusLocked);
+                if (pendingApproval) {
+                    setReadOnlyReason('pending_approval');
+                } else if (data.position_approval_status === 'approved' || data.position_status === 'open') {
+                    setReadOnlyReason('approved_and_open');
+                } else if (statusLocked) {
+                    setReadOnlyReason('locked');
+                } else {
+                    setReadOnlyReason(null);
+                }
             }
         } catch {
             // Silent — best-effort refresh
@@ -198,6 +274,12 @@ export const ChatProvider = ({ children }) => {
         setError(null);
         setIsStreaming(true);
 
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         let activeSessionId = currentSessionId;
 
         // Generate session ID on first message (not on page load)
@@ -214,7 +296,7 @@ export const ChatProvider = ({ children }) => {
         }
 
         // Reset streaming JD text if we're generating a new one
-        if (payload.action === 'select_variant' || payload.action === 'rewrite_section') {
+        if (payload.action === 'select_variant' || payload.action === 'rewrite_section' || (workflowStage === 'final_jd' && payload.message)) {
             setStreamingJdText('');
             setFinalJdMarkdown(null);
             setIsJdStreaming(true);
@@ -233,7 +315,8 @@ export const ChatProvider = ({ children }) => {
                 body: JSON.stringify({
                     session_id: activeSessionId,
                     ...payload
-                })
+                }),
+                signal: controller.signal,
             });
 
             if (!response.ok) {
@@ -273,13 +356,17 @@ export const ChatProvider = ({ children }) => {
                 }
             }
         } catch (err) {
-            console.error("Streaming error:", err);
-            setError("Connection interrupted. Please try again.");
+            if (err.name !== 'AbortError') {
+                console.error("Streaming error:", err);
+                setError("Connection interrupted. Please try again.");
+            }
         } finally {
-            setIsStreaming(false);
-            setIsJdStreaming(false);
-            // Refresh sidebar sessions after any stream completes
-            fetchSessions();
+            if (abortControllerRef.current === controller) {
+                abortControllerRef.current = null;
+                setIsStreaming(false);
+                setIsJdStreaming(false);
+                fetchSessions();
+            }
         }
     }, [currentSessionId, token, fetchSessions]);
 
@@ -395,9 +482,9 @@ export const ChatProvider = ({ children }) => {
 
     const value = {
         sessions, fetchSessions,
-        currentSessionId, loadSession, setCurrentSessionId,
+        currentSessionId, loadSession, setCurrentSessionId, sessionLoaded,
         sessionTitle, setSessionTitle, isTitleAnimating,
-        messages, workflowStage, isStreaming, error,
+        messages, workflowStage, isStreaming, error, isReadOnly, readOnlyReason,
         sendMessage, deleteSession, resetChat,
         internalCard, setInternalCard, dismissInternalCard,
         marketCard, setMarketCard, dismissMarketCard,
