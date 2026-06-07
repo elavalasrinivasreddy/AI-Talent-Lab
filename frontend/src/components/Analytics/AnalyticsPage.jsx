@@ -8,6 +8,7 @@ import { AgentROIHero } from './AgentROIHero'
 import { DualFunnel } from './DualFunnel'
 import { BottleneckRadar } from './BottleneckRadar'
 import { RecruiterLeaderboard } from './RecruiterLeaderboard'
+import OpsTab from './OpsTab'
 import './AnalyticsPage.css'
 
 const PERIODS = [
@@ -19,6 +20,7 @@ const PERIODS = [
 
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState('week')
+  const [tab, setTab] = useState('roi')
   const [kpiData, setKpiData] = useState(null)
   const [roiData, setRoiData] = useState(null)
   const [recruiterData, setRecruiterData] = useState(null)
@@ -49,19 +51,42 @@ export default function AnalyticsPage() {
     <div className="analytics-page">
       <div className="analytics-header">
         <div>
-          <h1 className="analytics-title">Agent ROI Dashboard</h1>
-          <p className="analytics-subtitle">Measure the impact and efficiency of AI vs Human operations</p>
+          <h1 className="analytics-title">Analytics</h1>
+          <p className="analytics-subtitle">
+            {tab === 'roi'
+              ? 'AI contribution, pipeline health, and team throughput'
+              : 'Task health, LLM cost, and JD generation metrics'}
+          </p>
         </div>
-        <div className="analytics-period-switcher">
-          {PERIODS.map(p => (
+        <div className="analytics-header-right">
+          <div className="analytics-tabs">
             <button
-              key={p.value}
-              className={`analytics-period-btn${period === p.value ? ' active' : ''}`}
-              onClick={() => setPeriod(p.value)}
+              type="button"
+              className={`analytics-tab${tab === 'roi' ? ' active' : ''}`}
+              onClick={() => setTab('roi')}
             >
-              {p.label}
+              Agent ROI
             </button>
-          ))}
+            <button
+              type="button"
+              className={`analytics-tab${tab === 'ops' ? ' active' : ''}`}
+              onClick={() => setTab('ops')}
+            >
+              System Health
+            </button>
+          </div>
+          <div className="analytics-period-switcher">
+            {PERIODS.map(p => (
+              <button
+                key={p.value}
+                type="button"
+                className={`analytics-period-btn${period === p.value ? ' active' : ''}`}
+                onClick={() => setPeriod(p.value)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -71,26 +96,28 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {loading ? (
-        <AnalyticsSkeleton />
+      {tab === 'roi' ? (
+        loading ? (
+          <AnalyticsSkeleton />
+        ) : (
+          <>
+            <AgentROIHero data={roiData} loading={loading} />
+            {kpiData && <KpiStrip data={kpiData} />}
+            <div className="analytics-grid">
+              <DualFunnel
+                aiFunnel={roiData?.ai_funnel}
+                humanFunnel={roiData?.human_funnel}
+              />
+              <BottleneckRadar
+                current={bottleneckData?.current}
+                previous={bottleneckData?.previous}
+              />
+              <RecruiterLeaderboard data={recruiterData} />
+            </div>
+          </>
+        )
       ) : (
-        <>
-          <AgentROIHero data={roiData} loading={loading} />
-
-          {kpiData && <KpiStrip data={kpiData} />}
-
-          <div className="analytics-grid">
-            <DualFunnel
-              aiFunnel={roiData?.ai_funnel}
-              humanFunnel={roiData?.human_funnel}
-            />
-            <BottleneckRadar
-              current={bottleneckData?.current}
-              previous={bottleneckData?.previous}
-            />
-            <RecruiterLeaderboard data={recruiterData} />
-          </div>
-        </>
+        <OpsTab period={period} />
       )}
     </div>
   )
