@@ -153,6 +153,9 @@ export const dashboardApi = {
   getAgentRoi: (period = 'quarter') => _get(`/dashboard/agent-roi?period=${period}`),
   getRecruiterPerformance: (period = 'quarter') => _get(`/dashboard/recruiter-performance?period=${period}`),
   getBottlenecks: (period = 'quarter') => _get(`/dashboard/bottlenecks?period=${period}`),
+  getCeleryStats: (period = 'quarter') => _get(`/dashboard/ops/celery?period=${period}`),
+  getLLMStats: (period = 'quarter') => _get(`/dashboard/ops/llm?period=${period}`),
+  getJDStats: (period = 'quarter') => _get(`/dashboard/ops/jd?period=${period}`),
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────────
