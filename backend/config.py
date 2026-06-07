@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
+    # LLM cost tracking (USD per 1M tokens, configurable per provider)
+    # Defaults match Groq llama-3.3-70b-versatile pricing (2026-06)
+    # Override in .env: LLM_PRICE_INPUT_PER_MTOK=0.59 LLM_PRICE_OUTPUT_PER_MTOK=0.79
+    LLM_PRICE_INPUT_PER_MTOK: float = 0.59
+    LLM_PRICE_OUTPUT_PER_MTOK: float = 0.79
 
     # ── Web Search ─────────────────────────────────────────────────────────
     TAVILY_API_KEY: str = ""
