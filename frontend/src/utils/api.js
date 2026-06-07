@@ -4,7 +4,7 @@
  * AND exports named typed wrappers (positionsApi, candidatesApi, etc.)
  */
 
-const BASE = '/api/v1'
+const BASE = import.meta.env.VITE_API_URL || '/api/v1'
 
 // Token getter — wired by AuthContext on mount so the API always has the latest token.
 // Falls back to sessionStorage so pre-mount requests (before the effect fires) still
