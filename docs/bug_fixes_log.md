@@ -3125,3 +3125,28 @@ Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, 
 **Files Modified:**
 - `frontend/src/components/Positions/PositionsToolbar.jsx`
 - `frontend/src/components/Positions/PositionsListPage.css`
+
+---
+
+## Candidate Detail Page & ATS Scoring Fixes
+
+**Problem:**
+1. Candidate Hero action buttons were horizontally crowded and secondary buttons didn't look like clickable buttons (missing borders).
+2. The UI was showing browser native `alert()` popups for actions like "Retry ATS Score" instead of polished custom Toast notifications.
+3. The ATS scoring was missing AI evaluation signals (`skills_match`, `experience_match`, `emb_score`, `career_trajectory`, `red_flags`), showing an empty breakdown.
+4. The Notes Tab allowed tagging, but only from department-specific users, and it was missing a proper dropdown menu to autocomplete `@mentions` with the entire organization directory.
+5. The Screening Responses section rendered raw backend field keys, appearing messy in the UI.
+
+**Fix:**
+1. Updated `CandidateHero.jsx` and `CandidateDetailPage.css` to group action buttons vertically and styled ghost buttons to resemble secondary buttons with borders.
+2. Replaced `alert()` with the custom `Toast.jsx` component across `CandidateDetailPage.jsx` and `NotesTab`. Additionally, `handleRetryAts` now automatically reloads the candidate data after a brief delay.
+3. Updated the `compute_ats_score` prompt in `backend/services/candidate_service.py` to correctly extract and return the missing fields in the JSON response.
+4. Implemented a custom inline mention dropdown in `NotesTab` that fetches the global organization user list via `/auth/users` and filters it dynamically when typing `@`.
+5. Created a key formatter in `ApplicationTab` inside `CandidateDetailPage.jsx` to map backend variables to readable labels (e.g., `compensation_current` -> "Current CTC").
+
+**Files Modified:**
+- `backend/services/candidate_service.py`
+- `frontend/src/components/Candidates/CandidateHero.jsx`
+- `frontend/src/components/Candidates/CandidateDetailPage.jsx`
+- `frontend/src/components/Candidates/CandidateDetailPage.css`
+

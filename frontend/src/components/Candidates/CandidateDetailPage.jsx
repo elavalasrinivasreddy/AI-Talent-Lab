@@ -9,7 +9,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
-import { candidatesApi, notesApi } from '../../utils/api'
+import api, { candidatesApi, notesApi } from '../../utils/api'
 import { PIPELINE_STAGES, PIPELINE_EVENT_ICONS } from '../../utils/constants'
 
 import CandidateHero from './CandidateHero'
@@ -18,6 +18,7 @@ import ScoreBreakdownBand from './ScoreBreakdownBand'
 import CompareToIdealGrid from './CompareToIdealGrid'
 import InterviewsTab from './tabs/InterviewsTab'
 import ConfirmModal from '../common/ConfirmModal'
+import Toast from '../common/Toast'
 import Icon from '../common/Icon'
 import Chip from '../common/Chip'
 import './CandidateDetailPage.css'
@@ -45,6 +46,7 @@ export default function CandidateDetailPage() {
   const [activeTab, setActiveTab] = useState('skills')
   const [movingStatus, setMovingStatus] = useState(false)
   const [selectConfirmOpen, setSelectConfirmOpen] = useState(false)
+  const [toast, setToast] = useState(null)
 
   const load = useCallback(async () => {
     try {
@@ -81,7 +83,7 @@ export default function CandidateDetailPage() {
       setCandidate(prev => ({ ...prev, pipeline_status: newStatus }))
       load()
     } catch (e) {
-      alert(`Move failed: ${e.message}`)
+      setToast({ message: `Move failed: ${e.message}`, type: 'error' })
     } finally {
       setMovingStatus(false)
     }
@@ -94,17 +96,21 @@ export default function CandidateDetailPage() {
         position_id: positionId,
       })
       setCandidate(prev => ({ ...prev, pipeline_status: 'selected' }))
+      setToast({ message: 'Candidate marked as selected', type: 'success' })
     } catch (e) {
-      alert(`Error: ${e.message}`)
+      setToast({ message: `Error: ${e.message}`, type: 'error' })
     }
   }
 
   const handleRetryAts = async () => {
     try {
       await candidatesApi.retryAts(candidate.id, candidate.application_id, positionId)
-      alert('ATS scoring has been re-queued. Please wait a minute and refresh the page.')
+      setToast({ message: 'ATS scoring triggered. Updating...', type: 'success' })
+      setTimeout(() => {
+        load()
+      }, 4000)
     } catch (e) {
-      alert(`Error: ${e.message}`)
+      setToast({ message: `Error: ${e.message}`, type: 'error' })
     }
   }
 
@@ -135,6 +141,8 @@ export default function CandidateDetailPage() {
 
   return (
     <div className="cd-page">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      
       {/* Hero */}
       <CandidateHero
         candidate={candidate}
@@ -314,6 +322,20 @@ function ApplicationTab({ candidate }) {
     ? (typeof candidate.screening_responses === 'string' ? JSON.parse(candidate.screening_responses) : candidate.screening_responses)
     : null
 
+  // Group responses into standard vs dynamic
+  const standardFields = {
+    'compensation_current': 'Current CTC',
+    'compensation_expected': 'Expected CTC',
+    'notice_period': 'Notice Period',
+    'experience_total': 'Total Experience',
+    'experience_relevant': 'Relevant Experience'
+  }
+
+  const formatKey = (key) => {
+    if (standardFields[key]) return standardFields[key];
+    return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
   return (
     <div className="cd-application-tab">
       <div className="cd-section">
@@ -327,8 +349,10 @@ function ApplicationTab({ candidate }) {
       {responses && (
         <div className="cd-section" style={{marginTop: 16}}>
           <h3 className="cd-section-title">Screening Responses</h3>
-          {Object.entries(responses).map(([q, a]) => (
-            <InfoRow key={q} label={q} value={String(a)} />
+          {Object.entries(responses)
+            .filter(([q, a]) => a !== null && a !== undefined && a !== '' && q !== 'compensation_declined')
+            .map(([q, a]) => (
+            <InfoRow key={q} label={formatKey(q)} value={String(a)} />
           ))}
         </div>
       )}
@@ -414,10 +438,50 @@ function NotesTab({ candidateId }) {
   const [editingId, setEditingId] = useState(null)
   const [editContent, setEditContent] = useState('')
   const [noteDeleteId, setNoteDeleteId] = useState(null)
+  const [toast, setToast] = useState(null)
+  
+  // Tagging feature state
+  const [orgUsers, setOrgUsers] = useState([])
+  const [mentionQuery, setMentionQuery] = useState(null)
 
   useEffect(() => {
     notesApi.list(candidateId).then(d => setNotes(d.notes || [])).catch(() => {})
+    api.get('/auth/users').then(res => setOrgUsers(res.data.users || [])).catch(() => {})
   }, [candidateId])
+
+  const handleDraftChange = (e) => {
+    const val = e.target.value
+    setDraft(val)
+    
+    // Check if the cursor is right after an @ symbol and a word
+    const cursor = e.target.selectionStart
+    const textBefore = val.slice(0, cursor)
+    const match = textBefore.match(/@(\w*)$/)
+    if (match) {
+      setMentionQuery(match[1])
+    } else {
+      setMentionQuery(null)
+    }
+  }
+
+  const insertMention = (userName) => {
+    const textarea = document.querySelector('.cd-notes-input')
+    const cursor = textarea ? textarea.selectionStart : draft.length
+    const textBefore = draft.slice(0, cursor)
+    const textAfter = draft.slice(cursor)
+    
+    const match = textBefore.match(/@(\w*)$/)
+    if (match) {
+      const newTextBefore = textBefore.slice(0, match.index) + `@${userName} `
+      setDraft(newTextBefore + textAfter)
+      // Small timeout to move cursor after the inserted name
+      setTimeout(() => {
+        if (textarea) textarea.setSelectionRange(newTextBefore.length, newTextBefore.length)
+        textarea.focus()
+      }, 0)
+    }
+    setMentionQuery(null)
+  }
 
   const handleSubmit = async () => {
     if (!draft.trim()) return
@@ -426,7 +490,8 @@ function NotesTab({ candidateId }) {
       const res = await notesApi.create(candidateId, { content: draft.trim() })
       setNotes(prev => [{ ...res.note, author_name: res.author_name, author_role: res.author_role }, ...prev])
       setDraft('')
-    } catch (e) { alert(`Failed to save note: ${e.message}`) }
+      setToast({ message: 'Note added successfully', type: 'success' })
+    } catch (e) { setToast({ message: `Failed to save note: ${e.message}`, type: 'error' }) }
     finally { setSubmitting(false) }
   }
 
@@ -435,7 +500,8 @@ function NotesTab({ candidateId }) {
       const res = await notesApi.update(nid, editContent)
       setNotes(prev => prev.map(n => n.id === nid ? { ...n, content: res.note.content, updated_at: res.note.updated_at } : n))
       setEditingId(null)
-    } catch (e) { alert(`Update failed: ${e.message}`) }
+      setToast({ message: 'Note updated', type: 'success' })
+    } catch (e) { setToast({ message: `Update failed: ${e.message}`, type: 'error' }) }
   }
 
   const handleDelete = async () => {
@@ -444,13 +510,34 @@ function NotesTab({ candidateId }) {
       await notesApi.delete(noteDeleteId)
       setNotes(prev => prev.filter(n => n.id !== noteDeleteId))
       setNoteDeleteId(null)
-    } catch (e) { alert(`Delete failed: ${e.message}`) }
+      setToast({ message: 'Note deleted', type: 'success' })
+    } catch (e) { setToast({ message: `Delete failed: ${e.message}`, type: 'error' }) }
   }
 
   return (
     <div className="cd-notes-tab">
-      <div className="cd-notes-compose">
-        <textarea className="cd-notes-input" placeholder="Add a note… (use @name to mention)" value={draft} onChange={e => setDraft(e.target.value)} rows={3} />
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <div className="cd-notes-compose" style={{position:'relative'}}>
+        <textarea className="cd-notes-input" placeholder="Add a note… (use @name to mention)" value={draft} onChange={handleDraftChange} rows={3} />
+        {mentionQuery !== null && (
+          <div className="cd-mention-dropdown" style={{
+            position: 'absolute', bottom: 'calc(100% - 10px)', left: '16px', background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, maxHeight: '150px', overflowY: 'auto', minWidth: '200px'
+          }}>
+            {orgUsers.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase())).map(u => (
+              <div key={u.id} className="cd-mention-item" style={{padding: '8px 12px', cursor: 'pointer', fontSize: '13px', color: 'var(--color-text-primary)'}}
+                onClick={() => insertMention(u.name)}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg-hover)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <strong>{u.name}</strong> <span style={{opacity:0.5, fontSize:'11px'}}>({u.department_name || 'Org'})</span>
+              </div>
+            ))}
+            {orgUsers.filter(u => u.name.toLowerCase().includes(mentionQuery.toLowerCase())).length === 0 && (
+              <div style={{padding: '8px 12px', fontSize: '13px', color: 'var(--color-text-tertiary)'}}>No users found</div>
+            )}
+          </div>
+        )}
         <button className="cd-notes-submit" onClick={handleSubmit} disabled={submitting || !draft.trim()}>
           {submitting ? 'Saving…' : 'Add Note'}
         </button>
