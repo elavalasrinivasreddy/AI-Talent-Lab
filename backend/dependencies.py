@@ -67,6 +67,7 @@ async def get_current_user(request: Request) -> dict:
             await r.aclose()
 
     return {
+        "id": int(payload["sub"]),
         "user_id": int(payload["sub"]),
         "org_id": payload["org_id"],
         "role": payload["role"],
@@ -145,6 +146,7 @@ async def require_platform_admin(request: Request) -> dict:
         raise InsufficientPermissionsError("Platform admin access required")
 
     return {
+        "id": int(payload["sub"]),
         "user_id": int(payload["sub"]),
         "org_id": payload.get("org_id", 0),
         "role": PLATFORM_ADMIN,

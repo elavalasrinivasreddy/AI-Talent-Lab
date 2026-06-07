@@ -3166,3 +3166,12 @@ Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, 
 **Root Cause:** A hardcoded `window.confirm` was embedded directly in the `onMarkSelected` callback passed down to `CandidateHero.jsx`.
 **Fix:** Replaced the native alert with the application's `ConfirmModal` component (product-native dialog) using state triggers (`setSelectConfirmOpen(true)`).
 
+
+---
+### 71. Candidate Notes 500 Internal Server Error (KeyError)
+**Symptom:** Saving a note in the candidate profile threw a `500 Internal Server Error` with `KeyError: 'id'` and then immediately failed again with `KeyError: 'name'` if the first error was bypassed.
+**Root Cause:** The `notes.py` router accessed `user["id"]` and `user["name"]` from the dictionary returned by `get_current_user`. However, `get_current_user` parses the JWT which only contains `"sub"` (mapped to `"user_id"`) and does not contain the user's name.
+**Fix:**
+- Updated `backend/dependencies.py` to inject `"id"` alongside `"user_id"` into the dependency payload for backward compatibility with older endpoints.
+- Updated `backend/routers/notes.py` to explicitly query the `users` table for the author's name (`author_name = await conn.fetchval("SELECT name FROM users WHERE id=$1", user["id"])`) instead of trying to read it from the JWT.
+
