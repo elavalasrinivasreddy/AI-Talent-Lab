@@ -94,7 +94,7 @@ export const ChatProvider = ({ children }) => {
     const fetchSessions = useCallback(async () => {
         if (!token) return;
         try {
-            const res = await fetch('/api/v1/chat/sessions', {
+            const res = await fetch((import.meta.env.VITE_API_URL || '/api/v1') + '/chat/sessions', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -120,7 +120,7 @@ export const ChatProvider = ({ children }) => {
         setError(null);
 
         try {
-            const res = await fetch(`/api/v1/chat/sessions/${sessionId}`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/chat/sessions/${sessionId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -223,7 +223,7 @@ export const ChatProvider = ({ children }) => {
     const refreshGraphState = useCallback(async (sessionId) => {
         if (!token || !sessionId) return;
         try {
-            const res = await fetch(`/api/v1/chat/sessions/${sessionId}`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/chat/sessions/${sessionId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -252,7 +252,7 @@ export const ChatProvider = ({ children }) => {
     const deleteSession = useCallback(async (sessionId) => {
         if (!token) return;
         try {
-            await fetch(`/api/v1/chat/sessions/${sessionId}`, {
+            await fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/chat/sessions/${sessionId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -306,7 +306,7 @@ export const ChatProvider = ({ children }) => {
         }
 
         try {
-            const response = await fetch('/api/v1/chat/stream', {
+            const response = await fetch((import.meta.env.VITE_API_URL || '/api/v1') + '/chat/stream', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

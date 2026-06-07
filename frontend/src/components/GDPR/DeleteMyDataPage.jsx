@@ -17,7 +17,7 @@ export default function DeleteMyDataPage() {
     if (!email.trim()) return
     setStep('sending')
     try {
-      const res = await fetch('/api/v1/gdpr/delete-my-data', {
+      const res = await fetch((import.meta.env.VITE_API_URL || '/api/v1') + '/gdpr/delete-my-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
@@ -37,7 +37,7 @@ export default function DeleteMyDataPage() {
     if (!verifyToken) return
     setStep('verifying')
     try {
-      const res = await fetch(`/api/v1/gdpr/verify-deletion/${verifyToken}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/gdpr/verify-deletion/${verifyToken}`, {
         method: 'POST',
       })
       const data = await res.json()

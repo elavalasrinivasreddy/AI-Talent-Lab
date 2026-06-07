@@ -43,7 +43,7 @@ const PositionSetupModal = ({ show, onClose }) => {
         setDraftSuccess(false);
         const fetchDeps = async () => {
             try {
-                const res = await fetch('/api/v1/settings/departments', {
+                const res = await fetch((import.meta.env.VITE_API_URL || '/api/v1') + '/settings/departments', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {
@@ -70,7 +70,7 @@ const PositionSetupModal = ({ show, onClose }) => {
         setError(null);
 
         try {
-            const res = await fetch(`/api/v1/chat/sessions/${currentSessionId}/save-position`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/chat/sessions/${currentSessionId}/save-position`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${token}`,

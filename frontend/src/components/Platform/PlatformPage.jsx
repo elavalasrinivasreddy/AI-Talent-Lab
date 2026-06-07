@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { timeAgo } from '../../utils/date'
 import './PlatformPage.css'
 
-const BASE = '/api/v1/platform'
+const BASE = (import.meta.env.VITE_API_URL || '/api/v1') + '/platform'
 
 async function platformFetch(path, token) {
   const res = await fetch(`${BASE}${path}`, {
@@ -225,7 +225,7 @@ function OrgTable({ orgs, compact = false, expandable = false, token }) {
     if (detailCache[orgId]) return
     setLoadingId(orgId)
     try {
-      const res = await fetch(`/api/v1/platform/orgs/${orgId}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/platform/orgs/${orgId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.ok) {

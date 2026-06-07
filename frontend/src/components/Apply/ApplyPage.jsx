@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import './ApplyPage.css'
 
-const API_BASE = '/api/v1/apply'
+const API_BASE = (import.meta.env.VITE_API_URL || '/api/v1') + '/apply'
 
 export default function ApplyPage() {
   const { token } = useParams()

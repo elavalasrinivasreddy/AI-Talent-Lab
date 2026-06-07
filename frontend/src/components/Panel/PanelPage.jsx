@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import './PanelPage.css'
 
-const API_BASE = '/api/v1/panel'
+const API_BASE = (import.meta.env.VITE_API_URL || '/api/v1') + '/panel'
 
 const DIMENSIONS = [
   {

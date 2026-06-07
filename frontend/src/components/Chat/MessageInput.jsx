@@ -88,7 +88,7 @@ const MessageInput = () => {
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await fetch(`/api/v1/chat/sessions/${currentSessionId}/upload`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/chat/sessions/${currentSessionId}/upload`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
                 body: formData,

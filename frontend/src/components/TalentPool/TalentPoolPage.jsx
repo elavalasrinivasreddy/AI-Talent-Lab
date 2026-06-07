@@ -4,7 +4,7 @@ import { positionsApi } from '../../utils/api'
 import { useAuth } from '../../context/AuthContext'
 import './TalentPoolPage.css'
 
-const API = '/api/v1'
+const API = import.meta.env.VITE_API_URL || '/api/v1'
 
 const REASON_COLORS = {
   rejected: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)', label: 'Rejected' },

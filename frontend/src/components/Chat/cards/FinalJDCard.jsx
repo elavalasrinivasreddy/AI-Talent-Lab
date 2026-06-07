@@ -206,7 +206,7 @@ const FinalJDCard = () => {
             setBiasCheckDone(true);
             setBiasCheckRunning(false);
             if (currentSessionId && token) {
-                fetch(`/api/v1/chat/sessions/${currentSessionId}/save-draft`, {
+                fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/chat/sessions/${currentSessionId}/save-draft`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ content: editedMarkdown, bias_passed: true }),
@@ -229,7 +229,7 @@ const FinalJDCard = () => {
     const handleSaveDraft = async () => {
         if (!currentSessionId || !token) return;
         try {
-            const res = await fetch(`/api/v1/chat/sessions/${currentSessionId}/save-draft`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/chat/sessions/${currentSessionId}/save-draft`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ content: editedMarkdown }),
@@ -259,7 +259,7 @@ const FinalJDCard = () => {
             setBiasCheckDone(false);
             if (pendingFixes.length > 0) setPendingFixes([]);
             if (currentSessionId && token) {
-                fetch(`/api/v1/chat/sessions/${currentSessionId}/save-draft`, {
+                fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/chat/sessions/${currentSessionId}/save-draft`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ content: md }),

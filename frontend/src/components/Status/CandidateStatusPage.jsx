@@ -17,7 +17,7 @@ export default function CandidateStatusPage() {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/v1/status/${token}`)
+    fetch(`${import.meta.env.VITE_API_URL || '/api/v1'}/status/${token}`)
       .then(res => {
         if (!res.ok) throw new Error('Application not found. The link may be invalid.')
         return res.json()

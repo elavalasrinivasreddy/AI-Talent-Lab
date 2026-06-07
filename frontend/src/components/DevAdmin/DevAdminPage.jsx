@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 import ConfirmModal from '../common/ConfirmModal'
 import './DevAdminPage.css'
 
-const API = '/api/v1/dev'
+const API = (import.meta.env.VITE_API_URL || '/api/v1') + '/dev'
 
 const apiFetch = async (path, options = {}) => {
   const res = await fetch(`${API}${path}`, {
