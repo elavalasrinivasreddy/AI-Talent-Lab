@@ -141,6 +141,15 @@
   box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
 }
 
+.pd-status-select--inline {
+  min-width: 130px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 28px 4px 10px;
+  background-position: right 8px center;
+  border-radius: var(--radius-full);
+}
+
 .pd-status-locked {
   display: inline-flex;
   align-items: center;

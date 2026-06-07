@@ -104,7 +104,21 @@ export default function PositionHero({
             <button className="pd-hero-info-btn" onClick={() => setDrawerOpen(true)} title="View Original Request">
               <Icon name="info" size={16} />
             </button>
-            <Chip variant={status.variant} dot size="sm">{status.label}</Chip>
+            {canEditStatus ? (
+              <select
+                className="pd-status-select pd-status-select--inline"
+                value={position.status || 'draft'}
+                onChange={(e) => handleStatusClick(e.target.value)}
+              >
+                <option value="draft">Draft</option>
+                <option value="open">Active (Open)</option>
+                <option value="on_hold">On Hold</option>
+                <option value="closed">Closed</option>
+                <option value="archived">Archived</option>
+              </select>
+            ) : (
+              <Chip variant={status.variant} dot size="sm">{status.label}</Chip>
+            )}
           </div>
 
           <div className="pd-hero-meta">
@@ -129,19 +143,7 @@ export default function PositionHero({
           )}
         </div>
         <div className="pd-hero-right">
-          {canEditStatus ? (
-            <select
-              className="pd-status-select"
-              value={position.status || 'draft'}
-              onChange={(e) => handleStatusClick(e.target.value)}
-            >
-              <option value="draft">Draft</option>
-              <option value="open">Active (Open)</option>
-              <option value="on_hold">On Hold</option>
-              <option value="closed">Closed</option>
-              <option value="archived">Archived</option>
-            </select>
-          ) : (
+          {!canEditStatus && (
             <div className="pd-status-locked">
               <Icon name="lock" size={14} /> {status.label}
             </div>

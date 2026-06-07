@@ -2846,3 +2846,282 @@ Rewrote `AnalyticsPage.css` with: (1) pill-style period switcher matching `dashb
 
 **Files Modified:**
 - `frontend/src/components/Analytics/AnalyticsPage.css`
+
+---
+
+### Bug #141: Analytics A+ Design Upgrade — AgentROIHero
+
+**Date:** 2026-06-07
+**Severity:** Design / UX
+**Component:** `frontend/src/components/Analytics/AgentROIHero.jsx` + new `AgentROIHero.css`
+
+**Problem:**
+ROI hero used no visual hierarchy — the AI share percentage was plain text with no display-scale number, no delta trend chip, and no share bar visualization.
+
+**Fix:**
+- Rewrote component with `clamp(56px, 8vw, 80px)` hero number, loading skeleton, delta chip (positive/negative/neutral), share bar with `role="progressbar"`, and low-share alert.
+- Created `AgentROIHero.css` with `roi-hero-*` token-based classes.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/AgentROIHero.jsx`
+- `frontend/src/components/Analytics/AgentROIHero.css`
+
+---
+
+### Bug #142: Analytics A+ Design — DualFunnel hardcoded colors
+
+**Date:** 2026-06-07
+**Severity:** Design / Code Quality
+**Component:** `frontend/src/components/Analytics/DualFunnel.jsx`
+
+**Problem:**
+DualFunnel bars used hardcoded `backgroundColor: '#6366F1'` and `'#10B981'` instead of design tokens, and lacked a header row and conversion rate footer.
+
+**Fix:**
+Replaced inline `backgroundColor` with CSS classes `dual-funnel-bar-human` (`var(--color-chart-human, #8B5CF6)`) and `dual-funnel-bar-ai` (`var(--color-primary, #0D9488)`). Added header row (Human Sourced / AI Sourced) and sourced-to-hire conversion rate footer.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/DualFunnel.jsx`
+- `frontend/src/components/Analytics/AnalyticsPage.css`
+
+---
+
+### Bug #143: Analytics A+ Design — BottleneckRadar hardcoded legend colors + regression signals
+
+**Date:** 2026-06-07
+**Severity:** Design / Code Quality
+**Component:** `frontend/src/components/Analytics/BottleneckRadar.jsx`
+
+**Problem:**
+Legend dots used hardcoded `backgroundColor: 'rgba(...)'` inline styles. No regression detection for axes that dropped >10pp.
+
+**Fix:**
+Replaced inline `backgroundColor` with `.radar-legend-dot-current` and `.radar-legend-dot-prev` CSS classes. Added `isRegressed()` helper; regressed axes render with `.radar-label-regressed` class and `↓` indicator.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/BottleneckRadar.jsx`
+- `frontend/src/components/Analytics/AnalyticsPage.css`
+
+---
+
+### Bug #144: Analytics A+ Design — emoji violation + KPI strip + Promise.allSettled
+
+**Date:** 2026-06-07
+**Severity:** Design / Reliability
+**Component:** `frontend/src/components/Analytics/AnalyticsPage.jsx`
+
+**Problem:**
+Error state had `⚠️` emoji (violates ui-ux-pro-max no-emoji-icon rule). `Promise.all` caused full-blank on any single endpoint failure. No KPI strip above charts.
+
+**Fix:**
+Removed emoji, replaced with `role="alert"` div. Switched to `Promise.allSettled` with per-result status checks. Added `KpiStrip` component showing 4 org-level KPIs.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/AnalyticsPage.jsx`
+
+---
+
+### Bug #145: Analytics A+ Design — CSS full rewrite
+
+**Date:** 2026-06-07
+**Severity:** Design
+**Component:** `frontend/src/components/Analytics/AnalyticsPage.css`
+
+**Problem:**
+CSS had raw hex colors, no design tokens, cramped grid layout, and no animation/skeleton states.
+
+**Fix:**
+Full rewrite: pill period switcher (`border-radius: 9999px`), asymmetric `3fr 2fr` analytics grid, KPI card styles with stagger animation, all hex replaced with design tokens, `rise` + `shimmer` keyframes.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/AnalyticsPage.css`
+
+---
+
+### Bug #146: Dashboard — PULSE event titles render as raw lowercase system strings
+
+**Date:** 2026-06-07
+**Severity:** UX / Polish
+**Component:** `frontend/src/components/Dashboard/BriefingRow.jsx`
+
+**Problem:**
+`row.title` from backend arrives as lowercase system event names ("ats scored", "jd generated") which render verbatim in the PULSE lane, looking unpolished.
+
+**Fix:**
+Added `formatEventTitle()` helper that capitalizes each word and handles acronyms (ATS, JD, AI). Applied to `row.title` render in `.tb-row-title`.
+
+**Files Modified:**
+- `frontend/src/components/Dashboard/BriefingRow.jsx`
+
+---
+
+### Bug #147: Dashboard — VelocitySparkline "open reqs" always plural
+
+**Date:** 2026-06-07
+**Severity:** Copy / Grammar
+**Component:** `frontend/src/components/Dashboard/VelocitySparkline.jsx`
+
+**Problem:**
+Metric line read `"1 open reqs"` when `active_positions === 1` — grammatically incorrect.
+
+**Fix:**
+Changed to `` `${n} open req${n !== 1 ? 's' : ''}` `` for proper singular/plural.
+
+**Files Modified:**
+- `frontend/src/components/Dashboard/VelocitySparkline.jsx`
+
+---
+
+### Bug #148: Positions List — "active roles" always plural
+
+**Date:** 2026-06-07
+**Severity:** Copy / Grammar
+**Component:** `frontend/src/components/Positions/PositionsListPage.jsx`
+
+**Problem:**
+Subtitle read `"1 active roles"` when exactly 1 position open — grammatically incorrect.
+
+**Fix:**
+Changed to `` `${openCount} active role${openCount !== 1 ? 's' : ''}` ``.
+
+**Files Modified:**
+- `frontend/src/components/Positions/PositionsListPage.jsx`
+
+---
+
+### Bug #149: Position Detail — AI confidence shown as raw decimal (0.27)
+
+**Date:** 2026-06-07
+**Severity:** UX / Readability
+**Component:** `frontend/src/components/Positions/StageHealthHeader.jsx`
+
+**Problem:**
+AI confidence chip displayed `"Medium · 0.27"` — the raw float is unreadable to recruiters.
+
+**Fix:**
+Changed to `{confLabel}: {Math.round(confidence * 100)}%` so it displays as `"Medium: 27%"`.
+
+**Files Modified:**
+- `frontend/src/components/Positions/StageHealthHeader.jsx`
+
+---
+
+### Bug #150: Position Card — Stage color bars used 7 distinct colors with no semantic meaning + no tooltips
+
+**Date:** 2026-06-07
+**Severity:** Design / UX
+**Component:** `frontend/src/components/Positions/StagePipeStrip.jsx`
+
+**Problem:**
+7 different bright colors (indigo, purple, blue, teal, amber, green, red) created visual noise with no clear semantic grouping. Stage abbreviations (Src, Eml, App…) had no tooltip.
+
+**Fix:**
+Reduced to 3 semantic colors: pipeline stages (sourced→interview) use `var(--color-primary)` teal, selected uses `var(--color-success)` green, rejected uses `var(--color-text-muted)` gray. Added `title={fullLabel}` tooltip on each cell.
+
+**Files Modified:**
+- `frontend/src/components/Positions/StagePipeStrip.jsx`
+
+---
+
+### Bug #151: Dashboard — Avg Time to Hire shows bare dash with no explanation
+
+**Date:** 2026-06-07
+**Severity:** UX / Clarity
+**Component:** `frontend/src/components/Dashboard/HealthStrip.jsx`
+
+**Problem:**
+When no hires occurred in the period, the Avg Time to Hire card showed `—` with no explanation, leaving admins confused about data availability.
+
+**Fix:**
+Added `delta: 'No hires this period'` to the card config when `avg_time_to_hire` is null/zero, using the `Stat` component's existing `delta` prop to render a subtle subtitle.
+
+**Files Modified:**
+- `frontend/src/components/Dashboard/HealthStrip.jsx`
+
+---
+
+### Bug #152: Positions List — Empty state lacked A+ design and clear CTA
+
+**Date:** 2026-06-07
+**Severity:** Design / UX
+**Component:** `frontend/src/components/Positions/PositionsListPage.jsx` + `PositionsListPage.css`
+
+**Problem:**
+`EmptyPositions` used dense inline styles with no design token usage and generic messaging. CTA buttons lacked minimum touch target sizes.
+
+**Fix:**
+Rewrote with CSS classes (`positions-empty-*`): teal-rimmed icon circle, descriptive heading, segmented messaging (filter vs. global empty), primary/ghost CTA buttons (min-height 44px, design tokens throughout).
+
+**Files Modified:**
+- `frontend/src/components/Positions/PositionsListPage.jsx`
+- `frontend/src/components/Positions/PositionsListPage.css`
+
+---
+
+### Bug #153: Position Detail — ATS chip had no tooltip; saturation bar had no explanation
+
+**Date:** 2026-06-07
+**Severity:** UX / Discoverability
+**Component:** `frontend/src/components/Positions/StageHealthHeader.jsx`
+
+**Problem:**
+The "2-step ATS: embedding → LLM analysis" chip gave no indication of what it meant. The saturation bar was unlabeled with no hover explanation.
+
+**Fix:**
+Added `cursor: help` + descriptive `title` to ATS chip. Added `title="% of pipeline capacity evaluated at this stage — high saturation may indicate a bottleneck"` to saturation metric div.
+
+**Files Modified:**
+- `frontend/src/components/Positions/StageHealthHeader.jsx`
+
+---
+
+### Bug #154: Dashboard — PULSE "View" buttons too small for touch; empty lane too tall
+
+**Date:** 2026-06-07
+**Severity:** Accessibility / UX
+**Component:** `frontend/src/styles/dashboard.css`
+
+**Problem:**
+`.tb-row-action` had `padding: 2px 0` giving ~18px touch target (violates ≥44px rule). Empty lanes had `padding: var(--space-6)` (24px top/bottom) creating excessive visual weight.
+
+**Fix:**
+`.tb-row-action`: added `min-height: 44px`, `padding: 0 8px`, `display: inline-flex; align-items: center`. `.tb-lane-empty`: reduced padding from `space-6` to `space-3`.
+
+**Files Modified:**
+- `frontend/src/styles/dashboard.css`
+
+---
+
+### Bug #155: Position Detail — Status dropdown isolated in hero-right, disconnected from title
+
+**Date:** 2026-06-07
+**Severity:** UX / Layout
+**Component:** `frontend/src/components/Positions/PositionHero.jsx` + `PositionDetailPage.css`
+
+**Problem:**
+The status `<select>` was positioned in the far-right column, visually disconnected from the position title. Users had to scan across the hero to find the edit control.
+
+**Fix:**
+Moved `pd-status-select` into the title row (`.pd-hero-title-row`) inline with the position name for users with edit permissions. Added `.pd-status-select--inline` CSS variant (pill border-radius, compact padding). Removed the duplicate select from `pd-hero-right`.
+
+**Files Modified:**
+- `frontend/src/components/Positions/PositionHero.jsx`
+- `frontend/src/components/Positions/PositionDetailPage.css`
+
+---
+
+### Bug #156: Positions Toolbar — Sort control used raw inline styles
+
+**Date:** 2026-06-07
+**Severity:** Code Quality / Design
+**Component:** `frontend/src/components/Positions/PositionsToolbar.jsx` + `PositionsListPage.css`
+
+**Problem:**
+Sort label and wrapper used raw `style={{ ... }}` inline styles instead of design-token CSS classes, inconsistent with rest of toolbar.
+
+**Fix:**
+Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, and `.positions-sort-label` CSS classes.
+
+**Files Modified:**
+- `frontend/src/components/Positions/PositionsToolbar.jsx`
+- `frontend/src/components/Positions/PositionsListPage.css`

@@ -462,7 +462,10 @@
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
-  padding: 2px 0;
+  padding: 0 8px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   transition: opacity var(--transition-fast);
   align-self: center;
   white-space: nowrap;
@@ -472,7 +475,7 @@
 
 /* ── Lane empty / error / skeleton ───────────────────────── */
 .tb-lane-empty {
-  padding: var(--space-6) var(--space-4);
+  padding: var(--space-3) var(--space-4);
   text-align: center;
 }
 

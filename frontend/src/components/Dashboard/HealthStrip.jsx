@@ -44,6 +44,7 @@ export default function HealthStrip({ health, loading, error, role }) {
     {
       label: 'Avg Time to Hire',
       value: health.avg_time_to_hire ? `${health.avg_time_to_hire}d` : '—',
+      delta: !health.avg_time_to_hire ? 'No hires this period' : undefined,
       accent: 'var(--color-warning, #D97706)',
       icon: <Icon name="clock" size={16} />,
     },

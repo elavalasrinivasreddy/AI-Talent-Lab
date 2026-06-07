@@ -122,7 +122,7 @@ export default function PositionsListPage() {
         <div>
           <h1 className="positions-list-title">Positions</h1>
           <p className="positions-list-sub">
-            Pipeline Garden{openCount > 0 ? ` · ${openCount} active roles` : ''}
+            Pipeline Garden{openCount > 0 ? ` · ${openCount} active role${openCount !== 1 ? 's' : ''}` : ''}
           </p>
         </div>
       </div>
@@ -156,39 +156,50 @@ export default function PositionsListPage() {
   )
 }
 
+const SEGMENT_LABELS = {
+  critical: 'Critical', active: 'Active', stable: 'Stable', draft: 'Drafts', closed: 'Closed',
+}
+
 function EmptyPositions({ segment, onClear, role }) {
+  const segmentLabel = segment ? (SEGMENT_LABELS[segment] || segment) : null
+
   return (
-    <div className="positions-empty" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px', textAlign: 'center', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-lg)', marginTop: '24px' }}>
-      <div style={{ marginBottom: '16px', color: 'var(--color-text-tertiary)' }}>
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+    <div className="positions-empty">
+      <div className="positions-empty-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
         </svg>
       </div>
-      <h3 style={{ marginBottom: '8px', color: 'var(--color-text-primary)' }}>
-        {segment ? 'No positions in this filter.' : 'No positions found.'}
+
+      <h3 className="positions-empty-title">
+        {segmentLabel ? `No ${segmentLabel} positions` : 'No positions yet'}
       </h3>
-      {segment ? (
-        <button className="btn-ghost" onClick={onClear} style={{ marginTop: '12px' }}>Clear filters</button>
+
+      {segmentLabel ? (
+        <>
+          <p className="positions-empty-desc">
+            There are no positions in the <strong>{segmentLabel}</strong> category right now.
+          </p>
+          <button className="positions-empty-cta positions-empty-cta--ghost" onClick={onClear}>
+            Show all positions
+          </button>
+        </>
       ) : (
         <>
-          <p className="text-secondary" style={{ marginBottom: '24px', maxWidth: '400px' }}>
-            {role === 'team_lead' 
-              ? 'Positions are created via approved hire requests.' 
-              : 'Create your first position by starting a new hire conversation.'}
+          <p className="positions-empty-desc">
+            {role === 'team_lead'
+              ? 'Positions are created by HR once a hire request is approved.'
+              : 'Start a hire conversation with the AI to create your first position.'}
           </p>
           {role !== 'team_lead' && (
-            <Link to="/chat" className="btn btn-primary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '8px' }}>
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              New Hire
+            <Link to="/chat" className="positions-empty-cta positions-empty-cta--primary">
+              Start a hire conversation
             </Link>
           )}
           {role === 'team_lead' && (
-            <Link to="/hire-requests/new" className="btn btn-primary">
-              File Hire Request
+            <Link to="/hire-requests/new" className="positions-empty-cta positions-empty-cta--primary">
+              File a hire request
             </Link>
           )}
         </>

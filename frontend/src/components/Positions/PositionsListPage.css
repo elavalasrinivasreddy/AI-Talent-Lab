@@ -157,6 +157,26 @@
   background-position: right 8px center;
 }
 
+.positions-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.positions-sort-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.positions-sort-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #94A3B8);
+  white-space: nowrap;
+}
+
 /* ── Garden Grid ── */
 .positions-garden-grid {
   display: grid;
@@ -272,16 +292,70 @@
 }
 
 .positions-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  padding: 60px 24px;
-  color: var(--text-secondary, #94A3B8);
+  padding: 56px 24px 64px;
+  background: var(--color-bg-secondary, #0F1623);
+  border: 1px solid var(--color-border, #1E3047);
+  border-radius: var(--radius-lg, 14px);
+  margin-top: 24px;
 }
 
-.positions-empty h3 {
-  font-size: 16px;
+.positions-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(13, 148, 136, 0.08);
+  border: 1px solid rgba(13, 148, 136, 0.18);
+  color: var(--color-primary, #0D9488);
+  margin-bottom: 20px;
+}
+
+.positions-empty-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-primary, #F1F5F9);
+  margin: 0 0 10px;
+}
+
+.positions-empty-desc {
+  font-size: 14px;
+  color: var(--color-text-secondary, #94A3B8);
+  max-width: 380px;
+  line-height: 1.6;
+  margin: 0 0 24px;
+}
+
+.positions-empty-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--radius-md, 10px);
+  font-size: 14px;
   font-weight: 600;
-  margin: 0 0 12px;
-  color: var(--text-primary, #F1F5F9);
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  min-height: 44px;
+}
+.positions-empty-cta:hover { opacity: 0.85; transform: translateY(-1px); }
+
+.positions-empty-cta--primary {
+  background: var(--color-primary, #0D9488);
+  color: #fff;
+  border: none;
+}
+
+.positions-empty-cta--ghost {
+  background: transparent;
+  color: var(--color-primary, #0D9488);
+  border: 1px solid rgba(13, 148, 136, 0.4);
 }
 
 /* ── Shimmer (skeleton) ── */

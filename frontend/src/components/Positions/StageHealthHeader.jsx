@@ -49,7 +49,14 @@ export default function StageHealthHeader({ stage, stageData, unavailable }) {
         <span className="pd-sh-dot" style={{ background: cfg.color }} />
         <span className="pd-sh-name">{cfg.label}</span>
         <span className="pd-sh-count">{stageData.count} candidate{stageData.count !== 1 ? 's' : ''}</span>
-        <Chip variant="primary" size="xs">2-step ATS: embedding → LLM analysis</Chip>
+        <Chip
+          variant="primary"
+          size="xs"
+          style={{ cursor: 'help' }}
+          title="Candidates are auto-scored via text embeddings + LLM analysis before appearing in your pipeline"
+        >
+          2-step ATS: embedding → LLM analysis
+        </Chip>
       </div>
 
       <div className="pd-sh-metrics">
@@ -72,7 +79,7 @@ export default function StageHealthHeader({ stage, stageData, unavailable }) {
           <div className="pd-sh-metric">
             <Icon name="cpu" size={13} />
             <span className="pd-sh-metric-label">AI confidence</span>
-            <Chip variant={confVariant} size="xs">{confLabel} · {confidence.toFixed(2)}</Chip>
+            <Chip variant={confVariant} size="xs">{confLabel}: {Math.round(confidence * 100)}%</Chip>
           </div>
         )}
 
@@ -92,7 +99,7 @@ export default function StageHealthHeader({ stage, stageData, unavailable }) {
         </div>
 
         {/* Saturation bar */}
-        <div className="pd-sh-metric">
+        <div className="pd-sh-metric" title="% of pipeline capacity evaluated at this stage — high saturation may indicate a bottleneck">
           <Icon name="bar-chart" size={13} />
           <span className="pd-sh-metric-label">Saturation</span>
           <div className="pd-sh-saturation-bar">

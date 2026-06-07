@@ -49,7 +49,7 @@ export default function PositionsToolbar({
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+      <div className="positions-toolbar-right">
         {/* Dept filter — admin only */}
         {isAdmin && departments.length > 0 && (
           <select
@@ -65,8 +65,8 @@ export default function PositionsToolbar({
         )}
 
         {/* Sort */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
-          <span style={{ fontWeight: 500 }}>Sort:</span>
+        <div className="positions-sort-wrap">
+          <span className="positions-sort-label">Sort:</span>
           <select
             className="positions-select"
             value={sort}

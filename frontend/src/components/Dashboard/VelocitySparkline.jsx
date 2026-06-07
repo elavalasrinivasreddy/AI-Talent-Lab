@@ -63,7 +63,8 @@ export default function VelocitySparkline({
 
   // Summary stat
   const total  = values.reduce((a, b) => a + b, 0)
-  const metric = health?.active_positions != null ? `${health.active_positions} open reqs` : `${total} events`
+  const n = health?.active_positions
+  const metric = n != null ? `${n} open req${n !== 1 ? 's' : ''}` : `${total} events`
 
   return (
     <div className="velocity-sparkline">

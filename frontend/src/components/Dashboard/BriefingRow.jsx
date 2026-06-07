@@ -13,6 +13,15 @@ import { useNavigate } from 'react-router-dom'
 import Icon from '../common/Icon'
 import { timeAgo } from '../../utils/date'
 
+function formatEventTitle(t) {
+  if (!t) return t
+  return t
+    .replace(/\bats\b/gi, 'ATS')
+    .replace(/\bjd\b/gi, 'JD')
+    .replace(/\bai\b/gi, 'AI')
+    .replace(/\b\w/g, c => c.toUpperCase())
+}
+
 const KIND_COLORS = {
   bad:  'var(--color-danger, #EF4444)',
   warn: 'var(--color-warning, #D97706)',
@@ -40,7 +49,7 @@ export default function BriefingRow({ row, kind, onAction }) {
 
       {/* Body */}
       <div className="tb-row-body">
-        <span className="tb-row-title">{row.title}</span>
+        <span className="tb-row-title">{formatEventTitle(row.title)}</span>
         {(row.meta_text || timeStr) && (
           <span className="tb-row-meta">
             {row.meta_text}
