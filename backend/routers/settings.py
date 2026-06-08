@@ -598,3 +598,25 @@ async def update_ai_behavior_settings(
         body.model_dump(),
     )
     return {"settings": settings}
+
+
+# ── Audit Logs ────────────────────────────────────────────────────────────────
+
+@router.get("/audit-logs")
+async def get_audit_logs(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user_id: Optional[int] = Query(None),
+    action: Optional[str] = Query(None),
+    user: dict = Depends(require_org_head),
+):
+    """List audit logs (admin only)."""
+    from backend.services.audit_service import AuditService
+    return await AuditService.get_logs(
+        org_id=user["org_id"],
+        limit=limit,
+        offset=offset,
+        user_id_filter=user_id,
+        action_filter=action
+    )
+

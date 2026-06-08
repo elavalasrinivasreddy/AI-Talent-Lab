@@ -3219,3 +3219,26 @@ Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, 
 **Symptom:** When a candidate applied through the careers page chat bot (organic application), their background ATS scoring failed silently in Celery with `'NoneType' object has no attribute 'get'`, leaving them without an AI score or evaluation. Additionally, the notification sent to recruiters had a broken link (`/positions/None?tab=candidates`).
 **Root Cause:** The `apply_service.py` attempted to extract `position_id` from the decoded magic link JWT payload (`payload.get("position_id")`). However, the magic link token schema only contains `application_id`, `candidate_id`, and `org_id`. Because it didn't exist, `position_id` evaluated to `None`. This `None` was passed to the celery background task, causing `PositionRepository.get()` to return `None`, which immediately crashed when trying to access `position.get("ats_threshold")`.
 **Fix:** Updated the recruiter notification query inside `complete_application` to explicitly `SELECT ca.position_id` from the `candidate_applications` table using the known `application_id`. Substituted the broken `payload.get()` fallback with the real, database-verified `position_id` for both the notification action URL and the Celery background task arguments.
+
+---
+
+### 187. Phase 2 Features Implementation
+**Date:** 2026-06-08
+**Status:** Implemented
+
+**Issue / Feature:**
+Implementation of Phase 2 items: Audit Logs UI, Video Intros, and Team Lead Dashboard.
+- **Audit Logs**: Created backend service to query the `audit_log` table and added `/audit-logs` endpoint. Built the `AuditTab` frontend component.
+- **Video Intros**: Updated `backend/routers/apply.py` to save uploaded videos locally. Mounted `/uploads` static directory. Updated `CandidateDetailPage.jsx` to render the video player properly resolving the URL.
+- **Team Lead Dashboard**: Created a specialized `TeamLeadDashboard.jsx` layout isolating "My Requisitions", "AI Copilot" and tailored lanes, rendering conditionally in `DashboardPage.jsx` for the `team_lead` role.
+
+**Files Modified:**
+- `backend/services/audit_service.py` (New)
+- `backend/routers/settings.py`
+- `frontend/src/components/Settings/tabs/AuditTab.jsx` (New)
+- `backend/main.py`
+- `backend/routers/apply.py`
+- `frontend/src/components/Candidates/CandidateDetailPage.jsx`
+- `frontend/src/components/Dashboard/TeamLeadDashboard.jsx` (New)
+- `frontend/src/components/Dashboard/DashboardPage.jsx`
+- `frontend/src/components/Settings/SettingsPage.jsx`

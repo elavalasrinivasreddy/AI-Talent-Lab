@@ -438,7 +438,11 @@ function InfoRow({ label, value }) {
 
 function ResumeTab({ candidate }) {
   const resume = candidate.resume_text || ''
-  const videoUrl = candidate.video_intro_url
+  const videoUrl = candidate.video_intro_url 
+    ? (candidate.video_intro_url.startsWith('http') 
+        ? candidate.video_intro_url 
+        : `${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api/v1', '') : ''}${candidate.video_intro_url}`)
+    : null;
 
   return (
     <div className="cd-resume">
