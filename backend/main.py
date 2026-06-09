@@ -5,10 +5,12 @@ Health check at /api/v1/health, root at /.
 Build: 2026-05-07T00:00:00 (migrations: status column, dashboard fix)
 """
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from backend.config import settings
 from backend.db.connection import init_db, close_pool, health_check
@@ -71,6 +73,10 @@ app = FastAPI(
 
 # Register exception handlers
 register_exception_handlers(app)
+
+# Ensure uploads directory exists for local dev
+os.makedirs("uploads/videos", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Register middleware
 setup_cors(app)

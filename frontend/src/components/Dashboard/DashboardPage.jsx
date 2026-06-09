@@ -33,6 +33,7 @@ import DeptChipBar      from './DeptChipBar'
 import HealthStrip      from './HealthStrip'
 import PositionPulse    from './PositionPulse'
 import VelocitySparkline from './VelocitySparkline'
+import TeamLeadDashboard from './TeamLeadDashboard'
 
 import '../../styles/dashboard.css'
 
@@ -121,6 +122,18 @@ export default function DashboardPage() {
       <Suspense fallback={<div style={{ padding: 'var(--space-8)', color: 'var(--color-text-secondary, #94A3B8)' }}>Loading…</div>}>
         <LegacyDashboard />
       </Suspense>
+    )
+  }
+
+  if (role === 'team_lead') {
+    return (
+      <TeamLeadDashboard 
+        user={user} 
+        data={data} 
+        greetingSuffix={suffix} 
+        period={period} 
+        setPeriod={setPeriod} 
+      />
     )
   }
 

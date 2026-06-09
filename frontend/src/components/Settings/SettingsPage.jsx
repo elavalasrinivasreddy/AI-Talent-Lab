@@ -29,6 +29,7 @@ import AppearanceTab from './tabs/AppearanceTab'
 import SecurityTab from './tabs/SecurityTab'
 import PrivacyTab from './tabs/PrivacyTab'
 import CareerBrandTab from './tabs/CareerBrandTab'
+import AuditTab from './tabs/AuditTab'
 import '../../styles/settings.css'
 
 const RAIL_GROUPS = [
@@ -106,7 +107,7 @@ const SECTION_COMPONENTS = {
   'privacy': PrivacyTab,
   'security': SecurityTab,
   'integrations': IntegrationsTab,
-  'audit': () => <PlaceholderSection title="Audit Log" desc="View all organization actions with filters and export." icon="clock" phase={2} />,
+  'audit': AuditTab,
   'export': () => <PlaceholderSection title="Data Export" desc="GDPR Article 20 data portability — export candidate and org data." icon="download" phase={2} />,
 }
 

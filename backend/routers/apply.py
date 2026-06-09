@@ -184,14 +184,27 @@ async def upload_video_intro(token: str, file: UploadFile = File(...)):
             "message": "Video must be under 100 MB.",
         })
 
+    import os
+    import time
     app_id = context.get("application_id")
-    placeholder_url = f"pending_upload/{app_id}/{filename}"
+    
+    # Save locally to uploads/videos/
+    upload_dir = os.path.join(os.getcwd(), "uploads", "videos", str(app_id))
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    safe_filename = f"{int(time.time())}_{filename.replace(' ', '_')}"
+    file_path = os.path.join(upload_dir, safe_filename)
+    
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    video_url = f"/uploads/videos/{app_id}/{safe_filename}"
 
     from backend.db.connection import get_connection
     async with get_connection() as conn:
         await conn.execute(
             "UPDATE candidate_applications SET video_intro_url=$1 WHERE id=$2",
-            placeholder_url, app_id,
+            video_url, app_id,
         )
 
     return {
