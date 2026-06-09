@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../../../utils/api';
+import api from '../../../utils/api';
 import Icon from '../../common/Icon';
-import Spinner from '../../common/Spinner';
+import SkeletonCard from '../../common/SkeletonCard';
 
 export default function AuditTab() {
   const [logs, setLogs] = useState([]);
@@ -47,7 +47,7 @@ export default function AuditTab() {
 
       <div className="st-card">
         {loading && logs.length === 0 ? (
-          <div style={{ padding: '2rem', textAlign: 'center' }}><Spinner /></div>
+          <div style={{ padding: '2rem' }}><SkeletonCard lines={10} /></div>
         ) : error ? (
           <div className="st-error-state">
             <Icon name="alert-circle" /> {error}
