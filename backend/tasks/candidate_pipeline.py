@@ -9,6 +9,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from backend.celery_app import celery_app
+from backend.config import settings
 from backend.adapters.candidate_sources import get_candidate_source_adapter
 from backend.db.connection import get_connection
 from backend.db.repositories.candidates import CandidateRepository
@@ -75,7 +76,15 @@ async def _run_pipeline(
             return
 
         # ── Step 1: Source candidates ──────────────────────────────────────────────
-        adapter = get_candidate_source_adapter()
+        # Per-org sourcing config (Settings → Sourcing) decides the adapter; falls back
+        # to settings.DEFAULT_SOURCE_ADAPTER when the org hasn't configured one.
+        _sourcing_cfg = (org or {}).get("sourcing_config") or {}
+        if isinstance(_sourcing_cfg, str):
+            try:
+                _sourcing_cfg = json.loads(_sourcing_cfg)
+            except Exception:
+                _sourcing_cfg = {}
+        adapter = get_candidate_source_adapter(_sourcing_cfg.get("source_adapter"))
         limit = 20  # MVP: 20 per run
         try:
             raw_candidates = await adapter.search(position, org or {}, limit=limit)
@@ -246,23 +255,32 @@ async def _process_candidate(
                 "source_profile_url": raw.get("source_profile_url"),
             }
 
-            # Phase 2: Enrichment if email is missing
+            # Phase 2: Enrichment if email is missing — only when the org has enabled it.
+            # If enrichment is off (or the provider isn't implemented), we DO NOT fabricate
+            # an email; the candidate is kept as a no-contact lead for manual outreach.
             if not email:
-                from backend.adapters.enrichment import get_enrichment_adapter
-                from backend.services.settings_service import SettingsService
-                
-                # Default to simulation enrichment if no config
-                enrichment_adapter = get_enrichment_adapter("simulation")
-                try:
-                    enrichment_result = await enrichment_adapter.enrich_profile(
-                        name=candidate_data["name"] or "",
-                        company=candidate_data["current_company"],
-                        profile_url=candidate_data["source_profile_url"]
-                    )
-                    if enrichment_result and enrichment_result.get("email"):
-                        candidate_data["email"] = enrichment_result["email"].strip().lower()
-                except Exception as e:
-                    logger.warning(f"[Pipeline] Enrichment failed for candidate {candidate_data['name']}: {e}")
+                sourcing_config = org.get("sourcing_config") or {}
+                if isinstance(sourcing_config, str):
+                    try:
+                        sourcing_config = json.loads(sourcing_config)
+                    except Exception:
+                        sourcing_config = {}
+
+                if sourcing_config.get("enrichment_enabled"):
+                    from backend.adapters.enrichment import get_enrichment_adapter
+                    provider = sourcing_config.get("enrichment_provider") or settings.ENRICHMENT_PROVIDER
+                    enrichment_adapter = get_enrichment_adapter(provider)
+                    if enrichment_adapter is not None:
+                        try:
+                            enrichment_result = await enrichment_adapter.enrich_profile(
+                                name=candidate_data["name"] or "",
+                                company=candidate_data["current_company"],
+                                profile_url=candidate_data["source_profile_url"]
+                            )
+                            if enrichment_result and enrichment_result.get("email"):
+                                candidate_data["email"] = enrichment_result["email"].strip().lower()
+                        except Exception as e:
+                            logger.warning(f"[Pipeline] Enrichment failed for candidate {candidate_data['name']}: {e}")
 
             # If still no email, mark as no_contact
             if not candidate_data["email"]:
@@ -556,15 +574,16 @@ async def _trigger_pre_evaluation(application_id: int, candidate_id: int, positi
         
         # Send email invite with magic link to set password
         from backend.db.repositories.candidates import CandidateRepository
-        from backend.db.repositories.organizations import OrganizationRepository
+        from backend.db.repositories.organizations import OrgRepository
         from backend.services.email_service import EmailService
         from backend.utils.security import create_magic_link_token
-        
-        candidate = await CandidateRepository.get(conn, org_id, candidate_id)
-        org = await OrganizationRepository.get(conn, org_id)
-        
+
+        candidate = await CandidateRepository.get(conn, candidate_id, org_id)
+        org = await OrgRepository.get_by_id(conn, org_id)
+
         if candidate and org and candidate.get("email"):
-            setup_token = create_magic_link_token("auth_magic", candidate_id, expires_hours=168) # 7 days
+            # Dedicated candidate-setup token type (single-use, consumed by the portal).
+            setup_token = create_magic_link_token("candidate_setup", candidate_id, expires_hours=168)  # 7 days
             setup_url = f"{settings.FRONTEND_URL}/candidate/setup-password?token={setup_token}"
             
             await EmailService.send_pre_evaluation_invite(
@@ -577,79 +596,8 @@ async def _trigger_pre_evaluation(application_id: int, candidate_id: int, positi
             
         logger.info(f"Triggered pre-evaluation for application {application_id} with token {token}")
 
-
-@celery_app.task(name="tasks.grade_pre_evaluation")
-def grade_pre_evaluation(eval_id: int, org_id: int):
-    import asyncio
-    try:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(_grade_pre_evaluation(eval_id, org_id))
-    except RuntimeError:
-        asyncio.run(_grade_pre_evaluation(eval_id, org_id))
-
-
-async def _grade_pre_evaluation(eval_id: int, org_id: int):
-    from backend.db.repositories.pre_evaluations import PreEvaluationRepository
-    from backend.adapters.llm.factory import get_llm
-    from langchain_core.messages import SystemMessage, HumanMessage
-    import json
-    
-    async with get_connection() as conn:
-        eval_record = await conn.fetchrow(
-            """
-            SELECT pe.questions, pe.answers, ca.position_id, p.role_name, p.jd_text
-            FROM pre_evaluations pe
-            JOIN candidate_applications ca ON ca.id = pe.application_id
-            JOIN positions p ON p.id = ca.position_id
-            WHERE pe.id = $1 AND pe.org_id = $2
-            """, eval_id, org_id
-        )
-        if not eval_record:
-            return
-
-        questions = eval_record["questions"]
-        if isinstance(questions, str):
-            questions = json.loads(questions)
-            
-        answers = eval_record["answers"]
-        if isinstance(answers, str):
-            answers = json.loads(answers)
-
-        llm = get_llm(temperature=0.0, json_mode=True)
-        sys_prompt = """You are an expert technical interviewer evaluating a candidate's written pre-evaluation test.
-You will receive the Role Name, the Job Description, the list of Questions, and the candidate's Answers.
-Score each answer based on accuracy, depth, and relevance to the JD. Provide a final overall score out of 100 and brief feedback.
-Return a valid JSON object strictly matching this schema:
-{
-    "score": "Float (0.0 to 100.0)",
-    "feedback": "String (Brief feedback summarizing the evaluation)"
-}"""
-        human_prompt = f"Role: {eval_record['role_name']}\nJD: {eval_record['jd_text'][:2000]}\nQuestions: {json.dumps(questions)}\nAnswers: {json.dumps(answers)}"
-        
-        try:
-            res = await llm.ainvoke([
-                SystemMessage(content=sys_prompt),
-                HumanMessage(content=human_prompt)
-            ])
-            content = res.content
-            if isinstance(content, list):
-                content = str(content[0]) if not isinstance(content[0], dict) else content[0].get("text", "")
-            content = str(content)
-            
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                content = content.split("```")[1].strip()
-                
-            data = json.loads(content)
-            score = float(data.get("score", 0.0))
-            feedback = data.get("feedback", "No feedback provided.")
-            
-        except Exception as e:
-            logger.error(f"Failed to grade pre-evaluation {eval_id}: {e}")
-            score = 0.0
-            feedback = "Failed to grade evaluation."
-            
-        await PreEvaluationRepository.update_score(conn, eval_id, score, feedback)
-        logger.info(f"Graded pre-evaluation {eval_id} with score {score}")
+# NOTE: Pre-evaluation grading is handled exclusively by the nightly batch task in
+# backend/tasks/pre_eval_grade.py (registered in celery beat). The earlier per-submission
+# grader here was removed — it referenced a non-existent column and did not route the
+# candidate to interview/rejected.
 

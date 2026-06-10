@@ -274,16 +274,16 @@ async def bulk_reject_candidates(
             
         app_ids = [row["id"] for row in rows]
         
-        # Update status
+        # Update status — re-assert org_id on the UPDATE for defense in depth.
         await conn.execute(
             """
-            UPDATE candidate_applications 
-            SET status = 'rejected', rejection_reason = 'Bulk rejected: ATS score below threshold', updated_at = NOW()
-            WHERE id = ANY($1::int[])
+            UPDATE candidate_applications
+            SET status = 'rejected', rejection_reason = 'ats_score', updated_at = NOW()
+            WHERE id = ANY($1::int[]) AND org_id = $2
             """,
-            app_ids
+            app_ids, current_user["org_id"]
         )
-        
+
         # Create pipeline events
         for row in rows:
             await PipelineEventRepository.create(conn, {
@@ -293,7 +293,7 @@ async def bulk_reject_candidates(
                 "application_id": row["id"],
                 "user_id": current_user["user_id"],
                 "event_type": "status_changed",
-                "event_data": {"old_status": "on_hold", "new_status": "rejected", "reason": "Bulk rejected: ATS score below threshold"}
+                "event_data": {"old_status": "on_hold", "new_status": "rejected", "reason": "ats_score"}
             })
             
     return {"ok": True, "rejected_count": len(app_ids)}

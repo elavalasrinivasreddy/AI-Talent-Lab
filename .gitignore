@@ -20,5 +20,6 @@ graphify-out/
 backend/data/chroma/
 backend/db/chroma/
 backend/dist/
+frontend/dist/
 .gstack/
 NAME.jpg

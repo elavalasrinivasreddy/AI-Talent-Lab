@@ -1,4 +1,5 @@
 import asyncio
+import difflib
 import json
 import logging
 from typing import Dict, Any, List
@@ -22,7 +23,7 @@ async def _batch_grade_pre_evaluations():
         rows = await conn.fetch(
             """
             SELECT pe.id, pe.org_id, pe.application_id, pe.questions, pe.answers,
-                   p.role_name, p.jd_text, ik.scorecard_template
+                   p.id AS position_id, p.role_name, p.jd_markdown, ik.scorecard_template
             FROM pre_evaluations pe
             JOIN candidate_applications ca ON ca.id = pe.application_id
             JOIN positions p ON p.id = ca.position_id
@@ -36,12 +37,10 @@ async def _batch_grade_pre_evaluations():
 
         logger.info(f"Found {len(rows)} pre-evaluations to grade.")
         
-        # We will process them concurrently but could batch by position if we wanted to check for collusion.
-        # For simplicity and robustness, grade each individually first.
         for row in rows:
             await _grade_single(conn, row)
-            
-        # TODO: Implement collusion detection across candidates for the same position
+
+        await _detect_collusion(conn, rows)
 
 async def _grade_single(conn, row):
     eval_id = row["id"]
@@ -52,6 +51,9 @@ async def _grade_single(conn, row):
         questions = json.loads(row["questions"]) if isinstance(row["questions"], str) else row["questions"]
         answers = json.loads(row["answers"]) if isinstance(row["answers"], str) else row["answers"]
         scorecard = json.loads(row["scorecard_template"]) if isinstance(row["scorecard_template"], str) else row["scorecard_template"]
+        if not scorecard:
+            # No interview kit for this position — grade against the JD with a generic rubric.
+            scorecard = [{"dimension": "Overall fit", "description": "Relevance, correctness and depth of answers vs the role requirements."}]
         
         llm = get_llm(temperature=0.0, json_mode=True)
         sys_prompt = """You are an expert technical interviewer evaluating a candidate's written pre-evaluation test.
@@ -65,7 +67,7 @@ Return ONLY valid JSON strictly matching this schema:
 }"""
         
         human_prompt = f"""Role: {row['role_name']}
-JD: {row['jd_text'][:2000]}
+JD: {(row['jd_markdown'] or '')[:2000]}
 Scorecard: {json.dumps(scorecard)}
 Questions: {json.dumps(questions)}
 Answers: {json.dumps(answers)}"""
@@ -91,19 +93,16 @@ Answers: {json.dumps(answers)}"""
         feedback = data.get("feedback", "No feedback provided.")
         decision = data.get("decision", "fail").lower()
         
-        # Update evaluation record
-        await PreEvaluationRepository.update_score(conn, eval_id, score, feedback)
-        
-        # Route candidate
+        # Update evaluation record (sets status passed/failed + evaluated_at)
+        await PreEvaluationRepository.update_score(conn, eval_id, score, feedback, decision=decision)
+
+        # Route candidate. NOTE arg order: update_application(conn, application_id, org_id, data)
         new_status = "interview" if decision == "pass" else "rejected"
-        await CandidateRepository.update_application(conn, org_id, application_id, {"status": new_status})
-        
-        if new_status == "rejected":
-            # Set rejection reason
-            await conn.execute(
-                "UPDATE candidate_applications SET rejection_reason = $1 WHERE id = $2 AND org_id = $3",
-                "screening_failed", application_id, org_id
-            )
+        await CandidateRepository.update_application(
+            conn, application_id, org_id,
+            {"status": new_status, "rejection_reason": "screening_failed"} if new_status == "rejected"
+            else {"status": new_status},
+        )
             
         logger.info(f"Graded pre-evaluation {eval_id} with score {score}. Decision: {decision}")
         
@@ -111,11 +110,89 @@ Answers: {json.dumps(answers)}"""
         logger.error(f"Failed to grade pre-evaluation {eval_id}: {e}", exc_info=True)
 
 
+def _answer_similarity(answers_a: dict, answers_b: dict) -> float:
+    """Average SequenceMatcher ratio across shared question keys."""
+    keys = set(answers_a) & set(answers_b)
+    if not keys:
+        return 0.0
+    scores = []
+    for k in keys:
+        a = str(answers_a.get(k, "")).lower().strip()
+        b = str(answers_b.get(k, "")).lower().strip()
+        if not a and not b:
+            continue
+        scores.append(difflib.SequenceMatcher(None, a, b).ratio())
+    return sum(scores) / len(scores) if scores else 0.0
+
+
+async def _detect_collusion(conn, rows: list):
+    """
+    Group submitted evaluations by position. Flag both evaluations in any pair
+    whose answer texts are >= COLLUSION_THRESHOLD similar, leaving them for human review
+    instead of auto-routing to interview/rejected.
+
+    Also reverts the application status to 'on_hold' so colluders don't silently
+    advance to the Interview lane while awaiting HR review.
+    """
+    COLLUSION_THRESHOLD = 0.80
+
+    # Build eval_id -> application_id map for reverting application status
+    eval_to_app: Dict[int, int] = {row["id"]: row["application_id"] for row in rows}
+
+    by_position: Dict[int, list] = {}
+    for row in rows:
+        by_position.setdefault(row["position_id"], []).append(row)
+
+    flagged_ids = set()
+    for position_id, position_rows in by_position.items():
+        if len(position_rows) < 2:
+            continue
+
+        parsed = []
+        for r in position_rows:
+            try:
+                answers = json.loads(r["answers"]) if isinstance(r["answers"], str) else r["answers"]
+                parsed.append((r["id"], answers or {}))
+            except Exception:
+                parsed.append((r["id"], {}))
+
+        for i in range(len(parsed)):
+            for j in range(i + 1, len(parsed)):
+                id_a, ans_a = parsed[i]
+                id_b, ans_b = parsed[j]
+                sim = _answer_similarity(ans_a, ans_b)
+                if sim >= COLLUSION_THRESHOLD:
+                    logger.warning(
+                        "Collusion suspected: pre_evals %s and %s (position %s) similarity=%.2f — flagged for human review",
+                        id_a, id_b, position_id, sim,
+                    )
+                    flagged_ids.add(id_a)
+                    flagged_ids.add(id_b)
+
+    if flagged_ids:
+        # Mark pre-evaluations as flagged (overrides passed/failed set by _grade_single)
+        await conn.execute(
+            "UPDATE pre_evaluations SET status = 'flagged', updated_at = NOW() WHERE id = ANY($1::int[])",
+            list(flagged_ids),
+        )
+        # Revert application status to on_hold so colluders don't reach the Interview lane
+        flagged_app_ids = [eval_to_app[eid] for eid in flagged_ids if eid in eval_to_app]
+        if flagged_app_ids:
+            await conn.execute(
+                """
+                UPDATE candidate_applications
+                SET status = 'on_hold', updated_at = NOW()
+                WHERE id = ANY($1::int[])
+                """,
+                flagged_app_ids,
+            )
+        logger.info(
+            "Flagged %d pre-evaluations for collusion review (eval ids: %s); reverted %d applications to on_hold",
+            len(flagged_ids), flagged_ids, len(flagged_app_ids),
+        )
+
+
 @celery_app.task(name="tasks.pre_eval_grade")
 def pre_eval_grade():
     """Nightly batch task to grade submitted pre-evaluations."""
-    try:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(_batch_grade_pre_evaluations())
-    except RuntimeError:
-        asyncio.run(_batch_grade_pre_evaluations())
+    asyncio.run(_batch_grade_pre_evaluations())

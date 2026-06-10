@@ -3316,7 +3316,7 @@ Updated the LLM configuration in `backend/adapters/llm/factory.py` to enforce `j
 
 ---
 
-## 72. Candidate Portal Auth, Pre-Evaluations Batching, and Global Talent Pool Schema
+## 192. Candidate Portal Auth, Pre-Evaluations Batching, and Global Talent Pool Schema
 
 **Problem Statement:**
 1. Pre-evaluations were being graded synchronously blocking the main API thread.
@@ -3339,3 +3339,134 @@ Updated the LLM configuration in `backend/adapters/llm/factory.py` to enforce `j
 - `frontend/src/pages/CandidatePortal/CandidateDashboard.jsx`
 - `frontend/src/router.jsx`
 - `docs/architecture/CROSS_ORG_SCHEMA.md`
+
+---
+
+## 193. Phase 2 Code Review — Critical Backend Wiring & Security Fixes
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Problem Statement:**
+Full code review of the Phase 2 Gemini implementation revealed four critical issues that would have caused complete feature failure on first run:
+1. `candidate_portal` and `pre_evaluations` routers were imported in `main.py` but never mounted via `app.include_router()` — every endpoint returned 404.
+2. `candidatePortalApi` and `preEvaluationsApi` were referenced in frontend components but never exported from `api.js` — all candidate-facing pages would crash on load.
+3. `pre_evaluations.py` router used `from backend.db.connection import get_connection as get_db` — `get_connection` returns an async context manager, not an async generator, causing FastAPI startup failure when Depends tried to call it.
+4. Candidate JWT tokens (`role="candidate"`) were not blocked from accessing internal staff endpoints in `get_current_user` — a candidate could potentially call any internal API using their login token.
+
+**Idea / Solution:**
+1. Added `app.include_router(candidate_portal_router.router)` and `app.include_router(pre_evaluations_router.router)` in `main.py`.
+2. Implemented `_candidateFetch` helper (reads `localStorage.getItem('candidate_token')`) and exported full `candidatePortalApi` and `preEvaluationsApi` objects from `api.js`.
+3. Fixed `pre_evaluations.py` to `from backend.dependencies import get_db`.
+4. Added role check in `dependencies.py`: if `payload.get("role") == "candidate"`, raise `InsufficientPermissionsError` before granting access.
+
+**Files Modified:**
+- `backend/main.py`
+- `backend/routers/pre_evaluations.py`
+- `backend/dependencies.py`
+- `frontend/src/utils/api.js`
+
+---
+
+## 194. Phase 2 Code Review — Pre-Evaluation Pipeline Correctness Fixes
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Problem Statement:**
+The nightly pre-evaluation grading task (`pre_eval_grade.py`) and the candidate pipeline had multiple correctness bugs that would silently fail or corrupt data:
+1. `update_application(conn, org_id, application_id, data)` — arguments were swapped; actual signature is `(conn, application_id, org_id, data)`.
+2. SQL query used `p.jd_text` which does not exist; the column is `p.jd_markdown`. Prompt template also referenced `row['jd_text']`.
+3. `asyncio.get_event_loop().run_until_complete()` is deprecated and raises `DeprecationWarning` on Python 3.10+ and errors on 3.12+. Used in the Celery task entry point.
+4. `rejection_reason` was written by both `pre_eval_grade.py` and `candidates.py` (bulk reject), but the field was missing from the `update_application` allowed-columns set in `CandidateRepository` — it was silently dropped on every write.
+5. `pre_evaluations` table was missing from `RLS_TABLES_WITH_ORG_ID` in migrations, leaving it without row-level security. Also missing `position_id` and `evaluated_at` columns added by the Gemini implementation.
+6. `consent_to_store`, `consent_to_contact`, and `consent_timestamp` columns referenced by the opt-in endpoint were missing from the `candidates` table migration.
+
+**Idea / Solution:**
+1. Fixed argument order: `CandidateRepository.update_application(conn, application_id, org_id, data)`.
+2. Fixed SQL query: `p.jd_markdown`; fixed prompt: `row['jd_markdown']`.
+3. Replaced `asyncio.get_event_loop().run_until_complete()` with `asyncio.run()`.
+4. Added `"rejection_reason"` to the allowed set in `CandidateRepository.update_application`.
+5. Added `"pre_evaluations"` to `RLS_TABLES_WITH_ORG_ID`; added idempotent `ALTER TABLE pre_evaluations ADD COLUMN IF NOT EXISTS` for `position_id` and `evaluated_at`.
+6. Added idempotent `ALTER TABLE candidates ADD COLUMN IF NOT EXISTS` for all three consent columns.
+
+**Files Modified:**
+- `backend/tasks/pre_eval_grade.py`
+- `backend/db/repositories/candidates.py`
+- `backend/db/migrations.py`
+
+---
+
+## 195. Phase 2 Code Review — Sourcing Adapter, Enrichment Safety & Providers Security
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Problem Statement:**
+Three issues in the sourcing and settings layers:
+1. `candidate_pipeline.py` always used the global env-var adapter, ignoring the per-org `sourcing_config` written by `SourcingTab`. Also imported `OrganizationRepository` which does not exist (the class is `OrgRepository`). `CandidateRepository.get()` argument order was also swapped.
+2. `enrichment/__init__.py` did not return `None` for unimplemented real providers (Proxycurl, Apollo, Hunter) — calling them with no real API key would silently use simulation data and fabricate email addresses, which would then be sent to real people.
+3. Providers endpoints (`GET/PATCH /settings/providers`) were gated behind `require_org_head` — org admins could overwrite platform-level API keys (Groq, Tavily, etc.) that are meant to be platform-central only.
+
+**Idea / Solution:**
+1. Fixed import: `OrgRepository`. Fixed `CandidateRepository.get(conn, candidate_id, org_id)`. Added per-org adapter resolution: reads `org.sourcing_config.source_adapter`, falls back to `settings.DEFAULT_SOURCE_ADAPTER`. Gated enrichment call on `sourcing_config.enrichment_enabled` flag AND non-None adapter. Added `DEFAULT_SOURCE_ADAPTER: str = "simulation"` to `config.py`.
+2. `get_enrichment_adapter()` now returns `None` for any provider name that is not `"simulation"`, logs a warning, and the pipeline skips enrichment rather than fabricating data.
+3. Changed both providers endpoints from `require_org_head` to `require_platform_admin`.
+
+**Files Modified:**
+- `backend/tasks/candidate_pipeline.py`
+- `backend/adapters/candidate_sources/__init__.py`
+- `backend/adapters/enrichment/__init__.py`
+- `backend/config.py`
+- `backend/routers/settings.py`
+
+---
+
+## 196. Phase 2 Code Review — Frontend Component & API Fixes
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Problem Statement:**
+Multiple frontend pages and components were broken or non-functional:
+1. `SourcingTab.jsx`, `CandidateLogin.jsx`, `SetPassword.jsx`, and `CandidateDashboard.jsx` all imported from `../../shared/ui` or `../../components/shared/ui` barrel files that do not exist in the project, causing Vite import errors.
+2. `CandidateLogin.jsx` had a stub `handleSubmit` that only logged to console — clicking login did nothing.
+3. `CandidateDashboard.jsx` had no auth guard and called `candidatePortalApi.get('/timeline')` (wrong pattern) instead of `candidatePortalApi.getTimeline()`. The opt-in call also used the wrong method signature.
+4. `SourcingTab.jsx` used `auto_enrich` as the config key but the backend pipeline checks `enrichment_enabled`.
+5. `ProvidersTab.jsx` imported `Button` from `../../common/Button` and `InputField` from `../../common/InputField` — neither file existed.
+6. The `GET /candidate/timeline` endpoint returned applications without joining `pre_evaluations`, so `app.pre_eval_token` was always null and the dashboard always showed "check your email" instead of a direct link to the assessment.
+
+**Idea / Solution:**
+1. Rewrote all four components using plain HTML elements (`<input>`, `<button>`, `<select>`) — no missing component dependencies.
+2. Implemented full login logic in `CandidateLogin.jsx`: calls `candidatePortalApi.login()`, stores token in `localStorage`, navigates to dashboard. Reads `org_id` from `?org=` query param.
+3. Added auth guard (redirect to `/candidate/login` if no token; clear token on 401) and fixed all API call patterns in `CandidateDashboard.jsx`.
+4. Fixed config key: `auto_enrich` → `enrichment_enabled` in `SourcingTab.jsx`.
+5. Created `frontend/src/components/common/Button.jsx` and `frontend/src/components/common/InputField.jsx` as thin wrappers matching the project's CSS class conventions.
+6. Updated the timeline SQL query to `LEFT JOIN pre_evaluations pe ON pe.application_id = ca.id AND pe.status IN ('pending', 'submitted')` and added `pe.token AS pre_eval_token` to the SELECT.
+
+**Files Modified:**
+- `frontend/src/pages/CandidatePortal/CandidateLogin.jsx`
+- `frontend/src/pages/CandidatePortal/SetPassword.jsx`
+- `frontend/src/pages/CandidatePortal/CandidateDashboard.jsx`
+- `frontend/src/components/Settings/tabs/SourcingTab.jsx`
+- `frontend/src/components/common/Button.jsx` (created)
+- `frontend/src/components/common/InputField.jsx` (created)
+- `backend/routers/candidate_portal.py`
+
+---
+
+## 197. Phase 2 — Collusion Detection in Pre-Evaluation Grader
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Problem Statement:**
+The pre-evaluation anti-cheat plan included detecting when two candidates (e.g., friends applying together) submit near-identical answers for the same position. Without this, the LLM grader would pass both independently, letting colluders reach the Interview stage undetected.
+
+Additionally, the collusion check ran after `_grade_single` had already routed passing candidates to `status='interview'` in `candidate_applications`. Flagging the `pre_evaluations` row alone would leave colluders visibly in the Interview Kanban lane while HR was still reviewing.
+
+**Idea / Solution:**
+Implemented `_detect_collusion(conn, rows)` and `_answer_similarity(answers_a, answers_b)` in `pre_eval_grade.py`:
+- After all individual grades complete, submissions are grouped by `position_id`.
+- For every pair within a position, `difflib.SequenceMatcher` computes the average character-level similarity ratio across shared question keys (text lowercased and stripped).
+- Pairs with similarity ≥ 0.80 are flagged: both `pre_evaluations` rows are set to `status='flagged'` (overriding passed/failed), and the corresponding `candidate_applications` rows are reverted to `status='on_hold'` so they leave the Interview lane and await manual HR review.
+- SQL query updated to include `p.id AS position_id` to support the grouping.
+
+**Files Modified:**
+- `backend/tasks/pre_eval_grade.py`
+- `.gitignore` (added `frontend/dist/`)

@@ -65,7 +65,10 @@ class Settings(BaseSettings):
     FROM_NAME: str = "AI Talent Lab"
 
     # ── Candidate Sourcing ─────────────────────────────────────────────────
-    CANDIDATE_SOURCE_ADAPTER: str = "simulation"
+    CANDIDATE_SOURCE_ADAPTER: str = "simulation"  # legacy global fallback
+    # Default adapter when an org hasn't set one in Settings → Sourcing.
+    # Set to "tavily" in production .env; "simulation" is dev-only.
+    DEFAULT_SOURCE_ADAPTER: str = "simulation"
 
     # ── Magic Link Expiry ──────────────────────────────────────────────────
     APPLY_LINK_EXPIRY_HOURS: int = 72

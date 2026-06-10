@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Button, Badge } from '../../components/shared/ui'
 import { candidatePortalApi } from '../../utils/api'
 import { PIPELINE_STAGES } from '../../utils/constants'
 
@@ -9,11 +8,21 @@ export default function CandidateDashboard() {
   const [optInLoading, setOptInLoading] = useState(false)
 
   const fetchData = async () => {
+    // Auth guard: no token → straight to login.
+    if (!localStorage.getItem('candidate_token')) {
+      window.location.href = '/candidate/login'
+      return
+    }
     try {
       setLoading(true)
-      const res = await candidatePortalApi.get('/timeline')
-      setData(res.data)
+      const res = await candidatePortalApi.getTimeline()
+      setData(res)
     } catch (err) {
+      if (err.status === 401) {
+        localStorage.removeItem('candidate_token')
+        window.location.href = '/candidate/login'
+        return
+      }
       console.error('Failed to fetch dashboard data:', err)
     } finally {
       setLoading(false)
@@ -27,7 +36,7 @@ export default function CandidateDashboard() {
   const handleOptIn = async (optIn) => {
     try {
       setOptInLoading(true)
-      await candidatePortalApi.post('/opt-in-talent-pool', { opt_in: optIn })
+      await candidatePortalApi.optInTalentPool(optIn)
       alert(optIn ? 'Successfully opted in!' : 'Successfully opted out.')
     } catch (err) {
       console.error('Failed to update preferences:', err)
@@ -41,65 +50,78 @@ export default function CandidateDashboard() {
     return <div className="p-lg max-w-container mx-auto">Loading your dashboard...</div>
   }
 
-  const { applications, timeline, interviews } = data || { applications: [], timeline: [], interviews: [] }
+  const { applications, interviews } = data || { applications: [], interviews: [] }
 
   return (
     <div className="p-lg max-w-container mx-auto">
       <div className="flex justify-between items-center mb-lg">
         <h1>My Candidate Portal</h1>
-        <Button onClick={() => {
-          localStorage.removeItem('candidate_token')
-          window.location.href = '/candidate/login'
-        }} variant="secondary">Log Out</Button>
+        <button
+          className="btn btn-secondary"
+          onClick={() => {
+            localStorage.removeItem('candidate_token')
+            window.location.href = '/candidate/login'
+          }}
+        >
+          Log Out
+        </button>
       </div>
-      
+
       <div className="grid gap-lg">
-        {/* Opt in Section */}
-        <Card title="Global Talent Pool" className="bg-slate-50 border-blue-100">
+        {/* Talent pool opt-in (candidate consent) */}
+        <div className="settings-card bg-slate-50 border-blue-100" style={{ padding: 16 }}>
           <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-slate-700 mb-xs">
-                Allow organizations on AI Talent Lab to contact you with relevant opportunities. 
-                We will safely store your profile and match you to jobs.
-              </p>
-            </div>
+            <p className="text-sm text-slate-700 mb-xs">
+              Allow organizations on AI Talent Lab to contact you with relevant opportunities.
+              We will safely store your profile and match you to jobs.
+            </p>
             <div className="flex gap-2">
-              <Button onClick={() => handleOptIn(true)} disabled={optInLoading} variant="primary">Opt In</Button>
-              <Button onClick={() => handleOptIn(false)} disabled={optInLoading} variant="secondary">Opt Out</Button>
+              <button className="btn btn-primary" onClick={() => handleOptIn(true)} disabled={optInLoading}>Opt In</button>
+              <button className="btn btn-secondary" onClick={() => handleOptIn(false)} disabled={optInLoading}>Opt Out</button>
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Applications */}
         <div className="grid gap-md">
           <h2 className="text-xl font-bold">My Applications</h2>
           {applications.length === 0 ? (
-            <Card>
+            <div className="settings-card" style={{ padding: 16 }}>
               <p className="text-muted">No applications found.</p>
-            </Card>
+            </div>
           ) : (
             applications.map(app => (
-              <Card key={app.id} className="mb-md">
+              <div key={app.id} className="settings-card mb-md" style={{ padding: 16 }}>
                 <div className="flex justify-between items-start mb-md">
                   <div>
                     <h3 className="font-bold text-lg">{app.role_name}</h3>
                     <p className="text-sm text-muted">{app.location}</p>
                   </div>
-                  <Badge variant={app.status === 'rejected' ? 'danger' : 'success'}>
+                  <span className={`status-badge ${app.status === 'rejected' ? 'status-danger' : 'status-success'}`}>
                     {PIPELINE_STAGES.find(s => s.id === app.status)?.label || app.status}
-                  </Badge>
+                  </span>
                 </div>
-                
+
                 {app.status === 'screening' && (
                   <div className="mt-4 p-4 bg-orange-50 border border-orange-100 rounded">
                     <p className="text-sm text-orange-800 font-medium mb-2">Action Required: Pre-evaluation Test</p>
                     <p className="text-xs text-orange-700 mb-4">Please complete the written assessment for this role.</p>
-                    <Button variant="primary" onClick={() => window.open(`/status/${app.id}`, '_blank')}>
-                      Start Pre-evaluation
-                    </Button>
+                    {app.pre_eval_token ? (
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => window.open(`/pre-evaluations/${app.pre_eval_token}`, '_blank')}
+                      >
+                        Start Pre-evaluation
+                      </button>
+                    ) : (
+                      // TODO(backend): include the pre_evaluations.token in the /candidate/timeline payload
+                      // so this button can deep-link to the assessment. Until then, candidates use the link
+                      // from their invitation email.
+                      <p className="text-xs text-orange-700">Check your email for the assessment link.</p>
+                    )}
                   </div>
                 )}
-              </Card>
+              </div>
             ))
           )}
         </div>
@@ -108,16 +130,16 @@ export default function CandidateDashboard() {
         {interviews.length > 0 && (
           <div className="grid gap-md">
             <h2 className="text-xl font-bold">Upcoming Interviews</h2>
-            {interviews.map(i => (
-              <Card key={i.id}>
+            {interviews.map((i, idx) => (
+              <div key={idx} className="settings-card" style={{ padding: 16 }}>
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="font-bold">{i.round_name}</p>
                     <p className="text-sm text-muted">{new Date(i.scheduled_at).toLocaleString()}</p>
                   </div>
-                  <Badge variant="warning">Scheduled</Badge>
+                  <span className="status-badge status-warning">Scheduled</span>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         )}

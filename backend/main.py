@@ -107,6 +107,8 @@ app.include_router(copilot_router.router)     # AI Copilot suggestions
 app.include_router(notes_router.router)       # Collaborative hiring notes
 app.include_router(platform_router.router)    # Platform admin — cross-org SaaS analytics
 app.include_router(hire_requests_router.router)  # Hire requests (dedicated CRUD)
+app.include_router(candidate_portal_router.router)  # Candidate portal — login + timeline + consent
+app.include_router(pre_evaluations_router.router)   # Public — pre-evaluation written test (token)
 
 # ── Root & Health ──────────────────────────────────────────────────────────────
 

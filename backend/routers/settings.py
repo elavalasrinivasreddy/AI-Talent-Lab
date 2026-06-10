@@ -8,7 +8,7 @@ from typing import Optional
 
 import asyncpg
 
-from backend.dependencies import get_db, get_current_user, require_org_head, require_dept_admin, require_hr
+from backend.dependencies import get_db, get_current_user, require_org_head, require_dept_admin, require_hr, require_platform_admin
 from backend.services.settings_service import SettingsService
 from backend.models.settings import (
     OrgProfileUpdate, AutoDraftRequest,
@@ -668,16 +668,16 @@ from backend.models.settings import ProviderConfig, ProvidersUpdate
 
 @router.get("/providers")
 async def get_providers(
-    user: dict = Depends(require_org_head),
+    user: dict = Depends(require_platform_admin),
 ):
-    """Get platform-level provider configurations with masked API keys."""
+    """Get platform-level provider configurations with masked API keys (platform admin only)."""
     return {"providers": SettingsService.get_providers()}
 
 @router.patch("/providers")
 async def update_providers(
     body: ProvidersUpdate,
-    user: dict = Depends(require_org_head),
+    user: dict = Depends(require_platform_admin),
 ):
-    """Update platform-level provider configurations."""
+    """Update platform-level provider configurations (platform admin only)."""
     providers = SettingsService.update_providers(body.model_dump(exclude_none=True))
     return {"providers": providers}

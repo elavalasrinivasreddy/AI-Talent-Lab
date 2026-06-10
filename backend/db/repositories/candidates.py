@@ -131,7 +131,7 @@ class CandidateRepository:
             "skill_match_score", "skill_match_data", "status", "applied_at",
             "screening_responses", "magic_link_token", "magic_link_sent_at",
             "magic_link_clicked_at", "magic_link_expires_at", "rejection_draft",
-            "rejection_sent_at", "followup_sent_at"
+            "rejection_sent_at", "followup_sent_at", "rejection_reason"
         }
         fields = {k: v for k, v in data.items() if k in allowed}
         if not fields:

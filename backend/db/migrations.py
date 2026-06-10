@@ -459,6 +459,7 @@ RLS_TABLES_WITH_ORG_ID = [
     "message_templates",
     "scorecard_templates",
     "interview_kits",
+    "pre_evaluations",
 ]
 
 # Tables that don't have org_id directly (need join-based or skip RLS policy)
@@ -681,6 +682,19 @@ async def run_migrations(conn) -> None:
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                        WHERE table_name='candidates' AND column_name='data_anonymized_at') THEN
             ALTER TABLE candidates ADD COLUMN data_anonymized_at TIMESTAMP;
+        END IF;
+        -- Candidate portal talent-pool consent (opt-in)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidates' AND column_name='consent_to_store') THEN
+            ALTER TABLE candidates ADD COLUMN consent_to_store BOOLEAN DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidates' AND column_name='consent_to_contact') THEN
+            ALTER TABLE candidates ADD COLUMN consent_to_contact BOOLEAN DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidates' AND column_name='consent_timestamp') THEN
+            ALTER TABLE candidates ADD COLUMN consent_timestamp TIMESTAMP;
         END IF;
     END $$;
 
@@ -1087,6 +1101,7 @@ async def run_migrations(conn) -> None:
         org_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
         application_id INTEGER NOT NULL REFERENCES candidate_applications(id) ON DELETE CASCADE,
         candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+        position_id INTEGER REFERENCES positions(id) ON DELETE CASCADE,
         status VARCHAR(20) NOT NULL DEFAULT 'pending',
         token VARCHAR(64) UNIQUE,
         questions JSONB NOT NULL,
@@ -1095,9 +1110,12 @@ async def run_migrations(conn) -> None:
         feedback TEXT,
         expires_at TIMESTAMPTZ,
         completed_at TIMESTAMPTZ,
+        evaluated_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE pre_evaluations ADD COLUMN IF NOT EXISTS position_id INTEGER REFERENCES positions(id) ON DELETE CASCADE;
+    ALTER TABLE pre_evaluations ADD COLUMN IF NOT EXISTS evaluated_at TIMESTAMPTZ;
     CREATE INDEX IF NOT EXISTS idx_pre_evals_app ON pre_evaluations(application_id);
     CREATE INDEX IF NOT EXISTS idx_pre_evals_token ON pre_evaluations(token);
     """

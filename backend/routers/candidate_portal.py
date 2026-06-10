@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 import asyncpg
 from pydantic import BaseModel
-import bcrypt
 
 from backend.db.repositories.candidates import CandidateRepository
-from backend.utils.security import create_access_token
+from backend.utils.security import create_access_token, verify_password
 from backend.dependencies import get_db, get_current_candidate
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/candidate", tags=["Candidate Portal"])
+
+# Consent text version shown to candidates on talent-pool opt-in. Bump when wording changes.
+TALENT_POOL_CONSENT_VERSION = "v1-2026-06"
 
 class CandidateLoginBody(BaseModel):
     email: str
@@ -17,14 +19,16 @@ class CandidateLoginBody(BaseModel):
 @router.post("/login")
 async def login_candidate(body: CandidateLoginBody, db: asyncpg.Connection = Depends(get_db)):
     candidate = await CandidateRepository.get_by_email(db, body.email, body.org_id)
-    
-    if not candidate or not candidate.get("password_hash"):
+
+    # Same generic error for "no candidate", "no password set", and "wrong password"
+    # to avoid leaking which emails exist in which org.
+    if (
+        not candidate
+        or not candidate.get("password_hash")
+        or not verify_password(body.password, candidate["password_hash"])
+    ):
         raise HTTPException(status_code=401, detail={"code": "INVALID_CREDENTIALS", "message": "Invalid email or password."})
-        
-    # Verify password
-    if not bcrypt.checkpw(body.password.encode('utf-8'), candidate["password_hash"].encode('utf-8')):
-        raise HTTPException(status_code=401, detail={"code": "INVALID_CREDENTIALS", "message": "Invalid email or password."})
-        
+
     # Generate token
     token = create_access_token(
         user_id=candidate["id"],
@@ -47,12 +51,16 @@ async def get_timeline(candidate: dict = Depends(get_current_candidate), db: asy
     candidate_id = candidate["candidate_id"]
     org_id = candidate["org_id"]
     
-    # Get all applications for this candidate
+    # Get all applications for this candidate, including pre-eval token when available
     apps = await db.fetch(
         """
-        SELECT ca.id, ca.status, ca.applied_at, p.role_name, p.location
+        SELECT ca.id, ca.status, ca.applied_at, p.role_name, p.location,
+               pe.token AS pre_eval_token
         FROM candidate_applications ca
         JOIN positions p ON p.id = ca.position_id
+        LEFT JOIN pre_evaluations pe
+               ON pe.application_id = ca.id
+              AND pe.status IN ('pending', 'submitted')
         WHERE ca.candidate_id = $1 AND ca.org_id = $2
         """,
         candidate_id, org_id
@@ -93,46 +101,77 @@ class SetPasswordBody(BaseModel):
 @router.post("/set-password")
 async def set_password(body: SetPasswordBody, db: asyncpg.Connection = Depends(get_db)):
     from backend.utils.security import verify_magic_link_token, hash_password
-    
+
     try:
-        # Expected to be an 'auth_magic' token
-        payload = verify_magic_link_token(body.token, "auth_magic")
-    except Exception as e:
+        # Dedicated candidate-setup token type — distinct from internal-user 'auth_magic'
+        # so a candidate link can never be replayed against the staff sign-in flow.
+        payload = verify_magic_link_token(body.token, "candidate_setup")
+    except Exception:
         raise HTTPException(status_code=400, detail={"code": "INVALID_TOKEN", "message": "Invalid or expired token."})
-        
+
     candidate_id = payload["entity_id"]
-    
-    # Hash the password
+    jti = payload.get("jti")
+
+    # Enforce single-use: insert the jti; a UNIQUE violation means the link was already used.
+    if jti:
+        try:
+            await db.execute(
+                "INSERT INTO consumed_magic_links (jti, token_type, entity_id) VALUES ($1, $2, $3)",
+                jti, "candidate_setup", candidate_id,
+            )
+        except asyncpg.UniqueViolationError:
+            raise HTTPException(status_code=400, detail={"code": "TOKEN_USED", "message": "This link has already been used."})
+
     hashed = hash_password(body.password)
-    
-    # Update candidate record
     await db.execute(
         "UPDATE candidates SET password_hash = $1, updated_at = NOW() WHERE id = $2",
         hashed, candidate_id
     )
-    
+
     return {"status": "success", "message": "Password set successfully. You may now log in."}
 
 class OptInBody(BaseModel):
     opt_in: bool
 
 @router.post("/opt-in-talent-pool")
-async def opt_in_talent_pool(body: OptInBody, candidate: dict = Depends(get_current_candidate), db: asyncpg.Connection = Depends(get_db)):
+async def opt_in_talent_pool(
+    body: OptInBody,
+    request: Request,
+    candidate: dict = Depends(get_current_candidate),
+    db: asyncpg.Connection = Depends(get_db),
+):
     candidate_id = candidate["candidate_id"]
     org_id = candidate["org_id"]
-    
+
+    # talent_pool_reason is 'opt_in' only when actually opting in; cleared on opt-out.
+    reason = "opt_in" if body.opt_in else None
     await db.execute(
         """
-        UPDATE candidates 
-        SET in_talent_pool = $1, 
-            talent_pool_reason = 'opt_in', 
-            talent_pool_added_at = NOW(),
+        UPDATE candidates
+        SET in_talent_pool = $1,
+            talent_pool_reason = $2,
+            talent_pool_added_at = CASE WHEN $1 THEN NOW() ELSE talent_pool_added_at END,
             consent_to_store = $1,
             consent_to_contact = $1,
+            consent_timestamp = NOW(),
             updated_at = NOW()
-        WHERE id = $2 AND org_id = $3
+        WHERE id = $3 AND org_id = $4
         """,
-        body.opt_in, candidate_id, org_id
+        body.opt_in, reason, candidate_id, org_id
     )
-    
+
+    # GDPR/DPDP audit trail: record the consent event itself.
+    ip_address = request.client.host if request.client else None
+    await db.execute(
+        """
+        INSERT INTO consent_records
+            (org_id, candidate_id, consent_type, consent_given, consent_text, ip_address)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        """,
+        org_id, candidate_id, "talent_pool",
+        body.opt_in,
+        f"Talent pool opt-in ({TALENT_POOL_CONSENT_VERSION})",
+        ip_address,
+    )
+
     return {"status": "success", "message": "Preferences updated successfully."}

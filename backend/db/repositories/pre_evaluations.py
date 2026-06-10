@@ -54,14 +54,20 @@ class PreEvaluationRepository:
         return dict(row) if row else None
 
     @staticmethod
-    async def update_score(conn: asyncpg.Connection, eval_id: int, score: float, feedback: str) -> Optional[dict]:
+    async def update_score(
+        conn: asyncpg.Connection, eval_id: int, score: float, feedback: str,
+        decision: str = "fail",
+    ) -> Optional[dict]:
+        # status reflects the grading outcome: 'passed' / 'failed' (or 'flagged' for collusion).
+        status = "passed" if decision == "pass" else ("flagged" if decision == "flagged" else "failed")
         row = await conn.fetchrow(
             """
             UPDATE pre_evaluations
-            SET score = $1, feedback = $2, status = 'graded', updated_at = NOW()
-            WHERE id = $3
+            SET score = $1, feedback = $2, status = $3,
+                evaluated_at = NOW(), updated_at = NOW()
+            WHERE id = $4
             RETURNING *
             """,
-            score, feedback, eval_id
+            score, feedback, status, eval_id
         )
         return dict(row) if row else None

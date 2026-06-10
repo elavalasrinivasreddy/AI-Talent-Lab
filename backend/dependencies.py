@@ -53,7 +53,11 @@ async def get_current_user(request: Request) -> dict:
         raise InvalidCredentialsError("Missing token")
 
     payload = decode_access_token(token)
-    
+
+    # Candidate tokens must never grant access to internal/staff endpoints.
+    if payload.get("role") == "candidate":
+        raise InsufficientPermissionsError("Candidate tokens cannot access this resource")
+
     jti = payload.get("jti")
     if jti:
         import redis.asyncio as redis

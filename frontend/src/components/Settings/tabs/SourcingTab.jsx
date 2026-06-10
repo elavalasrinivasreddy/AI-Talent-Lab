@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Input, Button, Toggle, Select, Chip, Icon } from '../../shared/ui'
 import { settingsApi } from '../../../utils/api'
+
+const DEFAULT_CONFIG = {
+  source_adapter: 'simulation',
+  inbound_enabled: true,
+  enrichment_enabled: false,
+  enrichment_provider: 'proxycurl',
+}
 
 export default function SourcingTab({ isReadOnly }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [config, setConfig] = useState({
-    source_adapter: 'simulation',
-    inbound_enabled: true,
-    auto_enrich: false,
-  })
+  const [config, setConfig] = useState(DEFAULT_CONFIG)
 
   useEffect(() => {
     fetchConfig()
@@ -18,11 +20,7 @@ export default function SourcingTab({ isReadOnly }) {
   const fetchConfig = async () => {
     try {
       const res = await settingsApi.getSourcingConfig()
-      setConfig(res.settings || {
-        source_adapter: 'simulation',
-        inbound_enabled: true,
-        auto_enrich: false,
-      })
+      setConfig({ ...DEFAULT_CONFIG, ...(res.settings || {}) })
     } catch (err) {
       console.error('Failed to load sourcing config', err)
     } finally {
@@ -34,7 +32,6 @@ export default function SourcingTab({ isReadOnly }) {
     setSaving(true)
     try {
       await settingsApi.updateSourcingConfig(config)
-      // Show toast
     } catch (err) {
       console.error('Failed to save sourcing config', err)
     } finally {
@@ -45,70 +42,73 @@ export default function SourcingTab({ isReadOnly }) {
   if (loading) return <div className="p-lg">Loading...</div>
 
   return (
-    <div className="pd-tab-content">
-      <div className="pd-tab-header">
-        <div>
-          <h2>Candidate Sourcing</h2>
-          <p className="text-muted">Configure outbound search adapters and inbound candidate workflows.</p>
+    <div className="settings-form">
+      <div className="settings-form-section">
+        <div className="flex justify-between items-center mb-md">
+          <div>
+            <h3>Candidate Sourcing</h3>
+            <p className="text-muted">Configure outbound search adapters and inbound candidate workflows.</p>
+          </div>
+          {!isReadOnly && (
+            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Settings'}
+            </button>
+          )}
         </div>
-        {!isReadOnly && (
-          <Button variant="primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Settings'}
-          </Button>
-        )}
-      </div>
 
-      <div className="st-card-grid">
-        <Card title="Source Adapter">
-          <p className="text-muted text-sm mb-md">
-            Select which adapter to use for finding new candidates.
-          </p>
-          <Select
-            label="Search Adapter"
+        <div className="settings-card" style={{ padding: 16, marginBottom: 16 }}>
+          <h4>Source Adapter</h4>
+          <p className="text-muted text-sm mb-md">Select which adapter to use for finding new candidates.</p>
+          <select
+            className="form-input"
             value={config.source_adapter || 'simulation'}
             onChange={e => setConfig({ ...config, source_adapter: e.target.value })}
             disabled={isReadOnly}
-            options={[
-              { value: 'simulation', label: 'Simulation (Local testing)' },
-              { value: 'tavily', label: 'Tavily (Web Search)' },
-              { value: 'linkedin', label: 'LinkedIn API (Phase 3)' }
-            ]}
-          />
-        </Card>
+          >
+            <option value="simulation">Simulation (local testing only)</option>
+            <option value="tavily">Tavily (web search)</option>
+            <option value="linkedin">LinkedIn API (Phase 3)</option>
+          </select>
+        </div>
 
-        <Card title="Candidate Enrichment">
+        <div className="settings-card" style={{ padding: 16, marginBottom: 16 }}>
+          <h4>Candidate Enrichment</h4>
           <p className="text-muted text-sm mb-md">
-            Automatically find contact information (emails) for candidates sourced without it.
+            Find contact emails for candidates sourced without one. When off (or no provider is
+            configured), such candidates are kept as no-contact leads for manual outreach — we never
+            fabricate email addresses.
           </p>
-          <div className="form-group row align-center">
-            <Toggle
-              checked={config.auto_enrich || false}
-              onChange={e => setConfig({ ...config, auto_enrich: e.target.checked })}
+          <label className="flex items-center gap-sm">
+            <input
+              type="checkbox"
+              checked={!!config.enrichment_enabled}
+              onChange={e => setConfig({ ...config, enrichment_enabled: e.target.checked })}
               disabled={isReadOnly}
             />
-            <span className="ml-sm">Enable Auto-Enrichment</span>
-          </div>
-          {config.auto_enrich && (
-            <div className="mt-md p-md bg-subtle rounded text-sm">
-              <Icon name="info" size={14} className="mr-xs text-primary" />
-              This will use the configured Enrichment Provider (Settings &gt; Platform Providers) to discover emails.
-            </div>
+            <span>Enable enrichment</span>
+          </label>
+          {config.enrichment_enabled && (
+            <p className="mt-md text-sm text-muted">
+              Uses the Enrichment Provider configured under Settings &gt; Providers.
+            </p>
           )}
-        </Card>
+        </div>
 
-        <Card title="Inbound Magic Links">
+        <div className="settings-card" style={{ padding: 16 }}>
+          <h4>Inbound Applications</h4>
           <p className="text-muted text-sm mb-md">
-            Allow candidates to apply organically via a magic link generated from the career page.
+            Allow candidates to apply organically via a magic link from the careers page.
           </p>
-          <div className="form-group row align-center">
-            <Toggle
+          <label className="flex items-center gap-sm">
+            <input
+              type="checkbox"
               checked={config.inbound_enabled !== false}
               onChange={e => setConfig({ ...config, inbound_enabled: e.target.checked })}
               disabled={isReadOnly}
             />
-            <span className="ml-sm">Enable Inbound Applications</span>
-          </div>
-        </Card>
+            <span>Enable inbound applications</span>
+          </label>
+        </div>
       </div>
     </div>
   )

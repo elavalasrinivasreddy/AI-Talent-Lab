@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Card, Button, Input } from '../../components/shared/ui'
 import { candidatePortalApi } from '../../utils/api'
 
 export default function SetPassword() {
@@ -34,10 +33,10 @@ export default function SetPassword() {
     
     try {
       setLoading(true)
-      await candidatePortalApi.post('/set-password', { token, password })
+      await candidatePortalApi.setPassword({ token, password })
       navigate('/candidate/login?setup=success')
     } catch (err) {
-      setError(err.response?.data?.detail?.message || 'Failed to set password.')
+      setError(err.message || 'Failed to set password.')
     } finally {
       setLoading(false)
     }
@@ -51,40 +50,46 @@ export default function SetPassword() {
           <p className="text-muted mt-sm">Candidate Portal Setup</p>
         </div>
         
-        <Card>
-          <form onSubmit={handleSubmit} className="p-md flex flex-col gap-md">
+        <div className="settings-card" style={{ padding: 24 }}>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-md">
             <h2 className="text-lg font-semibold mb-sm">Set your password</h2>
             <p className="text-sm text-muted mb-md">
               Create a password to track your applications and complete assessments.
             </p>
-            
+
             {error && (
               <div className="bg-red-50 text-red-600 p-sm rounded text-sm border border-red-100">
                 {error}
               </div>
             )}
-            
-            <Input
-              type="password"
-              label="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            
-            <Input
-              type="password"
-              label="Confirm Password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
-            
-            <Button type="submit" variant="primary" className="w-full mt-sm" disabled={loading}>
-              {loading ? 'Saving...' : 'Set Password'}
-            </Button>
+
+            <label className="text-sm">
+              Password
+              <input
+                className="form-input"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </label>
+
+            <label className="text-sm">
+              Confirm Password
+              <input
+                className="form-input"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </label>
+
+            <button type="submit" className="btn btn-primary w-full mt-sm" disabled={loading}>
+              {loading ? 'Saving…' : 'Set Password'}
+            </button>
           </form>
-        </Card>
+        </div>
       </div>
     </div>
   )
