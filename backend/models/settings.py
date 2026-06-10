@@ -236,6 +236,12 @@ class AiBehaviorBody(BaseModel):
     """Accepts any JSON key/value pairs for AI behavior settings."""
     model_config = ConfigDict(extra="allow")
 
+# ── Sourcing Config ────────────────────────────────────────────────────────────
+
+class SourcingConfigBody(BaseModel):
+    """Accepts any JSON key/value pairs for sourcing config."""
+    model_config = ConfigDict(extra="allow")
+
 # ── Providers ─────────────────────────────────────────────────────────────────
 
 class ProviderConfig(BaseModel):

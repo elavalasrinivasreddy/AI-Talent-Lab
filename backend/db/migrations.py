@@ -241,6 +241,19 @@ CREATE TABLE IF NOT EXISTS candidates (
 );
 
 -- Candidate Applications
+-- Candidate Consents (GDPR)
+CREATE TABLE IF NOT EXISTS candidate_consents (
+    id SERIAL PRIMARY KEY,
+    org_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+    consent_type VARCHAR(50) NOT NULL,
+    granted BOOLEAN NOT NULL DEFAULT true,
+    ip_address TEXT,
+    user_agent TEXT,
+    granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    revoked_at TIMESTAMPTZ
+);
+
 CREATE TABLE IF NOT EXISTS candidate_applications (
     id                    SERIAL PRIMARY KEY,
     candidate_id          INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
@@ -708,6 +721,7 @@ async def run_migrations(conn) -> None:
                        WHERE table_name='candidates' AND column_name='contact_status') THEN
             ALTER TABLE candidates ADD COLUMN contact_status TEXT DEFAULT 'active';
             ALTER TABLE candidates ADD COLUMN contact_status_updated_at TIMESTAMP;
+            ALTER TABLE candidates ADD COLUMN password_hash TEXT;
         END IF;
     END $$;
 
@@ -895,9 +909,21 @@ async def run_migrations(conn) -> None:
             ALTER TABLE organizations ADD COLUMN ai_behavior_settings JSONB NOT NULL DEFAULT '{}';
         END IF;
     END $$;
-    """
     await conn.execute(ai_behavior_sql)
     logger.info("  AI behavior settings column ensured.")
+
+    # ── Sourcing Config column ────────────────────────────────────────────
+    sourcing_config_sql = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='organizations' AND column_name='sourcing_config') THEN
+            ALTER TABLE organizations ADD COLUMN sourcing_config JSONB NOT NULL DEFAULT '{}';
+        END IF;
+    END $$;
+    """
+    await conn.execute(sourcing_config_sql)
+    logger.info("  sourcing_config column ensured.")
 
     # ── Competitors department_id column ───────────────────────────────────────────
     competitors_dept_sql = """
@@ -1052,6 +1078,30 @@ async def run_migrations(conn) -> None:
     """
     await conn.execute(actor_type_sql)
     logger.info("  pipeline_events.actor_type column ensured.")
+
+    # ── Pre-Evaluations table ───────────────────────────────────────────────
+    pre_evals_sql = """
+    CREATE TABLE IF NOT EXISTS pre_evaluations (
+        id SERIAL PRIMARY KEY,
+        org_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        application_id INTEGER NOT NULL REFERENCES candidate_applications(id) ON DELETE CASCADE,
+        candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        token VARCHAR(64) UNIQUE,
+        questions JSONB NOT NULL,
+        answers JSONB,
+        score NUMERIC(5, 2),
+        feedback TEXT,
+        expires_at TIMESTAMPTZ,
+        completed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_pre_evals_app ON pre_evaluations(application_id);
+    CREATE INDEX IF NOT EXISTS idx_pre_evals_token ON pre_evaluations(token);
+    """
+    await conn.execute(pre_evals_sql)
+    logger.info("  pre_evaluations table ensured.")
 
     # ── Ops Intelligence tables ──────────────────────────────────────────────────
     ops_sql = """

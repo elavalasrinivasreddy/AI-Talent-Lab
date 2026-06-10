@@ -30,6 +30,7 @@ import SecurityTab from './tabs/SecurityTab'
 import PrivacyTab from './tabs/PrivacyTab'
 import CareerBrandTab from './tabs/CareerBrandTab'
 import AuditTab from './tabs/AuditTab'
+import SourcingTab from './tabs/SourcingTab'
 import '../../styles/settings.css'
 
 const RAIL_GROUPS = [

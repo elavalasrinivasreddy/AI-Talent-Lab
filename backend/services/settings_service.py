@@ -573,6 +573,61 @@ class SettingsService:
             return dict(val) if not isinstance(val, dict) else val
         return {}
 
+    # ── Sourcing Config ────────────────────────────────────────────────────────
+
+    @staticmethod
+    async def get_sourcing_config(conn: asyncpg.Connection, org_id: int) -> dict:
+        """Return the org's sourcing_config JSONB column as a plain dict."""
+        row = await conn.fetchrow(
+            "SELECT sourcing_config FROM organizations WHERE id=$1",
+            org_id,
+        )
+        if row and row["sourcing_config"]:
+            val = row["sourcing_config"]
+            if isinstance(val, str):
+                import json
+                try:
+                    val = json.loads(val)
+                except Exception:
+                    val = {}
+            if isinstance(val, dict):
+                return val
+            try:
+                return dict(val)
+            except (TypeError, ValueError):
+                return {}
+        return {}
+
+    @staticmethod
+    async def update_sourcing_config(
+        conn: asyncpg.Connection,
+        org_id: int,
+        user_id: int,
+        settings: dict,
+    ) -> dict:
+        """Persist sourcing_config and write an audit entry."""
+        row = await conn.fetchrow(
+            """UPDATE organizations
+               SET sourcing_config = $1
+               WHERE id = $2
+               RETURNING sourcing_config""",
+            json.dumps(settings),
+            org_id,
+        )
+        await AuditLogRepository.create(
+            conn,
+            org_id=org_id,
+            user_id=user_id,
+            action="update_sourcing_config",
+            entity_type="organization",
+            entity_id=str(org_id),
+            details=settings,
+        )
+        if row and row["sourcing_config"]:
+            val = row["sourcing_config"]
+            return dict(val) if not isinstance(val, dict) else val
+        return {}
+
     # ── Default Seeding ────────────────────────────────────────────────────────
 
     @staticmethod

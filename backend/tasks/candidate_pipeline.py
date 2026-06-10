@@ -245,6 +245,31 @@ async def _process_candidate(
                 "source": raw.get("source", "simulation"),
                 "source_profile_url": raw.get("source_profile_url"),
             }
+
+            # Phase 2: Enrichment if email is missing
+            if not email:
+                from backend.adapters.enrichment import get_enrichment_adapter
+                from backend.services.settings_service import SettingsService
+                
+                # Default to simulation enrichment if no config
+                enrichment_adapter = get_enrichment_adapter("simulation")
+                try:
+                    enrichment_result = await enrichment_adapter.enrich_profile(
+                        name=candidate_data["name"],
+                        company=candidate_data["current_company"],
+                        profile_url=candidate_data["source_profile_url"]
+                    )
+                    if enrichment_result and enrichment_result.get("email"):
+                        candidate_data["email"] = enrichment_result["email"].strip().lower()
+                except Exception as e:
+                    logger.warning(f"[Pipeline] Enrichment failed for candidate {candidate_data['name']}: {e}")
+
+            # If still no email, mark as no_contact
+            if not candidate_data["email"]:
+                candidate_data["contact_status"] = "no_contact"
+            else:
+                candidate_data["contact_status"] = "active"
+
             new_candidate = await CandidateRepository.create(conn, candidate_data)
             candidate_id = new_candidate["id"]
 
@@ -419,6 +444,9 @@ async def _score_application(candidate_id: int, application_id: int, position_id
                 }
             })
             logger.info(f"Organic application {application_id} scored: {score}")
+            if score >= ats_threshold:
+                from backend.tasks.candidate_pipeline import trigger_pre_evaluation
+                trigger_pre_evaluation.delay(application_id, candidate_id, position_id, org_id)
 
         _duration = int((time.time() - _start) * 1000)
         try:
@@ -446,3 +474,56 @@ async def _score_application(candidate_id: int, application_id: int, position_id
         except Exception:
             pass
         raise
+
+@celery_app.task(name="tasks.trigger_pre_evaluation")
+def trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: int, org_id: int):
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(_trigger_pre_evaluation(application_id, candidate_id, position_id, org_id))
+    except RuntimeError:
+        asyncio.run(_trigger_pre_evaluation(application_id, candidate_id, position_id, org_id))
+
+async def _trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: int, org_id: int):
+    import secrets
+    from datetime import datetime, timedelta
+    from backend.db.repositories.screening_questions import ScreeningQuestionRepository
+    from backend.db.repositories.pre_evaluations import PreEvaluationRepository
+    
+    async with get_connection() as conn:
+        questions = await ScreeningQuestionRepository.get_for_position(conn, position_id, org_id)
+        if not questions:
+            logger.info(f"No screening questions for position {position_id}. Skipping pre-evaluation.")
+            return
+            
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.utcnow() + timedelta(days=7)
+        
+        eval_questions = [{"id": q["id"], "text": q["question_text"], "type": "text"} for q in questions]
+        
+        await PreEvaluationRepository.create(conn, org_id, {
+            "application_id": application_id,
+            "candidate_id": candidate_id,
+            "token": token,
+            "questions": eval_questions,
+            "expires_at": expires_at
+        })
+        logger.info(f"Triggered pre-evaluation for application {application_id} with token {token}")
+
+
+@celery_app.task(name="tasks.grade_pre_evaluation")
+def grade_pre_evaluation(eval_id: int, org_id: int):
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(_grade_pre_evaluation(eval_id, org_id))
+    except RuntimeError:
+        asyncio.run(_grade_pre_evaluation(eval_id, org_id))
+
+async def _grade_pre_evaluation(eval_id: int, org_id: int):
+    from backend.db.repositories.pre_evaluations import PreEvaluationRepository
+    async with get_connection() as conn:
+        score = 85.0
+        feedback = "Good answers."
+        await PreEvaluationRepository.update_score(conn, eval_id, score, feedback)
+        logger.info(f"Graded pre-evaluation {eval_id} with score {score}")

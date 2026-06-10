@@ -39,6 +39,8 @@ from backend.routers import copilot as copilot_router
 from backend.routers import notes as notes_router
 from backend.routers import platform as platform_router
 from backend.routers import hire_requests as hire_requests_router
+from backend.routers import candidate_portal as candidate_portal_router
+from backend.routers import pre_evaluations as pre_evaluations_router
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(

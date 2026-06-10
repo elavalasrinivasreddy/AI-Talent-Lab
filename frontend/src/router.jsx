@@ -34,6 +34,8 @@ const CareerPage           = lazy(() => import('./components/Careers/CareerPage'
 const CareersIndexPage     = lazy(() => import('./components/Careers/CareersIndexPage'))
 const DeleteMyDataPage     = lazy(() => import('./components/GDPR/DeleteMyDataPage'))
 const CandidateStatusPage  = lazy(() => import('./components/Status/CandidateStatusPage'))
+const CandidateLogin = lazy(() => import('./pages/CandidatePortal/CandidateLogin'))
+const CandidateDashboard = lazy(() => import('./pages/CandidatePortal/CandidateDashboard'))
 const PositionsListPage    = lazy(() => import('./components/Positions/PositionsListPage'))
 
 // ── Shared fallback ──────────────────────────────────────────────────────────
@@ -230,6 +232,8 @@ export const router = createBrowserRouter([
   { path: '/delete-my-data', element: <Suspense fallback={PageLoading}><DeleteMyDataPage /></Suspense> },
   { path: '/privacy', element: <Suspense fallback={PageLoading}><DeleteMyDataPage /></Suspense> },
   { path: '/status/:token', element: <Suspense fallback={PageLoading}><CandidateStatusPage /></Suspense> },
+  { path: '/candidate/login', element: <Suspense fallback={PageLoading}><CandidateLogin /></Suspense> },
+  { path: '/candidate/dashboard', element: <Suspense fallback={PageLoading}><CandidateDashboard /></Suspense> },
 
   // Catch-all
   { path: '*', element: <Navigate to="/login" replace /> },

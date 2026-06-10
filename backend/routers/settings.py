@@ -600,6 +600,34 @@ async def update_ai_behavior_settings(
     return {"settings": settings}
 
 
+# ── Sourcing Config ────────────────────────────────────────────────────────────
+
+from backend.models.settings import SourcingConfigBody
+
+@router.get("/sourcing-config")
+async def get_sourcing_config(
+    user: dict = Depends(get_current_user),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Get sourcing config for the org."""
+    settings = await SettingsService.get_sourcing_config(db, user["org_id"])
+    return {"settings": settings}
+
+
+@router.patch("/sourcing-config")
+async def update_sourcing_config(
+    body: SourcingConfigBody,
+    user: dict = Depends(require_org_head),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Update sourcing config (org_head only)."""
+    settings = await SettingsService.update_sourcing_config(
+        db, user["org_id"], user["user_id"],
+        body.model_dump(),
+    )
+    return {"settings": settings}
+
+
 # ── Audit Logs ────────────────────────────────────────────────────────────────
 
 @router.get("/audit-logs")

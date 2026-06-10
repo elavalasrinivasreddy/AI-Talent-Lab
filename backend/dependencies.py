@@ -161,3 +161,26 @@ async def verify_apply_token(token: str) -> dict:
 async def verify_panel_token(token: str) -> dict:
     """Validate a panel feedback magic link JWT. Returns decoded payload."""
     return verify_magic_link_token(token, "panel_feedback")
+
+async def get_current_candidate(request: Request) -> dict:
+    """
+    Decode JWT from Authorization header for candidate portal.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise InvalidCredentialsError("Missing or invalid Authorization header")
+
+    token = auth_header.removeprefix("Bearer ").strip()
+    if not token:
+        raise InvalidCredentialsError("Missing token")
+
+    payload = decode_access_token(token)
+    
+    if payload.get("role") != "candidate":
+        raise InsufficientPermissionsError("Candidate access required")
+
+    return {
+        "candidate_id": int(payload["sub"]),
+        "org_id": payload["org_id"],
+        "role": payload["role"],
+    }

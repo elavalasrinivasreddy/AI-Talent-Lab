@@ -249,6 +249,8 @@ export const settingsApi = {
   getProviders: () => _get('/settings/providers'),
   updateProviders: (providers) => _patch('/settings/providers', providers),
   getDepartments: () => _get('/settings/departments'),
+  getSourcingConfig: () => _get('/settings/sourcing-config'),
+  updateSourcingConfig: (config) => _patch('/settings/sourcing-config', config),
 }
 
 // ── GDPR / Privacy ────────────────────────────────────────────────────────────

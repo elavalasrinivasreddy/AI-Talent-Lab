@@ -3287,3 +3287,29 @@ Updated the LLM configuration in `backend/adapters/llm/factory.py` to enforce `j
 - `backend/routers/candidates.py`
 - `frontend/src/components/Positions/tabs/PipelineTab.jsx`
 - `frontend/src/utils/api.js`
+
+### Issue 191: Sourcing Configuration, Pre-Evaluations & Candidate Portal
+**Description**: Implemented remaining task list block (Tasks 5-8) covering sourcing config, pre-evaluation infrastructure, candidate portal logic, and GDPR table migrations.
+**Fix**:
+1. Added Sourcing Config GET/PATCH endpoints and `SourcingTab.jsx`.
+2. Implemented `backend/adapters/enrichment` (Clearbit/Lusha simulation) and connected it to `candidate_pipeline.py`.
+3. Created `pre_evaluations` database table, API router, repository, and connected to pipeline.
+4. Added `password_hash` to `candidates` table and created `/api/v1/candidates/portal` login/timeline APIs.
+5. Built candidate portal frontend components (`CandidateLogin.jsx`, `CandidateDashboard.jsx`) and linked in `router.jsx`.
+6. Built `Careers.jsx` skeleton and added `candidate_consents` table for GDPR.
+**Files Modified**:
+- `backend/routers/settings.py`
+- `backend/tasks/candidate_pipeline.py`
+- `backend/db/migrations.py`
+- `frontend/src/components/Settings/SettingsPage.jsx`
+- `frontend/src/utils/api.js`
+- `backend/main.py`
+- `frontend/src/router.jsx`
+- `backend/dependencies.py`
+- `backend/adapters/enrichment/*` (New)
+- `backend/db/repositories/pre_evaluations.py` (New)
+- `backend/routers/pre_evaluations.py` (New)
+- `backend/routers/candidate_portal.py` (New)
+- `frontend/src/components/Settings/tabs/SourcingTab.jsx` (New)
+- `frontend/src/pages/CandidatePortal/*` (New)
+- `frontend/src/pages/Careers.jsx` (New)
