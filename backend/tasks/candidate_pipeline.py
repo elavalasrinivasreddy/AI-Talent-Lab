@@ -6,7 +6,7 @@ Triggered when recruiter saves a position or clicks "Run Search Now".
 import json
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from backend.celery_app import celery_app
 from backend.adapters.candidate_sources import get_candidate_source_adapter
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
     default_retry_delay=60,
     acks_late=True
 )
-def run_candidate_search(self, position_id: int, org_id: int, department_id: int, triggered_by: int = None):
+def run_candidate_search(self, position_id: int, org_id: int, department_id: int, triggered_by: int | None = None):
     """
     Full candidate sourcing pipeline for a single position.
     Runs as a Celery task.
@@ -56,7 +56,7 @@ def run_candidate_search(self, position_id: int, org_id: int, department_id: int
 
 
 async def _run_pipeline(
-    position_id: int, org_id: int, department_id: int, triggered_by: int = None
+    position_id: int, org_id: int, department_id: int, triggered_by: int | None = None
 ):
     """Async implementation of the candidate pipeline."""
     _task_start = time.time()
@@ -102,7 +102,7 @@ async def _run_pipeline(
         # ── Step 2: Update position search timestamps ──────────────────────────────
         async with get_connection() as conn:
             interval_hours = position.get("search_interval_hours") or 24
-            next_search = datetime.utcnow() + timedelta(hours=interval_hours)
+            next_search = datetime.now(timezone.utc) + timedelta(hours=interval_hours)
             await conn.execute(
                 """
                 UPDATE positions
@@ -182,7 +182,7 @@ async def _process_candidate(
     org_id: int,
     department_id: int,
     ats_threshold: float,
-    triggered_by: int = None
+    triggered_by: int | None = None
 ) -> None:
     """Dedup → create/update → score a single candidate."""
     email = raw.get("email", "").strip().lower() or None
@@ -209,7 +209,7 @@ async def _process_candidate(
             updated_at = existing.get("updated_at")
             is_stale = True
             if updated_at:
-                age_days = (datetime.utcnow() - updated_at.replace(tzinfo=None)).days
+                age_days = (datetime.now(timezone.utc) - updated_at.replace(tzinfo=timezone.utc)).days
                 is_stale = age_days > 7
 
             if is_stale:
@@ -255,7 +255,7 @@ async def _process_candidate(
                 enrichment_adapter = get_enrichment_adapter("simulation")
                 try:
                     enrichment_result = await enrichment_adapter.enrich_profile(
-                        name=candidate_data["name"],
+                        name=candidate_data["name"] or "",
                         company=candidate_data["current_company"],
                         profile_url=candidate_data["source_profile_url"]
                     )
@@ -403,6 +403,9 @@ async def _score_application(candidate_id: int, application_id: int, position_id
     try:
         async with get_connection() as conn:
             position = await PositionRepository.get(conn, position_id, org_id)
+            if not position:
+                logger.error(f"Position {position_id} not found for scoring application {application_id}")
+                return
             ats_threshold = float(position.get("ats_threshold") or 80.0)
 
         score_result = await compute_ats_score(candidate_id, application_id, position_id, org_id)
@@ -445,7 +448,6 @@ async def _score_application(candidate_id: int, application_id: int, position_id
             })
             logger.info(f"Organic application {application_id} scored: {score}")
             if score >= ats_threshold:
-                from backend.tasks.candidate_pipeline import trigger_pre_evaluation
                 trigger_pre_evaluation.delay(application_id, candidate_id, position_id, org_id)
 
         _duration = int((time.time() - _start) * 1000)
@@ -486,18 +488,24 @@ def trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: 
 
 async def _trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: int, org_id: int):
     import secrets
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     from backend.db.repositories.screening_questions import ScreeningQuestionRepository
     from backend.db.repositories.pre_evaluations import PreEvaluationRepository
     
     async with get_connection() as conn:
-        questions = await ScreeningQuestionRepository.get_for_position(conn, position_id, org_id)
+        from backend.db.repositories.positions import PositionRepository
+        position = await PositionRepository.get(conn, position_id, org_id)
+        if not position:
+            logger.error(f"Position {position_id} not found. Skipping pre-evaluation.")
+            return
+            
+        questions = await ScreeningQuestionRepository.list_by_org(conn, org_id, position.get("department_id"))
         if not questions:
             logger.info(f"No screening questions for position {position_id}. Skipping pre-evaluation.")
             return
             
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + timedelta(days=7)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
         
         eval_questions = [{"id": q["id"], "text": q["question_text"], "type": "text"} for q in questions]
         

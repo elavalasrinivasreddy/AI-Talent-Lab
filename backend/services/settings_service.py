@@ -516,6 +516,8 @@ class SettingsService:
         
         # Set default on the target template
         t = await ScorecardTemplateRepository.update(conn, template_id, org_id, is_default=True)
+        if not t:
+            raise NotFoundError("Scorecard template not found during update")
         return t
 
     # ── AI Behavior Settings ───────────────────────────────────────────────────

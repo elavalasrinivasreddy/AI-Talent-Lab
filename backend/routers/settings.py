@@ -83,7 +83,7 @@ async def auto_draft_org_profile(
         except Exception as scrape_err:
             print(f"Direct scrape failed for {body.url}: {scrape_err}. Falling back to Tavily.")
             fallback_used = True
-            from langchain_community.tools.tavily_search import TavilySearchResults
+            from langchain_community.tools.tavily_search import TavilySearchResults  # type: ignore
             tavily = TavilySearchResults(max_results=3)
             results = tavily.invoke({"query": f"What is the company culture, benefits, and about us for {body.url}?"})
             text = str(results)
@@ -100,6 +100,9 @@ async def auto_draft_org_profile(
         
         # Parse JSON
         content = res.content
+        if isinstance(content, list):
+            content = content[0] if not isinstance(content[0], dict) else content[0].get("text", "")
+        content = str(content)
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0].strip()
         elif "```" in content:
@@ -129,7 +132,7 @@ async def extract_from_handbook(
     user: dict = Depends(require_org_head)
 ):
     """Extract company details from a PDF handbook using LLM."""
-    if not file.filename.lower().endswith(".pdf"):
+    if not (file.filename or "").lower().endswith(".pdf"):
         return {"error": "Only PDF files are supported."}
         
     try:
@@ -163,6 +166,9 @@ async def extract_from_handbook(
         
         # Parse JSON
         content = res.content
+        if isinstance(content, list):
+            content = content[0] if not isinstance(content[0], dict) else content[0].get("text", "")
+        content = str(content)
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0].strip()
         elif "```" in content:
@@ -466,6 +472,9 @@ async def auto_draft_message_template(
             HumanMessage(content=human_prompt)
         ])
         content = res.content
+        if isinstance(content, list):
+            content = content[0] if not isinstance(content[0], dict) else content[0].get("text", "")
+        content = str(content)
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0].strip()
         elif "```" in content:
@@ -504,7 +513,10 @@ async def analyze_message_tone(
             SystemMessage(content=sys_prompt),
             HumanMessage(content=human_prompt)
         ])
-        return {"analysis": res.content.strip()}
+        content = res.content
+        if isinstance(content, list):
+            content = content[0] if not isinstance(content[0], dict) else content[0].get("text", "")
+        return {"analysis": str(content).strip()}
     except Exception as e:
         return {"error": f"Analysis failed: {str(e)}"}
 

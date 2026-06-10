@@ -93,12 +93,12 @@ async def update_candidate_status(
     user_id = current_user["user_id"]
     try:
         app = await CandidateService.update_status(
-            application_id=application_id,
+            application_id=int(application_id),  # type: ignore # already validated
             org_id=current_user["org_id"],
-            new_status=new_status,
+            new_status=str(new_status),
             user_id=user_id,
             candidate_id=candidate_id,
-            position_id=position_id,
+            position_id=int(position_id),  # type: ignore
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail={

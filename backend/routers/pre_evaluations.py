@@ -3,7 +3,7 @@ import asyncpg
 from pydantic import BaseModel
 from typing import List, Optional
 
-from backend.db.connection import get_db
+from backend.db.connection import get_connection as get_db
 from backend.db.repositories.pre_evaluations import PreEvaluationRepository
 from backend.tasks.candidate_pipeline import grade_pre_evaluation
 

@@ -5,7 +5,7 @@ from typing import Optional
 class PreEvaluationRepository:
     
     @staticmethod
-    async def create(conn: asyncpg.Connection, org_id: int, data: dict) -> dict:
+    async def create(conn: asyncpg.Connection, org_id: int, data: dict) -> Optional[dict]:
         row = await conn.fetchrow(
             """
             INSERT INTO pre_evaluations (
@@ -41,7 +41,7 @@ class PreEvaluationRepository:
         return dict(row) if row else None
 
     @staticmethod
-    async def submit_answers(conn: asyncpg.Connection, eval_id: int, answers: list) -> dict:
+    async def submit_answers(conn: asyncpg.Connection, eval_id: int, answers: list) -> Optional[dict]:
         row = await conn.fetchrow(
             """
             UPDATE pre_evaluations
@@ -54,7 +54,7 @@ class PreEvaluationRepository:
         return dict(row) if row else None
 
     @staticmethod
-    async def update_score(conn: asyncpg.Connection, eval_id: int, score: float, feedback: str) -> dict:
+    async def update_score(conn: asyncpg.Connection, eval_id: int, score: float, feedback: str) -> Optional[dict]:
         row = await conn.fetchrow(
             """
             UPDATE pre_evaluations
