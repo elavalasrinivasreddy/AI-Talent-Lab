@@ -46,11 +46,8 @@ def run_candidate_search(self, position_id: int, org_id: int, department_id: int
     6. Notify recruiter
     """
     import asyncio
-    # Celery tasks are sync — wrap async calls
     try:
-        asyncio.get_event_loop().run_until_complete(
-            _run_pipeline(position_id, org_id, department_id, triggered_by)
-        )
+        asyncio.run(_run_pipeline(position_id, org_id, department_id, triggered_by))
     except Exception as exc:
         logger.error(f"Candidate pipeline failed for position {position_id}: {exc}", exc_info=True)
         raise self.retry(exc=exc)
@@ -111,7 +108,7 @@ async def _run_pipeline(
         # ── Step 2: Update position search timestamps ──────────────────────────────
         async with get_connection() as conn:
             interval_hours = position.get("search_interval_hours") or 24
-            next_search = datetime.now(timezone.utc) + timedelta(hours=interval_hours)
+            next_search = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=interval_hours)
             await conn.execute(
                 """
                 UPDATE positions
@@ -376,11 +373,7 @@ def source_candidates_for_position(position_id: int, org_id: int):
             )
         return row
 
-    try:
-        loop = asyncio.get_event_loop()
-        row = loop.run_until_complete(_get_dept())
-    except RuntimeError:
-        row = asyncio.run(_get_dept())
+    row = asyncio.run(_get_dept())
 
     if not row:
         logger.warning(f"Position {position_id} not found for scheduled search")
@@ -404,11 +397,6 @@ def score_candidate_application(self, candidate_id: int, application_id: int, po
     """
     import asyncio
     try:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(
-            _score_application(candidate_id, application_id, position_id, org_id)
-        )
-    except RuntimeError:
         asyncio.run(_score_application(candidate_id, application_id, position_id, org_id))
     except Exception as exc:
         logger.error(f"Organic ATS scoring failed for {application_id}: {exc}", exc_info=True)
@@ -498,11 +486,7 @@ async def _score_application(candidate_id: int, application_id: int, position_id
 @celery_app.task(name="tasks.trigger_pre_evaluation")
 def trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: int, org_id: int):
     import asyncio
-    try:
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(_trigger_pre_evaluation(application_id, candidate_id, position_id, org_id))
-    except RuntimeError:
-        asyncio.run(_trigger_pre_evaluation(application_id, candidate_id, position_id, org_id))
+    asyncio.run(_trigger_pre_evaluation(application_id, candidate_id, position_id, org_id))
 
 async def _trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: int, org_id: int):
     import secrets

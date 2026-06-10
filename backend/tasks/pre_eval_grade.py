@@ -89,9 +89,11 @@ Answers: {json.dumps(answers)}"""
             content = content.split("```")[1].strip()
             
         data = json.loads(content)
-        score = float(data.get("score", 0.0))
+        score = max(0.0, min(100.0, float(data.get("score", 0.0))))
         feedback = data.get("feedback", "No feedback provided.")
         decision = data.get("decision", "fail").lower()
+        if decision not in ("pass", "fail"):
+            decision = "fail"
         
         # Update evaluation record (sets status passed/failed + evaluated_at)
         await PreEvaluationRepository.update_score(conn, eval_id, score, feedback, decision=decision)

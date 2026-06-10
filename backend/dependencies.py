@@ -183,8 +183,13 @@ async def get_current_candidate(request: Request) -> dict:
     if payload.get("role") != "candidate":
         raise InsufficientPermissionsError("Candidate access required")
 
+    sub = payload.get("sub")
+    org_id = payload.get("org_id")
+    if not sub or org_id is None:
+        raise InvalidCredentialsError("Malformed candidate token")
+
     return {
-        "candidate_id": int(payload["sub"]),
-        "org_id": payload["org_id"],
-        "role": payload["role"],
+        "candidate_id": int(sub),
+        "org_id": org_id,
+        "role": payload.get("role"),
     }

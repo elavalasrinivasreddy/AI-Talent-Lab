@@ -141,6 +141,9 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     created_at       TIMESTAMP DEFAULT NOW()
 );
 
+"""
+
+CANDIDATE_CHAT_TABLES = """
 -- Candidate magic link apply sessions
 CREATE TABLE IF NOT EXISTS candidate_sessions (
     id               SERIAL PRIMARY KEY,
@@ -440,6 +443,8 @@ ALTER TABLE message_templates       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scorecard_templates     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE interview_kits          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE interview_panel         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pre_evaluations         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE candidate_consents      ENABLE ROW LEVEL SECURITY;
 """
 
 # Tables that have org_id directly
@@ -460,6 +465,7 @@ RLS_TABLES_WITH_ORG_ID = [
     "scorecard_templates",
     "interview_kits",
     "pre_evaluations",
+    "candidate_consents",
 ]
 
 # Tables that don't have org_id directly (need join-based or skip RLS policy)
@@ -476,31 +482,13 @@ async def run_migrations(conn) -> None:
         ("Foundation Tables", FOUNDATION_TABLES),
         ("Chat Tables", CHAT_TABLES),
         ("Hiring Tables", HIRING_TABLES),
+        ("Candidate Chat Tables", CANDIDATE_CHAT_TABLES),
         ("Interview Tables", INTERVIEW_TABLES),
         ("Event Tables", EVENT_TABLES),
     ]:
         logger.info(f"  Creating {name}...")
         await conn.execute(sql)
 
-    # Enable RLS
-    logger.info("  Enabling Row-Level Security...")
-    await conn.execute(RLS_SETUP)
-
-    # Create tenant isolation policies for tables with org_id
-    for table in RLS_TABLES_WITH_ORG_ID:
-        policy_sql = f"""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM pg_policies
-                WHERE tablename = '{table}' AND policyname = 'tenant_isolation'
-            ) THEN
-                EXECUTE 'CREATE POLICY tenant_isolation ON {table}
-                    USING (org_id = current_setting(''app.current_org_id'', true)::int)';
-            END IF;
-        END $$;
-        """
-        await conn.execute(policy_sql)
 
     # Create indexes for performance
     index_sql = """
@@ -522,6 +510,8 @@ async def run_migrations(conn) -> None:
     CREATE INDEX IF NOT EXISTS idx_interviews_position ON interviews(position_id);
     CREATE INDEX IF NOT EXISTS idx_interviews_candidate ON interviews(candidate_id);
     CREATE INDEX IF NOT EXISTS idx_talent_pool ON candidates(org_id, in_talent_pool) WHERE in_talent_pool = TRUE;
+    CREATE INDEX IF NOT EXISTS idx_candidate_consents_candidate ON candidate_consents(candidate_id);
+    CREATE INDEX IF NOT EXISTS idx_candidate_consents_org ON candidate_consents(org_id);
     """
     await conn.execute(index_sql)
 
@@ -735,6 +725,14 @@ async def run_migrations(conn) -> None:
                        WHERE table_name='candidates' AND column_name='contact_status') THEN
             ALTER TABLE candidates ADD COLUMN contact_status TEXT DEFAULT 'active';
             ALTER TABLE candidates ADD COLUMN contact_status_updated_at TIMESTAMP;
+        END IF;
+    END $$;
+
+    -- candidates: password_hash for candidate portal login (must be its own guard)
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidates' AND column_name='password_hash') THEN
             ALTER TABLE candidates ADD COLUMN password_hash TEXT;
         END IF;
     END $$;
@@ -1114,8 +1112,6 @@ async def run_migrations(conn) -> None:
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    ALTER TABLE pre_evaluations ADD COLUMN IF NOT EXISTS position_id INTEGER REFERENCES positions(id) ON DELETE CASCADE;
-    ALTER TABLE pre_evaluations ADD COLUMN IF NOT EXISTS evaluated_at TIMESTAMPTZ;
     CREATE INDEX IF NOT EXISTS idx_pre_evals_app ON pre_evaluations(application_id);
     CREATE INDEX IF NOT EXISTS idx_pre_evals_token ON pre_evaluations(token);
     """
@@ -1203,5 +1199,25 @@ async def run_migrations(conn) -> None:
     END $$;
     """)
     logger.info("  candidates.skill_tags column ensured.")
+
+    # Enable RLS
+    logger.info("  Enabling Row-Level Security...")
+    await conn.execute(RLS_SETUP)
+
+    # Create tenant isolation policies for tables with org_id
+    for table in RLS_TABLES_WITH_ORG_ID:
+        policy_sql = f"""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_policies
+                WHERE tablename = '{table}' AND policyname = 'tenant_isolation'
+            ) THEN
+                EXECUTE 'CREATE POLICY tenant_isolation ON {table}
+                    USING (org_id = current_setting(''app.current_org_id'', true)::int)';
+            END IF;
+        END $$;
+        """
+        await conn.execute(policy_sql)
 
     logger.info("Database migrations complete.")

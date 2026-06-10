@@ -487,6 +487,7 @@ class ApplyService:
                 "jd_markdown": data.get("jd_markdown"),
             },
             "org": {
+                "id": org_id,
                 "name": data["org_name"],
                 "logo_url": data.get("logo_url"),
                 "about_us": data.get("about_us"),

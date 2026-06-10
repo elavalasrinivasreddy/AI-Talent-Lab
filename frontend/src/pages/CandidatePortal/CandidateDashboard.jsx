@@ -6,6 +6,12 @@ export default function CandidateDashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [optInLoading, setOptInLoading] = useState(false)
+  const [toast, setToast] = useState(null)
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3500)
+  }
 
   const fetchData = async () => {
     // Auth guard: no token → straight to login.
@@ -37,10 +43,10 @@ export default function CandidateDashboard() {
     try {
       setOptInLoading(true)
       await candidatePortalApi.optInTalentPool(optIn)
-      alert(optIn ? 'Successfully opted in!' : 'Successfully opted out.')
+      showToast(optIn ? 'Successfully opted in!' : 'Successfully opted out.')
     } catch (err) {
       console.error('Failed to update preferences:', err)
-      alert('Failed to update preferences.')
+      showToast('Failed to update preferences.', 'error')
     } finally {
       setOptInLoading(false)
     }
@@ -54,6 +60,11 @@ export default function CandidateDashboard() {
 
   return (
     <div className="p-lg max-w-container mx-auto">
+      {toast && (
+        <div className={`fixed top-4 right-4 px-4 py-3 rounded shadow-lg text-sm font-medium z-50 ${toast.type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' : 'bg-green-100 text-green-800 border border-green-200'}`}>
+          {toast.msg}
+        </div>
+      )}
       <div className="flex justify-between items-center mb-lg">
         <h1>My Candidate Portal</h1>
         <button
@@ -98,7 +109,7 @@ export default function CandidateDashboard() {
                     <p className="text-sm text-muted">{app.location}</p>
                   </div>
                   <span className={`status-badge ${app.status === 'rejected' ? 'status-danger' : 'status-success'}`}>
-                    {PIPELINE_STAGES.find(s => s.id === app.status)?.label || app.status}
+                    {PIPELINE_STAGES[app.status]?.label || app.status}
                   </span>
                 </div>
 

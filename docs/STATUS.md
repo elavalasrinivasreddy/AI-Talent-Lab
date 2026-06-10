@@ -81,3 +81,19 @@ All 19 surfaces are v3. Items below are incremental improvements beyond the curr
 | Cursor pagination on GET /hire-requests/ | ✅ DONE | Seek pagination on `(created_at, id)`; `?cursor_created_at=&cursor_id=&limit=` params; returns `next_cursor` |
 | Cleanup of consumed_magic_links | ✅ DONE | Daily Celery task in `backend/tasks/auth_cleanup.py`; deletes rows older than 30 days |
 | Frontend bundle code splitting | ✅ DONE | 11 heavy pages converted to `React.lazy` + `Suspense`; Vite now emits per-page chunks |
+
+---
+
+## Testing & Infrastructure Audit (Added 2026-06-10)
+
+As part of the final push toward production readiness, a comprehensive test suite was integrated across the stack to guarantee zero regressions. 
+
+| Layer | Status | Description |
+|---|---|---|
+| **Backend Integration (pytest)** | ✅ DONE | Isolated PostgreSQL TestContainers injected via fixtures. Covered Auth, Hire Requests, JD Chat Generation, and Candidate endpoints. All **39 tests** currently pass successfully. |
+| **Frontend Components (Vitest)** | ✅ DONE | Configured React Testing Library + JSDOM to test atomic UI elements like `Button.jsx` and ensure design system regression safety. |
+| **End-to-End User Flows (Playwright)** | ✅ DONE | Playwright configured. Created fully automated tests for Recruiter Login, Dashboard navigation, and the public Candidate Apply flow. |
+| **Database Migrations Audit** | ✅ DONE | Fixed circular dependency bug between `candidate_sessions` and `candidates` tables discovered by strict PostgreSQL TestContainer enforcement. |
+
+> **Note:** A detailed guide on how to extend and run these tests locally, along with a full product ideology and testing strategy evaluation, is preserved in the `product_evaluation.md` artifact.
+

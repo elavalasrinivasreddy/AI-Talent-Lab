@@ -763,6 +763,17 @@ class SettingsService:
             "from_name": settings.FROM_NAME,
         }
 
+    # Keys that platform admins may write via the providers API.
+    # Never includes SECRET_KEY, DATABASE_URL, REDIS_URL, or CELERY_BROKER_URL.
+    _MUTABLE_ENV_KEYS = frozenset({
+        "LLM_PROVIDER", "LLM_MODEL",
+        "GROQ_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+        "TAVILY_API_KEY", "HUNTER_API_KEY", "CLEARBIT_API_KEY",
+        "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS",
+        "FROM_EMAIL", "FROM_NAME",
+        "RESEND_API_KEY", "SENDGRID_API_KEY",
+    })
+
     @staticmethod
     def update_providers(updates: dict) -> dict:
         """Update .env file and current settings with new provider configs."""
@@ -775,11 +786,12 @@ class SettingsService:
             open(env_path, "a").close()
 
         for key, value in updates.items():
-            if value is not None:
-                env_key = key.upper()
-                # Update the running settings instance
-                setattr(settings, env_key, value)
-                # Persist to .env
-                set_key(env_path, env_key, str(value))
-        
+            if value is None:
+                continue
+            env_key = key.upper()
+            if env_key not in SettingsService._MUTABLE_ENV_KEYS:
+                continue
+            setattr(settings, env_key, value)
+            set_key(env_path, env_key, str(value))
+
         return SettingsService.get_providers()

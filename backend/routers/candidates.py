@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 class ContactStatusUpdate(BaseModel):
     contact_status: str  # active | unsubscribed | employed
 
+class BulkRejectBody(BaseModel):
+    position_id: int
+    threshold: float
+
 
 @router.get("/position/{position_id}")
 async def list_candidates_for_position(
@@ -232,26 +236,12 @@ async def send_outreach(
 
 @router.post("/bulk-reject")
 async def bulk_reject_candidates(
-    body: dict,
+    body: BulkRejectBody,
     current_user=Depends(get_current_user),
 ):
     """Bulk reject candidates below a specific ATS threshold for a position."""
-    position_id = body.get("position_id")
-    threshold = body.get("threshold")
-    
-    if position_id is None or threshold is None:
-        raise HTTPException(status_code=422, detail={
-            "error": {"code": "MISSING_FIELDS",
-                      "message": "position_id and threshold are required", "details": None}
-        })
-        
-    try:
-        threshold_float = float(threshold)
-    except ValueError:
-        raise HTTPException(status_code=422, detail={
-            "error": {"code": "INVALID_THRESHOLD",
-                      "message": "threshold must be a number", "details": None}
-        })
+    position_id = body.position_id
+    threshold_float = body.threshold
 
     from backend.db.connection import get_connection
     from backend.db.repositories.pipeline_events import PipelineEventRepository

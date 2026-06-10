@@ -111,16 +111,21 @@ async def set_password(body: SetPasswordBody, db: asyncpg.Connection = Depends(g
 
     candidate_id = payload["entity_id"]
     jti = payload.get("jti")
+    if not jti:
+        raise HTTPException(status_code=400, detail={"code": "INVALID_TOKEN", "message": "Token is missing required fields."})
 
     # Enforce single-use: insert the jti; a UNIQUE violation means the link was already used.
-    if jti:
-        try:
-            await db.execute(
-                "INSERT INTO consumed_magic_links (jti, token_type, entity_id) VALUES ($1, $2, $3)",
-                jti, "candidate_setup", candidate_id,
-            )
-        except asyncpg.UniqueViolationError:
-            raise HTTPException(status_code=400, detail={"code": "TOKEN_USED", "message": "This link has already been used."})
+    try:
+        await db.execute(
+            "INSERT INTO consumed_magic_links (jti, token_type, entity_id) VALUES ($1, $2, $3)",
+            jti, "candidate_setup", candidate_id,
+        )
+    except asyncpg.UniqueViolationError:
+        raise HTTPException(status_code=400, detail={"code": "TOKEN_USED", "message": "This link has already been used."})
+
+    # Server-side password policy: minimum 8 characters, not all digits
+    if len(body.password) < 8 or body.password.isdigit():
+        raise HTTPException(status_code=422, detail={"code": "WEAK_PASSWORD", "message": "Password must be at least 8 characters and not all digits."})
 
     hashed = hash_password(body.password)
     await db.execute(

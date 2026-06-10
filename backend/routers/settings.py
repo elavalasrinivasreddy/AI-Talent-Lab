@@ -618,7 +618,7 @@ from backend.models.settings import SourcingConfigBody
 
 @router.get("/sourcing-config")
 async def get_sourcing_config(
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_dept_admin),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """Get sourcing config for the org."""
