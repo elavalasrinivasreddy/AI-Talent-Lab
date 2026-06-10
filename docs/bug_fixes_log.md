@@ -3219,3 +3219,274 @@ Replaced inline styles with `.positions-toolbar-right`, `.positions-sort-wrap`, 
 **Symptom:** When a candidate applied through the careers page chat bot (organic application), their background ATS scoring failed silently in Celery with `'NoneType' object has no attribute 'get'`, leaving them without an AI score or evaluation. Additionally, the notification sent to recruiters had a broken link (`/positions/None?tab=candidates`).
 **Root Cause:** The `apply_service.py` attempted to extract `position_id` from the decoded magic link JWT payload (`payload.get("position_id")`). However, the magic link token schema only contains `application_id`, `candidate_id`, and `org_id`. Because it didn't exist, `position_id` evaluated to `None`. This `None` was passed to the celery background task, causing `PositionRepository.get()` to return `None`, which immediately crashed when trying to access `position.get("ats_threshold")`.
 **Fix:** Updated the recruiter notification query inside `complete_application` to explicitly `SELECT ca.position_id` from the `candidate_applications` table using the known `application_id`. Substituted the broken `payload.get()` fallback with the real, database-verified `position_id` for both the notification action URL and the Celery background task arguments.
+
+---
+
+### 187. Phase 2 Features Implementation
+**Date:** 2026-06-08
+**Status:** Implemented
+
+**Issue / Feature:**
+Implementation of Phase 2 items: Audit Logs UI, Video Intros, and Team Lead Dashboard.
+- **Audit Logs**: Created backend service to query the `audit_log` table and added `/audit-logs` endpoint. Built the `AuditTab` frontend component.
+- **Video Intros**: Updated `backend/routers/apply.py` to save uploaded videos locally. Mounted `/uploads` static directory. Updated `CandidateDetailPage.jsx` to render the video player properly resolving the URL.
+- **Team Lead Dashboard**: Created a specialized `TeamLeadDashboard.jsx` layout isolating "My Requisitions", "AI Copilot" and tailored lanes, rendering conditionally in `DashboardPage.jsx` for the `team_lead` role.
+
+**Files Modified:**
+- `backend/services/audit_service.py` (New)
+- `backend/routers/settings.py`
+- `frontend/src/components/Settings/tabs/AuditTab.jsx` (New)
+- `backend/main.py`
+- `backend/routers/apply.py`
+- `frontend/src/components/Candidates/CandidateDetailPage.jsx`
+- `frontend/src/components/Dashboard/TeamLeadDashboard.jsx` (New)
+- `frontend/src/components/Dashboard/DashboardPage.jsx`
+- `frontend/src/components/Settings/SettingsPage.jsx`
+
+### 188. Bias Check JSON Parsing
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Issue:**
+The bias checker agent failed silently because the LLM returned markdown formatting alongside the JSON, which the python `json.loads` could not parse.
+
+**Idea / Solution:**
+Updated the LLM configuration in `backend/adapters/llm/factory.py` to enforce `json_mode` and updated `backend/agents/bias_checker.py` to use `json_mode=True` and added a more robust JSON extraction fallback.
+
+**Files Modified:**
+- `backend/adapters/llm/factory.py`
+- `backend/agents/bias_checker.py`
+
+
+### Issue 189: Missing Platform Providers Settings
+**Description**: Platform-level API keys for LLMs, embeddings, web search, and enrichment missing UI/API surface.
+**Fix**: 
+1. Added `ProviderConfig` and `ProvidersUpdate` schemas.
+2. Added `/api/v1/settings/providers` GET/PATCH endpoints to update `.env` via `python-dotenv`.
+3. Created `ProvidersTab.jsx` for the frontend admin panel, masking keys appropriately.
+**Files Modified**: 
+- `backend/config.py`
+- `backend/models/settings.py`
+- `backend/services/settings_service.py`
+- `backend/routers/settings.py`
+- `frontend/src/utils/api.js`
+- `frontend/src/components/Settings/SettingsPage.jsx`
+- `frontend/src/components/Settings/tabs/ProvidersTab.jsx`
+
+### Issue 190: Auto-reject/on-hold logic & Sourcing Email Deduplication
+**Description**: Need to route candidates to 'on_hold' if ATS score < threshold and provide a Bulk Reject UI. Sourcing was failing because web profiles lack emails.
+**Fix**:
+1. Added `rejection_reason` to `candidate_applications` and `skill_tags` to `candidates` via schema migrations.
+2. Updated `candidate_pipeline.py` to route applications to 'screening' or 'on_hold' based on `ats_threshold`.
+3. Updated `candidate_pipeline.py` to allow `email=None` and deduplicate candidates using `source_profile_url`.
+4. Added 'On Hold' stage to `PipelineTab.jsx` with a "Bulk Reject" UI action.
+5. Added `POST /api/v1/candidates/bulk-reject` endpoint to process bulk rejections and log pipeline events.
+**Files Modified**:
+- `backend/db/migrations.py`
+- `backend/tasks/candidate_pipeline.py`
+- `backend/routers/candidates.py`
+- `frontend/src/components/Positions/tabs/PipelineTab.jsx`
+- `frontend/src/utils/api.js`
+
+### Issue 191: Sourcing Configuration, Pre-Evaluations & Candidate Portal
+**Description**: Implemented remaining task list block (Tasks 5-8) covering sourcing config, pre-evaluation infrastructure, candidate portal logic, and GDPR table migrations.
+**Fix**:
+1. Added Sourcing Config GET/PATCH endpoints and `SourcingTab.jsx`.
+2. Implemented `backend/adapters/enrichment` (Clearbit/Lusha simulation) and connected it to `candidate_pipeline.py`.
+3. Created `pre_evaluations` database table, API router, repository, and connected to pipeline.
+4. Added `password_hash` to `candidates` table and created `/api/v1/candidates/portal` login/timeline APIs.
+5. Built candidate portal frontend components (`CandidateLogin.jsx`, `CandidateDashboard.jsx`) and linked in `router.jsx`.
+6. Built `Careers.jsx` skeleton and added `candidate_consents` table for GDPR.
+**Files Modified**:
+- `backend/routers/settings.py`
+- `backend/tasks/candidate_pipeline.py`
+- `backend/db/migrations.py`
+- `frontend/src/components/Settings/SettingsPage.jsx`
+- `frontend/src/utils/api.js`
+- `backend/main.py`
+- `frontend/src/router.jsx`
+- `backend/dependencies.py`
+- `backend/adapters/enrichment/*` (New)
+- `backend/db/repositories/pre_evaluations.py` (New)
+- `backend/routers/pre_evaluations.py` (New)
+- `backend/routers/candidate_portal.py` (New)
+- `frontend/src/components/Settings/tabs/SourcingTab.jsx` (New)
+- `frontend/src/pages/CandidatePortal/*` (New)
+- `frontend/src/pages/Careers.jsx` (New)
+
+---
+
+## 192. Candidate Portal Auth, Pre-Evaluations Batching, and Global Talent Pool Schema
+
+**Problem Statement:**
+1. Pre-evaluations were being graded synchronously blocking the main API thread.
+2. The candidate portal was lacking a password setup workflow and timeline visualization.
+3. The platform lacked a documented cross-organization schema for a product-level talent pool.
+
+**Idea / Solution:**
+1. **Pre-Evaluation:** Implemented a new Celery task (`backend/tasks/pre_eval_grade.py`) to batch grade pre-evaluations nightly. Introduced an LLM-based anti-cheating mechanism that dynamically paraphrases questions pulled from the `interview_kits`.
+2. **Candidate Portal:** Built the candidate JWT auth primitives, added `/set-password`, and created a new email dispatch trigger (`send_pre_evaluation_invite`). Built `SetPassword.jsx` and `CandidateDashboard.jsx` on the frontend.
+3. **Global Talent Pool:** Added `consent_to_store` and `consent_to_contact` fields to the database. Authored `docs/architecture/CROSS_ORG_SCHEMA.md` detailing the Global Database approach and CDC propagation. Created the `/opt-in-talent-pool` API.
+
+**Files Modified:**
+- `backend/tasks/pre_eval_grade.py`
+- `backend/tasks/candidate_pipeline.py`
+- `backend/celery_app.py`
+- `backend/routers/pre_evaluations.py`
+- `backend/routers/candidate_portal.py`
+- `backend/services/email_service.py`
+- `frontend/src/pages/CandidatePortal/SetPassword.jsx`
+- `frontend/src/pages/CandidatePortal/CandidateDashboard.jsx`
+- `frontend/src/router.jsx`
+- `docs/architecture/CROSS_ORG_SCHEMA.md`
+
+---
+
+## 193. Phase 2 Code Review — Critical Backend Wiring & Security Fixes
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Problem Statement:**
+Full code review of the Phase 2 Gemini implementation revealed four critical issues that would have caused complete feature failure on first run:
+1. `candidate_portal` and `pre_evaluations` routers were imported in `main.py` but never mounted via `app.include_router()` — every endpoint returned 404.
+2. `candidatePortalApi` and `preEvaluationsApi` were referenced in frontend components but never exported from `api.js` — all candidate-facing pages would crash on load.
+3. `pre_evaluations.py` router used `from backend.db.connection import get_connection as get_db` — `get_connection` returns an async context manager, not an async generator, causing FastAPI startup failure when Depends tried to call it.
+4. Candidate JWT tokens (`role="candidate"`) were not blocked from accessing internal staff endpoints in `get_current_user` — a candidate could potentially call any internal API using their login token.
+
+**Idea / Solution:**
+1. Added `app.include_router(candidate_portal_router.router)` and `app.include_router(pre_evaluations_router.router)` in `main.py`.
+2. Implemented `_candidateFetch` helper (reads `localStorage.getItem('candidate_token')`) and exported full `candidatePortalApi` and `preEvaluationsApi` objects from `api.js`.
+3. Fixed `pre_evaluations.py` to `from backend.dependencies import get_db`.
+4. Added role check in `dependencies.py`: if `payload.get("role") == "candidate"`, raise `InsufficientPermissionsError` before granting access.
+
+**Files Modified:**
+- `backend/main.py`
+- `backend/routers/pre_evaluations.py`
+- `backend/dependencies.py`
+- `frontend/src/utils/api.js`
+
+---
+
+## 194. Phase 2 Code Review — Pre-Evaluation Pipeline Correctness Fixes
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Problem Statement:**
+The nightly pre-evaluation grading task (`pre_eval_grade.py`) and the candidate pipeline had multiple correctness bugs that would silently fail or corrupt data:
+1. `update_application(conn, org_id, application_id, data)` — arguments were swapped; actual signature is `(conn, application_id, org_id, data)`.
+2. SQL query used `p.jd_text` which does not exist; the column is `p.jd_markdown`. Prompt template also referenced `row['jd_text']`.
+3. `asyncio.get_event_loop().run_until_complete()` is deprecated and raises `DeprecationWarning` on Python 3.10+ and errors on 3.12+. Used in the Celery task entry point.
+4. `rejection_reason` was written by both `pre_eval_grade.py` and `candidates.py` (bulk reject), but the field was missing from the `update_application` allowed-columns set in `CandidateRepository` — it was silently dropped on every write.
+5. `pre_evaluations` table was missing from `RLS_TABLES_WITH_ORG_ID` in migrations, leaving it without row-level security. Also missing `position_id` and `evaluated_at` columns added by the Gemini implementation.
+6. `consent_to_store`, `consent_to_contact`, and `consent_timestamp` columns referenced by the opt-in endpoint were missing from the `candidates` table migration.
+
+**Idea / Solution:**
+1. Fixed argument order: `CandidateRepository.update_application(conn, application_id, org_id, data)`.
+2. Fixed SQL query: `p.jd_markdown`; fixed prompt: `row['jd_markdown']`.
+3. Replaced `asyncio.get_event_loop().run_until_complete()` with `asyncio.run()`.
+4. Added `"rejection_reason"` to the allowed set in `CandidateRepository.update_application`.
+5. Added `"pre_evaluations"` to `RLS_TABLES_WITH_ORG_ID`; added idempotent `ALTER TABLE pre_evaluations ADD COLUMN IF NOT EXISTS` for `position_id` and `evaluated_at`.
+6. Added idempotent `ALTER TABLE candidates ADD COLUMN IF NOT EXISTS` for all three consent columns.
+
+**Files Modified:**
+- `backend/tasks/pre_eval_grade.py`
+- `backend/db/repositories/candidates.py`
+- `backend/db/migrations.py`
+
+---
+
+## 195. Phase 2 Code Review — Sourcing Adapter, Enrichment Safety & Providers Security
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Problem Statement:**
+Three issues in the sourcing and settings layers:
+1. `candidate_pipeline.py` always used the global env-var adapter, ignoring the per-org `sourcing_config` written by `SourcingTab`. Also imported `OrganizationRepository` which does not exist (the class is `OrgRepository`). `CandidateRepository.get()` argument order was also swapped.
+2. `enrichment/__init__.py` did not return `None` for unimplemented real providers (Proxycurl, Apollo, Hunter) — calling them with no real API key would silently use simulation data and fabricate email addresses, which would then be sent to real people.
+3. Providers endpoints (`GET/PATCH /settings/providers`) were gated behind `require_org_head` — org admins could overwrite platform-level API keys (Groq, Tavily, etc.) that are meant to be platform-central only.
+
+**Idea / Solution:**
+1. Fixed import: `OrgRepository`. Fixed `CandidateRepository.get(conn, candidate_id, org_id)`. Added per-org adapter resolution: reads `org.sourcing_config.source_adapter`, falls back to `settings.DEFAULT_SOURCE_ADAPTER`. Gated enrichment call on `sourcing_config.enrichment_enabled` flag AND non-None adapter. Added `DEFAULT_SOURCE_ADAPTER: str = "simulation"` to `config.py`.
+2. `get_enrichment_adapter()` now returns `None` for any provider name that is not `"simulation"`, logs a warning, and the pipeline skips enrichment rather than fabricating data.
+3. Changed both providers endpoints from `require_org_head` to `require_platform_admin`.
+
+**Files Modified:**
+- `backend/tasks/candidate_pipeline.py`
+- `backend/adapters/candidate_sources/__init__.py`
+- `backend/adapters/enrichment/__init__.py`
+- `backend/config.py`
+- `backend/routers/settings.py`
+
+---
+
+## 196. Phase 2 Code Review — Frontend Component & API Fixes
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Problem Statement:**
+Multiple frontend pages and components were broken or non-functional:
+1. `SourcingTab.jsx`, `CandidateLogin.jsx`, `SetPassword.jsx`, and `CandidateDashboard.jsx` all imported from `../../shared/ui` or `../../components/shared/ui` barrel files that do not exist in the project, causing Vite import errors.
+2. `CandidateLogin.jsx` had a stub `handleSubmit` that only logged to console — clicking login did nothing.
+3. `CandidateDashboard.jsx` had no auth guard and called `candidatePortalApi.get('/timeline')` (wrong pattern) instead of `candidatePortalApi.getTimeline()`. The opt-in call also used the wrong method signature.
+4. `SourcingTab.jsx` used `auto_enrich` as the config key but the backend pipeline checks `enrichment_enabled`.
+5. `ProvidersTab.jsx` imported `Button` from `../../common/Button` and `InputField` from `../../common/InputField` — neither file existed.
+6. The `GET /candidate/timeline` endpoint returned applications without joining `pre_evaluations`, so `app.pre_eval_token` was always null and the dashboard always showed "check your email" instead of a direct link to the assessment.
+
+**Idea / Solution:**
+1. Rewrote all four components using plain HTML elements (`<input>`, `<button>`, `<select>`) — no missing component dependencies.
+2. Implemented full login logic in `CandidateLogin.jsx`: calls `candidatePortalApi.login()`, stores token in `localStorage`, navigates to dashboard. Reads `org_id` from `?org=` query param.
+3. Added auth guard (redirect to `/candidate/login` if no token; clear token on 401) and fixed all API call patterns in `CandidateDashboard.jsx`.
+4. Fixed config key: `auto_enrich` → `enrichment_enabled` in `SourcingTab.jsx`.
+5. Created `frontend/src/components/common/Button.jsx` and `frontend/src/components/common/InputField.jsx` as thin wrappers matching the project's CSS class conventions.
+6. Updated the timeline SQL query to `LEFT JOIN pre_evaluations pe ON pe.application_id = ca.id AND pe.status IN ('pending', 'submitted')` and added `pe.token AS pre_eval_token` to the SELECT.
+
+**Files Modified:**
+- `frontend/src/pages/CandidatePortal/CandidateLogin.jsx`
+- `frontend/src/pages/CandidatePortal/SetPassword.jsx`
+- `frontend/src/pages/CandidatePortal/CandidateDashboard.jsx`
+- `frontend/src/components/Settings/tabs/SourcingTab.jsx`
+- `frontend/src/components/common/Button.jsx` (created)
+- `frontend/src/components/common/InputField.jsx` (created)
+- `backend/routers/candidate_portal.py`
+
+---
+
+## 197. Phase 2 — Collusion Detection in Pre-Evaluation Grader
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Problem Statement:**
+The pre-evaluation anti-cheat plan included detecting when two candidates (e.g., friends applying together) submit near-identical answers for the same position. Without this, the LLM grader would pass both independently, letting colluders reach the Interview stage undetected.
+
+Additionally, the collusion check ran after `_grade_single` had already routed passing candidates to `status='interview'` in `candidate_applications`. Flagging the `pre_evaluations` row alone would leave colluders visibly in the Interview Kanban lane while HR was still reviewing.
+
+**Idea / Solution:**
+Implemented `_detect_collusion(conn, rows)` and `_answer_similarity(answers_a, answers_b)` in `pre_eval_grade.py`:
+- After all individual grades complete, submissions are grouped by `position_id`.
+- For every pair within a position, `difflib.SequenceMatcher` computes the average character-level similarity ratio across shared question keys (text lowercased and stripped).
+- Pairs with similarity ≥ 0.80 are flagged: both `pre_evaluations` rows are set to `status='flagged'` (overriding passed/failed), and the corresponding `candidate_applications` rows are reverted to `status='on_hold'` so they leave the Interview lane and await manual HR review.
+- SQL query updated to include `p.id AS position_id` to support the grouping.
+
+**Files Modified:**
+- `backend/tasks/pre_eval_grade.py`
+- `.gitignore` (added `frontend/dist/`)
+
+---
+
+## 198. Sourcing Schedule Configuration & HR Permissions
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Problem Statement:**
+The "Sourcing Schedule" tab was implemented in components but missing from the Settings page routing. Once exposed, it had a basic unstyled UI, lacked save confirmation feedback, and incorrectly allowed HR roles to attempt saving despite lacking backend authorization, causing a 403 Forbidden error. Furthermore, Department Admins were blocked by `require_org_head` on the backend.
+
+**Idea / Solution:**
+- Wired `SourcingTab` into `SettingsPage.jsx` routing and included it in the array of components that force `isReadOnly=true` for HR roles, cleanly locking down the UI.
+- Redesigned `SourcingTab.jsx` using premium SaaS `Toggle` switches, `Icon` blocks, and standard layout styling to match other Settings tabs.
+- Integrated `Toast` component into the save workflow to provide explicit "Sourcing configuration saved successfully" feedback.
+- Updated `PATCH /api/v1/settings/sourcing-config` in `backend/routers/settings.py` from `require_org_head` to `require_dept_admin`, aligning with standard role capabilities.
+
+**Files Modified:**
+- `frontend/src/components/Settings/SettingsPage.jsx`
+- `frontend/src/components/Settings/tabs/SourcingTab.jsx`
+- `backend/routers/settings.py`

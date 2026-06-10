@@ -8,7 +8,7 @@ from typing import Optional
 
 import asyncpg
 
-from backend.dependencies import get_db, get_current_user, require_org_head, require_dept_admin, require_hr
+from backend.dependencies import get_db, get_current_user, require_org_head, require_dept_admin, require_hr, require_platform_admin
 from backend.services.settings_service import SettingsService
 from backend.models.settings import (
     OrgProfileUpdate, AutoDraftRequest,
@@ -83,7 +83,7 @@ async def auto_draft_org_profile(
         except Exception as scrape_err:
             print(f"Direct scrape failed for {body.url}: {scrape_err}. Falling back to Tavily.")
             fallback_used = True
-            from langchain_community.tools.tavily_search import TavilySearchResults
+            from langchain_community.tools.tavily_search import TavilySearchResults  # type: ignore
             tavily = TavilySearchResults(max_results=3)
             results = tavily.invoke({"query": f"What is the company culture, benefits, and about us for {body.url}?"})
             text = str(results)
@@ -100,6 +100,9 @@ async def auto_draft_org_profile(
         
         # Parse JSON
         content = res.content
+        if isinstance(content, list):
+            content = content[0] if not isinstance(content[0], dict) else content[0].get("text", "")
+        content = str(content)
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0].strip()
         elif "```" in content:
@@ -129,7 +132,7 @@ async def extract_from_handbook(
     user: dict = Depends(require_org_head)
 ):
     """Extract company details from a PDF handbook using LLM."""
-    if not file.filename.lower().endswith(".pdf"):
+    if not (file.filename or "").lower().endswith(".pdf"):
         return {"error": "Only PDF files are supported."}
         
     try:
@@ -163,6 +166,9 @@ async def extract_from_handbook(
         
         # Parse JSON
         content = res.content
+        if isinstance(content, list):
+            content = content[0] if not isinstance(content[0], dict) else content[0].get("text", "")
+        content = str(content)
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0].strip()
         elif "```" in content:
@@ -466,6 +472,9 @@ async def auto_draft_message_template(
             HumanMessage(content=human_prompt)
         ])
         content = res.content
+        if isinstance(content, list):
+            content = content[0] if not isinstance(content[0], dict) else content[0].get("text", "")
+        content = str(content)
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0].strip()
         elif "```" in content:
@@ -504,7 +513,10 @@ async def analyze_message_tone(
             SystemMessage(content=sys_prompt),
             HumanMessage(content=human_prompt)
         ])
-        return {"analysis": res.content.strip()}
+        content = res.content
+        if isinstance(content, list):
+            content = content[0] if not isinstance(content[0], dict) else content[0].get("text", "")
+        return {"analysis": str(content).strip()}
     except Exception as e:
         return {"error": f"Analysis failed: {str(e)}"}
 
@@ -598,3 +610,74 @@ async def update_ai_behavior_settings(
         body.model_dump(),
     )
     return {"settings": settings}
+
+
+# ── Sourcing Config ────────────────────────────────────────────────────────────
+
+from backend.models.settings import SourcingConfigBody
+
+@router.get("/sourcing-config")
+async def get_sourcing_config(
+    user: dict = Depends(require_dept_admin),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Get sourcing config for the org."""
+    settings = await SettingsService.get_sourcing_config(db, user["org_id"])
+    return {"settings": settings}
+
+
+@router.patch("/sourcing-config")
+async def update_sourcing_config(
+    body: SourcingConfigBody,
+    user: dict = Depends(require_dept_admin),
+    db: asyncpg.Connection = Depends(get_db),
+):
+    """Update sourcing config (admin only)."""
+    settings = await SettingsService.update_sourcing_config(
+        db, user["org_id"], user["user_id"],
+        body.model_dump(),
+    )
+    return {"settings": settings}
+
+
+# ── Audit Logs ────────────────────────────────────────────────────────────────
+
+@router.get("/audit-logs")
+async def get_audit_logs(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user_id: Optional[int] = Query(None),
+    action: Optional[str] = Query(None),
+    user: dict = Depends(require_org_head),
+):
+    """List audit logs (admin only)."""
+    from backend.services.audit_service import AuditService
+    return await AuditService.get_logs(
+        org_id=user["org_id"],
+        limit=limit,
+        offset=offset,
+        user_id_filter=user_id,
+        action_filter=action
+    )
+
+
+
+# ── Providers ─────────────────────────────────────────────────────────────────
+
+from backend.models.settings import ProviderConfig, ProvidersUpdate
+
+@router.get("/providers")
+async def get_providers(
+    user: dict = Depends(require_platform_admin),
+):
+    """Get platform-level provider configurations with masked API keys (platform admin only)."""
+    return {"providers": SettingsService.get_providers()}
+
+@router.patch("/providers")
+async def update_providers(
+    body: ProvidersUpdate,
+    user: dict = Depends(require_platform_admin),
+):
+    """Update platform-level provider configurations (platform admin only)."""
+    providers = SettingsService.update_providers(body.model_dump(exclude_none=True))
+    return {"providers": providers}

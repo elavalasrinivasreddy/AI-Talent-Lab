@@ -24,11 +24,13 @@ import MessageTemplatesTab from './tabs/MessageTemplatesTab'
 import ApprovalRulesTab from './tabs/ApprovalRulesTab'
 import NotificationsTab from './tabs/NotificationsTab'
 import InterviewTemplatesTab from './tabs/InterviewTemplatesTab'
-import IntegrationsTab from './tabs/IntegrationsTab'
+import ProvidersTab from './tabs/ProvidersTab'
 import AppearanceTab from './tabs/AppearanceTab'
 import SecurityTab from './tabs/SecurityTab'
 import PrivacyTab from './tabs/PrivacyTab'
 import CareerBrandTab from './tabs/CareerBrandTab'
+import AuditTab from './tabs/AuditTab'
+import SourcingTab from './tabs/SourcingTab'
 import '../../styles/settings.css'
 
 const RAIL_GROUPS = [
@@ -43,7 +45,7 @@ const RAIL_GROUPS = [
       { key: 'screening', icon: 'help-circle', label: 'Screening questions', adminOnly: true },
       { key: 'scorecards', icon: 'target', label: 'Scorecard rubric', adminOnly: true },
       { key: 'bias', icon: 'shield', label: 'JD bias detection', adminOnly: true, phase: 2 },
-      { key: 'llm', icon: 'settings', label: 'LLM provider', adminOnly: true, phase: 2 },
+      { key: 'providers', icon: 'settings', label: 'Providers & API keys', orgHeadOnly: true },
     ],
   },
   {
@@ -79,7 +81,7 @@ const RAIL_GROUPS = [
     items: [
       { key: 'privacy', icon: 'shield', label: 'GDPR / DPDP', adminOnly: true },
       { key: 'security', icon: 'lock', label: 'Security', adminOnly: true },
-      { key: 'integrations', icon: 'link', label: 'Integrations', adminOnly: true },
+      
       { key: 'audit', icon: 'clock', label: 'Audit log', adminOnly: true, phase: 2 },
       { key: 'export', icon: 'download', label: 'Data export', adminOnly: true, phase: 2 },
     ],
@@ -89,11 +91,11 @@ const RAIL_GROUPS = [
 const SECTION_COMPONENTS = {
   'profile': ProfileTab,
   'ats-rules': AtsRulesTab,
-  'sourcing': () => <PlaceholderSection title="Sourcing Schedule" desc="Configure AI sourcing frequency, daily caps, and talent-pool-first settings." icon="search" />,
+  'sourcing': SourcingTab,
   'screening': ScreeningQuestionsTab,
   'scorecards': InterviewTemplatesTab,
   'bias': () => <PlaceholderSection title="JD Bias Detection" desc="Configure bias sensitivity level and language model for JD analysis." icon="shield" phase={2} />,
-  'llm': () => <PlaceholderSection title="LLM Provider" desc="Switch between Groq, OpenAI, and Gemini. Configure model, max tokens, and temperature." icon="settings" phase={2} />,
+  'providers': ProvidersTab,
   'departments': DepartmentsTab,
   'team': TeamTab,
   'approval': ApprovalRulesTab,
@@ -105,8 +107,8 @@ const SECTION_COMPONENTS = {
   'career-brand': CareerBrandTab,
   'privacy': PrivacyTab,
   'security': SecurityTab,
-  'integrations': IntegrationsTab,
-  'audit': () => <PlaceholderSection title="Audit Log" desc="View all organization actions with filters and export." icon="clock" phase={2} />,
+  
+  'audit': AuditTab,
   'export': () => <PlaceholderSection title="Data Export" desc="GDPR Article 20 data portability — export candidate and org data." icon="download" phase={2} />,
 }
 
@@ -195,10 +197,8 @@ export default function SettingsPage() {
 
                 if (item.adminOnly && !isAdmin) {
                   if (user?.role === 'hr') {
-                    if (['ats-rules', 'templates'].includes(item.key)) {
+                    if (['ats-rules', 'templates', 'sourcing'].includes(item.key)) {
                       isReadOnly = true; // HR can view but not edit
-                    } else if (item.key === 'sourcing') {
-                      isFullyLocked = false; // HR can edit sourcing
                     } else {
                       isFullyLocked = true; // Everything else admin-only is locked for HR
                     }
@@ -251,7 +251,7 @@ export default function SettingsPage() {
             let activeItemReadOnly = false;
             const activeItem = RAIL_GROUPS.flatMap(g => g.items).find(i => i.key === activeSection);
             if (activeItem && activeItem.adminOnly && !isAdmin && user?.role === 'hr') {
-              if (['ats-rules', 'templates'].includes(activeItem.key)) {
+              if (['ats-rules', 'templates', 'sourcing'].includes(activeItem.key)) {
                 activeItemReadOnly = true;
               }
             }

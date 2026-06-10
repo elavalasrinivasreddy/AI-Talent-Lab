@@ -53,7 +53,11 @@ async def get_current_user(request: Request) -> dict:
         raise InvalidCredentialsError("Missing token")
 
     payload = decode_access_token(token)
-    
+
+    # Candidate tokens must never grant access to internal/staff endpoints.
+    if payload.get("role") == "candidate":
+        raise InsufficientPermissionsError("Candidate tokens cannot access this resource")
+
     jti = payload.get("jti")
     if jti:
         import redis.asyncio as redis
@@ -161,3 +165,31 @@ async def verify_apply_token(token: str) -> dict:
 async def verify_panel_token(token: str) -> dict:
     """Validate a panel feedback magic link JWT. Returns decoded payload."""
     return verify_magic_link_token(token, "panel_feedback")
+
+async def get_current_candidate(request: Request) -> dict:
+    """
+    Decode JWT from Authorization header for candidate portal.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise InvalidCredentialsError("Missing or invalid Authorization header")
+
+    token = auth_header.removeprefix("Bearer ").strip()
+    if not token:
+        raise InvalidCredentialsError("Missing token")
+
+    payload = decode_access_token(token)
+    
+    if payload.get("role") != "candidate":
+        raise InsufficientPermissionsError("Candidate access required")
+
+    sub = payload.get("sub")
+    org_id = payload.get("org_id")
+    if not sub or org_id is None:
+        raise InvalidCredentialsError("Malformed candidate token")
+
+    return {
+        "candidate_id": int(sub),
+        "org_id": org_id,
+        "role": payload.get("role"),
+    }

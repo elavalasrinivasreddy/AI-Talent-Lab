@@ -30,6 +30,18 @@ class Settings(BaseSettings):
 
     # ── LLM ────────────────────────────────────────────────────────────────
     LLM_PROVIDER: str = "groq"
+    LLM_MODEL: str = "llama-3.3-70b-versatile"
+    EMBEDDING_PROVIDER: str = "openai"
+    EMBEDDING_MODEL: str = "text-embedding-3-small"
+    EMBEDDING_API_KEY: str = ""
+    WEB_SEARCH_PROVIDER: str = "tavily"
+    BRAVE_API_KEY: str = ""
+    SERPAPI_API_KEY: str = ""
+    EXA_API_KEY: str = ""
+    ENRICHMENT_PROVIDER: str = "proxycurl"
+    PROXYCURL_API_KEY: str = ""
+    APOLLO_API_KEY: str = ""
+    HUNTER_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
@@ -53,7 +65,10 @@ class Settings(BaseSettings):
     FROM_NAME: str = "AI Talent Lab"
 
     # ── Candidate Sourcing ─────────────────────────────────────────────────
-    CANDIDATE_SOURCE_ADAPTER: str = "simulation"
+    CANDIDATE_SOURCE_ADAPTER: str = "simulation"  # legacy global fallback
+    # Default adapter when an org hasn't set one in Settings → Sourcing.
+    # Set to "tavily" in production .env; "simulation" is dev-only.
+    DEFAULT_SOURCE_ADAPTER: str = "simulation"
 
     # ── Magic Link Expiry ──────────────────────────────────────────────────
     APPLY_LINK_EXPIRY_HOURS: int = 72

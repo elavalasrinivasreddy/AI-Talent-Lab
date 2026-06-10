@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 class ContactStatusUpdate(BaseModel):
     contact_status: str  # active | unsubscribed | employed
 
+class BulkRejectBody(BaseModel):
+    position_id: int
+    threshold: float
+
 
 @router.get("/position/{position_id}")
 async def list_candidates_for_position(
@@ -93,12 +97,12 @@ async def update_candidate_status(
     user_id = current_user["user_id"]
     try:
         app = await CandidateService.update_status(
-            application_id=application_id,
+            application_id=int(application_id),  # type: ignore # already validated
             org_id=current_user["org_id"],
-            new_status=new_status,
+            new_status=str(new_status),
             user_id=user_id,
             candidate_id=candidate_id,
-            position_id=position_id,
+            position_id=int(position_id),  # type: ignore
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail={
@@ -228,6 +232,61 @@ async def send_outreach(
             "error": {"code": "OUTREACH_FAILED",
                       "message": "Failed to queue outreach. Please try again.", "details": None}
         })
+
+
+@router.post("/bulk-reject")
+async def bulk_reject_candidates(
+    body: BulkRejectBody,
+    current_user=Depends(get_current_user),
+):
+    """Bulk reject candidates below a specific ATS threshold for a position."""
+    position_id = body.position_id
+    threshold_float = body.threshold
+
+    from backend.db.connection import get_connection
+    from backend.db.repositories.pipeline_events import PipelineEventRepository
+    
+    async with get_connection() as conn:
+        # Get all applications for this position in 'on_hold' status with score < threshold
+        rows = await conn.fetch(
+            """
+            SELECT id, candidate_id 
+            FROM candidate_applications 
+            WHERE position_id = $1 AND org_id = $2 
+            AND status = 'on_hold'
+            AND skill_match_score < $3
+            """,
+            position_id, current_user["org_id"], threshold_float
+        )
+        
+        if not rows:
+            return {"ok": True, "rejected_count": 0}
+            
+        app_ids = [row["id"] for row in rows]
+        
+        # Update status — re-assert org_id on the UPDATE for defense in depth.
+        await conn.execute(
+            """
+            UPDATE candidate_applications
+            SET status = 'rejected', rejection_reason = 'ats_score', updated_at = NOW()
+            WHERE id = ANY($1::int[]) AND org_id = $2
+            """,
+            app_ids, current_user["org_id"]
+        )
+
+        # Create pipeline events
+        for row in rows:
+            await PipelineEventRepository.create(conn, {
+                "org_id": current_user["org_id"],
+                "candidate_id": row["candidate_id"],
+                "position_id": position_id,
+                "application_id": row["id"],
+                "user_id": current_user["user_id"],
+                "event_type": "status_changed",
+                "event_data": {"old_status": "on_hold", "new_status": "rejected", "reason": "ats_score"}
+            })
+            
+    return {"ok": True, "rejected_count": len(app_ids)}
 
 
 @router.post("/{candidate_id}/generate-apply-link")

@@ -29,7 +29,7 @@ async def check_bias(jd_text: str) -> list[BiasIssue]:
         return []
 
     try:
-        llm = get_llm(temperature=0.0, max_tokens=1000)
+        llm = get_llm(temperature=0.0, max_tokens=1000, json_mode=True)
         system_prompt = _load_prompt()
 
         messages = [
@@ -54,6 +54,12 @@ async def check_bias(jd_text: str) -> list[BiasIssue]:
             json_str = content.split("```json")[-1].split("```")[0].strip()
         elif "```" in content:
             json_str = content.split("```")[1].strip()
+        else:
+            # Try to find the first { and last }
+            start = content.find("{")
+            end = content.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                json_str = content[start:end+1]
             
         try:
             result = json.loads(json_str)

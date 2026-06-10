@@ -141,6 +141,9 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     created_at       TIMESTAMP DEFAULT NOW()
 );
 
+"""
+
+CANDIDATE_CHAT_TABLES = """
 -- Candidate magic link apply sessions
 CREATE TABLE IF NOT EXISTS candidate_sessions (
     id               SERIAL PRIMARY KEY,
@@ -241,6 +244,19 @@ CREATE TABLE IF NOT EXISTS candidates (
 );
 
 -- Candidate Applications
+-- Candidate Consents (GDPR)
+CREATE TABLE IF NOT EXISTS candidate_consents (
+    id SERIAL PRIMARY KEY,
+    org_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+    consent_type VARCHAR(50) NOT NULL,
+    granted BOOLEAN NOT NULL DEFAULT true,
+    ip_address TEXT,
+    user_agent TEXT,
+    granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    revoked_at TIMESTAMPTZ
+);
+
 CREATE TABLE IF NOT EXISTS candidate_applications (
     id                    SERIAL PRIMARY KEY,
     candidate_id          INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
@@ -427,6 +443,8 @@ ALTER TABLE message_templates       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scorecard_templates     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE interview_kits          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE interview_panel         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pre_evaluations         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE candidate_consents      ENABLE ROW LEVEL SECURITY;
 """
 
 # Tables that have org_id directly
@@ -446,6 +464,8 @@ RLS_TABLES_WITH_ORG_ID = [
     "message_templates",
     "scorecard_templates",
     "interview_kits",
+    "pre_evaluations",
+    "candidate_consents",
 ]
 
 # Tables that don't have org_id directly (need join-based or skip RLS policy)
@@ -462,31 +482,13 @@ async def run_migrations(conn) -> None:
         ("Foundation Tables", FOUNDATION_TABLES),
         ("Chat Tables", CHAT_TABLES),
         ("Hiring Tables", HIRING_TABLES),
+        ("Candidate Chat Tables", CANDIDATE_CHAT_TABLES),
         ("Interview Tables", INTERVIEW_TABLES),
         ("Event Tables", EVENT_TABLES),
     ]:
         logger.info(f"  Creating {name}...")
         await conn.execute(sql)
 
-    # Enable RLS
-    logger.info("  Enabling Row-Level Security...")
-    await conn.execute(RLS_SETUP)
-
-    # Create tenant isolation policies for tables with org_id
-    for table in RLS_TABLES_WITH_ORG_ID:
-        policy_sql = f"""
-        DO $$
-        BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM pg_policies
-                WHERE tablename = '{table}' AND policyname = 'tenant_isolation'
-            ) THEN
-                EXECUTE 'CREATE POLICY tenant_isolation ON {table}
-                    USING (org_id = current_setting(''app.current_org_id'', true)::int)';
-            END IF;
-        END $$;
-        """
-        await conn.execute(policy_sql)
 
     # Create indexes for performance
     index_sql = """
@@ -508,6 +510,8 @@ async def run_migrations(conn) -> None:
     CREATE INDEX IF NOT EXISTS idx_interviews_position ON interviews(position_id);
     CREATE INDEX IF NOT EXISTS idx_interviews_candidate ON interviews(candidate_id);
     CREATE INDEX IF NOT EXISTS idx_talent_pool ON candidates(org_id, in_talent_pool) WHERE in_talent_pool = TRUE;
+    CREATE INDEX IF NOT EXISTS idx_candidate_consents_candidate ON candidate_consents(candidate_id);
+    CREATE INDEX IF NOT EXISTS idx_candidate_consents_org ON candidate_consents(org_id);
     """
     await conn.execute(index_sql)
 
@@ -669,6 +673,19 @@ async def run_migrations(conn) -> None:
                        WHERE table_name='candidates' AND column_name='data_anonymized_at') THEN
             ALTER TABLE candidates ADD COLUMN data_anonymized_at TIMESTAMP;
         END IF;
+        -- Candidate portal talent-pool consent (opt-in)
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidates' AND column_name='consent_to_store') THEN
+            ALTER TABLE candidates ADD COLUMN consent_to_store BOOLEAN DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidates' AND column_name='consent_to_contact') THEN
+            ALTER TABLE candidates ADD COLUMN consent_to_contact BOOLEAN DEFAULT FALSE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidates' AND column_name='consent_timestamp') THEN
+            ALTER TABLE candidates ADD COLUMN consent_timestamp TIMESTAMP;
+        END IF;
     END $$;
 
     CREATE INDEX IF NOT EXISTS idx_consent_records_candidate ON consent_records(candidate_id);
@@ -708,6 +725,15 @@ async def run_migrations(conn) -> None:
                        WHERE table_name='candidates' AND column_name='contact_status') THEN
             ALTER TABLE candidates ADD COLUMN contact_status TEXT DEFAULT 'active';
             ALTER TABLE candidates ADD COLUMN contact_status_updated_at TIMESTAMP;
+        END IF;
+    END $$;
+
+    -- candidates: password_hash for candidate portal login (must be its own guard)
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='candidates' AND column_name='password_hash') THEN
+            ALTER TABLE candidates ADD COLUMN password_hash TEXT;
         END IF;
     END $$;
 
@@ -899,6 +925,19 @@ async def run_migrations(conn) -> None:
     await conn.execute(ai_behavior_sql)
     logger.info("  AI behavior settings column ensured.")
 
+    # ── Sourcing Config column ────────────────────────────────────────────
+    sourcing_config_sql = """
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_name='organizations' AND column_name='sourcing_config') THEN
+            ALTER TABLE organizations ADD COLUMN sourcing_config JSONB NOT NULL DEFAULT '{}';
+        END IF;
+    END $$;
+    """
+    await conn.execute(sourcing_config_sql)
+    logger.info("  sourcing_config column ensured.")
+
     # ── Competitors department_id column ───────────────────────────────────────────
     competitors_dept_sql = """
     DO $$
@@ -1053,6 +1092,32 @@ async def run_migrations(conn) -> None:
     await conn.execute(actor_type_sql)
     logger.info("  pipeline_events.actor_type column ensured.")
 
+    # ── Pre-Evaluations table ───────────────────────────────────────────────
+    pre_evals_sql = """
+    CREATE TABLE IF NOT EXISTS pre_evaluations (
+        id SERIAL PRIMARY KEY,
+        org_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        application_id INTEGER NOT NULL REFERENCES candidate_applications(id) ON DELETE CASCADE,
+        candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+        position_id INTEGER REFERENCES positions(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        token VARCHAR(64) UNIQUE,
+        questions JSONB NOT NULL,
+        answers JSONB,
+        score NUMERIC(5, 2),
+        feedback TEXT,
+        expires_at TIMESTAMPTZ,
+        completed_at TIMESTAMPTZ,
+        evaluated_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_pre_evals_app ON pre_evaluations(application_id);
+    CREATE INDEX IF NOT EXISTS idx_pre_evals_token ON pre_evaluations(token);
+    """
+    await conn.execute(pre_evals_sql)
+    logger.info("  pre_evaluations table ensured.")
+
     # ── Ops Intelligence tables ──────────────────────────────────────────────────
     ops_sql = """
     CREATE TABLE IF NOT EXISTS llm_usage_log (
@@ -1106,5 +1171,53 @@ async def run_migrations(conn) -> None:
     END $$;
     """)
     logger.info("  positions.jd_status column ensured.")
+
+    # Add rejection_reason to candidate_applications
+    await conn.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='candidate_applications' AND column_name='rejection_reason'
+        ) THEN
+            ALTER TABLE candidate_applications ADD COLUMN rejection_reason TEXT;
+        END IF;
+    END $$;
+    """)
+    logger.info("  candidate_applications.rejection_reason column ensured.")
+
+    # Add skill_tags to candidates
+    await conn.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='candidates' AND column_name='skill_tags'
+        ) THEN
+            ALTER TABLE candidates ADD COLUMN skill_tags TEXT[] DEFAULT '{}';
+        END IF;
+    END $$;
+    """)
+    logger.info("  candidates.skill_tags column ensured.")
+
+    # Enable RLS
+    logger.info("  Enabling Row-Level Security...")
+    await conn.execute(RLS_SETUP)
+
+    # Create tenant isolation policies for tables with org_id
+    for table in RLS_TABLES_WITH_ORG_ID:
+        policy_sql = f"""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_policies
+                WHERE tablename = '{table}' AND policyname = 'tenant_isolation'
+            ) THEN
+                EXECUTE 'CREATE POLICY tenant_isolation ON {table}
+                    USING (org_id = current_setting(''app.current_org_id'', true)::int)';
+            END IF;
+        END $$;
+        """
+        await conn.execute(policy_sql)
 
     logger.info("Database migrations complete.")

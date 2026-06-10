@@ -83,6 +83,44 @@ const _post = (path, body, signal) => _fetch('POST', path, body, signal)
 const _patch = (path, body, signal) => _fetch('PATCH', path, body, signal)
 const _delete = (path, signal) => _fetch('DELETE', path, null, signal)
 
+// ── Candidate portal ────────────────────────────────────────────────────────────
+// Candidates authenticate separately from internal staff: their JWT lives in
+// localStorage under 'candidate_token'. Do NOT reuse the staff _tokenGetter here.
+async function _candidateFetch(method, path, body) {
+  const token = (() => { try { return localStorage.getItem('candidate_token') } catch { return null } })()
+  const headers = { 'Content-Type': 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${BASE}${path}`, {
+    method, headers, body: body ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) {
+    let errData
+    try { errData = await res.json() } catch { errData = null }
+    const msg = errData?.detail?.message || errData?.error?.message || errData?.detail || `HTTP ${res.status}`
+    const err = new Error(typeof msg === 'string' ? msg : `HTTP ${res.status}`)
+    err.status = res.status
+    throw err
+  }
+  if (res.status === 204) return null
+  return res.json()
+}
+
+export const candidatePortalApi = {
+  login: ({ email, password, org_id }) =>
+    _candidateFetch('POST', '/candidate/login', { email, password, org_id }),
+  getTimeline: () => _candidateFetch('GET', '/candidate/timeline'),
+  setPassword: ({ token, password }) =>
+    _candidateFetch('POST', '/candidate/set-password', { token, password }),
+  optInTalentPool: (opt_in) =>
+    _candidateFetch('POST', '/candidate/opt-in-talent-pool', { opt_in }),
+}
+
+// Pre-evaluation written test — public, accessed by single-use token (no auth header).
+export const preEvaluationsApi = {
+  getByToken: (token) => _get(`/pre-evaluations/${token}`),
+  submit: ({ token, answers }) => _post('/pre-evaluations/submit', { token, answers }),
+}
+
 // ── Positions ──────────────────────────────────────────────────────────────────
 
 export const positionsApi = {
@@ -127,6 +165,7 @@ export const candidatesApi = {
     return _get(`/candidates/${id}/timeline${qs}`)
   },
   updateStatus: (candidateId, data) => _patch(`/candidates/${candidateId}/status`, data),
+  bulkReject: (positionId, threshold) => _post(`/candidates/bulk-reject`, { position_id: positionId, threshold }),
   markSelected: (candidateId, data) => _post(`/candidates/${candidateId}/mark-selected`, data),
   getTags: (id) => _get(`/candidates/${id}/tags`),
   addTag: (id, tag) => _post(`/candidates/${id}/tags`, { tag }),
@@ -245,7 +284,11 @@ export const authApi = {
 export const settingsApi = {
   getAiBehavior: () => _get('/settings/ai-behavior'),
   updateAiBehavior: (settings) => _patch('/settings/ai-behavior', settings),
+  getProviders: () => _get('/settings/providers'),
+  updateProviders: (providers) => _patch('/settings/providers', providers),
   getDepartments: () => _get('/settings/departments'),
+  getSourcingConfig: () => _get('/settings/sourcing-config'),
+  updateSourcingConfig: (config) => _patch('/settings/sourcing-config', config),
 }
 
 // ── GDPR / Privacy ────────────────────────────────────────────────────────────

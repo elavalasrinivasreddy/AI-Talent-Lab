@@ -810,6 +810,44 @@ class EmailService:
             body_text=body_text,
         )
 
+    @staticmethod
+    async def send_pre_evaluation_invite(
+        to_email: str,
+        candidate_name: str,
+        role_name: str,
+        org_name: str,
+        setup_url: str,
+    ) -> bool:
+        _candidate_name = html.escape(candidate_name) if candidate_name else None
+        _role_name = html.escape(role_name)
+        _org_name = html.escape(org_name)
+        greeting = f"Dear {_candidate_name}," if _candidate_name else "Dear Applicant,"
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  Thank you for your application for the <strong>{_role_name}</strong> position
+  at <strong>{_org_name}</strong>. We were impressed by your resume and would like to
+  invite you to the next stage of our process: a written pre-evaluation.
+</p>
+<p style="margin:0 0 16px;">
+  Please click the button below to set up your candidate portal password and complete
+  the evaluation. You will have 7 days to complete it.
+</p>
+{_button("Set up password and start evaluation", setup_url)}
+<p style="margin:0;font-size:13px;color:#64748B;">
+  If you have any questions, feel free to reply to this email.
+</p>"""
+        body_text = (
+            f"{greeting}\n\nThank you for applying for {role_name} at {org_name}. "
+            f"Please complete your written pre-evaluation here: {setup_url}"
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"Action Required: Pre-evaluation for {role_name} at {org_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
     # ── Candidate: rejection ──────────────────────────────────────────────────
 
     @staticmethod
