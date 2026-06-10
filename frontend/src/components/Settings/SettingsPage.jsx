@@ -91,7 +91,7 @@ const RAIL_GROUPS = [
 const SECTION_COMPONENTS = {
   'profile': ProfileTab,
   'ats-rules': AtsRulesTab,
-  'sourcing': () => <PlaceholderSection title="Sourcing Schedule" desc="Configure AI sourcing frequency, daily caps, and talent-pool-first settings." icon="search" />,
+  'sourcing': SourcingTab,
   'screening': ScreeningQuestionsTab,
   'scorecards': InterviewTemplatesTab,
   'bias': () => <PlaceholderSection title="JD Bias Detection" desc="Configure bias sensitivity level and language model for JD analysis." icon="shield" phase={2} />,
@@ -197,10 +197,8 @@ export default function SettingsPage() {
 
                 if (item.adminOnly && !isAdmin) {
                   if (user?.role === 'hr') {
-                    if (['ats-rules', 'templates'].includes(item.key)) {
+                    if (['ats-rules', 'templates', 'sourcing'].includes(item.key)) {
                       isReadOnly = true; // HR can view but not edit
-                    } else if (item.key === 'sourcing') {
-                      isFullyLocked = false; // HR can edit sourcing
                     } else {
                       isFullyLocked = true; // Everything else admin-only is locked for HR
                     }
@@ -253,7 +251,7 @@ export default function SettingsPage() {
             let activeItemReadOnly = false;
             const activeItem = RAIL_GROUPS.flatMap(g => g.items).find(i => i.key === activeSection);
             if (activeItem && activeItem.adminOnly && !isAdmin && user?.role === 'hr') {
-              if (['ats-rules', 'templates'].includes(activeItem.key)) {
+              if (['ats-rules', 'templates', 'sourcing'].includes(activeItem.key)) {
                 activeItemReadOnly = true;
               }
             }

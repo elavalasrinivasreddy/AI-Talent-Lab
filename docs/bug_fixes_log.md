@@ -3470,3 +3470,23 @@ Implemented `_detect_collusion(conn, rows)` and `_answer_similarity(answers_a, a
 **Files Modified:**
 - `backend/tasks/pre_eval_grade.py`
 - `.gitignore` (added `frontend/dist/`)
+
+---
+
+## 198. Sourcing Schedule Configuration & HR Permissions
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Problem Statement:**
+The "Sourcing Schedule" tab was implemented in components but missing from the Settings page routing. Once exposed, it had a basic unstyled UI, lacked save confirmation feedback, and incorrectly allowed HR roles to attempt saving despite lacking backend authorization, causing a 403 Forbidden error. Furthermore, Department Admins were blocked by `require_org_head` on the backend.
+
+**Idea / Solution:**
+- Wired `SourcingTab` into `SettingsPage.jsx` routing and included it in the array of components that force `isReadOnly=true` for HR roles, cleanly locking down the UI.
+- Redesigned `SourcingTab.jsx` using premium SaaS `Toggle` switches, `Icon` blocks, and standard layout styling to match other Settings tabs.
+- Integrated `Toast` component into the save workflow to provide explicit "Sourcing configuration saved successfully" feedback.
+- Updated `PATCH /api/v1/settings/sourcing-config` in `backend/routers/settings.py` from `require_org_head` to `require_dept_admin`, aligning with standard role capabilities.
+
+**Files Modified:**
+- `frontend/src/components/Settings/SettingsPage.jsx`
+- `frontend/src/components/Settings/tabs/SourcingTab.jsx`
+- `backend/routers/settings.py`

@@ -629,10 +629,10 @@ async def get_sourcing_config(
 @router.patch("/sourcing-config")
 async def update_sourcing_config(
     body: SourcingConfigBody,
-    user: dict = Depends(require_org_head),
+    user: dict = Depends(require_dept_admin),
     db: asyncpg.Connection = Depends(get_db),
 ):
-    """Update sourcing config (org_head only)."""
+    """Update sourcing config (admin only)."""
     settings = await SettingsService.update_sourcing_config(
         db, user["org_id"], user["user_id"],
         body.model_dump(),
