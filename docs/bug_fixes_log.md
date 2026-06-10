@@ -3490,3 +3490,28 @@ The "Sourcing Schedule" tab was implemented in components but missing from the S
 - `frontend/src/components/Settings/SettingsPage.jsx`
 - `frontend/src/components/Settings/tabs/SourcingTab.jsx`
 - `backend/routers/settings.py`
+
+## 199. Dev Console Admin Creation Fails due to missing defaults
+
+**Problem Statement:**
+When creating a new user as a Platform Admin in the Dev Console, it resulted in a `500 Internal Server Error`. The SQL `INSERT` statements in `/api/v1/dev/create-user` were attempting to insert into the `updated_at` column which doesn't exist for the `organizations` and `users` tables. Furthermore, it lacked the required `segment` and `size` fields (which lack default values in the schema) when implicitly creating a new organization.
+
+**Idea / Solution:**
+Modified the SQL queries in `backend/routers/dev_admin.py` to correctly map the columns. Removed the non-existent `updated_at` references and added static fallback default values (`Technology` for segment, `Mid-Market` for size) for the auto-created organizations so they pass database NOT NULL constraints.
+
+**Files Modified:**
+- `backend/routers/dev_admin.py`
+
+---
+
+## 200. Platform Dashboard Redesign & API Keys Integration
+
+**Problem Statement:**
+The Platform Admin dashboard had a basic layout and lacked an accessible way for super-users to configure global API keys (the `ProvidersTab` existed but was isolated in tenant settings, inaccessible from the platform dashboard without manual URL navigation).
+
+**Idea / Solution:**
+Performed a complete UI/UX redesign of the Platform Dashboard using premium aesthetic patterns (glassmorphism, subtle gradients, micro-animations, and hover interactions). Integrated the `ProvidersTab` directly into the Dashboard (`/platform`) under a newly created "Providers & API Keys" tab, wrapped in CSS to seamlessly match the new dark-glassmorphism theme of the main dashboard.
+
+**Files Modified:**
+- `frontend/src/components/Platform/PlatformPage.jsx`
+- `frontend/src/components/Platform/PlatformPage.css`

@@ -173,8 +173,8 @@ async def create_user(body: CreateUserBody):
                 org_id = existing["id"]
             else:
                 org_id = await conn.fetchval(
-                    """INSERT INTO organizations (name, slug, created_at, updated_at)
-                       VALUES ($1, $2, NOW(), NOW()) RETURNING id""",
+                    """INSERT INTO organizations (name, slug, segment, size, created_at)
+                       VALUES ($1, $2, 'Technology', 'Mid-Market', NOW()) RETURNING id""",
                     org_name, slug
                 )
                 logger.info(f"[DEV] Created org '{org_name}' id={org_id}")
@@ -189,8 +189,8 @@ async def create_user(body: CreateUserBody):
 
         user_id = await conn.fetchval(
             """INSERT INTO users (name, email, password_hash, role, org_id, department_id,
-                                  is_active, created_at, updated_at)
-               VALUES ($1, $2, $3, $4, $5, $6, true, NOW(), NOW()) RETURNING id""",
+                                  is_active, created_at)
+               VALUES ($1, $2, $3, $4, $5, $6, true, NOW()) RETURNING id""",
             body.name, body.email, hashed, body.role, org_id, body.department_id
         )
 
