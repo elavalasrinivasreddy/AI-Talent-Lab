@@ -49,44 +49,47 @@ export default function AnalyticsPage() {
 
   return (
     <div className="analytics-page">
-      <div className="analytics-header">
-        <div>
-          <h1 className="analytics-title">Analytics</h1>
-          <p className="analytics-subtitle">
-            {tab === 'roi'
-              ? 'AI contribution, pipeline health, and team throughput'
-              : 'Task health, LLM cost, and JD generation metrics'}
-          </p>
+      <div className="analytics-header-container">
+        <div className="analytics-header">
+          <div>
+            <h1 className="analytics-title">Analytics</h1>
+            <p className="analytics-subtitle">
+              {tab === 'roi'
+                ? 'AI contribution, pipeline health, and team throughput'
+                : 'Task health, LLM cost, and JD generation metrics'}
+            </p>
+          </div>
+          <div className="analytics-header-right">
+            <div className="analytics-period-switcher">
+              {PERIODS.map(p => (
+                <button
+                  key={p.value}
+                  type="button"
+                  className={`analytics-period-btn${period === p.value ? ' active' : ''}`}
+                  onClick={() => setPeriod(p.value)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="analytics-header-right">
-          <div className="analytics-tabs">
-            <button
-              type="button"
-              className={`analytics-tab${tab === 'roi' ? ' active' : ''}`}
-              onClick={() => setTab('roi')}
-            >
-              Agent ROI
-            </button>
-            <button
-              type="button"
-              className={`analytics-tab${tab === 'ops' ? ' active' : ''}`}
-              onClick={() => setTab('ops')}
-            >
-              System Health
-            </button>
-          </div>
-          <div className="analytics-period-switcher">
-            {PERIODS.map(p => (
-              <button
-                key={p.value}
-                type="button"
-                className={`analytics-period-btn${period === p.value ? ' active' : ''}`}
-                onClick={() => setPeriod(p.value)}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+        
+        <div className="analytics-page-tabs">
+          <button
+            type="button"
+            className={`analytics-page-tab${tab === 'roi' ? ' active' : ''}`}
+            onClick={() => setTab('roi')}
+          >
+            Agent ROI
+          </button>
+          <button
+            type="button"
+            className={`analytics-page-tab${tab === 'ops' ? ' active' : ''}`}
+            onClick={() => setTab('ops')}
+          >
+            System Health
+          </button>
         </div>
       </div>
 

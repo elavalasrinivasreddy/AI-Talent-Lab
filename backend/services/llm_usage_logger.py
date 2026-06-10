@@ -13,7 +13,7 @@ import contextvars
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional
 
-from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.callbacks import AsyncCallbackHandler
 from langchain_core.outputs import LLMResult
 
 from backend.config import settings
@@ -41,26 +41,29 @@ def llm_context(org_id: int, operation: str, model: str = 'unknown'):
         _ctx_model.reset(t3)
 
 
-class LLMUsageCallback(BaseCallbackHandler):
+class LLMUsageCallback(AsyncCallbackHandler):
     """
     Fires after every LLM call. Reads token counts from the LLMResult and
     writes a row to llm_usage_log. Safe to use as a singleton — all state
     is read from contextvars, which are per-async-task.
     """
-    _start: Optional[float] = None
+    def __init__(self):
+        super().__init__()
+        self._starts: Dict[str, float] = {}
 
-    def on_llm_start(
-        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
+    async def on_llm_start(
+        self, serialized: Dict[str, Any], prompts: List[str], *, run_id, **kwargs: Any
     ) -> None:
-        self._start = time.time()
+        self._starts[str(run_id)] = time.time()
 
-    def on_chat_model_start(
-        self, serialized: Dict[str, Any], messages: List[List[Any]], **kwargs: Any
+    async def on_chat_model_start(
+        self, serialized: Dict[str, Any], messages: List[List[Any]], *, run_id, **kwargs: Any
     ) -> None:
-        self._start = time.time()
+        self._starts[str(run_id)] = time.time()
 
-    async def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
-        duration_ms = int((time.time() - (self._start or time.time())) * 1000)
+    async def on_llm_end(self, response: LLMResult, *, run_id, **kwargs: Any) -> None:
+        start_time = self._starts.pop(str(run_id), time.time())
+        duration_ms = int((time.time() - start_time) * 1000)
         org_id    = _ctx_org_id.get()
         operation = _ctx_operation.get()
         model     = _ctx_model.get()
@@ -106,8 +109,9 @@ class LLMUsageCallback(BaseCallbackHandler):
         except Exception as exc:
             logger.warning(f"LLM usage logging failed (non-fatal): {exc}")
 
-    async def on_llm_error(self, error: Exception, **kwargs: Any) -> None:
-        duration_ms = int((time.time() - (self._start or time.time())) * 1000)
+    async def on_llm_error(self, error: Exception, *, run_id, **kwargs: Any) -> None:
+        start_time = self._starts.pop(str(run_id), time.time())
+        duration_ms = int((time.time() - start_time) * 1000)
         org_id    = _ctx_org_id.get()
         operation = _ctx_operation.get()
         model     = _ctx_model.get()

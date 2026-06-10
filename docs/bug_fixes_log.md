@@ -3548,3 +3548,30 @@ Removed the `phase: 2` property from the `career-brand` item definition in the `
 **Files Modified:**
 - `backend/services/audit_service.py`
 - `frontend/src/components/Settings/tabs/AuditTab.jsx`
+
+
+## 203. Analytics Page Tab Formatting
+
+**Problem Statement:**
+The "Agent ROI" and "System Health" tabs on the Analytics page were styled as pill-shaped toggles and placed directly next to the date filters, causing them to look like additional filters and creating a cramped, confusing UI.
+
+**Idea / Solution:**
+Refactored the tabs to use a traditional, spacious under-the-header tab list layout.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/AnalyticsPage.jsx`
+- `frontend/src/components/Analytics/AnalyticsPage.css`
+
+
+## 204. System Health LLM Analytics Not Tracking Data
+
+**Problem Statement:**
+The System Health tab in the Analytics dashboard was showing zero values for LLM usage, cost, and token counts.
+
+**Idea / Solution:**
+1. Updated `LLMUsageCallback` in `llm_usage_logger.py` to inherit from `AsyncCallbackHandler` instead of `BaseCallbackHandler`.
+2. Implemented `async def on_llm_start` and `async def on_chat_model_start` methods.
+3. Tracked start times in a dictionary keyed by LangChain's unique `run_id` to fix concurrency issues instead of using a singleton variable.
+
+**Files Modified:**
+- `backend/services/llm_usage_logger.py`

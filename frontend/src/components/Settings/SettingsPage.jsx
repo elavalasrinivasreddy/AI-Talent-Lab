@@ -82,7 +82,7 @@ const RAIL_GROUPS = [
       { key: 'privacy', icon: 'shield', label: 'GDPR / DPDP', adminOnly: true },
       { key: 'security', icon: 'lock', label: 'Security', adminOnly: true },
       
-      { key: 'audit', icon: 'clock', label: 'Audit log', adminOnly: true, phase: 2 },
+      { key: 'audit', icon: 'clock', label: 'Audit log', orgHeadOnly: true },
       { key: 'export', icon: 'download', label: 'Data export', adminOnly: true, phase: 2 },
     ],
   },
