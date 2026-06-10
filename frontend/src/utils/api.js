@@ -245,6 +245,8 @@ export const authApi = {
 export const settingsApi = {
   getAiBehavior: () => _get('/settings/ai-behavior'),
   updateAiBehavior: (settings) => _patch('/settings/ai-behavior', settings),
+  getProviders: () => _get('/settings/providers'),
+  updateProviders: (providers) => _patch('/settings/providers', providers),
   getDepartments: () => _get('/settings/departments'),
 }
 

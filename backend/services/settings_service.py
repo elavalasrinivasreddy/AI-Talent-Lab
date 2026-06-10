@@ -666,3 +666,63 @@ class SettingsService:
         )
 
         logger.info(f"Defaults seeded for org {org_id}")
+
+
+    @staticmethod
+    def get_providers() -> dict:
+        """Read providers configuration from current environment settings."""
+        from backend.config import settings
+        
+        def mask_key(k: str) -> str | None:
+            if not k:
+                return None
+            return f"sk-...{k[-4:]}" if len(k) > 4 else "sk-...****"
+
+        return {
+            "llm_provider": settings.LLM_PROVIDER,
+            "llm_model": settings.LLM_MODEL,
+            "groq_api_key_masked": mask_key(settings.GROQ_API_KEY),
+            "openai_api_key_masked": mask_key(settings.OPENAI_API_KEY),
+            "gemini_api_key_masked": mask_key(settings.GEMINI_API_KEY),
+            "embedding_provider": settings.EMBEDDING_PROVIDER,
+            "embedding_model": settings.EMBEDDING_MODEL,
+            "embedding_api_key_masked": mask_key(settings.EMBEDDING_API_KEY),
+            "web_search_provider": settings.WEB_SEARCH_PROVIDER,
+            "tavily_api_key_masked": mask_key(settings.TAVILY_API_KEY),
+            "brave_api_key_masked": mask_key(settings.BRAVE_API_KEY),
+            "serpapi_api_key_masked": mask_key(settings.SERPAPI_API_KEY),
+            "exa_api_key_masked": mask_key(settings.EXA_API_KEY),
+            "enrichment_provider": settings.ENRICHMENT_PROVIDER,
+            "proxycurl_api_key_masked": mask_key(settings.PROXYCURL_API_KEY),
+            "apollo_api_key_masked": mask_key(settings.APOLLO_API_KEY),
+            "hunter_api_key_masked": mask_key(settings.HUNTER_API_KEY),
+            "email_provider": settings.EMAIL_PROVIDER,
+            "resend_api_key_masked": mask_key(settings.RESEND_API_KEY),
+            "smtp_host": settings.SMTP_HOST,
+            "smtp_port": settings.SMTP_PORT,
+            "smtp_user": settings.SMTP_USER,
+            "smtp_password_masked": mask_key(settings.SMTP_PASSWORD),
+            "from_email": settings.FROM_EMAIL,
+            "from_name": settings.FROM_NAME,
+        }
+
+    @staticmethod
+    def update_providers(updates: dict) -> dict:
+        """Update .env file and current settings with new provider configs."""
+        from backend.config import settings
+        from dotenv import set_key
+        import os
+
+        env_path = ".env"
+        if not os.path.exists(env_path):
+            open(env_path, "a").close()
+
+        for key, value in updates.items():
+            if value is not None:
+                env_key = key.upper()
+                # Update the running settings instance
+                setattr(settings, env_key, value)
+                # Persist to .env
+                set_key(env_path, env_key, str(value))
+        
+        return SettingsService.get_providers()

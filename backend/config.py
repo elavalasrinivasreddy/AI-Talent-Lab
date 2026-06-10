@@ -30,6 +30,18 @@ class Settings(BaseSettings):
 
     # ── LLM ────────────────────────────────────────────────────────────────
     LLM_PROVIDER: str = "groq"
+    LLM_MODEL: str = "llama-3.3-70b-versatile"
+    EMBEDDING_PROVIDER: str = "openai"
+    EMBEDDING_MODEL: str = "text-embedding-3-small"
+    EMBEDDING_API_KEY: str = ""
+    WEB_SEARCH_PROVIDER: str = "tavily"
+    BRAVE_API_KEY: str = ""
+    SERPAPI_API_KEY: str = ""
+    EXA_API_KEY: str = ""
+    ENRICHMENT_PROVIDER: str = "proxycurl"
+    PROXYCURL_API_KEY: str = ""
+    APOLLO_API_KEY: str = ""
+    HUNTER_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""

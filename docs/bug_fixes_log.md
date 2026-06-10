@@ -3257,3 +3257,18 @@ Updated the LLM configuration in `backend/adapters/llm/factory.py` to enforce `j
 - `backend/adapters/llm/factory.py`
 - `backend/agents/bias_checker.py`
 
+
+### Issue 189: Missing Platform Providers Settings
+**Description**: Platform-level API keys for LLMs, embeddings, web search, and enrichment missing UI/API surface.
+**Fix**: 
+1. Added `ProviderConfig` and `ProvidersUpdate` schemas.
+2. Added `/api/v1/settings/providers` GET/PATCH endpoints to update `.env` via `python-dotenv`.
+3. Created `ProvidersTab.jsx` for the frontend admin panel, masking keys appropriately.
+**Files Modified**: 
+- `backend/config.py`
+- `backend/models/settings.py`
+- `backend/services/settings_service.py`
+- `backend/routers/settings.py`
+- `frontend/src/utils/api.js`
+- `frontend/src/components/Settings/SettingsPage.jsx`
+- `frontend/src/components/Settings/tabs/ProvidersTab.jsx`

@@ -24,7 +24,7 @@ import MessageTemplatesTab from './tabs/MessageTemplatesTab'
 import ApprovalRulesTab from './tabs/ApprovalRulesTab'
 import NotificationsTab from './tabs/NotificationsTab'
 import InterviewTemplatesTab from './tabs/InterviewTemplatesTab'
-import IntegrationsTab from './tabs/IntegrationsTab'
+import ProvidersTab from './tabs/ProvidersTab'
 import AppearanceTab from './tabs/AppearanceTab'
 import SecurityTab from './tabs/SecurityTab'
 import PrivacyTab from './tabs/PrivacyTab'
@@ -44,7 +44,7 @@ const RAIL_GROUPS = [
       { key: 'screening', icon: 'help-circle', label: 'Screening questions', adminOnly: true },
       { key: 'scorecards', icon: 'target', label: 'Scorecard rubric', adminOnly: true },
       { key: 'bias', icon: 'shield', label: 'JD bias detection', adminOnly: true, phase: 2 },
-      { key: 'llm', icon: 'settings', label: 'LLM provider', adminOnly: true, phase: 2 },
+      { key: 'providers', icon: 'settings', label: 'Providers & API keys', orgHeadOnly: true },
     ],
   },
   {
@@ -80,7 +80,7 @@ const RAIL_GROUPS = [
     items: [
       { key: 'privacy', icon: 'shield', label: 'GDPR / DPDP', adminOnly: true },
       { key: 'security', icon: 'lock', label: 'Security', adminOnly: true },
-      { key: 'integrations', icon: 'link', label: 'Integrations', adminOnly: true },
+      
       { key: 'audit', icon: 'clock', label: 'Audit log', adminOnly: true, phase: 2 },
       { key: 'export', icon: 'download', label: 'Data export', adminOnly: true, phase: 2 },
     ],
@@ -94,7 +94,7 @@ const SECTION_COMPONENTS = {
   'screening': ScreeningQuestionsTab,
   'scorecards': InterviewTemplatesTab,
   'bias': () => <PlaceholderSection title="JD Bias Detection" desc="Configure bias sensitivity level and language model for JD analysis." icon="shield" phase={2} />,
-  'llm': () => <PlaceholderSection title="LLM Provider" desc="Switch between Groq, OpenAI, and Gemini. Configure model, max tokens, and temperature." icon="settings" phase={2} />,
+  'providers': ProvidersTab,
   'departments': DepartmentsTab,
   'team': TeamTab,
   'approval': ApprovalRulesTab,
@@ -106,7 +106,7 @@ const SECTION_COMPONENTS = {
   'career-brand': CareerBrandTab,
   'privacy': PrivacyTab,
   'security': SecurityTab,
-  'integrations': IntegrationsTab,
+  
   'audit': AuditTab,
   'export': () => <PlaceholderSection title="Data Export" desc="GDPR Article 20 data portability — export candidate and org data." icon="download" phase={2} />,
 }

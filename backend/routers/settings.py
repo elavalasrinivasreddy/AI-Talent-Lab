@@ -620,3 +620,24 @@ async def get_audit_logs(
         action_filter=action
     )
 
+
+
+# ── Providers ─────────────────────────────────────────────────────────────────
+
+from backend.models.settings import ProviderConfig, ProvidersUpdate
+
+@router.get("/providers")
+async def get_providers(
+    user: dict = Depends(require_org_head),
+):
+    """Get platform-level provider configurations with masked API keys."""
+    return {"providers": SettingsService.get_providers()}
+
+@router.patch("/providers")
+async def update_providers(
+    body: ProvidersUpdate,
+    user: dict = Depends(require_org_head),
+):
+    """Update platform-level provider configurations."""
+    providers = SettingsService.update_providers(body.model_dump(exclude_none=True))
+    return {"providers": providers}
