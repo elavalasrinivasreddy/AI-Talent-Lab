@@ -3575,3 +3575,18 @@ The System Health tab in the Analytics dashboard was showing zero values for LLM
 
 **Files Modified:**
 - `backend/services/llm_usage_logger.py`
+
+
+## 205. Type Checker Warnings in LLMUsageLogger
+
+**Problem Statement:**
+The code editor type checker raised two distinct warnings in `llm_usage_logger.py`:
+1. `ContextVar.set` type mismatch because `contextvars.ContextVar(..., default=None)` inferred the underlying generic type strictly as `NoneType`.
+2. A signature mismatch warning for `LLMUsageCallback`'s callback methods when inheriting from `AsyncCallbackHandler`, due to an untyped `run_id` parameter and an overly broad `Exception` annotation.
+
+**Idea / Solution:**
+1. Declared explicit Python generic type hints (`contextvars.ContextVar[Optional[int]]`) during the instantiation of all ContextVars.
+2. Updated method signatures for `on_llm_start`, `on_chat_model_start`, `on_llm_end`, and `on_llm_error` to exactly match the parent class `AsyncCallbackHandler`'s expected parameters (e.g. typing `run_id` as `UUID` and including `parent_run_id` and `tags`).
+
+**Files Modified:**
+- `backend/services/llm_usage_logger.py`
