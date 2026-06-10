@@ -3527,3 +3527,24 @@ Removed the `phase: 2` property from the `career-brand` item definition in the `
 
 **Files Modified:**
 - `frontend/src/components/Settings/SettingsPage.jsx`
+
+
+## 202. Audit Logs Search Filters & Table Layout
+
+**Problem Statement:**
+1. The global search feature on the Audit Logs page was crashing the API due to a missing `LEFT JOIN` on the `users` table in the total count query.
+2. The search did not filter by `entity_type`, `entity_id`, or `created_at` (Timestamp).
+3. Searching for "System" (automated actions) yielded no results.
+4. The table text alignment was off, the table lacked horizontal lines, and the headers disappeared when scrolling.
+5. The logs data lacked an option to be exported for external compliance and reporting.
+
+**Idea / Solution:**
+1. Fixed the backend `audit_service.py` by adding the missing `LEFT JOIN users u ON u.id = a.user_id` to the `count_query`.
+2. Updated the SQL `search_filter` to include `entity_type`, `entity_id` concatenation, and multiple human-readable `to_char` timestamp formats.
+3. Updated the `search_filter` to use `COALESCE(u.name, 'System')` to allow searching for system actions.
+4. Cleaned up the frontend UI by ensuring both `th` and `td` have consistent `textAlign: 'left'`. Added a `sticky` table header with frozen styling, and implemented horizontal lines using `borderCollapse: 'collapse'` and `borderBottom`.
+5. Implemented a client-side "Export Page to CSV" button that converts the currently viewed (and filtered) list of logs into a downloadable CSV file.
+
+**Files Modified:**
+- `backend/services/audit_service.py`
+- `frontend/src/components/Settings/tabs/AuditTab.jsx`
