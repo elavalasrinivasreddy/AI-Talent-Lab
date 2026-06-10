@@ -3515,3 +3515,15 @@ Performed a complete UI/UX redesign of the Platform Dashboard using premium aest
 **Files Modified:**
 - `frontend/src/components/Platform/PlatformPage.jsx`
 - `frontend/src/components/Platform/PlatformPage.css`
+
+
+## 201. Remove P2 Tag from Career Brand Settings Tab
+
+**Problem Statement:**
+The "Career page brand" tab in the Settings navigation rail still displayed a "P2" (Phase 2) badge, even though the feature is fully implemented and active.
+
+**Idea / Solution:**
+Removed the `phase: 2` property from the `career-brand` item definition in the `RAIL_GROUPS` configuration within `SettingsPage.jsx`.
+
+**Files Modified:**
+- `frontend/src/components/Settings/SettingsPage.jsx`

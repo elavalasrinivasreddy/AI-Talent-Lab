@@ -70,7 +70,7 @@ const RAIL_GROUPS = [
       { key: 'competitors', icon: 'trending-up', label: 'Competitor intel', adminOnly: true },
       { key: 'templates', icon: 'mail', label: 'Email templates' },
       { key: 'appearance', icon: 'palette', label: 'Appearance' },
-      { key: 'career-brand', icon: 'home', label: 'Career page brand', adminOnly: true, phase: 2 },
+      { key: 'career-brand', icon: 'home', label: 'Career page brand', adminOnly: true },
     ],
   },
   {
