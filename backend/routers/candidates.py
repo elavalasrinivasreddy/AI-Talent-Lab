@@ -230,6 +230,75 @@ async def send_outreach(
         })
 
 
+@router.post("/bulk-reject")
+async def bulk_reject_candidates(
+    body: dict,
+    current_user=Depends(get_current_user),
+):
+    """Bulk reject candidates below a specific ATS threshold for a position."""
+    position_id = body.get("position_id")
+    threshold = body.get("threshold")
+    
+    if position_id is None or threshold is None:
+        raise HTTPException(status_code=422, detail={
+            "error": {"code": "MISSING_FIELDS",
+                      "message": "position_id and threshold are required", "details": None}
+        })
+        
+    try:
+        threshold_float = float(threshold)
+    except ValueError:
+        raise HTTPException(status_code=422, detail={
+            "error": {"code": "INVALID_THRESHOLD",
+                      "message": "threshold must be a number", "details": None}
+        })
+
+    from backend.db.connection import get_connection
+    from backend.db.repositories.pipeline_events import PipelineEventRepository
+    
+    async with get_connection() as conn:
+        # Get all applications for this position in 'on_hold' status with score < threshold
+        rows = await conn.fetch(
+            """
+            SELECT id, candidate_id 
+            FROM candidate_applications 
+            WHERE position_id = $1 AND org_id = $2 
+            AND status = 'on_hold'
+            AND skill_match_score < $3
+            """,
+            position_id, current_user["org_id"], threshold_float
+        )
+        
+        if not rows:
+            return {"ok": True, "rejected_count": 0}
+            
+        app_ids = [row["id"] for row in rows]
+        
+        # Update status
+        await conn.execute(
+            """
+            UPDATE candidate_applications 
+            SET status = 'rejected', rejection_reason = 'Bulk rejected: ATS score below threshold', updated_at = NOW()
+            WHERE id = ANY($1::int[])
+            """,
+            app_ids
+        )
+        
+        # Create pipeline events
+        for row in rows:
+            await PipelineEventRepository.create(conn, {
+                "org_id": current_user["org_id"],
+                "candidate_id": row["candidate_id"],
+                "position_id": position_id,
+                "application_id": row["id"],
+                "user_id": current_user["user_id"],
+                "event_type": "status_changed",
+                "event_data": {"old_status": "on_hold", "new_status": "rejected", "reason": "Bulk rejected: ATS score below threshold"}
+            })
+            
+    return {"ok": True, "rejected_count": len(app_ids)}
+
+
 @router.post("/{candidate_id}/generate-apply-link")
 async def generate_apply_link(
     candidate_id: int,

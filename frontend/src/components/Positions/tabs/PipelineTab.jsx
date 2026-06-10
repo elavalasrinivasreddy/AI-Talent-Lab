@@ -11,7 +11,7 @@ import { PIPELINE_STAGES, getScoreStyle } from '../../../utils/constants'
 import Toast from '../../common/Toast'
 import './PipelineTab.css'
 
-const VISIBLE_STAGES = ['sourced', 'emailed', 'applied', 'screening', 'interview', 'selected', 'rejected']
+const VISIBLE_STAGES = ['sourced', 'emailed', 'applied', 'screening', 'interview', 'selected', 'rejected', 'on_hold']
 const SORT_OPTIONS = [
   { value: 'score_desc', label: 'Score: High → Low' },
   { value: 'score_asc', label: 'Score: Low → High' },
@@ -98,6 +98,18 @@ export default function PipelineTab({ positionId }) {
       setToast({ message: 'Candidate moved', type: 'success' })
     } catch (e) {
       setToast({ message: `Move failed: ${e.message}`, type: 'error' })
+    }
+  }
+
+  const handleBulkReject = async (threshold) => {
+    try {
+      setLoading(true);
+      await candidatesApi.bulkReject(positionId, threshold);
+      load();
+      setToast({ message: `Candidates below score ${threshold} rejected successfully`, type: 'success' });
+    } catch (e) {
+      setLoading(false);
+      setToast({ message: `Bulk reject failed: ${e.message}`, type: 'error' });
     }
   }
 
@@ -216,6 +228,27 @@ export default function PipelineTab({ positionId }) {
             <span className="pipeline-result-count">
               {filteredCards.length} candidate{filteredCards.length !== 1 ? 's' : ''}
             </span>
+
+            {activeStage === 'on_hold' && filteredCards.length > 0 && (
+              <button 
+                className="pipeline-action-btn" 
+                style={{ marginLeft: '12px', background: 'var(--color-danger, #EF4444)', color: 'white', padding: '0 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                onClick={() => {
+                  const threshold = window.prompt("Enter ATS score threshold to reject (candidates below this score will be rejected):", "80");
+                  if (threshold !== null) {
+                    const score = parseFloat(threshold);
+                    if (!isNaN(score)) {
+                      handleBulkReject(score);
+                    } else {
+                      setToast({ message: 'Invalid score threshold entered', type: 'error' });
+                    }
+                  }
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                Bulk Reject
+              </button>
+            )}
           </div>
 
           {/* Grid Cards */}

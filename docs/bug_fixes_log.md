@@ -3272,3 +3272,18 @@ Updated the LLM configuration in `backend/adapters/llm/factory.py` to enforce `j
 - `frontend/src/utils/api.js`
 - `frontend/src/components/Settings/SettingsPage.jsx`
 - `frontend/src/components/Settings/tabs/ProvidersTab.jsx`
+
+### Issue 190: Auto-reject/on-hold logic & Sourcing Email Deduplication
+**Description**: Need to route candidates to 'on_hold' if ATS score < threshold and provide a Bulk Reject UI. Sourcing was failing because web profiles lack emails.
+**Fix**:
+1. Added `rejection_reason` to `candidate_applications` and `skill_tags` to `candidates` via schema migrations.
+2. Updated `candidate_pipeline.py` to route applications to 'screening' or 'on_hold' based on `ats_threshold`.
+3. Updated `candidate_pipeline.py` to allow `email=None` and deduplicate candidates using `source_profile_url`.
+4. Added 'On Hold' stage to `PipelineTab.jsx` with a "Bulk Reject" UI action.
+5. Added `POST /api/v1/candidates/bulk-reject` endpoint to process bulk rejections and log pipeline events.
+**Files Modified**:
+- `backend/db/migrations.py`
+- `backend/tasks/candidate_pipeline.py`
+- `backend/routers/candidates.py`
+- `frontend/src/components/Positions/tabs/PipelineTab.jsx`
+- `frontend/src/utils/api.js`

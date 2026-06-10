@@ -1107,4 +1107,32 @@ async def run_migrations(conn) -> None:
     """)
     logger.info("  positions.jd_status column ensured.")
 
+    # Add rejection_reason to candidate_applications
+    await conn.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='candidate_applications' AND column_name='rejection_reason'
+        ) THEN
+            ALTER TABLE candidate_applications ADD COLUMN rejection_reason TEXT;
+        END IF;
+    END $$;
+    """)
+    logger.info("  candidate_applications.rejection_reason column ensured.")
+
+    # Add skill_tags to candidates
+    await conn.execute("""
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name='candidates' AND column_name='skill_tags'
+        ) THEN
+            ALTER TABLE candidates ADD COLUMN skill_tags TEXT[] DEFAULT '{}';
+        END IF;
+    END $$;
+    """)
+    logger.info("  candidates.skill_tags column ensured.")
+
     logger.info("Database migrations complete.")

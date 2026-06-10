@@ -185,13 +185,23 @@ async def _process_candidate(
     triggered_by: int = None
 ) -> None:
     """Dedup → create/update → score a single candidate."""
-    email = raw.get("email", "").strip().lower()
-    if not email:
-        return  # Skip candidates without email (can't dedup)
+    email = raw.get("email", "").strip().lower() or None
+    source_profile_url = raw.get("source_profile_url", "").strip() or None
+
+    if not email and not source_profile_url:
+        return  # Skip candidates without both email and profile url (can't dedup)
 
     async with get_connection() as conn:
         # ── Dedup within org ───────────────────────────────────────────────────
-        existing = await CandidateRepository.get_by_email(conn, email, org_id)
+        existing = None
+        if email:
+            existing = await CandidateRepository.get_by_email(conn, email, org_id)
+        elif source_profile_url:
+            # We need a new repo method or just raw query
+            existing = await conn.fetchrow(
+                "SELECT * FROM candidates WHERE org_id = $1 AND source_profile_url = $2",
+                org_id, source_profile_url
+            )
 
         if existing:
             candidate_id = existing["id"]
@@ -281,10 +291,12 @@ async def _process_candidate(
         })
 
         async with get_connection() as conn:
+            new_status = "screening" if score >= ats_threshold else "on_hold"
             await CandidateRepository.update_application(
                 conn, application_id, org_id, {
                     "skill_match_score": score,
-                    "skill_match_data": skill_match_data
+                    "skill_match_data": skill_match_data,
+                    "status": new_status
                 }
             )
             await PipelineEventRepository.create(conn, {
@@ -384,10 +396,12 @@ async def _score_application(candidate_id: int, application_id: int, position_id
         })
 
         async with get_connection() as conn:
+            new_status = "screening" if score >= ats_threshold else "on_hold"
             await CandidateRepository.update_application(
                 conn, application_id, org_id, {
                     "skill_match_score": score,
-                    "skill_match_data": skill_match_data
+                    "skill_match_data": skill_match_data,
+                    "status": new_status
                 }
             )
             await PipelineEventRepository.create(conn, {

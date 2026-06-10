@@ -127,6 +127,7 @@ export const candidatesApi = {
     return _get(`/candidates/${id}/timeline${qs}`)
   },
   updateStatus: (candidateId, data) => _patch(`/candidates/${candidateId}/status`, data),
+  bulkReject: (positionId, threshold) => _post(`/candidates/bulk-reject`, { position_id: positionId, threshold }),
   markSelected: (candidateId, data) => _post(`/candidates/${candidateId}/mark-selected`, data),
   getTags: (id) => _get(`/candidates/${id}/tags`),
   addTag: (id, tag) => _post(`/candidates/${id}/tags`, { tag }),
