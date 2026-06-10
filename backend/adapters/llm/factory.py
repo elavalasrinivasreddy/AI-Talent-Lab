@@ -5,7 +5,7 @@ Supports: groq, openai, gemini.
 See docs/architecture/03_backend.md §6, §15.
 """
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 from backend.config import settings
 from backend.services.llm_usage_logger import llm_usage_callback
@@ -35,7 +35,7 @@ def get_llm(
     """
     provider = settings.LLM_PROVIDER.lower()
 
-    common_kwargs = {
+    common_kwargs: dict[str, Any] = {
         "temperature": temperature,
         "streaming": streaming,
     }

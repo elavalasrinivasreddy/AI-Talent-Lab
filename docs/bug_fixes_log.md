@@ -3313,3 +3313,29 @@ Updated the LLM configuration in `backend/adapters/llm/factory.py` to enforce `j
 - `frontend/src/components/Settings/tabs/SourcingTab.jsx` (New)
 - `frontend/src/pages/CandidatePortal/*` (New)
 - `frontend/src/pages/Careers.jsx` (New)
+
+---
+
+## 72. Candidate Portal Auth, Pre-Evaluations Batching, and Global Talent Pool Schema
+
+**Problem Statement:**
+1. Pre-evaluations were being graded synchronously blocking the main API thread.
+2. The candidate portal was lacking a password setup workflow and timeline visualization.
+3. The platform lacked a documented cross-organization schema for a product-level talent pool.
+
+**Idea / Solution:**
+1. **Pre-Evaluation:** Implemented a new Celery task (`backend/tasks/pre_eval_grade.py`) to batch grade pre-evaluations nightly. Introduced an LLM-based anti-cheating mechanism that dynamically paraphrases questions pulled from the `interview_kits`.
+2. **Candidate Portal:** Built the candidate JWT auth primitives, added `/set-password`, and created a new email dispatch trigger (`send_pre_evaluation_invite`). Built `SetPassword.jsx` and `CandidateDashboard.jsx` on the frontend.
+3. **Global Talent Pool:** Added `consent_to_store` and `consent_to_contact` fields to the database. Authored `docs/architecture/CROSS_ORG_SCHEMA.md` detailing the Global Database approach and CDC propagation. Created the `/opt-in-talent-pool` API.
+
+**Files Modified:**
+- `backend/tasks/pre_eval_grade.py`
+- `backend/tasks/candidate_pipeline.py`
+- `backend/celery_app.py`
+- `backend/routers/pre_evaluations.py`
+- `backend/routers/candidate_portal.py`
+- `backend/services/email_service.py`
+- `frontend/src/pages/CandidatePortal/SetPassword.jsx`
+- `frontend/src/pages/CandidatePortal/CandidateDashboard.jsx`
+- `frontend/src/router.jsx`
+- `docs/architecture/CROSS_ORG_SCHEMA.md`

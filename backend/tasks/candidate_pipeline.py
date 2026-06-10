@@ -488,8 +488,9 @@ def trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: 
 
 async def _trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: int, org_id: int):
     import secrets
+    import json
+    import random
     from datetime import datetime, timedelta, timezone
-    from backend.db.repositories.screening_questions import ScreeningQuestionRepository
     from backend.db.repositories.pre_evaluations import PreEvaluationRepository
     
     async with get_connection() as conn:
@@ -498,17 +499,53 @@ async def _trigger_pre_evaluation(application_id: int, candidate_id: int, positi
         if not position:
             logger.error(f"Position {position_id} not found. Skipping pre-evaluation.")
             return
-            
-        questions = await ScreeningQuestionRepository.list_by_org(conn, org_id, position.get("department_id"))
-        if not questions:
-            logger.info(f"No screening questions for position {position_id}. Skipping pre-evaluation.")
+
+        kit = await PositionRepository.get_interview_kit(conn, position_id, org_id)
+        if not kit:
+            logger.info(f"No interview kit for position {position_id}. Skipping pre-evaluation.")
             return
             
+        questions = json.loads(kit["questions"]) if isinstance(kit["questions"], str) else kit["questions"]
+        if not questions:
+            return
+
+        # Pick 3-5 random questions to form the pre-evaluation
+        num_questions = min(len(questions), random.randint(3, 5))
+        selected_qs = random.sample(questions, num_questions)
+        
+        # Paraphrasing using LLM to prevent cheating
+        from backend.adapters.llm.factory import get_llm
+        from backend.config import settings
+        from backend.services.llm_usage_logger import llm_context
+        from langchain_core.messages import SystemMessage, HumanMessage
+        
+        try:
+            llm = get_llm(temperature=0.7, json_mode=True)
+            sys_prompt = "You are a recruiting assistant. Paraphrase the following interview questions slightly so they look unique per candidate. Return ONLY valid JSON with structure: {\"questions\": [{\"id\": ..., \"text\": \"...\"}]}"
+            human_prompt = f"Questions: {json.dumps([{'id': i, 'text': q.get('question', q.get('text', ''))} for i, q in enumerate(selected_qs)])}"
+            
+            with llm_context(org_id=org_id, operation="pre_eval_paraphrase", model=settings.LLM_PROVIDER):
+                res = await llm.ainvoke([SystemMessage(content=sys_prompt), HumanMessage(content=human_prompt)])
+                
+            resp_content = res.content
+            if isinstance(resp_content, list):
+                resp_content = str(resp_content[0]) if not isinstance(resp_content[0], dict) else resp_content[0].get("text", "")
+            resp_content = str(resp_content)
+            
+            if "```json" in resp_content:
+                resp_content = resp_content.split("```json")[-1].split("```")[0].strip()
+            elif "```" in resp_content:
+                resp_content = resp_content.split("```")[1].strip()
+                
+            data = json.loads(resp_content)
+            eval_questions = data.get("questions", [])
+        except Exception as e:
+            logger.error(f"Failed to paraphrase questions: {e}")
+            eval_questions = [{"id": i, "text": q.get("question", q.get("text", ""))} for i, q in enumerate(selected_qs)]
+
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now(timezone.utc) + timedelta(days=7)
-        
-        eval_questions = [{"id": q["id"], "text": q["question_text"], "type": "text"} for q in questions]
-        
+
         await PreEvaluationRepository.create(conn, org_id, {
             "application_id": application_id,
             "candidate_id": candidate_id,
@@ -516,6 +553,28 @@ async def _trigger_pre_evaluation(application_id: int, candidate_id: int, positi
             "questions": eval_questions,
             "expires_at": expires_at
         })
+        
+        # Send email invite with magic link to set password
+        from backend.db.repositories.candidates import CandidateRepository
+        from backend.db.repositories.organizations import OrganizationRepository
+        from backend.services.email_service import EmailService
+        from backend.utils.security import create_magic_link_token
+        
+        candidate = await CandidateRepository.get(conn, org_id, candidate_id)
+        org = await OrganizationRepository.get(conn, org_id)
+        
+        if candidate and org and candidate.get("email"):
+            setup_token = create_magic_link_token("auth_magic", candidate_id, expires_hours=168) # 7 days
+            setup_url = f"{settings.FRONTEND_URL}/candidate/setup-password?token={setup_token}"
+            
+            await EmailService.send_pre_evaluation_invite(
+                to_email=candidate["email"],
+                candidate_name=candidate.get("name", "Applicant"),
+                role_name=position.get("role_name", "the position"),
+                org_name=org.get("name", "our company"),
+                setup_url=setup_url
+            )
+            
         logger.info(f"Triggered pre-evaluation for application {application_id} with token {token}")
 
 
@@ -528,10 +587,69 @@ def grade_pre_evaluation(eval_id: int, org_id: int):
     except RuntimeError:
         asyncio.run(_grade_pre_evaluation(eval_id, org_id))
 
+
 async def _grade_pre_evaluation(eval_id: int, org_id: int):
     from backend.db.repositories.pre_evaluations import PreEvaluationRepository
+    from backend.adapters.llm.factory import get_llm
+    from langchain_core.messages import SystemMessage, HumanMessage
+    import json
+    
     async with get_connection() as conn:
-        score = 85.0
-        feedback = "Good answers."
+        eval_record = await conn.fetchrow(
+            """
+            SELECT pe.questions, pe.answers, ca.position_id, p.role_name, p.jd_text
+            FROM pre_evaluations pe
+            JOIN candidate_applications ca ON ca.id = pe.application_id
+            JOIN positions p ON p.id = ca.position_id
+            WHERE pe.id = $1 AND pe.org_id = $2
+            """, eval_id, org_id
+        )
+        if not eval_record:
+            return
+
+        questions = eval_record["questions"]
+        if isinstance(questions, str):
+            questions = json.loads(questions)
+            
+        answers = eval_record["answers"]
+        if isinstance(answers, str):
+            answers = json.loads(answers)
+
+        llm = get_llm(temperature=0.0, json_mode=True)
+        sys_prompt = """You are an expert technical interviewer evaluating a candidate's written pre-evaluation test.
+You will receive the Role Name, the Job Description, the list of Questions, and the candidate's Answers.
+Score each answer based on accuracy, depth, and relevance to the JD. Provide a final overall score out of 100 and brief feedback.
+Return a valid JSON object strictly matching this schema:
+{
+    "score": "Float (0.0 to 100.0)",
+    "feedback": "String (Brief feedback summarizing the evaluation)"
+}"""
+        human_prompt = f"Role: {eval_record['role_name']}\nJD: {eval_record['jd_text'][:2000]}\nQuestions: {json.dumps(questions)}\nAnswers: {json.dumps(answers)}"
+        
+        try:
+            res = await llm.ainvoke([
+                SystemMessage(content=sys_prompt),
+                HumanMessage(content=human_prompt)
+            ])
+            content = res.content
+            if isinstance(content, list):
+                content = str(content[0]) if not isinstance(content[0], dict) else content[0].get("text", "")
+            content = str(content)
+            
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].strip()
+                
+            data = json.loads(content)
+            score = float(data.get("score", 0.0))
+            feedback = data.get("feedback", "No feedback provided.")
+            
+        except Exception as e:
+            logger.error(f"Failed to grade pre-evaluation {eval_id}: {e}")
+            score = 0.0
+            feedback = "Failed to grade evaluation."
+            
         await PreEvaluationRepository.update_score(conn, eval_id, score, feedback)
         logger.info(f"Graded pre-evaluation {eval_id} with score {score}")
+

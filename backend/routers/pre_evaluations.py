@@ -5,7 +5,6 @@ from typing import List, Optional
 
 from backend.db.connection import get_connection as get_db
 from backend.db.repositories.pre_evaluations import PreEvaluationRepository
-from backend.tasks.candidate_pipeline import grade_pre_evaluation
 
 router = APIRouter()
 
@@ -49,7 +48,5 @@ async def submit_evaluation(body: SubmitEvaluationBody, db: asyncpg.Connection =
     answers_data = [a.model_dump() for a in body.answers]
     updated_eval = await PreEvaluationRepository.submit_answers(db, eval_record["id"], answers_data)
     
-    # Trigger background grading
-    grade_pre_evaluation.delay(eval_record["id"], eval_record["org_id"])
     
     return {"status": "success", "message": "Evaluation submitted successfully"}

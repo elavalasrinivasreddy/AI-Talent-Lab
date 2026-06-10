@@ -909,6 +909,7 @@ async def run_migrations(conn) -> None:
             ALTER TABLE organizations ADD COLUMN ai_behavior_settings JSONB NOT NULL DEFAULT '{}';
         END IF;
     END $$;
+    """
     await conn.execute(ai_behavior_sql)
     logger.info("  AI behavior settings column ensured.")
 
