@@ -12,6 +12,7 @@ celery_app = Celery(
     backend=settings.REDIS_URL,
     include=[
         "backend.tasks.candidate_pipeline",
+        "backend.tasks.pre_eval_grade",
         "backend.tasks.email_outreach",
         "backend.tasks.scheduled_search",
         "backend.tasks.gdpr_cleanup",
@@ -40,6 +41,10 @@ celery_app.conf.beat_schedule = {
     "send-followup-reminders": {
         "task": "backend.tasks.email_outreach.send_followup_reminders",
         "schedule": 3600.0,  # every hour
+    },
+    "batch-grade-pre-evaluations": {
+        "task": "tasks.pre_eval_grade",
+        "schedule": 10800.0,  # every 3 hours
     },
     "gdpr-retention-cleanup": {
         "task": "backend.tasks.gdpr_cleanup.cleanup_expired_data",

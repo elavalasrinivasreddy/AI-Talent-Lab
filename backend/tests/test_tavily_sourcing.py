@@ -268,12 +268,11 @@ async def test_tavily_adapter_returns_empty_on_search_error():
 async def test_factory_returns_tavily_adapter_for_tavily_setting():
     """Factory dispatches to TavilyAdapter when CANDIDATE_SOURCE_ADAPTER='tavily'."""
     from backend.adapters.candidate_sources.tavily import TavilyAdapter
+    from backend.config import settings
     from backend.adapters.candidate_sources import get_candidate_source_adapter
 
-    with patch(
-        "backend.adapters.candidate_sources.settings",
-        CANDIDATE_SOURCE_ADAPTER="tavily",
-    ):
+    with patch.object(settings, "DEFAULT_SOURCE_ADAPTER", None, create=True), \
+         patch.object(settings, "CANDIDATE_SOURCE_ADAPTER", "tavily"):
         adapter = get_candidate_source_adapter()
 
     assert isinstance(adapter, TavilyAdapter)

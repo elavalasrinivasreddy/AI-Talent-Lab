@@ -235,3 +235,65 @@ class ScorecardTemplateResponse(BaseModel):
 class AiBehaviorBody(BaseModel):
     """Accepts any JSON key/value pairs for AI behavior settings."""
     model_config = ConfigDict(extra="allow")
+
+# ── Sourcing Config ────────────────────────────────────────────────────────────
+
+class SourcingConfigBody(BaseModel):
+    """Accepts any JSON key/value pairs for sourcing config."""
+    model_config = ConfigDict(extra="allow")
+
+# ── Providers ─────────────────────────────────────────────────────────────────
+
+class ProviderConfig(BaseModel):
+    llm_provider: str
+    llm_model: str
+    groq_api_key_masked: Optional[str] = None
+    openai_api_key_masked: Optional[str] = None
+    gemini_api_key_masked: Optional[str] = None
+    embedding_provider: str
+    embedding_model: str
+    embedding_api_key_masked: Optional[str] = None
+    web_search_provider: str
+    tavily_api_key_masked: Optional[str] = None
+    brave_api_key_masked: Optional[str] = None
+    serpapi_api_key_masked: Optional[str] = None
+    exa_api_key_masked: Optional[str] = None
+    enrichment_provider: str
+    proxycurl_api_key_masked: Optional[str] = None
+    apollo_api_key_masked: Optional[str] = None
+    hunter_api_key_masked: Optional[str] = None
+    email_provider: str
+    resend_api_key_masked: Optional[str] = None
+    smtp_host: str
+    smtp_port: int
+    smtp_user: str
+    smtp_password_masked: Optional[str] = None
+    from_email: str
+    from_name: str
+
+class ProvidersUpdate(BaseModel):
+    llm_provider: Optional[str] = None
+    llm_model: Optional[str] = None
+    groq_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    embedding_provider: Optional[str] = None
+    embedding_model: Optional[str] = None
+    embedding_api_key: Optional[str] = None
+    web_search_provider: Optional[str] = None
+    tavily_api_key: Optional[str] = None
+    brave_api_key: Optional[str] = None
+    serpapi_api_key: Optional[str] = None
+    exa_api_key: Optional[str] = None
+    enrichment_provider: Optional[str] = None
+    proxycurl_api_key: Optional[str] = None
+    apollo_api_key: Optional[str] = None
+    hunter_api_key: Optional[str] = None
+    email_provider: Optional[str] = None
+    resend_api_key: Optional[str] = None
+    smtp_host: Optional[str] = None
+    smtp_port: Optional[int] = None
+    smtp_user: Optional[str] = None
+    smtp_password: Optional[str] = None
+    from_email: Optional[str] = None
+    from_name: Optional[str] = None

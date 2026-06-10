@@ -356,6 +356,11 @@ class DashboardService:
                 org_id, cutoff,
             )
 
+            active_positions = await conn.fetchval(
+                "SELECT COUNT(*) FROM positions WHERE org_id=$1 AND status='open'",
+                org_id,
+            )
+
         total_candidates = sum(funnel_dict.values())
         total_applied = funnel_dict.get("applied", 0) + funnel_dict.get("interview", 0) + funnel_dict.get("selected", 0)
 
@@ -379,6 +384,7 @@ class DashboardService:
                 }
                 for r in velocity
             ],
+            "active_positions": int(active_positions or 0),
             "total_applications": total_candidates,
             "total_selected": funnel_dict.get("selected", 0),
             "offer_acceptance_rate": round(
@@ -397,6 +403,8 @@ class DashboardService:
         AI_SOURCES = ('simulation', 'ai_agent', 'ai_sourced')
         AVG_SOURCING_MIN = 45  # minutes saved per AI-sourced candidate
 
+        prev_cutoff = _now - timedelta(days=period_days * 2)
+
         async with get_connection() as conn:
             total = await conn.fetchval(
                 "SELECT COUNT(*) FROM candidate_applications ca WHERE ca.org_id=$1 AND ca.created_at >= $2",
@@ -410,6 +418,19 @@ class DashboardService:
                   AND c.source = ANY($3::text[])
                 """,
                 org_id, cutoff, list(AI_SOURCES),
+            )
+            prev_total = await conn.fetchval(
+                "SELECT COUNT(*) FROM candidate_applications ca WHERE ca.org_id=$1 AND ca.created_at >= $2 AND ca.created_at < $3",
+                org_id, prev_cutoff, cutoff,
+            )
+            prev_ai = await conn.fetchval(
+                """
+                SELECT COUNT(*) FROM candidate_applications ca
+                JOIN candidates c ON c.id = ca.candidate_id
+                WHERE ca.org_id=$1 AND ca.created_at >= $2 AND ca.created_at < $3
+                  AND c.source = ANY($4::text[])
+                """,
+                org_id, prev_cutoff, cutoff, list(AI_SOURCES),
             )
             ai_funnel_rows = await conn.fetch(
                 """
@@ -439,6 +460,12 @@ class DashboardService:
         hours_saved = round(ai_count * AVG_SOURCING_MIN / 60, 1)
         weekly_hours = round(hours_saved / max(period_days / 7, 1), 1)
 
+        prev_count = prev_total or 0
+        prev_ai_count = prev_ai or 0
+        prev_share = round(100 * prev_ai_count / max(prev_count, 1), 1)
+        current_share = round(100 * ai_count / total_count, 1)
+        share_delta = round(current_share - prev_share, 1) if prev_count > 0 else None
+
         FUNNEL_STAGES = ['sourced', 'emailed', 'applied', 'screening', 'interview', 'selected']
         ai_dict = {r["status"]: r["cnt"] for r in ai_funnel_rows}
         human_dict = {r["status"]: r["cnt"] for r in human_funnel_rows}
@@ -449,7 +476,8 @@ class DashboardService:
             return round(100 * bottom / top, 1)
 
         return {
-            "ai_sourcing_share": round(100 * ai_count / total_count, 1),
+            "ai_sourcing_share": current_share,
+            "share_delta": share_delta,
             "hours_saved": hours_saved,
             "weekly_hours_saved": weekly_hours,
             "ai_candidates": ai_count,

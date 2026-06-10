@@ -39,6 +39,8 @@ from backend.routers import copilot as copilot_router
 from backend.routers import notes as notes_router
 from backend.routers import platform as platform_router
 from backend.routers import hire_requests as hire_requests_router
+from backend.routers import candidate_portal as candidate_portal_router
+from backend.routers import pre_evaluations as pre_evaluations_router
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -105,6 +107,8 @@ app.include_router(copilot_router.router)     # AI Copilot suggestions
 app.include_router(notes_router.router)       # Collaborative hiring notes
 app.include_router(platform_router.router)    # Platform admin — cross-org SaaS analytics
 app.include_router(hire_requests_router.router)  # Hire requests (dedicated CRUD)
+app.include_router(candidate_portal_router.router)  # Candidate portal — login + timeline + consent
+app.include_router(pre_evaluations_router.router)   # Public — pre-evaluation written test (token)
 
 # ── Root & Health ──────────────────────────────────────────────────────────────
 

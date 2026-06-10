@@ -1,0 +1,152 @@
+# AI Talent Lab — Missing Functionality Implementation Plan (v2)
+
+## Context
+
+Six recruiting-flow capabilities were specified but are partially or not implemented. Gemini 3.1 Pro drafted an initial plan; this is the **validated, codebase-accurate** version, refined with the user's decisions. It will be executed by another agent (Gemini 3.1 Pro on Antigravity) and code-reviewed afterward.
+
+**Product thesis:** our defensible value is **qualifying applicants** (where we receive the real CV), not scraping (commodity, metadata-only). Sourcing is a feeder. The long-term moat is an **owned candidate database** — starting org-level (already built) and growing to product-level (this plan lays the consented foundations).
+
+### Validation summary (verified against code)
+
+| Item | Status today | Action |
+|------|--------------|--------|
+| Sourcing config | Adapter chosen by **global env var** `CANDIDATE_SOURCE_ADAPTER` ([__init__.py:13](backend/adapters/candidate_sources/__init__.py#L13)) | Move to per-org Settings tab + sane production default |
+| Sourcing schedule | **Exists & reusable**: `scheduled_search.py` drives per-position re-search via `search_interval_hours`/`next_search_at` | Reuse as-is |
+| Tavily | Returns **real public profiles** by role+location+top-4-skills against GitHub/LinkedIn/Medium ([tavily.py](backend/adapters/candidate_sources/tavily.py)); `email=None`; pipeline drops emailless rows ([candidate_pipeline.py:189-190](backend/tasks/candidate_pipeline.py#L189-L190)) | Keep for real demos; add enrichment + no-email-lead path |
+| Two-phase ATS | **Already exists**: cosine 0.35 gate → LLM ([candidate_service.py:66-140](backend/services/candidate_service.py#L66-L140)) | Wire to status routing |
+| Auto-reject | Score saved, status never changes; **no `rejection_reason` column** | Routing + column + On-Hold UI + bulk reject |
+| Screening | `screening_questions` table = **application metadata** (CTC, notice period). No real evaluation. Interview Kit ([interview_kit.py](backend/agents/interview_kit.py)) exists but unused as a test | Build a separate **pre-evaluation** from Interview Kit Qs |
+| Candidate portal | Magic-link only (72h), one app per `status_token` | Password auth + portal + multi-app + timeline + pre-eval host |
+| Bias check | Fails silently; **factory has no `response_format`** | Provider-aware structured output |
+| API keys | All in `.env`; `'llm'` Settings tab is a **stub** ([SettingsPage.jsx:97](frontend/src/components/Settings/SettingsPage.jsx#L97)); `IntegrationsTab` is static | Unified platform-central Providers tab |
+| Talent pool | **Done + org-isolated** (RLS, bulk upload, embedding AI-match, add-to-pipeline) | Org-level bug fixes + product-level foundations |
+
+### Corrections to the original Gemini plan
+- Tavily limit is **20**, not 10. Tavily returns **real** profiles (usable for demos), not nothing.
+- Two-phase scoring is **already implemented** — only status routing is missing.
+- `rejection_reason` column **does not exist** — must be added.
+- **Screening ≠ pre-evaluation.** The `screening_questions` table is just apply-time metadata. The real written test uses **Interview Kit** questions, post-ATS, in the candidate portal.
+- Bias fix is **provider-aware**: OpenAI/Groq `response_format={"type":"json_object"}`; Gemini `response_mime_type="application/json"`.
+- Production must **not** default to the simulation adapter, and must **never fabricate-and-send** emails.
+
+### Decisions locked with user
+1. **API keys = platform-central.** We hold keys in secrets/.env; orgs toggle features, never see raw keys.
+2. **Product-level talent pool = design + foundations now, aggregate later.** Build org-level fully + candidate consent + onboarding disclosure + datastore schema; defer cross-org sync.
+3. **Pre-evaluation grading = nightly batch** (Celery), cost/rate-limit friendly.
+4. **No-email sourced candidates**: enrich if enabled; else keep as `sourced` "no-contact" lead for manual outreach.
+5. **Channel build order**: enrichment first, inbound second, Naukri last.
+
+---
+
+## Implementation items
+
+### A — Providers & API Keys tab (platform-central)
+
+Replace the stub `'llm'` tab and the static `IntegrationsTab` with one real **Providers** tab (admin-only).
+
+- **Backend**: a platform-level (not per-org) config surface backed by secrets/`config.py`. Add settings for: LLM providers (Groq, OpenAI, Gemini, Llama/others) + selectable model per provider; embedding model (`text-embedding-3-small` etc.); web-search providers (Tavily + alternatives: Brave Search, SerpAPI, Exa); enrichment providers (Proxycurl, Apollo, Hunter). Expose a **read-only status + masked-key** API (e.g. `sk-…last4`); never return full keys to the frontend.
+- **Frontend**: `frontend/src/components/Settings/tabs/ProvidersTab.jsx`. Sections: LLM, Embeddings, Web Search, Enrichment, Email. Each shows configured/not-configured status, active model dropdown, "test connection" button. Rename the `'llm'` tab entry in [SettingsPage.jsx:47](frontend/src/components/Settings/SettingsPage.jsx#L47) and fold the old `IntegrationsTab` job-portal/email cards in here.
+- **Security**: keys stay server-side; mask in transit and at rest; gate behind `org_head`/super-admin role (follow existing RoleGuard pattern).
+
+### B — Per-org Sourcing tab + adapter selection + defaults
+
+- **Backend**: per-org sourcing config (follow the existing settings-tab persistence pattern used by `AtsRulesTab`/`CompetitorsTab`). Fields: `source_adapter` (`simulation`|`tavily`|`enrichment`), `inbound_enabled`, `enrichment_enabled`, `naukri_enabled`, plus the existing `search_interval_hours` (reuse). Change `get_candidate_source_adapter()` ([__init__.py:11-21](backend/adapters/candidate_sources/__init__.py#L11)) to take `org` and select per-org; **fallback default** = `settings.DEFAULT_SOURCE_ADAPTER` (new) which is `tavily` in production, `simulation` in dev — never simulation in prod. Update call site [candidate_pipeline.py:78](backend/tasks/candidate_pipeline.py#L78).
+- **Schedule**: reuse `scheduled_search.py` untouched (already per-position).
+- **Frontend**: `SourcingTab.jsx` with channel toggles + interval; enrichment provider dropdown shown only when enrichment on; copy explaining each channel's cost/quality (see Appendix A).
+
+### C — Enrichment adapter + no-email lead behavior
+
+- New `backend/adapters/candidate_sources/enrichment.py` implementing the `CandidateSourceAdapter` ABC ([base.py](backend/adapters/candidate_sources/base.py)). Flow: Tavily discovery → for above-gate profiles, call provider (Proxycurl/Apollo/Hunter) to resolve + **verify** an email. Keys from the platform Providers config (Item A). No key/no match → `email=None`.
+- **Replace the hard drop** at [candidate_pipeline.py:189-190](backend/tasks/candidate_pipeline.py#L189-L190): email present → dedup + insert as today; email absent → insert as `sourced` with `contact_status='no_contact'` (Item H), dedup by `source_profile_url`. HR can action these manually.
+
+### D — Auto-reject / On-Hold routing
+
+- **Migration**: add `rejection_reason TEXT` to `candidate_applications` ([migrations.py:244-265](backend/db/migrations.py#L244-L265)) (incremental). Values: `ats_score`, `screening_failed`, manual reasons.
+- **Routing** after ATS scoring ([candidate_pipeline.py:283-302](backend/tasks/candidate_pipeline.py#L283-L302) + apply-flow path): `score >= ats_threshold` (per-position, default 80, [migrations.py:192](backend/db/migrations.py#L192)) → status `screening` (= "invited to account setup + pre-evaluation"); `score < ats_threshold` → `on_hold`. Use existing `CandidateRepository.update_application` + allowed-status list ([candidate_service.py:257-260](backend/services/candidate_service.py#L257-L260)); emit pipeline event.
+- **Bulk reject** endpoint: position_id + threshold → `on_hold` apps become `rejected`, `rejection_reason='ats_score'`.
+- **Frontend**: On-Hold lane on Position Detail (mirror existing Kanban stage) + "Bulk Reject" with confirm prompt.
+
+### E — Pre-evaluation written test (Interview Kit questions, anti-cheat) — nightly graded
+
+This is the **real screening**, distinct from apply-time metadata.
+
+- **Source**: the position's Interview Kit questions ([interview_kit.py](backend/agents/interview_kit.py), `interview_kits` table). Candidate-facing variant must **hide** `what_to_look_for`/scorecard.
+- **Anti-cheating** (per candidate): (1) **randomize question order**; (2) LLM-**paraphrase** each question into a per-candidate variant (store the variant set on the attempt); (3) one attempt, lock on start, optional time limit; (4) in the grader, run a **cross-candidate answer-similarity check** to flag collusion (friends/groups) for human review.
+- **Storage**: new table e.g. `pre_evaluations` (org_id, application_id, position_id, questions_variant JSON, answers JSON, status `pending`/`submitted`/`passed`/`failed`/`flagged`, submitted_at, evaluated_at, score, rationale). Org-isolated + RLS like siblings.
+- **Delivery**: form/chatbot in the candidate portal (Item F), shown as stage 2 after account setup.
+- **Grading (nightly batch)**: new Celery task `backend/tasks/pre_eval_grade.py`, registered in beat ([celery_app.py:35-64](backend/celery_app.py#L35)) every few hours. Batch `submitted` attempts per position; LLM grades each answer against `what_to_look_for`/scorecard (JSON-mode from Item G); route pass → `interview`, fail → `rejected` (`rejection_reason='screening_failed'`); set `evaluated_at` to avoid re-processing; `flagged` collusion → leave for human.
+- Reuse the established agent pattern + the LLM usage-logging callback already in the factory.
+
+### F — Candidate portal + password auth
+
+- **Auth**: candidates are a distinct identity from internal users. Reuse JWT primitives in [utils/security.py](backend/utils/security.py) (`create_access_token`, hashing) with candidate-scoped tokens; add candidate password fields/table (models are TODO stubs). On first ATS pass, email "set your password to track your application + complete your assessment" (reuse existing email provider).
+- **Endpoints** (`backend/routers/candidate_portal.py`): set-password, login, list-my-applications (multi-app — current portal does one per `status_token`, [routers/status.py:26-83](backend/routers/status.py#L26)), application timeline, **pre-evaluation fetch/submit** (Item E), talent-pool **opt-in** toggle (= candidate consent; flips `in_talent_pool`, sets `talent_pool_reason='opt_in'`, records consent timestamp for Item H).
+- **Frontend**: portal pages — login, applications list, per-application horizontal timeline (Applied → Screening → Pre-eval → Interview → Offer, with timestamps + status colors), the pre-eval form/chatbot, and the talent-pool opt-in toggle with a plain-language consent explanation.
+
+### G — Bias-check JSON + central structured output
+
+- Extend `get_llm()` in [adapters/llm/factory.py](backend/adapters/llm/factory.py) to accept `json_mode: bool`, translated per provider (OpenAI/Groq `response_format={"type":"json_object"}`; Gemini `response_mime_type="application/json"`).
+- Use it in [agents/bias_checker.py](backend/agents/bias_checker.py); keep code-fence extraction as fallback; stop silent `return []` masking errors (log + surface).
+- Recommended: apply the same `json_mode` to other fragile parsers (`drafting.py`, `role_extractor.py`, `interview_agents.py`, and `tavily.py`'s dossier parse).
+
+### H — Talent pool: org-level fixes + product-level foundations
+
+**Org-level fixes (already-built feature):**
+- `skill_tags`: frontend reads `c.skill_tags` ([TalentPoolPage.jsx](frontend/src/components/TalentPool/TalentPoolPage.jsx)) but no DB column. Add column on `candidates`, populate during bulk-upload resume parse and from Tavily dossier `skill_tags`.
+- `contact_status`: column + UI exist but no update endpoint. Add one (also used by Item C `no_contact`).
+
+**Product-level foundations (design + capture now; defer aggregation):**
+- **Consent capture**: candidate opt-in in the portal (Item F) is the lawful basis; record consent text version + timestamp. Add an **onboarding disclosure** for orgs (they agree their consented candidates may contribute to the product pool) — surface in the org onboarding flow.
+- **Schema design only**: design a separate product-level datastore (separate schema/DB) for consented, cross-org candidate records, including fields for consent provenance and a **deletion-propagation** hook (must honor existing GDPR deletion tasks — `gdpr-process-deletions`). Document it; do **not** build the cross-org sync yet.
+- Explicitly **out of scope this plan**: the actual cross-org aggregation/sync job. Gated on consent + deletion propagation being production-solid.
+
+---
+
+## Sequencing (single plan, suggested order)
+
+1. **G** (bias JSON + json_mode) — smallest; unblocks reliable JSON for E.
+2. **A** (Providers tab) — central keys other items depend on.
+3. **D** (auto-reject/on-hold) — high value, self-contained.
+4. **H** org-level fixes — small.
+5. **B + C** (sourcing config + enrichment + no-email lead) — fixes empty-email pain.
+6. **E** (pre-evaluation) — depends on G + interview kit.
+7. **F** (candidate portal) — hosts E; largest.
+8. **H** product-level foundations — consent + schema design (ship with F).
+
+---
+
+## Verification
+
+- **Migrations**: confirm `rejection_reason`, candidate-auth fields, `skill_tags`, `pre_evaluations`, consent fields exist.
+- **A**: keys never returned in full to frontend (assert masking); "test connection" works per provider.
+- **B/C**: dev `simulation` returns candidates with emails end-to-end; prod default = `tavily`; enrichment off → emailless candidate persists as `no_contact` lead (not dropped); enrichment on → verified email resolved or left null.
+- **D**: seed app, run `compute_ats_score` → status `screening` (high) / `on_hold` (low); bulk reject → `rejected` + `rejection_reason='ats_score'`.
+- **E**: ATS pass triggers setup email; candidate completes pre-eval; question order differs per candidate; run `pre_eval_grade` manually → pass→`interview`, fail→`rejected`, identical answers across two candidates → `flagged`; second run does not re-grade.
+- **F**: set password via link, log in, see all applications + timeline, complete pre-eval, opt into talent pool → consent recorded + `in_talent_pool=TRUE`.
+- **G**: bias checker returns structured issues (no silent empty); test all three providers if keys available.
+- **H**: bulk upload → candidate with skill tags appears; AI-match returns ranked candidates; add-to-pipeline creates `sourced` app; consent fields populated on opt-in.
+- Run `backend/tests/` (esp. `test_tavily_sourcing.py`, `test_drafts.py`). After changes, run `graphify update .`.
+
+---
+
+## Appendix A — Candidate Sourcing: the reality (team explainer)
+
+Share this with the team so everyone has the same mental model.
+
+**What we hoped for:** plug into LinkedIn/Naukri APIs, pull candidate profiles + CVs, run our ATS, done.
+
+**The reality:**
+- **A CV is the candidate's property.** No cheap, legal API hands you CVs at scale. You get the CV when the candidate gives it to you — i.e. **when they apply.** This single fact reshapes the product around the *inbound* funnel.
+- **LinkedIn**: no data API for profiles/CVs. Their partner API (Recruiter System Connect) only *syncs* between LinkedIn Recruiter and an ATS — no raw dumps, no CVs. Recruiter seats ≈ $8–12k/yr. Scraping violates ToS and they litigate (hiQ v. LinkedIn). → **metadata-only, gated, expensive.**
+- **Naukri (Resdex)**: India's resume database — it *does* give downloadable CVs. But it's expensive (~₹1–2.5L/yr tiers) with limited resume views/downloads. This is the one place "pay money, get real CVs" is true (India market).
+- **Enrichment APIs** (Apollo, Proxycurl, Hunter, ContactOut, RocketReach, People Data Labs, Lusha): give **contact info + structured metadata** by matching a name/company/LinkedIn URL — **never CVs.** Pay-as-you-go, cheap (cents per lookup), no partnership. Proxycurl ≈ $0.01–0.10/profile; Hunter ≈ cheap email-find + verify; Apollo ≈ free tier + ~$49–99/user/mo. This is the realistic "find an email so we can invite them" layer.
+- **Email guessing is dangerous**: never fabricate `first.last@company.com` and send — you spam strangers and torch your domain reputation. Always **verify** (NeverBounce/ZeroBounce, or the enrichment provider's verification) before sending.
+
+**What Apollo/others actually do:** they maintain large proprietary contact databases (built from web crawl + user contributions + partnerships), and sell *lookups* against them. They sell **contactability**, not resumes. Their moat is the database, which is exactly why ours (the talent pool) matters.
+
+**How we survive in production (our layered approach):**
+1. **Inbound-first** (cheapest, highest quality): distribute the JD (careers page, Google for Jobs, free job posts), candidates apply and upload real CVs → our ATS + pre-evaluation engine shines. This is the core.
+2. **Sourcing layer** (passive): Tavily/web-search finds real public profiles by role+skills → embedding-score on metadata → for high scorers, enrichment resolves + verifies an email → personalized outreach → they apply with a real CV. No-email candidates become manual "leads."
+3. **Owned talent pool** (the moat): bulk-uploaded resumes + consented applicants compound into our own candidate DB (org-level now, product-level later). Over time this reduces dependence on external vendors entirely — the same play Apollo ran.
+
+**One-line positioning:** *AI Talent Lab is an applicant qualification engine — wherever candidates come from, it filters the flood down to the qualified few. Sourcing feeds the top; our value is the filter.*
