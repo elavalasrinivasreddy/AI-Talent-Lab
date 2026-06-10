@@ -3242,3 +3242,18 @@ Implementation of Phase 2 items: Audit Logs UI, Video Intros, and Team Lead Dash
 - `frontend/src/components/Dashboard/TeamLeadDashboard.jsx` (New)
 - `frontend/src/components/Dashboard/DashboardPage.jsx`
 - `frontend/src/components/Settings/SettingsPage.jsx`
+
+### 188. Bias Check JSON Parsing
+**Date:** 2026-06-10
+**Status:** Fixed
+
+**Issue:**
+The bias checker agent failed silently because the LLM returned markdown formatting alongside the JSON, which the python `json.loads` could not parse.
+
+**Idea / Solution:**
+Updated the LLM configuration in `backend/adapters/llm/factory.py` to enforce `json_mode` and updated `backend/agents/bias_checker.py` to use `json_mode=True` and added a more robust JSON extraction fallback.
+
+**Files Modified:**
+- `backend/adapters/llm/factory.py`
+- `backend/agents/bias_checker.py`
+

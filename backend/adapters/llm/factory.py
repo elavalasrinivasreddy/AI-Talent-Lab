@@ -18,6 +18,7 @@ def get_llm(
     streaming: bool = False,
     max_tokens: Optional[int] = None,
     model: Optional[str] = None,
+    json_mode: bool = False,
 ):
     """
     Return a LangChain chat model based on LLM_PROVIDER env var.
@@ -27,6 +28,7 @@ def get_llm(
         streaming: Enable token-by-token streaming.
         max_tokens: Optional max output tokens.
         model: Optional model name override.
+        json_mode: Whether to enforce structured JSON output.
 
     Returns:
         A LangChain BaseChatModel instance.
@@ -42,32 +44,44 @@ def get_llm(
 
     if provider == "groq":
         from langchain_groq import ChatGroq
+        
+        kwargs = common_kwargs.copy()
+        if json_mode:
+            kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
 
         return ChatGroq(
             api_key=settings.GROQ_API_KEY,
             model_name=model or "llama-3.3-70b-versatile",
             callbacks=[llm_usage_callback],
-            **common_kwargs,
+            **kwargs,
         )
 
     elif provider == "openai":
         from langchain_openai import ChatOpenAI
+        
+        kwargs = common_kwargs.copy()
+        if json_mode:
+            kwargs["model_kwargs"] = {"response_format": {"type": "json_object"}}
 
         return ChatOpenAI(
             api_key=settings.OPENAI_API_KEY,
             model=model or "gpt-4o-mini",
             callbacks=[llm_usage_callback],
-            **common_kwargs,
+            **kwargs,
         )
 
     elif provider == "gemini":
         from langchain_google_genai import ChatGoogleGenerativeAI
+        
+        kwargs = common_kwargs.copy()
+        if json_mode:
+            kwargs["model_kwargs"] = {"response_mime_type": "application/json"}
 
         return ChatGoogleGenerativeAI(
             google_api_key=settings.GEMINI_API_KEY,
             model=model or "gemini-2.0-flash",
             callbacks=[llm_usage_callback],
-            **common_kwargs,
+            **kwargs,
         )
 
     else:
