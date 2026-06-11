@@ -48,6 +48,19 @@ async def get_application_status(status_token: str):
 
     app_id = app_row["id"]
 
+    # Candidate-safe labels — only these event types surface in the public timeline;
+    # internal events (scoring, notes, sourcing) are intentionally omitted.
+    _EVENT_LABELS = {
+        "application_received": "Application received",
+        "applied": "Application received",
+        "status_changed": "Status updated",
+        "screening_started": "Screening started",
+        "interview_scheduled": "Interview scheduled",
+        "interview_completed": "Interview completed",
+        "selected": "Selected for offer",
+        "rejected": "Application closed",
+    }
+
     async with get_connection() as conn:
         interviews = await conn.fetch(
             """
@@ -58,6 +71,32 @@ async def get_application_status(status_token: str):
             """,
             app_id,
         )
+        events = await conn.fetch(
+            """
+            SELECT event_type, created_at
+            FROM pipeline_events
+            WHERE application_id = $1
+            ORDER BY created_at
+            """,
+            app_id,
+        )
+        pre_eval = await conn.fetchrow(
+            """
+            SELECT token FROM pre_evaluations
+            WHERE application_id = $1 AND status IN ('pending', 'submitted')
+            ORDER BY created_at DESC LIMIT 1
+            """,
+            app_id,
+        )
+
+    timeline = [
+        {
+            "event": _EVENT_LABELS[ev["event_type"]],
+            "date": ev["created_at"].isoformat() if ev["created_at"] else None,
+        }
+        for ev in events
+        if ev["event_type"] in _EVENT_LABELS
+    ]
 
     return {
         "position": {
@@ -80,4 +119,6 @@ async def get_application_status(status_token: str):
             }
             for idx, iv in enumerate(interviews)
         ],
+        "timeline": timeline,
+        "pre_eval_token": pre_eval["token"] if pre_eval else None,
     }

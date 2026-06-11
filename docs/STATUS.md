@@ -1,5 +1,10 @@
 # Build Status — v3 Redesign Tracker
 
+> ⚠️ **Scope (clarified 2026-06-11):** this tracks **UI/redesign only** — "functionally live" here means
+> the surface renders and is restyled to v3, NOT that the workflow runs end-to-end. For verified runtime
+> behavior (and the P0 security holes the redesign hid), see [`PRODUCT_STATUS.md`](PRODUCT_STATUS.md).
+> Do not read "19/19 live / production-ready" below as functional readiness.
+
 > Single source of truth for "what's redesigned vs not." Last updated 2026-05-30.
 > Detail per surface lives in each [`design/pages/NN_*.md`](design/pages/) banner.
 > Production hardening tracked in [`TECH_DEBT.md`](TECH_DEBT.md).

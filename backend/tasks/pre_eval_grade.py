@@ -154,6 +154,16 @@ async def _detect_collusion(conn, rows: list):
         for r in position_rows:
             try:
                 answers = json.loads(r["answers"]) if isinstance(r["answers"], str) else r["answers"]
+                # Answers are persisted as a list of {question_id, answer} dicts
+                # (see routers/pre_evaluations.py). _answer_similarity expects a
+                # {question_id: answer} mapping — set() over a list of dicts raises
+                # TypeError (unhashable) and silently kills collusion detection.
+                if isinstance(answers, list):
+                    answers = {
+                        item.get("question_id"): item.get("answer")
+                        for item in answers
+                        if isinstance(item, dict) and item.get("question_id") is not None
+                    }
                 parsed.append((r["id"], answers or {}))
             except Exception:
                 parsed.append((r["id"], {}))

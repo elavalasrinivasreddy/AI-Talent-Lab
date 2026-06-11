@@ -767,10 +767,16 @@ class SettingsService:
     # Never includes SECRET_KEY, DATABASE_URL, REDIS_URL, or CELERY_BROKER_URL.
     _MUTABLE_ENV_KEYS = frozenset({
         "LLM_PROVIDER", "LLM_MODEL",
-        "GROQ_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
-        "TAVILY_API_KEY", "HUNTER_API_KEY", "CLEARBIT_API_KEY",
+        "GROQ_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY",
+        # Embeddings
+        "EMBEDDING_PROVIDER", "EMBEDDING_MODEL", "EMBEDDING_API_KEY",
+        # Web search (Tavily + alternatives surfaced in the Providers tab)
+        "TAVILY_API_KEY", "BRAVE_API_KEY", "SERPAPI_API_KEY", "EXA_API_KEY",
+        # Enrichment
+        "PROXYCURL_API_KEY", "APOLLO_API_KEY", "HUNTER_API_KEY", "CLEARBIT_API_KEY",
+        # Email
         "SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASS",
-        "FROM_EMAIL", "FROM_NAME",
+        "FROM_EMAIL", "FROM_NAME", "EMAIL_PROVIDER",
         "RESEND_API_KEY", "SENDGRID_API_KEY",
     })
 

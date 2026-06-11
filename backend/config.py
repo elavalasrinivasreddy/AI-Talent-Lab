@@ -16,10 +16,18 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     MAGIC_LINK_BASE_URL: str = "http://localhost:5173"
     DEBUG: bool = False
-    DEV_MODE: bool = True  # Set to False in production — disables /dev/* endpoints
+    DEV_MODE: bool = False  # Fail-safe: /dev/* endpoints OFF unless DEV_MODE=true is explicitly set in .env
+    ENVIRONMENT: str = "development"  # development | staging | production (Sentry env tag)
+    SENTRY_DSN: str = ""  # Set in prod to enable backend error monitoring; empty = disabled
 
     # ── Database ───────────────────────────────────────────────────────────
     DATABASE_URL: str = "postgresql://talentlab:talentlab@localhost:5432/talentlab_dev"
+    # Non-superuser role provisioned by migrations so RLS actually enforces.
+    # To ACTIVATE tenant isolation at the DB layer, point DATABASE_URL at this role
+    # (see docs/RLS_IMPLEMENTATION_PLAN.md). Default connection uses the owner role
+    # above, for which RLS is bypassed (so policies are inert until cutover).
+    APP_DB_ROLE: str = "talentlab_app"
+    APP_DB_PASSWORD: str = "talentlab_app"
 
     # ── Redis ──────────────────────────────────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379/0"

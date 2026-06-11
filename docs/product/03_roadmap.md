@@ -9,6 +9,11 @@ Status legend: ✅ done · ⚠️ partial · ❌ not started
 
 ## 1. Product validation
 
+> ⚠️ **Self-assessment, not evidence (flagged 2026-06-11):** the ⭐ ratings below are aspirational and
+> some compliance ✅ marks were contradicted by the code (GDPR had a cross-tenant deletion hole; RLS is
+> inert). For an independent strategic read — including why the *real* moat is owned/consented candidate
+> data rather than "conversational UI" — see [`../PRODUCT_ASSESSMENT.md`](../PRODUCT_ASSESSMENT.md).
+
 Verdict: strong product-market fit with good timing.
 
 | Dimension | Assessment | Score |

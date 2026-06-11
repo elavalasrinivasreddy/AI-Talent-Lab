@@ -6,6 +6,7 @@ Skips public routes that don't require auth.
 import logging
 from fastapi import FastAPI, Request
 from backend.utils.security import decode_access_token
+from backend.db.connection import set_org_context, reset_org_context
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +49,24 @@ def setup_tenant_context(app: FastAPI) -> None:
         if not token:
             return await call_next(request)
 
+        ctx_token = None
         try:
             payload = decode_access_token(token)
             request.state.user_id = int(payload["sub"])
             request.state.org_id = payload["org_id"]
             request.state.role = payload["role"]
             request.state.dept_id = payload.get("dept_id")
+            # Set tenant context for RLS (drives app.current_org_id in get_connection).
+            # platform_admin tokens carry org_id too; cross-org reads rely on the
+            # superuser/bypass connection until a dedicated admin pool is added.
+            if payload.get("org_id") is not None:
+                ctx_token = set_org_context(int(payload["org_id"]))
         except Exception:
             # Let the dependency layer handle auth errors
             pass
 
-        return await call_next(request)
+        try:
+            return await call_next(request)
+        finally:
+            if ctx_token is not None:
+                reset_org_context(ctx_token)

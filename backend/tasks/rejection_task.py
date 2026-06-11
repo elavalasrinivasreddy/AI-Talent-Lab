@@ -67,4 +67,4 @@ def draft_rejection_async(self, interview_id: int, org_id: int, user_id: int):
             logger.error(f"rejection_task failed: {exc}", exc_info=True)
             raise self.retry(exc=exc)
 
-    asyncio.get_event_loop().run_until_complete(_run())
+    asyncio.run(_run())

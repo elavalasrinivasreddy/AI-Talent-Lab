@@ -374,6 +374,52 @@ class EmailService:
     # ── Candidate: interview invitation ───────────────────────────────────────
 
     @staticmethod
+    async def send_application_received(
+        to_email: str,
+        candidate_name: Optional[str],
+        role_name: str,
+        org_name: str,
+        status_url: Optional[str] = None,
+    ) -> bool:
+        """Confirmation + interview-process overview sent when a candidate submits
+        their application (status → Applied)."""
+        _candidate_name = html.escape(candidate_name) if candidate_name else None
+        _role_name = html.escape(role_name)
+        _org_name = html.escape(org_name)
+        greeting = f"Hi {_candidate_name}," if _candidate_name else "Hi,"
+        track_section = ""
+        if status_url:
+            track_section = _button("Track your application", status_url)
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  Thanks for applying for <strong>{_role_name}</strong> at <strong>{_org_name}</strong> —
+  we've received your application. 🎉
+</p>
+<p style="margin:0 0 8px;font-weight:600;">What happens next</p>
+<ul style="margin:0 0 16px;padding-left:18px;color:#334155;">
+  <li style="margin-bottom:6px;">Our hiring team reviews your profile.</li>
+  <li style="margin-bottom:6px;">If shortlisted, you'll get an email to schedule interviews.</li>
+  <li style="margin-bottom:6px;">We'll keep you updated at every stage — no silence.</li>
+</ul>
+{track_section}
+<p style="margin:16px 0 0;font-size:13px;color:#64748B;">
+  No action is needed right now. Good luck!
+</p>"""
+        body_text = (
+            f"{greeting}\n\nThanks for applying for {role_name} at {org_name} — we've received "
+            f"your application.\n\nWhat happens next:\n- Our team reviews your profile\n"
+            f"- If shortlisted, you'll get interview scheduling details\n- We'll keep you updated\n"
+            + (f"\nTrack your application: {status_url}\n" if status_url else "")
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"We received your application — {role_name} at {org_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
+    @staticmethod
     async def send_interview_invite(
         to_email: str,
         candidate_name: Optional[str],
@@ -437,6 +483,52 @@ class EmailService:
         return await EmailService._send(
             to_email=to_email,
             subject=f"Interview Invitation: {round_name} — {role_name} at {org_name}",
+            body_html=_wrap_html(content_html),
+            body_text=body_text,
+        )
+
+    @staticmethod
+    async def send_interview_reminder(
+        to_email: str,
+        candidate_name: Optional[str],
+        role_name: str,
+        org_name: str,
+        round_name: str,
+        scheduled_at: Optional[datetime] = None,
+        meeting_link: Optional[str] = None,
+    ) -> bool:
+        """Friendly 24h-before reminder for an upcoming interview."""
+        from datetime import datetime as dt
+        _candidate_name = html.escape(candidate_name) if candidate_name else None
+        _role_name = html.escape(role_name)
+        _org_name = html.escape(org_name)
+        _round_name = html.escape(round_name)
+        greeting = f"Hi {_candidate_name}," if _candidate_name else "Hi,"
+        when = ""
+        if scheduled_at:
+            if isinstance(scheduled_at, str):
+                scheduled_at = dt.fromisoformat(scheduled_at)
+            when = scheduled_at.strftime("%A, %B %d at %I:%M %p")
+        meet_section = _button("Join the interview", meeting_link) if meeting_link else ""
+        content_html = f"""\
+<p style="margin:0 0 16px;">{greeting}</p>
+<p style="margin:0 0 16px;">
+  A quick reminder: your <strong>{_round_name}</strong> interview for
+  <strong>{_role_name}</strong> at <strong>{_org_name}</strong> is coming up
+  {('on <strong>' + when + '</strong>') if when else 'soon'}.
+</p>
+{meet_section}
+<p style="margin:16px 0 0;font-size:13px;color:#64748B;">
+  Please reply to this email if you need to reschedule. Good luck!
+</p>"""
+        body_text = (
+            f"{greeting}\n\nReminder: your {round_name} interview for {role_name} at "
+            f"{org_name} is {('on ' + when) if when else 'coming up soon'}.\n"
+            + (f"\nJoin: {meeting_link}\n" if meeting_link else "")
+        )
+        return await EmailService._send(
+            to_email=to_email,
+            subject=f"Reminder: your interview for {role_name} at {org_name}",
             body_html=_wrap_html(content_html),
             body_text=body_text,
         )

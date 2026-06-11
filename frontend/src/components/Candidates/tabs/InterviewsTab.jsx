@@ -153,6 +153,32 @@ export default function InterviewsTab({ candidateId, positionId, candidateName, 
 
 function InterviewRoundCard({ interview, debrief, generating, onReload, onDebrief }) {
   const [expanded, setExpanded] = useState(false)
+  const [busy, setBusy] = useState(null)
+  const [err, setErr] = useState(null)
+
+  const act = async (data, label) => {
+    setBusy(label); setErr(null)
+    try {
+      await interviewsApi.update(interview.id, data)
+      onReload()
+    } catch (e) {
+      setErr(e.message || 'Action failed')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const sendInvites = async () => {
+    setBusy('invites'); setErr(null)
+    try {
+      await interviewsApi.sendInvites(interview.id)
+      onReload()
+    } catch (e) {
+      setErr(e.message || 'Failed to send invites')
+    } finally {
+      setBusy(null)
+    }
+  }
 
   const statusIcon = ROUND_STATUS_ICONS[interview.status] || '⏳'
   const statusLabel = {
@@ -270,6 +296,39 @@ function InterviewRoundCard({ interview, debrief, generating, onReload, onDebrie
 
           {/* Actions */}
           <div className="round-actions">
+            {/* Send invites — candidate + panel emails (only once scheduled) */}
+            {interview.scheduled_at && interview.status !== 'cancelled' && !interview.overall_result && (
+              <button className="round-action-btn" onClick={sendInvites} disabled={!!busy}>
+                {busy === 'invites' ? '⏳ Sending…' : (interview.invite_sent_at ? '✉️ Resend Invites' : '✉️ Send Invites')}
+              </button>
+            )}
+
+            {/* Mark the round complete so a result can be set */}
+            {interview.status !== 'completed' && interview.status !== 'cancelled' && (
+              <button className="round-action-btn" onClick={() => act({ status: 'completed' }, 'complete')} disabled={!!busy}>
+                {busy === 'complete' ? '⏳…' : '✓ Mark Round Complete'}
+              </button>
+            )}
+
+            {/* Set the round result — Reject triggers an AI-drafted rejection email */}
+            {interview.status === 'completed' && !interview.overall_result && (
+              <>
+                <button className="round-action-btn primary" onClick={() => act({ overall_result: 'passed' }, 'pass')} disabled={!!busy}>
+                  {busy === 'pass' ? '⏳…' : '✓ Passed'}
+                </button>
+                <button className="round-action-btn danger" onClick={() => act({ overall_result: 'rejected' }, 'reject')} disabled={!!busy}>
+                  {busy === 'reject' ? '⏳…' : '✗ Rejected'}
+                </button>
+              </>
+            )}
+
+            {/* Result badge */}
+            {interview.overall_result && (
+              <span className={`round-result-badge ${interview.overall_result}`}>
+                {interview.overall_result === 'passed' ? '✓ Passed' : '✗ Rejected'}
+              </span>
+            )}
+
             {interview.status === 'completed' && submittedCount >= panelCount && !debrief && (
               <button
                 className="round-action-btn primary"
@@ -280,6 +339,7 @@ function InterviewRoundCard({ interview, debrief, generating, onReload, onDebrie
               </button>
             )}
           </div>
+          {err && <div className="round-action-error" style={{ color: 'var(--bad, #EF4444)', fontSize: 12, marginTop: 6 }}>{err}</div>}
         </div>
       )}
     </div>

@@ -27,16 +27,12 @@ def _cosine_similarity(a: list[float], b: list[float]) -> float:
 
 
 async def _get_embedding(text: str) -> list[float]:
-    """Generate a text embedding using the LLM adapter."""
-    try:
-        from langchain_groq import ChatGroq
-        from langchain_community.embeddings import FakeEmbeddings
-        # Use a deterministic fallback if no embedding model configured
-        embeddings = FakeEmbeddings(size=384)
-        return await embeddings.aembed_query(text[:2000])
-    except Exception:
-        # Minimal random-like embedding as last resort
-        return [0.0] * 384
+    """Generate a text embedding using the SAME real model that embeds candidate
+    resumes (candidate_service.generate_resume_embedding) — so talent-pool cosine
+    matches are meaningful. Returns [] when no embedding model is configured, which
+    _cosine_similarity treats as 0.0 (honest "no signal" rather than random noise)."""
+    from backend.services.candidate_service import generate_resume_embedding
+    return await generate_resume_embedding(text)
 
 
 class TalentPoolService:

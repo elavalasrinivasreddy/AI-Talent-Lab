@@ -3490,3 +3490,116 @@ The "Sourcing Schedule" tab was implemented in components but missing from the S
 - `frontend/src/components/Settings/SettingsPage.jsx`
 - `frontend/src/components/Settings/tabs/SourcingTab.jsx`
 - `backend/routers/settings.py`
+
+## 199. Dev Console Admin Creation Fails due to missing defaults
+
+**Problem Statement:**
+When creating a new user as a Platform Admin in the Dev Console, it resulted in a `500 Internal Server Error`. The SQL `INSERT` statements in `/api/v1/dev/create-user` were attempting to insert into the `updated_at` column which doesn't exist for the `organizations` and `users` tables. Furthermore, it lacked the required `segment` and `size` fields (which lack default values in the schema) when implicitly creating a new organization.
+
+**Idea / Solution:**
+Modified the SQL queries in `backend/routers/dev_admin.py` to correctly map the columns. Removed the non-existent `updated_at` references and added static fallback default values (`Technology` for segment, `Mid-Market` for size) for the auto-created organizations so they pass database NOT NULL constraints.
+
+**Files Modified:**
+- `backend/routers/dev_admin.py`
+
+---
+
+## 200. Platform Dashboard Redesign & API Keys Integration
+
+**Problem Statement:**
+The Platform Admin dashboard had a basic layout and lacked an accessible way for super-users to configure global API keys (the `ProvidersTab` existed but was isolated in tenant settings, inaccessible from the platform dashboard without manual URL navigation).
+
+**Idea / Solution:**
+Performed a complete UI/UX redesign of the Platform Dashboard using premium aesthetic patterns (glassmorphism, subtle gradients, micro-animations, and hover interactions). Integrated the `ProvidersTab` directly into the Dashboard (`/platform`) under a newly created "Providers & API Keys" tab, wrapped in CSS to seamlessly match the new dark-glassmorphism theme of the main dashboard.
+
+**Files Modified:**
+- `frontend/src/components/Platform/PlatformPage.jsx`
+- `frontend/src/components/Platform/PlatformPage.css`
+
+
+## 201. Remove P2 Tag from Career Brand Settings Tab
+
+**Problem Statement:**
+The "Career page brand" tab in the Settings navigation rail still displayed a "P2" (Phase 2) badge, even though the feature is fully implemented and active.
+
+**Idea / Solution:**
+Removed the `phase: 2` property from the `career-brand` item definition in the `RAIL_GROUPS` configuration within `SettingsPage.jsx`.
+
+**Files Modified:**
+- `frontend/src/components/Settings/SettingsPage.jsx`
+
+
+## 202. Audit Logs Search Filters & Table Layout
+
+**Problem Statement:**
+1. The global search feature on the Audit Logs page was crashing the API due to a missing `LEFT JOIN` on the `users` table in the total count query.
+2. The search did not filter by `entity_type`, `entity_id`, or `created_at` (Timestamp).
+3. Searching for "System" (automated actions) yielded no results.
+4. The table text alignment was off, the table lacked horizontal lines, and the headers disappeared when scrolling.
+5. The logs data lacked an option to be exported for external compliance and reporting.
+
+**Idea / Solution:**
+1. Fixed the backend `audit_service.py` by adding the missing `LEFT JOIN users u ON u.id = a.user_id` to the `count_query`.
+2. Updated the SQL `search_filter` to include `entity_type`, `entity_id` concatenation, and multiple human-readable `to_char` timestamp formats.
+3. Updated the `search_filter` to use `COALESCE(u.name, 'System')` to allow searching for system actions.
+4. Cleaned up the frontend UI by ensuring both `th` and `td` have consistent `textAlign: 'left'`. Added a `sticky` table header with frozen styling, and implemented horizontal lines using `borderCollapse: 'collapse'` and `borderBottom`.
+5. Implemented a client-side "Export Page to CSV" button that converts the currently viewed (and filtered) list of logs into a downloadable CSV file.
+
+**Files Modified:**
+- `backend/services/audit_service.py`
+- `frontend/src/components/Settings/tabs/AuditTab.jsx`
+
+
+## 203. Analytics Page Tab Formatting
+
+**Problem Statement:**
+The "Agent ROI" and "System Health" tabs on the Analytics page were styled as pill-shaped toggles and placed directly next to the date filters, causing them to look like additional filters and creating a cramped, confusing UI.
+
+**Idea / Solution:**
+Refactored the tabs to use a traditional, spacious under-the-header tab list layout.
+
+**Files Modified:**
+- `frontend/src/components/Analytics/AnalyticsPage.jsx`
+- `frontend/src/components/Analytics/AnalyticsPage.css`
+
+
+## 204. System Health LLM Analytics Not Tracking Data
+
+**Problem Statement:**
+The System Health tab in the Analytics dashboard was showing zero values for LLM usage, cost, and token counts.
+
+**Idea / Solution:**
+1. Updated `LLMUsageCallback` in `llm_usage_logger.py` to inherit from `AsyncCallbackHandler` instead of `BaseCallbackHandler`.
+2. Implemented `async def on_llm_start` and `async def on_chat_model_start` methods.
+3. Tracked start times in a dictionary keyed by LangChain's unique `run_id` to fix concurrency issues instead of using a singleton variable.
+
+**Files Modified:**
+- `backend/services/llm_usage_logger.py`
+
+
+## 205. Type Checker Warnings in LLMUsageLogger
+
+**Problem Statement:**
+The code editor type checker raised two distinct warnings in `llm_usage_logger.py`:
+1. `ContextVar.set` type mismatch because `contextvars.ContextVar(..., default=None)` inferred the underlying generic type strictly as `NoneType`.
+2. A signature mismatch warning for `LLMUsageCallback`'s callback methods when inheriting from `AsyncCallbackHandler`, due to an untyped `run_id` parameter and an overly broad `Exception` annotation.
+
+**Idea / Solution:**
+1. Declared explicit Python generic type hints (`contextvars.ContextVar[Optional[int]]`) during the instantiation of all ContextVars.
+2. Updated method signatures for `on_llm_start`, `on_chat_model_start`, `on_llm_end`, and `on_llm_error` to exactly match the parent class `AsyncCallbackHandler`'s expected parameters (e.g. typing `run_id` as `UUID` and including `parent_run_id` and `tags`).
+
+**Files Modified:**
+- `backend/services/llm_usage_logger.py`
+
+---
+
+## 206. JD Stepper Infinite Spinning Save Pill (Read-Only State)
+
+**Problem Statement:**
+When a position chat was finalized and reopened in read-only mode by HR or a Hiring Manager, the "Save" step in the stepper pipeline continuously showed a spinning loading icon instead of a completed checkmark. This happened because the frontend `JDStepper` component did not evaluate the chat's `isReadOnly` state when calculating the `effectiveStage`, causing it to incorrectly treat the final save action as "currently running" instead of "completed".
+
+**Idea / Solution:**
+Updated `statePerStage` in `JDStepper.jsx` to accept `isReadOnly` as an argument. If `isReadOnly` is true (indicating the JD workflow is finalized/locked), it overrides the active state mapping and forces all stages—including the final "Save" stage—to be marked as `done`.
+
+**Files Modified:**
+- `frontend/src/components/Chat/JDStepper.jsx`

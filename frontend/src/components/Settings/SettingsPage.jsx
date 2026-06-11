@@ -45,7 +45,7 @@ const RAIL_GROUPS = [
       { key: 'screening', icon: 'help-circle', label: 'Screening questions', adminOnly: true },
       { key: 'scorecards', icon: 'target', label: 'Scorecard rubric', adminOnly: true },
       { key: 'bias', icon: 'shield', label: 'JD bias detection', adminOnly: true, phase: 2 },
-      { key: 'providers', icon: 'settings', label: 'Providers & API keys', orgHeadOnly: true },
+      { key: 'providers', icon: 'settings', label: 'Providers & API keys', platformAdminOnly: true },
     ],
   },
   {
@@ -70,7 +70,7 @@ const RAIL_GROUPS = [
       { key: 'competitors', icon: 'trending-up', label: 'Competitor intel', adminOnly: true },
       { key: 'templates', icon: 'mail', label: 'Email templates' },
       { key: 'appearance', icon: 'palette', label: 'Appearance' },
-      { key: 'career-brand', icon: 'home', label: 'Career page brand', adminOnly: true, phase: 2 },
+      { key: 'career-brand', icon: 'home', label: 'Career page brand', adminOnly: true },
     ],
   },
   {
@@ -82,7 +82,7 @@ const RAIL_GROUPS = [
       { key: 'privacy', icon: 'shield', label: 'GDPR / DPDP', adminOnly: true },
       { key: 'security', icon: 'lock', label: 'Security', adminOnly: true },
       
-      { key: 'audit', icon: 'clock', label: 'Audit log', adminOnly: true, phase: 2 },
+      { key: 'audit', icon: 'clock', label: 'Audit log', orgHeadOnly: true },
       { key: 'export', icon: 'download', label: 'Data export', adminOnly: true, phase: 2 },
     ],
   },
@@ -116,14 +116,17 @@ export default function SettingsPage() {
   const { tab } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const isPlatformAdmin = user?.role === 'platform_admin'
   const isAdmin = user?.role === 'org_head' || user?.role === 'dept_admin'
 
   // If a non-admin lands on an admin-only section via direct URL, fall back to profile.
   const allAdminKeys = RAIL_GROUPS.flatMap(g => g.items.filter(i => i.adminOnly).map(i => i.key))
   const allOrgHeadKeys = RAIL_GROUPS.flatMap(g => g.items.filter(i => i.orgHeadOnly).map(i => i.key))
+  const allPlatformAdminKeys = RAIL_GROUPS.flatMap(g => g.items.filter(i => i.platformAdminOnly).map(i => i.key))
 
   let isAllowed = true;
-  if (allOrgHeadKeys.includes(tab) && user?.role !== 'org_head') isAllowed = false;
+  if (allPlatformAdminKeys.includes(tab) && !isPlatformAdmin) isAllowed = false;
+  else if (allOrgHeadKeys.includes(tab) && user?.role !== 'org_head') isAllowed = false;
   else if (allAdminKeys.includes(tab) && !isAdmin) isAllowed = false;
 
   const resolvedTab = isAllowed ? (tab || 'profile') : 'profile'
@@ -188,6 +191,8 @@ export default function SettingsPage() {
                 {group.label}
               </div>
               {group.items.map(item => {
+                if (item.platformAdminOnly && !isPlatformAdmin) return null;
+
                 const isOrgHeadLocked = item.orgHeadOnly && user?.role !== 'org_head';
 
                 // Determine if read-only or fully locked

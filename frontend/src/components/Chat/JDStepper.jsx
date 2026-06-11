@@ -29,7 +29,7 @@ const STAGES = [
 // stepper marks it done only once the user has saved the position.
 const RUNNING_STAGES = STAGES.map((s) => s.key);
 
-function statePerStage(currentStage, gs, skipped) {
+function statePerStage(currentStage, gs, skipped, isReadOnly) {
   let effectiveStage = currentStage;
   // If bias check has issues defined, it means it has finished running.
   // Visually advance the stepper to the final 'Save' stage.
@@ -44,7 +44,8 @@ function statePerStage(currentStage, gs, skipped) {
       map[key] = 'skipped';
       return;
     }
-    if (currentStage === 'complete') {
+    // If the chat is read only (saved/finalized), all stages should be done
+    if (isReadOnly || currentStage === 'complete') {
       map[key] = 'done';
       return;
     }
@@ -66,12 +67,12 @@ function statePerStage(currentStage, gs, skipped) {
 }
 
 export default function JDStepper({ isRailOpen, onToggleRail }) {
-  const { workflowStage, stageSkipped, graphState } = useChat();
+  const { workflowStage, stageSkipped, graphState, isReadOnly } = useChat();
   const skipped = useMemo(() => new Set(stageSkipped || []), [stageSkipped]);
 
   const states = useMemo(
-    () => statePerStage(workflowStage, graphState, skipped),
-    [workflowStage, graphState, skipped]
+    () => statePerStage(workflowStage, graphState, skipped, isReadOnly),
+    [workflowStage, graphState, skipped, isReadOnly]
   );
 
   return (

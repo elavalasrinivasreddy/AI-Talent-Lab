@@ -19,6 +19,8 @@ const TYPE_META = {
   interview_scheduled:   { icon: 'calendar', label: 'Interviews',     color: '#6366F1' },
   feedback_submitted:    { icon: 'award',    label: 'Feedback',       color: '#D97706' },
   status_changed:        { icon: 'activity', label: 'Status Updates', color: '#06B6D4' },
+  rejection_draft_ready: { icon: 'mail',     label: 'Rejection Draft',color: '#64748B' },
+  debrief_ready:         { icon: 'file-text',label: 'Debrief',        color: '#8B5CF6' },
 }
 
 export default function NotificationBell() {

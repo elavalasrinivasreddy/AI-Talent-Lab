@@ -1,5 +1,12 @@
 # AI Talent Lab — Documentation
 
+> ⚠️ **Read first (2026-06-11):** the **functional truth** of what actually works lives in
+> [`PRODUCT_STATUS.md`](PRODUCT_STATUS.md), and the **strategic read** (vision, design, gaps,
+> alternatives) in [`PRODUCT_ASSESSMENT.md`](PRODUCT_ASSESSMENT.md). Where the product docs below
+> say "done / functional end-to-end / production-ready," they mean the **UI/redesign** picture —
+> a full code audit found several features wired-looking but silently broken, plus security holes.
+> Trust `PRODUCT_STATUS.md` over any green checkmark in `product/*` or `STATUS.md`.
+
 Single home for product, architecture, and design docs. This index is the front door.
 Consolidated 2026-05-29 from a sprawl of overlapping files (old `pages/` vs `redesign/`,
 two product docs, one 1,700-line backend doc) into the structure below.
@@ -41,7 +48,9 @@ two product docs, one 1,700-line backend doc) into the structure below.
 ### Reference
 | Doc | Contents |
 |---|---|
-| [STATUS.md](STATUS.md) | Redesign build-status tracker — what's done vs pending |
+| [PRODUCT_STATUS.md](PRODUCT_STATUS.md) | **Functional truth tracker** — per feature: built/wired/tested/gaps with file:line. The real "does it work" source. |
+| [PRODUCT_ASSESSMENT.md](PRODUCT_ASSESSMENT.md) | **Strategic read** — vision validation, design, gaps, better-than-existing alternatives, what to do next. |
+| [STATUS.md](STATUS.md) | Redesign build-status tracker — UI/v3 only, NOT functional status |
 | [TECH_DEBT.md](TECH_DEBT.md) | Production hardening tracker |
 | [integrations/calendar.md](integrations/calendar.md) | Google/Outlook calendar OAuth guide |
 

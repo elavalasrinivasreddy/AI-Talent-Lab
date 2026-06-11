@@ -96,11 +96,13 @@ async def _run_pipeline(
 
         for raw in raw_candidates:
             try:
-                await _process_candidate(
+                above = await _process_candidate(
                     raw, position, org or {}, position_id, org_id, department_id,
                     ats_threshold, triggered_by
                 )
                 sourced_count += 1
+                if above:
+                    above_threshold_count += 1
             except Exception as e:
                 logger.warning(f"[Pipeline] Failed to process candidate {raw.get('email')}: {e}")
                 continue
@@ -189,13 +191,14 @@ async def _process_candidate(
     department_id: int,
     ats_threshold: float,
     triggered_by: int | None = None
-) -> None:
-    """Dedup → create/update → score a single candidate."""
+) -> bool:
+    """Dedup → create/update → score a single candidate. Returns True if the
+    candidate scored at or above the ATS threshold."""
     email = raw.get("email", "").strip().lower() or None
     source_profile_url = raw.get("source_profile_url", "").strip() or None
 
     if not email and not source_profile_url:
-        return  # Skip candidates without both email and profile url (can't dedup)
+        return False  # Skip candidates without both email and profile url (can't dedup)
 
     async with get_connection() as conn:
         # ── Dedup within org ───────────────────────────────────────────────────
@@ -353,8 +356,11 @@ async def _process_candidate(
                 }
             })
 
+        return score >= ats_threshold
+
     except Exception as e:
         logger.warning(f"[Pipeline] ATS scoring failed for candidate {candidate_id}: {e}")
+        return False
 
 
 @celery_app.task(name="tasks.source_candidates_for_position")
