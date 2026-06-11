@@ -3615,3 +3615,15 @@ Added `"on_hold"` to the `all_stages` array inside `get_pipeline_summary` in `ba
 
 **Files Modified:**
 - `backend/routers/positions.py`
+---
+
+## 208. Candidate Ranked Row "0" Alignment Bug
+
+**Problem Statement:**
+In the "Stack" view of the Position Detail Page, candidates with `0` matched skills or `0` years of experience were causing a large raw text `0` to render in the UI, breaking the alignment of the `MATCH` column. This occurred because React evaluates `0 && <Component>` to `0` and renders it as text, rather than treating `0` as falsy and ignoring it.
+
+**Idea / Solution:**
+Replaced the `&&` short-circuit evaluations with strict ternary operators `? : null` across all falsy-prone variable checks (`matchedCount`, `expMatch`, `overflowSkills`, and `stale`) in `CandidateRankedRow.jsx`. This forces React to render `null` instead of `0`, resolving the grid column layout shift and keeping the missing skills chips aligned perfectly under the MATCH column.
+
+**Files Modified:**
+- `frontend/src/components/Positions/CandidateRankedRow.jsx`
