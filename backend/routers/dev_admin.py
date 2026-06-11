@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def _require_dev_mode():
     """Guard: raises 404 in production so this endpoint is invisible."""
-    if not getattr(settings, 'DEV_MODE', True):
+    if not getattr(settings, 'DEV_MODE', False):
         raise HTTPException(status_code=404, detail="Not found")
 
 

@@ -90,12 +90,14 @@ async def list_deletion_requests(user=Depends(require_org_head)):
 
 
 @router.post("/process-deletion/{request_id}")
-async def process_deletion(request_id: int, user=Depends(require_org_head)):
+@limiter.limit("10/hour")
+async def process_deletion(request_id: int, request: Request, user=Depends(require_org_head)):
     """
     Process a verified deletion request.
     Anonymizes all candidate PII while preserving aggregate metrics.
+    Scoped to the caller's org — an org_head cannot process another org's request.
     """
-    result = await GDPRService.process_deletion(request_id)
+    result = await GDPRService.process_deletion(request_id, user["org_id"])
     if result.get("error"):
         raise HTTPException(status_code=400, detail={
             "code": "PROCESSING_ERROR",
