@@ -3590,3 +3590,16 @@ The code editor type checker raised two distinct warnings in `llm_usage_logger.p
 
 **Files Modified:**
 - `backend/services/llm_usage_logger.py`
+
+---
+
+## 206. JD Stepper Infinite Spinning Save Pill (Read-Only State)
+
+**Problem Statement:**
+When a position chat was finalized and reopened in read-only mode by HR or a Hiring Manager, the "Save" step in the stepper pipeline continuously showed a spinning loading icon instead of a completed checkmark. This happened because the frontend `JDStepper` component did not evaluate the chat's `isReadOnly` state when calculating the `effectiveStage`, causing it to incorrectly treat the final save action as "currently running" instead of "completed".
+
+**Idea / Solution:**
+Updated `statePerStage` in `JDStepper.jsx` to accept `isReadOnly` as an argument. If `isReadOnly` is true (indicating the JD workflow is finalized/locked), it overrides the active state mapping and forces all stages—including the final "Save" stage—to be marked as `done`.
+
+**Files Modified:**
+- `frontend/src/components/Chat/JDStepper.jsx`
