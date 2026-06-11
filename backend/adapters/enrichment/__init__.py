@@ -18,6 +18,15 @@ def get_enrichment_adapter(provider_name: str) -> Optional[BaseEnrichmentAdapter
     """
     name = (provider_name or "").lower()
     if name == "simulation":
+        # The simulation adapter fabricates emails — never allow it in production
+        # (locked decision: must never fabricate-and-send). Dev/staging only.
+        from backend.config import settings
+        if str(getattr(settings, "ENVIRONMENT", "development")).lower() == "production":
+            logger.warning(
+                "Simulation enrichment fabricates emails and is disabled in production; "
+                "skipping enrichment (candidate kept as a no-contact lead)."
+            )
+            return None
         return SimulationEnrichmentAdapter()
 
     # Real providers — not implemented yet. Do NOT fall back to simulation in prod.

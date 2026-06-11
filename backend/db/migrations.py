@@ -301,6 +301,7 @@ CREATE TABLE IF NOT EXISTS interviews (
     status           TEXT DEFAULT 'pending',
     overall_result   TEXT,
     invite_sent_at   TIMESTAMP,
+    reminder_sent_at TIMESTAMP,
     notes            TEXT,
     ai_summary       TEXT,
     created_at       TIMESTAMP DEFAULT NOW(),
@@ -1211,6 +1212,10 @@ async def run_migrations(conn) -> None:
     # rejection-email draft payload for recruiter review). Idempotent.
     await conn.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS meta JSONB;")
     logger.info("  notifications.meta column ensured.")
+
+    # Ensure interviews.reminder_sent_at exists (drives the 24h auto-reminder task).
+    await conn.execute("ALTER TABLE interviews ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMP;")
+    logger.info("  interviews.reminder_sent_at column ensured.")
 
     # Enable RLS
     logger.info("  Enabling Row-Level Security...")

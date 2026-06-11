@@ -57,6 +57,10 @@ celery_app.conf.beat_schedule = {
         "task": "backend.tasks.email_outreach.send_followup_reminders",
         "schedule": 3600.0,  # every hour
     },
+    "send-interview-reminders": {
+        "task": "backend.tasks.email_outreach.send_interview_reminders",
+        "schedule": 3600.0,  # every hour — emails candidates ~24h before their interview
+    },
     "batch-grade-pre-evaluations": {
         "task": "tasks.pre_eval_grade",
         "schedule": 10800.0,  # every 3 hours
