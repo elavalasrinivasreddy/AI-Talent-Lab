@@ -3603,3 +3603,15 @@ Updated `statePerStage` in `JDStepper.jsx` to accept `isReadOnly` as an argument
 
 **Files Modified:**
 - `frontend/src/components/Chat/JDStepper.jsx`
+---
+
+## 207. On Hold Count Missing from Stage Stat Strip
+
+**Problem Statement:**
+The "On Hold" count was showing as zero in the `StageStatStrip` on the Position Detail Page, even when candidates with the "on_hold" status existed in the pipeline. This happened because the backend `get_pipeline_summary` endpoint explicitly dropped the "on_hold" status from the response payload by iterating over a hardcoded array of `all_stages` that omitted it.
+
+**Idea / Solution:**
+Added `"on_hold"` to the `all_stages` array inside `get_pipeline_summary` in `backend/routers/positions.py`. This ensures the endpoint correctly calculates and returns counts, average times, and confidence scores for candidates placed in the "On Hold" stage.
+
+**Files Modified:**
+- `backend/routers/positions.py`
