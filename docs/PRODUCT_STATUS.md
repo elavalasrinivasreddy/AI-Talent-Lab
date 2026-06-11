@@ -58,6 +58,16 @@ Priority: **P0** = security or core-flow blocker, fix before any real use · **P
 
 ## 🟠 P1 — Sold but broken / missing (features users will hit)
 
+> **Progress 2026-06-11 (all P1 below FIXED + committed locally on feature/phase2-items):**
+> P1-1 interview invite emails · P1-2 24h reminder task · P1-3/3b round-result UI + rejection task · P1-4
+> outreach signature + token gen · P1-5 apply profiling steps · P1-6 apply confirmation email · P1-7 pre-eval
+> page · P1-8 status_token + portal timeline · P1-9 talent-pool real embeddings · P1-10 enrichment prod-guard ·
+> P1-11 above_threshold_count · P1-13 calendar graceful fallback · P1-14 Providers key allowlist.
+> Verified: backend suite 45 passed + frontend build clean. Not pushed.
+> **Note:** P1-13 Google Calendar still falls back to *mock* (real OAuth adapter unimplemented — needs Google
+> credentials); P1-10/P1-4 enrichment + real sourcing providers remain stubbed (need external API keys). These
+> are external-integration work, not bugs.
+
 | # | Feature | Status | Evidence | What's wrong |
 |---|---|---|---|---|
 | P1-1 | **Interview invite emails** | 🟡 no-op | [interview_service.py:217](../backend/services/interview_service.py#L217) | `send_invites` only stamps `invite_sent_at`; never calls `EmailService`. Candidate + panel get **no email**. The templates exist ([email_service.py:376,447](../backend/services/email_service.py#L376)) but are never called. |
