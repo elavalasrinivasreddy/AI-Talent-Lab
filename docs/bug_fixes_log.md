@@ -3627,3 +3627,17 @@ Replaced the `&&` short-circuit evaluations with strict ternary operators `? : n
 
 **Files Modified:**
 - `frontend/src/components/Positions/CandidateRankedRow.jsx`
+---
+
+## 209. Score Breakdown UI Redesign and Math Fix
+
+**Problem Statement:**
+The "Score Breakdown" visualizer on the Candidate Detail Page was a single horizontal stacked bar. When segment values were low (e.g., 0.0), the text inside the segments would overlap and become unreadable. Additionally, there was a math calculation bug: the backend ATS score provides component scores (`emb_score`, `skills_match`, `experience_match`) as percentages (0-100), but `ScoreBreakdownBand.jsx` was incorrectly multiplying them by an additional `100` before applying weights. This resulted in massively inflated positive points (e.g., 1916 instead of 19) and forced the UI to display a massive phantom "Gap Penalty" (e.g., -1897) to reconcile the inflated base with the true final score.
+
+**Idea / Solution:**
+- **Math Fix:** Removed the `* 100` multiplier in `ScoreBreakdownBand.jsx` so that the base scores scale correctly according to their weights (`40% emb, 40% skills, 20% exp`).
+- **UI Redesign:** Replaced the single stacked bar chart with a premium 4-card grid layout. The new grid cleanly separates Semantic Match, Key Skills, and Experience into their own metric cards containing mini-progress bars. The 4th card displays the Final ATS Score and prominently tags any true gap penalties caused by missing mandatory requirements, resulting in a much cleaner, responsive UX.
+
+**Files Modified:**
+- `frontend/src/components/Candidates/ScoreBreakdownBand.jsx`
+- `frontend/src/components/Candidates/CandidateDetailPage.css`
