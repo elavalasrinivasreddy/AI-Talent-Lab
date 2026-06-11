@@ -1204,7 +1204,10 @@ async def run_migrations(conn) -> None:
     logger.info("  Enabling Row-Level Security...")
     await conn.execute(RLS_SETUP)
 
-    # Create tenant isolation policies for tables with org_id
+    # Create tenant isolation policies for tables with org_id.
+    # NULLIF(...,'')::int makes the policy robust when app.current_org_id is unset
+    # or reset to '' (empty string) — avoids "invalid input syntax for integer"
+    # that a bare ''::int would raise once a non-superuser role is enforced.
     for table in RLS_TABLES_WITH_ORG_ID:
         policy_sql = f"""
         DO $$
@@ -1214,10 +1217,72 @@ async def run_migrations(conn) -> None:
                 WHERE tablename = '{table}' AND policyname = 'tenant_isolation'
             ) THEN
                 EXECUTE 'CREATE POLICY tenant_isolation ON {table}
-                    USING (org_id = current_setting(''app.current_org_id'', true)::int)';
+                    USING (org_id = NULLIF(current_setting(''app.current_org_id'', true), '''')::int)';
             END IF;
         END $$;
         """
         await conn.execute(policy_sql)
 
+    # Join-based policies for child tables that have RLS ENABLED but no org_id
+    # column. Without a policy, a non-superuser role gets ZERO rows (default-deny),
+    # which would break these surfaces the moment RLS is enforced.
+    _JOIN_POLICIES = {
+        "jd_variants": "position_id IN (SELECT id FROM positions WHERE org_id = NULLIF(current_setting(''app.current_org_id'', true), '''')::int)",
+        "interview_panel": "interview_id IN (SELECT id FROM interviews WHERE org_id = NULLIF(current_setting(''app.current_org_id'', true), '''')::int)",
+    }
+    for table, predicate in _JOIN_POLICIES.items():
+        await conn.execute(f"""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_policies
+                WHERE tablename = '{table}' AND policyname = 'tenant_isolation'
+            ) THEN
+                EXECUTE 'CREATE POLICY tenant_isolation ON {table} USING ({predicate})';
+            END IF;
+        END $$;
+        """)
+
+    # Provision a non-superuser application role so RLS actually enforces.
+    # The default connection still uses the owner/superuser role (RLS is bypassed
+    # for it) — switching DATABASE_URL to this role ACTIVATES enforcement.
+    # See docs/RLS_IMPLEMENTATION_PLAN.md for the activation checklist.
+    await _provision_app_role(conn)
+
     logger.info("Database migrations complete.")
+
+
+async def _provision_app_role(conn) -> None:
+    """Create the non-superuser app role (idempotent) and grant table/sequence DML.
+
+    Role name + password come from settings.APP_DB_ROLE / APP_DB_PASSWORD. This is
+    additive and safe to run on every startup; it does NOT change which role the app
+    connects as. Skipped automatically if the current role lacks privileges to
+    CREATE ROLE (e.g. the test container already runs as superuser, where it works).
+    """
+    from backend.config import settings
+
+    role = getattr(settings, "APP_DB_ROLE", "talentlab_app")
+    password = getattr(settings, "APP_DB_PASSWORD", "talentlab_app")
+    # Basic identifier safety — role name is config-controlled, but be defensive.
+    if not role.replace("_", "").isalnum():
+        logger.warning("APP_DB_ROLE %r is not a safe identifier; skipping role provisioning.", role)
+        return
+    try:
+        await conn.execute(f"""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{role}') THEN
+                CREATE ROLE {role} LOGIN PASSWORD '{password}';
+            END IF;
+        END $$;
+        """)
+        await conn.execute(f"GRANT USAGE ON SCHEMA public TO {role};")
+        await conn.execute(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {role};")
+        await conn.execute(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {role};")
+        # Future tables/sequences created by the owner auto-grant to the app role.
+        await conn.execute(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {role};")
+        await conn.execute(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {role};")
+        logger.info("  App role '%s' provisioned (RLS-enforced; activate via DATABASE_URL).", role)
+    except Exception as e:
+        logger.warning("  Skipped app-role provisioning (%s). RLS will not enforce until provisioned.", e)

@@ -1,4 +1,25 @@
-# P0-2 — Real RLS Implementation Plan (execute next session)
+# P0-2 — Real RLS (BUILT + PROVEN 2026-06-11; activation pending)
+
+> **STATUS: code complete, tests green, NOT yet activated.** Implemented: NULLIF-robust
+> `tenant_isolation` policies on all 18 org tables + join-based policies for `jd_variants` and
+> `interview_panel` (which were RLS-enabled-but-policyless = default-deny); a non-superuser
+> `talentlab_app` role provisioned by migrations with table/sequence grants; contextvar + `set_config`
+> plumbing in `db/connection.py` (`get_connection`/`get_transaction`), set per-request by the tenant
+> middleware and reset on release. Proof: `backend/tests/test_rls_isolation.py` (3 tests) connects AS
+> `talentlab_app` and verifies cross-org rows are hidden. **The running app still uses the superuser
+> DSN, so policies are an inert no-op until you cut over — zero risk to current behavior.**
+>
+> **TO ACTIVATE (do when you can watch it):** (1) build a small **dual-pool**: keep a superuser/bypass
+> connection for migrations + `platform_admin`/`dev_admin` cross-org reads + Celery tasks that set their
+> own org context, and route normal request traffic through a `talentlab_app` pool; (2) set Celery tasks
+> to call `set_org_context(org_id)` at entry (they already know their org); (3) flip `DATABASE_URL` (or a
+> new `APP_DATABASE_URL`) to `talentlab_app`; (4) smoke every surface — login, dashboard, a sourcing run,
+> platform admin, candidate apply. If any returns empty where it shouldn't, that caller is missing org
+> context. Rollback = point `DATABASE_URL` back at the owner role.
+
+---
+## (original plan retained below for the activation work)
+# P0-2 — Real RLS Implementation Plan
 
 > Closes the inert-RLS hole in [PRODUCT_STATUS.md](PRODUCT_STATUS.md). The 18 policies exist but
 > `SET LOCAL app.current_org_id` is never run, so they evaluate against NULL and do nothing.

@@ -42,7 +42,8 @@ async def get_db() -> AsyncGenerator[asyncpg.Connection, None]:
 async def get_current_user(request: Request) -> dict:
     """
     Decode JWT from Authorization header, return user dict.
-    Sets SET LOCAL app.current_org_id for RLS enforcement.
+    RLS org context (app.current_org_id) is applied by the tenant middleware +
+    get_connection(), not here — see backend/middleware/tenant_context.py.
     """
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):

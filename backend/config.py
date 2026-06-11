@@ -20,6 +20,12 @@ class Settings(BaseSettings):
 
     # ── Database ───────────────────────────────────────────────────────────
     DATABASE_URL: str = "postgresql://talentlab:talentlab@localhost:5432/talentlab_dev"
+    # Non-superuser role provisioned by migrations so RLS actually enforces.
+    # To ACTIVATE tenant isolation at the DB layer, point DATABASE_URL at this role
+    # (see docs/RLS_IMPLEMENTATION_PLAN.md). Default connection uses the owner role
+    # above, for which RLS is bypassed (so policies are inert until cutover).
+    APP_DB_ROLE: str = "talentlab_app"
+    APP_DB_PASSWORD: str = "talentlab_app"
 
     # ── Redis ──────────────────────────────────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379/0"
