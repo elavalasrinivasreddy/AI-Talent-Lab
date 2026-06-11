@@ -45,9 +45,9 @@ def run_candidate_search(self, position_id: int, org_id: int, department_id: int
     5. Create pipeline events
     6. Notify recruiter
     """
-    import asyncio
+    from backend.utils.async_runner import run_async
     try:
-        asyncio.run(_run_pipeline(position_id, org_id, department_id, triggered_by))
+        run_async(_run_pipeline(position_id, org_id, department_id, triggered_by))
     except Exception as exc:
         logger.error(f"Candidate pipeline failed for position {position_id}: {exc}", exc_info=True)
         raise self.retry(exc=exc)
@@ -369,7 +369,7 @@ def source_candidates_for_position(position_id: int, org_id: int):
     Alias called by scheduled_search — looks up department_id and
     delegates to the main run_candidate_search task.
     """
-    import asyncio
+    from backend.utils.async_runner import run_async
 
     async def _get_dept():
         async with get_connection() as conn:
@@ -379,7 +379,7 @@ def source_candidates_for_position(position_id: int, org_id: int):
             )
         return row
 
-    row = asyncio.run(_get_dept())
+    row = run_async(_get_dept())
 
     if not row:
         logger.warning(f"Position {position_id} not found for scheduled search")
@@ -401,9 +401,9 @@ def score_candidate_application(self, candidate_id: int, application_id: int, po
     """
     ATS Score an organic application after the candidate completes the apply chat.
     """
-    import asyncio
+    from backend.utils.async_runner import run_async
     try:
-        asyncio.run(_score_application(candidate_id, application_id, position_id, org_id))
+        run_async(_score_application(candidate_id, application_id, position_id, org_id))
     except Exception as exc:
         logger.error(f"Organic ATS scoring failed for {application_id}: {exc}", exc_info=True)
         raise self.retry(exc=exc)
@@ -491,8 +491,8 @@ async def _score_application(candidate_id: int, application_id: int, position_id
 
 @celery_app.task(name="tasks.trigger_pre_evaluation")
 def trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: int, org_id: int):
-    import asyncio
-    asyncio.run(_trigger_pre_evaluation(application_id, candidate_id, position_id, org_id))
+    from backend.utils.async_runner import run_async
+    run_async(_trigger_pre_evaluation(application_id, candidate_id, position_id, org_id))
 
 async def _trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: int, org_id: int):
     import secrets

@@ -3641,3 +3641,25 @@ The "Score Breakdown" visualizer on the Candidate Detail Page was a single horiz
 **Files Modified:**
 - `frontend/src/components/Candidates/ScoreBreakdownBand.jsx`
 - `frontend/src/components/Candidates/CandidateDetailPage.css`
+
+---
+
+## 210. Celery RuntimeError: Event loop is closed
+
+**Problem Statement:**
+When Celery workers executed background tasks (like candidate sourcing or GDPR cleanup) that accessed the database via `asyncpg`, they crashed with `RuntimeError: Event loop is closed`. This occurred because the tasks were using `asyncio.run(coroutine())`. `asyncio.run` creates a new event loop and closes it when finished. Since `asyncpg` connection pools are tied to the event loop they were created in, closing the loop caused subsequent database queries in the same worker process to fail.
+
+**Idea / Solution:**
+Created a `run_async` helper in `backend/utils/async_runner.py` that maintains a single, persistent event loop per Celery worker process using `asyncio.new_event_loop()`. Updated all background tasks in `backend/tasks/` to use `run_async` instead of `asyncio.run`. This ensures the event loop remains active for the lifespan of the worker, preserving the connection pool integrity. Also fixed minor syntax errors in `gdpr_cleanup.py` and `auth_cleanup.py`.
+
+**Files Modified:**
+- `backend/utils/async_runner.py` (created)
+- `backend/tasks/pre_eval_grade.py`
+- `backend/tasks/scheduled_search.py`
+- `backend/tasks/hire_request_locks.py`
+- `backend/tasks/gdpr_cleanup.py`
+- `backend/tasks/candidate_pipeline.py`
+- `backend/tasks/auth_cleanup.py`
+- `backend/tasks/rejection_task.py`
+- `backend/tasks/copilot_analysis.py`
+- `backend/tasks/email_outreach.py`

@@ -20,11 +20,13 @@ def _run_async(coro):
         loop = asyncio.get_event_loop()
         if loop.is_running():
             import concurrent.futures
+            from backend.utils.async_runner import run_async
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(asyncio.run, coro).result()
+                return pool.submit(run_async, coro).result()
         return loop.run_until_complete(coro)
     except RuntimeError:
-        return asyncio.run(coro)
+        from backend.utils.async_runner import run_async
+        return run_async(coro)
 
 
 @celery_app.task(name="backend.tasks.hire_request_locks.release_stale_review_locks")

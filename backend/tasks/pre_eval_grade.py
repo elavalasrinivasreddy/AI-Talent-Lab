@@ -207,4 +207,4 @@ async def _detect_collusion(conn, rows: list):
 @celery_app.task(name="tasks.pre_eval_grade")
 def pre_eval_grade():
     """Nightly batch task to grade submitted pre-evaluations."""
-    asyncio.run(_batch_grade_pre_evaluations())
+    run_async(_batch_grade_pre_evaluations())
