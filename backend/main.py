@@ -50,6 +50,23 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# ── Error monitoring (Sentry) ───────────────────────────────────────────────────
+# No-op unless SENTRY_DSN is set, so dev/local stays untouched. Captures unhandled
+# exceptions across API + Celery so silent task failures surface on a dashboard.
+if settings.SENTRY_DSN:
+    try:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.ENVIRONMENT,
+            traces_sample_rate=0.1,
+            send_default_pii=False,
+        )
+        logger.info("Sentry error monitoring enabled (env=%s).", settings.ENVIRONMENT)
+    except Exception as e:
+        logger.warning("Sentry init skipped: %s", e)
+
+
 # ── Lifespan ───────────────────────────────────────────────────────────────────
 
 @asynccontextmanager

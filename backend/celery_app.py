@@ -6,6 +6,20 @@ See docs/architecture/03_backend.md §16.
 from celery import Celery
 from backend.config import settings
 
+# Error monitoring for the worker process (separate from the API). No-op unless
+# SENTRY_DSN is set; Sentry auto-instruments Celery once initialized in-process.
+if settings.SENTRY_DSN:
+    try:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.ENVIRONMENT,
+            traces_sample_rate=0.1,
+            send_default_pii=False,
+        )
+    except Exception:
+        pass
+
 celery_app = Celery(
     "talentlab",
     broker=settings.celery_broker,

@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     MAGIC_LINK_BASE_URL: str = "http://localhost:5173"
     DEBUG: bool = False
     DEV_MODE: bool = False  # Fail-safe: /dev/* endpoints OFF unless DEV_MODE=true is explicitly set in .env
+    ENVIRONMENT: str = "development"  # development | staging | production (Sentry env tag)
+    SENTRY_DSN: str = ""  # Set in prod to enable backend error monitoring; empty = disabled
 
     # ── Database ───────────────────────────────────────────────────────────
     DATABASE_URL: str = "postgresql://talentlab:talentlab@localhost:5432/talentlab_dev"
