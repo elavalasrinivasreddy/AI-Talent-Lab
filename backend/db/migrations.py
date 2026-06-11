@@ -394,6 +394,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     title            TEXT NOT NULL,
     message          TEXT NOT NULL,
     action_url       TEXT,
+    meta             JSONB,
     is_read          BOOLEAN DEFAULT FALSE,
     created_at       TIMESTAMP DEFAULT NOW()
 );
@@ -807,6 +808,12 @@ async def run_migrations(conn) -> None:
     SET status_token = gen_random_uuid()::text
     WHERE status_token IS NULL;
 
+    -- ensure EVERY new application gets a status_token automatically (the backfill
+    -- above only covers rows existing at migration time; without a column default,
+    -- new inserts via careers/apply/repos were NULL → status portal 404).
+    ALTER TABLE candidate_applications
+        ALTER COLUMN status_token SET DEFAULT gen_random_uuid()::text;
+
     -- organizations: career page branding
     DO $$
     BEGIN
@@ -1199,6 +1206,11 @@ async def run_migrations(conn) -> None:
     END $$;
     """)
     logger.info("  candidates.skill_tags column ensured.")
+
+    # Ensure notifications.meta exists on already-provisioned DBs (holds e.g. the
+    # rejection-email draft payload for recruiter review). Idempotent.
+    await conn.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS meta JSONB;")
+    logger.info("  notifications.meta column ensured.")
 
     # Enable RLS
     logger.info("  Enabling Row-Level Security...")

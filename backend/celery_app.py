@@ -19,6 +19,7 @@ celery_app = Celery(
         "backend.tasks.copilot_analysis",
         "backend.tasks.auth_cleanup",
         "backend.tasks.hire_request_locks",
+        "backend.tasks.rejection_task",
     ],
 )
 

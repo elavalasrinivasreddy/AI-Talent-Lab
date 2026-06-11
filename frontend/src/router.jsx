@@ -37,6 +37,7 @@ const CandidateStatusPage  = lazy(() => import('./components/Status/CandidateSta
 const SetPassword = lazy(() => import('./pages/CandidatePortal/SetPassword'))
 const CandidateLogin = lazy(() => import('./pages/CandidatePortal/CandidateLogin'))
 const CandidateDashboard = lazy(() => import('./pages/CandidatePortal/CandidateDashboard'))
+const PreEvaluationPage = lazy(() => import('./pages/CandidatePortal/PreEvaluationPage'))
 const PositionsListPage    = lazy(() => import('./components/Positions/PositionsListPage'))
 
 // ── Shared fallback ──────────────────────────────────────────────────────────
@@ -233,6 +234,7 @@ export const router = createBrowserRouter([
   { path: '/delete-my-data', element: <Suspense fallback={PageLoading}><DeleteMyDataPage /></Suspense> },
   { path: '/privacy', element: <Suspense fallback={PageLoading}><DeleteMyDataPage /></Suspense> },
   { path: '/status/:token', element: <Suspense fallback={PageLoading}><CandidateStatusPage /></Suspense> },
+  { path: '/pre-evaluations/:token', element: <Suspense fallback={PageLoading}><PreEvaluationPage /></Suspense> },
   { path: '/candidate/setup-password', element: <Suspense fallback={PageLoading}><SetPassword /></Suspense> },
   { path: '/candidate/login', element: <Suspense fallback={PageLoading}><CandidateLogin /></Suspense> },
   { path: '/candidate/dashboard', element: <Suspense fallback={PageLoading}><CandidateDashboard /></Suspense> },

@@ -15,12 +15,12 @@ class NotificationRepository:
     async def create(conn: asyncpg.Connection, data: dict) -> dict:
         row = await conn.fetchrow(
             """
-            INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
-            VALUES ($1,$2,$3,$4,$5,$6)
+            INSERT INTO notifications (org_id, user_id, type, title, message, action_url, meta)
+            VALUES ($1,$2,$3,$4,$5,$6,$7)
             RETURNING *
             """,
             data["org_id"], data.get("user_id"), data["type"],
-            data["title"], data["message"], data.get("action_url"),
+            data["title"], data["message"], data.get("action_url"), data.get("meta"),
         )
         return dict(row)
 
