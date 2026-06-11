@@ -26,6 +26,14 @@ export default function ScoreBreakdownBand({ scoreData, finalScore }) {
     <div className="cd-score-breakdown">
       <div className="cd-sb-header">
         <div className="cd-sb-title">Score Breakdown</div>
+        <div className="cd-sb-formula" title="Final ATS Score = Base - Gap Penalty" style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: '4px'}}>
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          Formula: (Emb × {WEIGHTS.emb}) + (Skills × {WEIGHTS.skills}) + (Exp × {WEIGHTS.exp}) - Gap = {Math.round(finalScore)}%
+        </div>
       </div>
 
       <div className="cd-sb-grid">
@@ -92,7 +100,7 @@ export default function ScoreBreakdownBand({ scoreData, finalScore }) {
                 <div className="cd-sb-penalty-tag">−{penalty} gap penalty</div>
               )}
             </div>
-            <div className="cd-sb-card-points">{finalScore}%</div>
+            <div className="cd-sb-card-points">{Math.round(finalScore)}%</div>
           </div>
           <div className="cd-sb-raw-score" style={{ marginTop: 'auto' }}>
             <span>Final Result</span>
