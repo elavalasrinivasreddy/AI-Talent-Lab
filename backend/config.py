@@ -21,12 +21,12 @@ class Settings(BaseSettings):
     SENTRY_DSN: str = ""  # Set in prod to enable backend error monitoring; empty = disabled
 
     # ── Database ───────────────────────────────────────────────────────────
-    DATABASE_URL: str = "postgresql://talentlab:talentlab@localhost:5432/talentlab_dev"
+    DATABASE_URL: str
     # Non-superuser role provisioned by migrations for RLS enforcement.
     # Set APP_DATABASE_URL to a talentlab_app DSN to activate RLS on request traffic.
     # When unset, both pools use DATABASE_URL (superuser — policies are inert).
     APP_DB_ROLE: str = "talentlab_app"
-    APP_DB_PASSWORD: str = "talentlab_app"
+    APP_DB_PASSWORD: str
     APP_DATABASE_URL: Optional[str] = None  # e.g. postgresql://talentlab_app:pw@localhost:5432/talentlab_dev
 
     # ── Redis ──────────────────────────────────────────────────────────────

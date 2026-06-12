@@ -1287,8 +1287,8 @@ async def _provision_app_role(conn) -> None:
     """
     from backend.config import settings
 
-    role = getattr(settings, "APP_DB_ROLE", "talentlab_app")
-    password = getattr(settings, "APP_DB_PASSWORD", "talentlab_app")
+    role = settings.APP_DB_ROLE
+    password = settings.APP_DB_PASSWORD
     # Basic identifier safety — role name is config-controlled, but be defensive.
     if not role.replace("_", "").isalnum():
         logger.warning("APP_DB_ROLE %r is not a safe identifier; skipping role provisioning.", role)
