@@ -22,7 +22,7 @@ class NotificationRepository:
             data["org_id"], data.get("user_id"), data["type"],
             data["title"], data["message"], data.get("action_url"), data.get("meta"),
         )
-        return dict(row)
+        return dict(row) if row else {}
 
     @staticmethod
     async def list_for_user(
