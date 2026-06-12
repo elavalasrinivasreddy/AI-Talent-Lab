@@ -14,6 +14,7 @@ import pytest
 
 from backend.services import chat_service as _chat_service_module
 from backend.services import position_service as _pos_service_module
+from backend.services.positions import approvals as _pos_approvals_module
 from backend.services.chat_service import ChatService
 from backend.services.position_service import PositionService
 from backend.services.email_service import EmailService
@@ -263,7 +264,7 @@ async def test_approval_decision_approved_fires_sourcing(monkeypatch):
 
     # Patch get_connection in position_service
     monkeypatch.setattr(
-        _pos_service_module, "get_connection",
+        _pos_approvals_module, "get_connection",
         lambda: _FakeConnCtx(fake_conn),
     )
 
@@ -357,7 +358,7 @@ async def test_approval_decision_changes_requested_no_sourcing(monkeypatch):
     fake_conn = _FakeConn(fetchrow_map=fetchrow_map)
 
     monkeypatch.setattr(
-        _pos_service_module, "get_connection",
+        _pos_approvals_module, "get_connection",
         lambda: _FakeConnCtx(fake_conn),
     )
 
@@ -427,7 +428,7 @@ class _ReviewerFakeConn:
         if "settings from organizations" in q and "ai_behavior_settings" not in q:
             raise Exception('column "settings" does not exist')
         if "from users where id" in q:
-            return {"id": 36, "role": "hr", "name": "HR Person", "department_id": 3}
+            return {"id": 36, "role": "hr", "name": "HR Person", "department_id": 3, "is_active": True}
         if "ai_behavior_settings" in q:
             # JSONB returned as a str (asyncpg default) — get_ai_behavior decodes it.
             return {"ai_behavior_settings": "{}"}
@@ -454,7 +455,7 @@ async def test_resolve_reviewer_uses_ai_behavior_settings_column(monkeypatch):
     """
     fake_conn = _ReviewerFakeConn()
     monkeypatch.setattr(
-        _pos_service_module, "get_connection",
+        _pos_approvals_module, "get_connection",
         lambda: _FakeConnCtx(fake_conn),
     )
 

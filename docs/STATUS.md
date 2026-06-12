@@ -90,8 +90,8 @@ What's still open (Deferred Items):
 
 | Sev | Item | Notes |
 |---|---|---|
-| 🔴 | Three-Layer Architecture Violation (`CRITICAL-03`) | ⏳ **PARTIAL**: Extracted SQL from `apply`, `candidates`, and `talent_pool`. 60+ raw queries still remain in large services (`position_service`, `hire_request_service`). |
-| 🟠 | God Objects (`HIGH-04`) | Large services (>500 lines) need splitting. Tied to architectural cleanup. Deferred to post-MVP production. |
+| 🔴 | Three-Layer Architecture Violation (`CRITICAL-03`) | ✅ **DONE**: Extracted SQL from all routers and major services into repositories. |
+| 🟠 | God Objects (`HIGH-04`) | ✅ **DONE**: Split large monolithic services (`hire_request_service`, `position_service`) into modular components. |
 | 🟠 | Stub Repositories (`HIGH-05`) | ✅ **DONE**: Populated `applications.py`, `scorecards.py`, and `talent_pool.py`. |
 | 🟢 | Deployment Configurations (`LOW-01`, `LOW-02`) | X-Forwarded-For spoofing and Encryption Key config deferred to production environment setup. |
 

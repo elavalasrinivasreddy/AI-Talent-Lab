@@ -572,3 +572,127 @@ class PositionRepository:
             org_id, role_name,
         )
         return count or 1
+
+    @staticmethod
+    async def get_for_update(
+        conn: asyncpg.Connection, position_id: int, org_id: int
+    ) -> Optional[dict]:
+        """Lock position row for atomic status transitions."""
+        row = await conn.fetchrow(
+            """
+            SELECT * FROM positions
+            WHERE id = $1 AND org_id = $2
+            FOR UPDATE
+            """,
+            position_id, org_id,
+        )
+        return dict(row) if row else None
+
+    @staticmethod
+    async def inject_feedback(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+        notes: str,
+        revision_cycle: int,
+    ) -> None:
+        """Inject reviewer feedback into the latest chat session for JD revision."""
+        session_row = await conn.fetchrow(
+            """
+            SELECT id FROM chat_sessions
+            WHERE position_id = $1 AND org_id = $2
+            ORDER BY created_at DESC LIMIT 1
+            """,
+            position_id, org_id,
+        )
+        if session_row:
+            feedback_content = (
+                f"**Reviewer Feedback (Revision {revision_cycle}):**\n\n"
+                f"{notes or 'Changes requested — no specific notes provided.'}\n\n"
+                f"_Please revise the JD based on this feedback and resubmit._"
+            )
+            await conn.execute(
+                """
+                INSERT INTO chat_messages (
+                    session_id, role, content, message_type, revision_cycle
+                )
+                VALUES ($1, 'system', $2, 'feedback_injection', $3)
+                ON CONFLICT (session_id, message_type, revision_cycle)
+                    WHERE message_type = 'feedback_injection'
+                DO NOTHING
+                """,
+                session_row["id"], feedback_content, revision_cycle,
+            )
+
+    @staticmethod
+    async def get_team_lead_from_hire_request(
+        conn: asyncpg.Connection, position_id: int, org_id: int
+    ) -> Optional[dict]:
+        """Find the team lead (requested_by) from the active hire request."""
+        row = await conn.fetchrow(
+            """
+            SELECT u.id, u.name
+            FROM hire_requests h
+            JOIN users u ON u.id = h.requested_by
+            WHERE h.position_id = $1 AND h.org_id = $2
+              AND h.status IN ('approved', 'approved_modified', 'fulfilled')
+              AND u.is_active = TRUE
+            ORDER BY h.id DESC LIMIT 1
+            """,
+            position_id, org_id,
+        )
+        return dict(row) if row else None
+
+    @staticmethod
+    async def auto_pool_candidates(
+        conn: asyncpg.Connection, position_id: int, org_id: int
+    ) -> None:
+        """When position closes/archives, add non-selected candidates to talent pool."""
+        apps = await conn.fetch(
+            """
+            SELECT candidate_id FROM candidate_applications
+            WHERE position_id=$1 AND org_id=$2
+              AND status NOT IN ('selected','rejected')
+            """,
+            position_id, org_id,
+        )
+        for app in apps:
+            await conn.execute(
+                """
+                UPDATE candidates
+                SET in_talent_pool=TRUE,
+                    talent_pool_reason='position_closed',
+                    talent_pool_added_at=NOW()
+                WHERE id=$1 AND org_id=$2
+                """,
+                app["candidate_id"], org_id,
+            )
+
+    @staticmethod
+    async def upsert_interview_kit(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+        questions: list,
+        scorecard_template: list,
+    ) -> None:
+        """Insert or update interview kit for a position."""
+        import json
+        existing = await PositionRepository.get_interview_kit(conn, position_id, org_id)
+        if existing:
+            await conn.execute(
+                """
+                UPDATE interview_kits
+                SET questions=$1, scorecard_template=$2, updated_at=NOW()
+                WHERE position_id=$3 AND org_id=$4
+                """,
+                json.dumps(questions), json.dumps(scorecard_template), position_id, org_id,
+            )
+        else:
+            await conn.execute(
+                """
+                INSERT INTO interview_kits (position_id, org_id, questions, scorecard_template)
+                VALUES ($1, $2, $3, $4)
+                """,
+                position_id, org_id, json.dumps(questions), json.dumps(scorecard_template),
+            )
