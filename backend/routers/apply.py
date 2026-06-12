@@ -64,11 +64,9 @@ async def record_apply_consent(token: str, body: ConsentRequest, request: Reques
 
     # Stamp consent timestamp on the application
     from backend.db.connection import get_connection
+    from backend.db.repositories.applications import ApplicationRepository
     async with get_connection() as conn:
-        await conn.execute(
-            "UPDATE candidate_applications SET consent_given_at = NOW() WHERE id = $1 AND org_id = $2",
-            application_id, org_id,
-        )
+        await ApplicationRepository.record_consent(conn, application_id, org_id)
 
     return {"ok": True, "consented": True}
 
@@ -205,11 +203,9 @@ async def upload_video_intro(token: str, file: UploadFile = File(...)):
     video_url = f"/uploads/videos/{app_id}/{safe_filename}"
 
     from backend.db.connection import get_connection
+    from backend.db.repositories.applications import ApplicationRepository
     async with get_connection() as conn:
-        await conn.execute(
-            "UPDATE candidate_applications SET video_intro_url=$1 WHERE id=$2",
-            video_url, app_id,
-        )
+        await ApplicationRepository.record_video_intro(conn, app_id, video_url)
 
     return {
         "ok": True,
@@ -252,24 +248,14 @@ async def get_application_status(token: str):
         )
 
     from backend.db.connection import get_connection
+    from backend.db.repositories.applications import ApplicationRepository
     import json as _json
 
     app_id = context.get("application_id")
     org_id = context.get("candidate", {}).get("id")
 
     async with get_connection() as conn:
-        app_row = await conn.fetchrow(
-            """
-            SELECT ca.status, ca.applied_at, ca.created_at,
-                   p.role_name, p.location, p.work_type,
-                   o.name AS org_name
-            FROM candidate_applications ca
-            JOIN positions p ON p.id = ca.position_id
-            JOIN organizations o ON o.id = p.org_id
-            WHERE ca.id=$1
-            """,
-            app_id,
-        )
+        app_row = await ApplicationRepository.get_application(conn, app_id)
         if not app_row:
             raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "Application not found"})
 

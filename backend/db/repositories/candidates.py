@@ -293,3 +293,15 @@ class CandidateRepository:
             application_ids, org_id
         )
         return [dict(r) for r in rows]
+
+    @staticmethod
+    async def update_contact_status(conn: asyncpg.Connection, org_id: int, candidate_id: int, contact_status: str) -> str:
+        result = await conn.execute(
+            """
+            UPDATE candidates
+            SET contact_status=$1, contact_status_updated_at=NOW()
+            WHERE id=$2 AND org_id=$3
+            """,
+            contact_status, candidate_id, org_id,
+        )
+        return result

@@ -10,6 +10,7 @@ from typing import Optional
 from backend.db.connection import get_connection
 from backend.services.resume_service import extract_resume_text as _extract_async
 from backend.adapters.llm.factory import get_llm
+from backend.db.repositories.talent_pool import TalentPoolRepository
 
 logger = logging.getLogger(__name__)
 
@@ -73,22 +74,8 @@ class TalentPoolService:
         where = " AND ".join(filters)
 
         async with get_connection() as conn:
-            total = await conn.fetchval(
-                f"SELECT COUNT(*) FROM candidates c WHERE {where}", *params
-            )
-            rows = await conn.fetch(
-                f"""
-                SELECT c.id, c.name, c.email, c.current_title, c.current_company,
-                       c.location, c.experience_years, c.source, c.skill_tags,
-                       c.talent_pool_reason, c.talent_pool_added_at,
-                       COALESCE(c.contact_status, 'active') AS contact_status
-                FROM candidates c
-                WHERE {where}
-                ORDER BY c.talent_pool_added_at DESC NULLS LAST, c.created_at DESC
-                LIMIT ${i} OFFSET ${i+1}
-                """,
-                *params, per_page, offset
-            )
+            total = await TalentPoolRepository.get_pool_count(conn, org_id, filters, params)
+            rows = await TalentPoolRepository.get_pool_rows(conn, org_id, filters, params, per_page, offset, i)
 
         candidates = []
         for r in rows:
@@ -147,10 +134,7 @@ class TalentPoolService:
                     # Dedup check (email or phone within org)
                     existing = None
                     if email:
-                        existing = await conn.fetchrow(
-                            "SELECT id, name, updated_at FROM candidates WHERE org_id=$1 AND email=$2",
-                            org_id, email
-                        )
+                        existing = await TalentPoolRepository.check_duplicate(conn, org_id, email)
 
                     if existing:
                         import datetime
@@ -169,27 +153,11 @@ class TalentPoolService:
                     embedding = await _get_embedding(resume_text[:2000])
 
                     # Insert new candidate
-                    row = await conn.fetchrow(
-                        """
-                        INSERT INTO candidates (
-                            org_id, name, email, phone, current_title, current_company,
-                            experience_years, location, source, resume_text, resume_parsed, resume_embedding,
-                            in_talent_pool, talent_pool_reason, talent_pool_added_at, created_by
-                        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'upload',$9,$10,$11,TRUE,'manual',NOW(),$12)
-                        RETURNING id, name, email
-                        """,
-                        org_id,
-                        name,
-                        email or None,
-                        parsed.get("phone"),
-                        parsed.get("current_title"),
-                        parsed.get("current_company"),
-                        parsed.get("experience_years"),
-                        parsed.get("location"),
-                        resume_text,
-                        json.dumps(resume_links),
-                        json.dumps(embedding),
-                        user_id,
+                    row = await TalentPoolRepository.insert_candidate(
+                        conn, org_id, name, email or None, parsed.get("phone"),
+                        parsed.get("current_title"), parsed.get("current_company"),
+                        parsed.get("experience_years"), parsed.get("location"),
+                        resume_text, json.dumps(resume_links), json.dumps(embedding), user_id
                     )
                     added.append({"candidate_id": row["id"], "name": row["name"], "file": filename})
 
@@ -310,24 +278,14 @@ class TalentPoolService:
     async def add_to_pool(org_id: int, candidate_id: int, reason: str = "manual") -> dict:
         """Manually add a candidate to the talent pool."""
         async with get_connection() as conn:
-            await conn.execute(
-                """
-                UPDATE candidates
-                SET in_talent_pool=TRUE, talent_pool_reason=$3, talent_pool_added_at=NOW()
-                WHERE id=$1 AND org_id=$2
-                """,
-                candidate_id, org_id, reason
-            )
+            await TalentPoolRepository.add_to_pool(conn, org_id, candidate_id, reason)
         return {"added": True, "candidate_id": candidate_id}
 
     @staticmethod
     async def remove_from_pool(org_id: int, candidate_id: int) -> dict:
         """Remove a candidate from the talent pool."""
         async with get_connection() as conn:
-            await conn.execute(
-                "UPDATE candidates SET in_talent_pool=FALSE WHERE id=$1 AND org_id=$2",
-                candidate_id, org_id
-            )
+            await TalentPoolRepository.remove_from_pool(conn, org_id, candidate_id)
         return {"removed": True}
 
 

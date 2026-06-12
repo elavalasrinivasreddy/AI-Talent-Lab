@@ -269,19 +269,19 @@ Fallback uses a plain text "Loading…" div.
 |---|---------|--------|--------|--------|
 | 5 | **Create shared Redis pool** for JWT denylist (HIGH-01) | ✅ **DONE** | 2 hrs | Prevents connection exhaustion |
 | 6 | **Add composite indexes** for dashboard queries (HIGH-07) | ✅ **DONE** | 1 hr | 3-5x dashboard query speedup |
-| 7 | **Consolidate dashboard queries** into single aggregate (HIGH-06) | ⏳ **DEFERRED** | 3 hrs | 7 round-trips → 1 |
+| 7 | **Consolidate dashboard queries** into single aggregate (HIGH-06) | ✅ **DONE** | 3 hrs | 7 round-trips → 1 |
 | 8 | **Add Error Boundary** to React app (MEDIUM-09) | ✅ **DONE** | 1 hr | Graceful error recovery |
-| 9 | **Replace spinners with skeletons** on public pages (HIGH-08) | ⏳ **DEFERRED** | 3 hrs | UX consistency |
+| 9 | **Replace spinners with skeletons** on public pages (HIGH-08) | ✅ **DONE** | 3 hrs | UX consistency |
 
 ### Medium-term (Technical Debt)
 
 | # | Finding | Status | Effort | Impact |
 |---|---------|--------|--------|--------|
-| 10 | **Extract SQL from routers** into services → repositories (CRITICAL-03) | ⏳ **DEFERRED** | 2-3 weeks | Testability, maintainability |
-| 11 | **Break up God services** into focused modules | ⏳ **DEFERRED** | 1 week | Cognitive load reduction |
-| 12 | **Implement stub repositories** (applications, scorecards, talent_pool) | ⏳ **DEFERRED** | 1 week | Architecture compliance |
+| 10 | **Extract SQL from routers** into services → repositories (CRITICAL-03) | ✅ **DONE** (Core) | 2-3 weeks | Testability, maintainability |
+| 11 | **Break up God services** into focused modules | ✅ **DONE** (Partial) | 1 week | Cognitive load reduction |
+| 12 | **Implement stub repositories** (applications, scorecards, talent_pool) | ✅ **DONE** | 1 week | Architecture compliance |
 | 13 | **Add rate limiting** to panel/apply public endpoints (MEDIUM-04) | ✅ **DONE** | 2 hrs | Brute-force prevention |
-| 14 | **Add pagination** to user list and funnel endpoints (MEDIUM-06) | ⏳ **DEFERRED** | 3 hrs | Scalability |
+| 14 | **Add pagination** to user list and funnel endpoints (MEDIUM-06) | ✅ **DONE** | 3 hrs | Scalability |
 
 ---
 

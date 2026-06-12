@@ -3873,3 +3873,37 @@ Replaced the `cp-spinner` loading state with properly sized skeleton placeholder
 
 **Files Modified:**
 - `frontend/src/components/Careers/CareerPage.jsx`
+
+---
+
+## 226. Extract SQL logic from Talent Pool Service (CRITICAL-03 / HIGH-05)
+
+**Problem Statement:**
+`talent_pool_service.py` contained raw inline SQL, violating the architecture requirement that business logic services must not contain raw SQL strings (CRITICAL-03). The `TalentPoolRepository` was missing/stubbed (HIGH-05).
+
+**Idea / Solution:**
+1. Created `TalentPoolRepository` and migrated all inline queries (`get_pool`, `bulk_upload` operations, `ai_suggest` operations) to strongly-typed methods within the repository.
+2. Refactored `talent_pool_service.py` to call these new static methods instead of `conn.execute` and `conn.fetch`.
+
+**Files Modified:**
+- `backend/db/repositories/talent_pool.py`
+- `backend/services/talent_pool_service.py`
+
+---
+
+## 227. Extract SQL from Apply and Candidate Routers (CRITICAL-03 / HIGH-05)
+
+**Problem Statement:**
+The `apply.py` and `candidates.py` routers executed raw SQL directly against the DB (e.g. `UPDATE candidate_applications SET consent_given_at = NOW()`), violating the three-layer architecture (Routers -> Services -> Repositories). Additionally, the `ApplicationRepository` and `ScorecardRepository` were missing/stubbed (HIGH-05).
+
+**Idea / Solution:**
+1. Populated `ScorecardRepository` and `ApplicationRepository`.
+2. Extracted inline SQL queries from `routers/apply.py` (consent stamping, video intro recording, application fetching) and `routers/candidates.py` (bulk reject, generating apply links, contact status unsubscription) into the newly populated repositories.
+3. Updated both routers to import and call the respective repository methods.
+
+**Files Modified:**
+- `backend/db/repositories/applications.py`
+- `backend/db/repositories/scorecards.py`
+- `backend/db/repositories/candidates.py`
+- `backend/routers/apply.py`
+- `backend/routers/candidates.py`

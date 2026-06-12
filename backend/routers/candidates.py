@@ -245,34 +245,12 @@ async def bulk_reject_candidates(
 
     from backend.db.connection import get_connection
     from backend.db.repositories.pipeline_events import PipelineEventRepository
+    from backend.db.repositories.applications import ApplicationRepository
     
     async with get_connection() as conn:
-        # Get all applications for this position in 'on_hold' status with score < threshold
-        rows = await conn.fetch(
-            """
-            SELECT id, candidate_id 
-            FROM candidate_applications 
-            WHERE position_id = $1 AND org_id = $2 
-            AND status = 'on_hold'
-            AND skill_match_score < $3
-            """,
-            position_id, current_user["org_id"], threshold_float
-        )
-        
+        app_ids, rows = await ApplicationRepository.bulk_reject(conn, current_user["org_id"], position_id, threshold_float)
         if not rows:
             return {"ok": True, "rejected_count": 0}
-            
-        app_ids = [row["id"] for row in rows]
-        
-        # Update status — re-assert org_id on the UPDATE for defense in depth.
-        await conn.execute(
-            """
-            UPDATE candidate_applications
-            SET status = 'rejected', rejection_reason = 'ats_score', updated_at = NOW()
-            WHERE id = ANY($1::int[]) AND org_id = $2
-            """,
-            app_ids, current_user["org_id"]
-        )
 
         # Create pipeline events
         for row in rows:
@@ -308,6 +286,7 @@ async def generate_apply_link(
 
     from backend.db.connection import get_connection
     from backend.db.repositories.candidates import CandidateRepository
+    from backend.db.repositories.applications import ApplicationRepository
     from backend.services.apply_service import generate_apply_token
     from backend.config import settings
 
@@ -323,10 +302,7 @@ async def generate_apply_link(
         token = generate_apply_token(app["id"], candidate_id, current_user["org_id"])
 
         # Store token on application
-        await conn.execute(
-            "UPDATE candidate_applications SET magic_link_token=$1, magic_link_sent_at=NOW() WHERE id=$2",
-            token, app["id"]
-        )
+        await ApplicationRepository.store_magic_link(conn, app["id"], token)
 
     apply_url = f"{settings.FRONTEND_URL}/apply/{token}"
     return {"token": token, "apply_url": apply_url, "expires_in_hours": 72}
@@ -352,15 +328,9 @@ async def update_contact_status(
         })
 
     from backend.db.connection import get_connection
+    from backend.db.repositories.candidates import CandidateRepository
     async with get_connection() as conn:
-        result = await conn.execute(
-            """
-            UPDATE candidates
-            SET contact_status=$1, contact_status_updated_at=NOW()
-            WHERE id=$2 AND org_id=$3
-            """,
-            body.contact_status, candidate_id, current_user["org_id"],
-        )
+        result = await CandidateRepository.update_contact_status(conn, current_user["org_id"], candidate_id, body.contact_status)
     if result == "UPDATE 0":
         raise HTTPException(status_code=404, detail={
             "error": {"code": "NOT_FOUND", "message": "Candidate not found", "details": None}
@@ -376,26 +346,14 @@ async def unsubscribe_via_email_link(status_token: str):
     Sets contact_status = 'unsubscribed' on the candidate.
     """
     from backend.db.connection import get_connection
+    from backend.db.repositories.applications import ApplicationRepository
+    from backend.db.repositories.candidates import CandidateRepository
     async with get_connection() as conn:
-        row = await conn.fetchrow(
-            """
-            SELECT ca.candidate_id, ca.org_id
-            FROM candidate_applications ca
-            WHERE ca.status_token = $1
-            """,
-            status_token,
-        )
+        row = await ApplicationRepository.get_application_by_status_token(conn, status_token)
         if not row:
             raise HTTPException(status_code=404, detail={
                 "error": {"code": "NOT_FOUND", "message": "Link not found", "details": None}
             })
-        await conn.execute(
-            """
-            UPDATE candidates
-            SET contact_status='unsubscribed', contact_status_updated_at=NOW()
-            WHERE id=$1 AND org_id=$2
-            """,
-            row["candidate_id"], row["org_id"],
-        )
+        await CandidateRepository.update_contact_status(conn, row["org_id"], row["candidate_id"], "unsubscribed")
     return {"ok": True, "message": "You have been unsubscribed from hiring emails. Your profile is kept on file."}
 
