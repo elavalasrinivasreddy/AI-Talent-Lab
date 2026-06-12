@@ -112,14 +112,19 @@ async def get_funnel(
 async def get_activity(
     position_id: Optional[int] = Query(None),
     limit: int = Query(30, le=100),
+    page: int = Query(1, ge=1),
     current_user=Depends(get_current_user),
 ):
     """Recent pipeline events (org-wide or position-scoped activity feed)."""
-    return await DashboardService.get_activity(
+    res = await DashboardService.get_activity(
         org_id=current_user["org_id"],
         position_id=position_id,
         limit=limit,
+        page=page,
     )
+    res["page"] = page
+    res["limit"] = limit
+    return res
 
 
 @router.get("/analytics")

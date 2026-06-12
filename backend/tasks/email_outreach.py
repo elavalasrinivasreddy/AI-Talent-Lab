@@ -10,7 +10,6 @@ Tasks:
   send_panel_invites      — Email panel feedback links to interviewers
   send_rejection_emails   — Send rejection notices
 """
-import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, timezone
@@ -24,17 +23,8 @@ logger = logging.getLogger(__name__)
 
 def _run_async(coro):
     """Run an async coroutine from a sync Celery task."""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            import concurrent.futures
-            from backend.utils.async_runner import run_async
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(run_async, coro).result()
-        return loop.run_until_complete(coro)
-    except RuntimeError:
-        from backend.utils.async_runner import run_async
-        return run_async(coro)
+    from backend.utils.async_runner import run_async
+    return run_async(coro)
 
 
 # ── Outreach batch ────────────────────────────────────────────────────────────

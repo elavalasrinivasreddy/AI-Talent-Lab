@@ -388,9 +388,13 @@ class AuthService:
         conn: asyncpg.Connection,
         org_id: int,
         department_id: Optional[int] = None,
+        page: int = 1,
+        limit: int = 50,
     ) -> list:
         """List users in an org; scoped to a department when dept_admin calls."""
-        return await UserRepository.list_by_org(conn, org_id, department_id=department_id)
+        return await UserRepository.list_by_org(
+            conn, org_id, department_id=department_id, page=page, limit=limit
+        )
 
     @staticmethod
     async def add_user(

@@ -603,9 +603,21 @@ function ConsentScreen({ context, onConsent }) {
 
 function LoadingState() {
   return (
-    <div className="apply-state-page">
-      <div className="apply-spinner" />
-      <p>Verifying your application link…</p>
+    <div className="apply-page">
+      <header className="apply-header">
+        <div className="skeleton-line w-32 h-6"></div>
+      </header>
+      <div className="apply-progress-wrapper p-4">
+        <div className="skeleton-line w-full h-8"></div>
+      </div>
+      <div className="apply-position-strip p-4">
+        <div className="skeleton-line w-48 h-6"></div>
+      </div>
+      <div className="apply-messages p-4" style={{ padding: '20px' }}>
+        <div className="skeleton-line w-3/4 h-24 rounded mb-4"></div>
+        <div className="skeleton-line w-1/2 h-16 rounded ml-auto mb-4"></div>
+        <div className="skeleton-line w-2/3 h-20 rounded"></div>
+      </div>
     </div>
   )
 }

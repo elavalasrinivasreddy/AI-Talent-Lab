@@ -13,7 +13,22 @@ export default function Careers() {
     setLoading(false)
   }, [orgId])
 
-  if (loading) return <div className="p-xl text-center">Loading...</div>
+  if (loading) return (
+    <div className="bg-subtle min-h-screen">
+      <header className="bg-white border-b py-xl text-center">
+        <div className="skeleton-line w-64 mx-auto h-8 mb-4"></div>
+        <div className="skeleton-line w-48 mx-auto h-4"></div>
+      </header>
+      <main className="max-w-container mx-auto p-xl">
+        <div className="skeleton-line w-48 h-6 mb-lg"></div>
+        <div className="grid gap-md">
+          <Card className="p-xl"><div className="skeleton-line w-full h-16"></div></Card>
+          <Card className="p-xl"><div className="skeleton-line w-full h-16"></div></Card>
+          <Card className="p-xl"><div className="skeleton-line w-full h-16"></div></Card>
+        </div>
+      </main>
+    </div>
+  )
 
   return (
     <div className="bg-subtle min-h-screen">

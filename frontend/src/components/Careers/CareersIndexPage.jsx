@@ -59,8 +59,13 @@ export default function CareersIndexPage() {
         </div>
 
         {loading ? (
-          <div style={{ padding: '100px 0', display: 'flex', justifyContent: 'center' }}>
-            <div className="cp-spinner" style={{ borderColor: 'rgba(255,255,255,0.1)', borderTopColor: '#38bdf8' }} />
+          <div className="ci-grid">
+            <div className="skeleton-line h-48 rounded" style={{ background: 'rgba(255,255,255,0.05)' }}></div>
+            <div className="skeleton-line h-48 rounded" style={{ background: 'rgba(255,255,255,0.05)' }}></div>
+            <div className="skeleton-line h-48 rounded" style={{ background: 'rgba(255,255,255,0.05)' }}></div>
+            <div className="skeleton-line h-48 rounded" style={{ background: 'rgba(255,255,255,0.05)' }}></div>
+            <div className="skeleton-line h-48 rounded" style={{ background: 'rgba(255,255,255,0.05)' }}></div>
+            <div className="skeleton-line h-48 rounded" style={{ background: 'rgba(255,255,255,0.05)' }}></div>
           </div>
         ) : (
           <div className="ci-grid">

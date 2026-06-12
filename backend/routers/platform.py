@@ -44,10 +44,13 @@ async def get_platform_stats(
 
 @router.get("/orgs")
 async def list_platform_orgs(
+    page: int = 1,
+    limit: int = 50,
     _=Depends(require_platform_admin),
     db: asyncpg.Connection = Depends(get_admin_db),
 ):
     """List all organisations with their usage metrics."""
+    offset = (page - 1) * limit
     rows = await db.fetch(
         """
         SELECT
@@ -64,9 +67,11 @@ async def list_platform_orgs(
         LEFT JOIN candidate_applications ca ON ca.org_id = o.id
         GROUP BY o.id, o.name, o.slug, o.segment, o.size, o.created_at
         ORDER BY o.created_at DESC
-        """
+        LIMIT $1 OFFSET $2
+        """,
+        limit, offset
     )
-    return {"orgs": [dict(r) for r in rows]}
+    return {"orgs": [dict(r) for r in rows], "page": page, "limit": limit}
 
 
 @router.get("/orgs/{org_id}")
@@ -102,10 +107,13 @@ async def get_org_detail(
 
 @router.get("/activity")
 async def get_platform_activity(
+    page: int = 1,
+    limit: int = 50,
     _=Depends(require_platform_admin),
     db: asyncpg.Connection = Depends(get_admin_db),
 ):
-    """Recent activity stream across all orgs (last 50 events)."""
+    """Recent activity stream across all orgs."""
+    offset = (page - 1) * limit
     rows = await db.fetch(
         """
         SELECT pe.event_type, pe.created_at,
@@ -117,7 +125,8 @@ async def get_platform_activity(
         LEFT JOIN positions pos ON pos.id = pe.position_id
         LEFT JOIN candidates c ON c.id = pe.candidate_id
         ORDER BY pe.created_at DESC
-        LIMIT 50
-        """
+        LIMIT $1 OFFSET $2
+        """,
+        limit, offset
     )
-    return {"activity": [dict(r) for r in rows]}
+    return {"activity": [dict(r) for r in rows], "page": page, "limit": limit}

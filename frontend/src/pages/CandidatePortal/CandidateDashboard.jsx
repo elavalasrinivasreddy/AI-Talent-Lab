@@ -53,7 +53,22 @@ export default function CandidateDashboard() {
   }
 
   if (loading) {
-    return <div className="p-lg max-w-container mx-auto">Loading your dashboard...</div>
+    return (
+      <div className="p-lg max-w-container mx-auto">
+        <div className="flex justify-between items-center mb-lg">
+          <div className="skeleton-line w-64 h-8"></div>
+          <div className="skeleton-line w-24 h-10 rounded"></div>
+        </div>
+        <div className="grid gap-lg">
+          <div className="settings-card" style={{ padding: 16 }}><div className="skeleton-line w-full h-24"></div></div>
+          <div className="grid gap-md">
+            <div className="skeleton-line w-48 h-6 mb-2"></div>
+            <div className="settings-card" style={{ padding: 16 }}><div className="skeleton-line w-full h-20"></div></div>
+            <div className="settings-card" style={{ padding: 16 }}><div className="skeleton-line w-full h-20"></div></div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const { applications, interviews } = data || { applications: [], interviews: [] }

@@ -5,16 +5,16 @@ from typing import Optional, List, Dict
 class ApplicationRepository:
     
     @staticmethod
-    async def get_application(conn: asyncpg.Connection, application_id: int) -> Optional[asyncpg.Record]:
+    async def get_application(conn: asyncpg.Connection, application_id: int, org_id: int) -> Optional[asyncpg.Record]:
         return await conn.fetchrow(
             """
             SELECT ca.*, p.role_name, p.location, p.work_type, o.name AS org_name
             FROM candidate_applications ca
             JOIN positions p ON p.id = ca.position_id
             JOIN organizations o ON o.id = p.org_id
-            WHERE ca.id=$1
+            WHERE ca.id=$1 AND ca.org_id=$2
             """,
-            application_id
+            application_id, org_id
         )
 
     @staticmethod
@@ -25,10 +25,10 @@ class ApplicationRepository:
         )
 
     @staticmethod
-    async def record_video_intro(conn: asyncpg.Connection, application_id: int, video_url: str):
+    async def record_video_intro(conn: asyncpg.Connection, application_id: int, org_id: int, video_url: str):
         await conn.execute(
-            "UPDATE candidate_applications SET video_intro_url=$1 WHERE id=$2",
-            video_url, application_id
+            "UPDATE candidate_applications SET video_intro_url=$1 WHERE id=$2 AND org_id=$3",
+            video_url, application_id, org_id
         )
 
     @staticmethod
@@ -48,7 +48,7 @@ class ApplicationRepository:
         )
 
     @staticmethod
-    async def bulk_reject(conn: asyncpg.Connection, org_id: int, position_id: int, threshold_float: float) -> list[int]:
+    async def bulk_reject(conn: asyncpg.Connection, org_id: int, position_id: int, threshold_float: float) -> tuple[list[int], list]:
         # Get all applications for this position in 'on_hold' status with score < threshold
         rows = await conn.fetch(
             """

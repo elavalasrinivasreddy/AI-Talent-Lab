@@ -121,7 +121,8 @@ async def send_message(token: str, body: SendMessageRequest, request: Request):
 # ── Upload resume ─────────────────────────────────────────────────────────────
 
 @router.post("/{token}/upload-resume")
-async def upload_resume(token: str, file: UploadFile = File(...)):
+@limiter.limit("10/minute")
+async def upload_resume(token: str, request: Request, file: UploadFile = File(...)):
     """
     Handle resume upload. Extracts text, stores in DB, discards file bytes.
     Per project rule: Never persist resume files to disk.
@@ -159,7 +160,8 @@ async def upload_resume(token: str, file: UploadFile = File(...)):
 # ── Upload video introduction (optional) ─────────────────────────────────────
 
 @router.post("/{token}/upload-video")
-async def upload_video_intro(token: str, file: UploadFile = File(...)):
+@limiter.limit("5/minute")
+async def upload_video_intro(token: str, request: Request, file: UploadFile = File(...)):
     """
     Accept an optional 60-second video intro from the candidate.
     Stores metadata only (no disk persistence) — URL stored after upload to object storage.
@@ -188,15 +190,19 @@ async def upload_video_intro(token: str, file: UploadFile = File(...)):
 
     import os
     import time
+    from pathlib import Path
     app_id = context.get("application_id")
-    
+    org_id = context.get("org", {}).get("id")
+
+    # Strip directory components to prevent path traversal
+    safe_base = Path(filename).name.replace(" ", "_")
+    safe_filename = f"{int(time.time())}_{safe_base}"
+
     # Save locally to uploads/videos/
     upload_dir = os.path.join(os.getcwd(), "uploads", "videos", str(app_id))
     os.makedirs(upload_dir, exist_ok=True)
-    
-    safe_filename = f"{int(time.time())}_{filename.replace(' ', '_')}"
     file_path = os.path.join(upload_dir, safe_filename)
-    
+
     with open(file_path, "wb") as f:
         f.write(content)
 
@@ -205,7 +211,7 @@ async def upload_video_intro(token: str, file: UploadFile = File(...)):
     from backend.db.connection import get_connection
     from backend.db.repositories.applications import ApplicationRepository
     async with get_connection() as conn:
-        await ApplicationRepository.record_video_intro(conn, app_id, video_url)
+        await ApplicationRepository.record_video_intro(conn, app_id, org_id, video_url)
 
     return {
         "ok": True,
@@ -232,7 +238,8 @@ async def complete_application(token: str):
 # ── Application status (candidate portal) ────────────────────────────────────
 
 @router.get("/{token}/status")
-async def get_application_status(token: str):
+@limiter.limit("30/minute")
+async def get_application_status(token: str, request: Request):
     """
     Return candidate-safe application status.
     Used by the candidate status portal page.
@@ -252,10 +259,10 @@ async def get_application_status(token: str):
     import json as _json
 
     app_id = context.get("application_id")
-    org_id = context.get("candidate", {}).get("id")
+    org_id = context.get("org", {}).get("id")
 
     async with get_connection() as conn:
-        app_row = await ApplicationRepository.get_application(conn, app_id)
+        app_row = await ApplicationRepository.get_application(conn, app_id, org_id)
         if not app_row:
             raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "Application not found"})
 

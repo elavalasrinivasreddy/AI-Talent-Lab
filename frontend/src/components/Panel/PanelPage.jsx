@@ -518,9 +518,18 @@ function PanelHeader({ org }) {
 
 function PanelStateLoading() {
   return (
-    <div className="panel-state-page">
-      <div className="apply-spinner" />
-      <p>Verifying your feedback link…</p>
+    <div className="panel-page">
+      <header className="panel-header">
+        <div className="skeleton-line w-32 h-6"></div>
+      </header>
+      <div className="panel-body">
+        <div className="skeleton-line w-48 h-8 mb-xl"></div>
+        <div className="panel-form-section">
+          <div className="skeleton-line w-full h-10 mb-4"></div>
+          <div className="skeleton-line w-full h-24 mb-6"></div>
+          <div className="skeleton-line w-32 h-10 rounded"></div>
+        </div>
+      </div>
     </div>
   )
 }

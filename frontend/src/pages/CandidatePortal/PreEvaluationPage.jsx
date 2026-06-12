@@ -59,7 +59,18 @@ export default function PreEvaluationPage() {
 
   const wrap = { maxWidth: 720, margin: '0 auto', padding: '32px 20px', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", color: '#1E293B' }
 
-  if (loading) return <div style={wrap}><p style={{ color: '#64748B' }}>Loading your assessment…</p></div>
+  if (loading) return (
+    <div style={wrap}>
+      <div style={{ padding: 32, maxWidth: 600, width: '100%', margin: '40px auto', background: '#fff', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div className="skeleton-line w-48 h-8 mb-6 mx-auto"></div>
+        <div className="skeleton-line w-full h-4 mb-4"></div>
+        <div className="skeleton-line w-full h-4 mb-4"></div>
+        <div className="skeleton-line w-3/4 h-4 mb-8"></div>
+        <div className="skeleton-line w-full h-32 rounded mb-6"></div>
+        <div className="skeleton-line w-32 h-10 rounded ml-auto"></div>
+      </div>
+    </div>
+  )
 
   if (done) return (
     <div style={wrap}>

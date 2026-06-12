@@ -199,13 +199,15 @@ async def me(
 
 @router.get("/users")
 async def list_users(
+    page: int = 1,
+    limit: int = 50,
     user: dict = Depends(require_dept_admin),
     db: asyncpg.Connection = Depends(get_db),
 ):
     """List org users. dept_admin sees only their own department; org_head sees all."""
     dept_id = user.get("dept_id") if user["role"] == "dept_admin" else None
-    users = await AuthService.list_users(db, user["org_id"], department_id=dept_id)
-    return {"users": [_user_response(u) for u in users]}
+    users = await AuthService.list_users(db, user["org_id"], department_id=dept_id, page=page, limit=limit)
+    return {"users": [_user_response(u) for u in users], "page": page, "limit": limit}
 
 
 # ── GET /directory ────────────────────────────────────────────────────────────

@@ -118,8 +118,8 @@ export default function DeleteMyDataPage() {
 
         {step === 'sending' && (
           <div className="dmd-status">
-            <div className="dmd-spinner" />
-            <p>Processing your request…</p>
+            <div className="skeleton-line w-full h-12 mb-4"></div>
+            <div className="skeleton-line w-3/4 h-6 mx-auto"></div>
           </div>
         )}
 
@@ -145,8 +145,8 @@ export default function DeleteMyDataPage() {
 
         {step === 'verifying' && (
           <div className="dmd-status">
-            <div className="dmd-spinner" />
-            <p>Verifying and processing deletion…</p>
+            <div className="skeleton-line w-full h-12 mb-4"></div>
+            <div className="skeleton-line w-3/4 h-6 mx-auto"></div>
           </div>
         )}
 

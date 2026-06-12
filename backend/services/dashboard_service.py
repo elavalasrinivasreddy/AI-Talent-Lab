@@ -40,43 +40,33 @@ class DashboardService:
             app_filter += " AND position_id IN (SELECT id FROM positions WHERE created_by=$2)"
             params.append(user_id)
 
-        async with get_connection() as conn:
-            open_positions = await conn.fetchval(
-                f"SELECT COUNT(*) FROM positions WHERE {pos_filter} AND status='open'", *params
-            )
-            total_sourced = await conn.fetchval(
-                f"SELECT COUNT(*) FROM candidate_applications WHERE {app_filter}", *params
-            )
-            total_applied = await conn.fetchval(
-                f"SELECT COUNT(*) FROM candidate_applications WHERE {app_filter} AND status='applied'", *params
-            )
-            total_interview = await conn.fetchval(
-                f"SELECT COUNT(*) FROM candidate_applications WHERE {app_filter} AND status='interview'", *params
-            )
-            total_selected = await conn.fetchval(
-                f"SELECT COUNT(*) FROM candidate_applications WHERE {app_filter} AND status='selected'", *params
-            )
+        cutoff_idx = len(params) + 1
+        prev_cutoff_idx = len(params) + 2
+        
+        query = f"""
+        SELECT 
+            (SELECT COUNT(*) FROM positions WHERE {pos_filter} AND status='open') AS open_positions,
+            (SELECT COUNT(*) FROM candidates WHERE org_id=$1 AND created_at >= ${cutoff_idx}) AS current_sourced,
+            (SELECT COUNT(*) FROM candidates WHERE org_id=$1 AND created_at >= ${prev_cutoff_idx} AND created_at < ${cutoff_idx}) AS prev_sourced,
+            (SELECT COUNT(*) FROM candidate_applications WHERE {app_filter}) AS total_sourced,
+            (SELECT COUNT(*) FROM candidate_applications WHERE {app_filter} AND status='applied') AS total_applied,
+            (SELECT COUNT(*) FROM candidate_applications WHERE {app_filter} AND status='interview') AS total_interview,
+            (SELECT COUNT(*) FROM candidate_applications WHERE {app_filter} AND status='selected') AS total_selected,
+            (SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 86400) FROM candidate_applications WHERE {app_filter} AND status IN ('selected', 'hired') AND created_at >= ${cutoff_idx}) AS avg_time_to_hire_raw
+        """
+        params.extend([cutoff, prev_cutoff])
 
-            avg_time_to_hire_raw = await conn.fetchval(
-                f"""
-                SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 86400)
-                FROM candidate_applications
-                WHERE {app_filter}
-                  AND status IN ('selected', 'hired')
-                  AND created_at >= ${len(params) + 1}
-                """,
-                *params, cutoff,
-            )
-            
-            # Trend calculation (comparing current period to previous period)
-            current_sourced = await conn.fetchval(
-                "SELECT COUNT(*) FROM candidates WHERE org_id=$1 AND created_at >= $2",
-                org_id, cutoff,
-            )
-            prev_sourced = await conn.fetchval(
-                "SELECT COUNT(*) FROM candidates WHERE org_id=$1 AND created_at >= $2 AND created_at < $3",
-                org_id, prev_cutoff, cutoff,
-            )
+        async with get_connection() as conn:
+            row = await conn.fetchrow(query, *params)
+
+        open_positions = row["open_positions"]
+        total_sourced = row["total_sourced"]
+        total_applied = row["total_applied"]
+        total_interview = row["total_interview"]
+        total_selected = row["total_selected"]
+        avg_time_to_hire_raw = row["avg_time_to_hire_raw"]
+        current_sourced = row["current_sourced"]
+        prev_sourced = row["prev_sourced"]
 
         return {
             "active_positions": open_positions or 0,
@@ -164,16 +154,17 @@ class DashboardService:
     async def get_activity(
         org_id: int,
         position_id: Optional[int] = None,
-        limit: int = 30
+        limit: int = 30,
+        page: int = 1,
     ) -> dict:
         """Recent pipeline events for activity feed."""
         async with get_connection() as conn:
             if position_id:
                 events = await PipelineEventRepository.list_for_position(
-                    conn, position_id, org_id, limit
+                    conn, position_id, org_id, limit, page
                 )
             else:
-                events = await PipelineEventRepository.list_recent(conn, org_id, limit)
+                events = await PipelineEventRepository.list_recent(conn, org_id, limit, page)
 
         for evt in events:
             if evt.get("event_data") and isinstance(evt["event_data"], str):
@@ -253,113 +244,110 @@ class DashboardService:
         velocity_cutoff = _now - timedelta(days=56)
 
         async with get_connection() as conn:
-            # Pipeline conversion rates
-            funnel = await conn.fetch(
-                """
-                SELECT status, COUNT(*) AS count
-                FROM candidate_applications
-                WHERE org_id=$1 AND created_at >= $2
-                GROUP BY status
-                """,
-                org_id, cutoff,
-            )
-            funnel_dict = {r["status"]: r["count"] for r in funnel}
-
-            # Time to hire (avg days from sourced to selected)
-            avg_time_to_hire = await conn.fetchval(
-                """
-                SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 86400)
-                FROM candidate_applications
-                WHERE org_id=$1 AND status IN ('selected', 'hired')
-                  AND created_at >= $2
-                """,
-                org_id, cutoff,
-            )
-
-            # Source breakdown
-            sources = await conn.fetch(
-                """
-                SELECT c.source, COUNT(*) AS count
-                FROM candidate_applications ca
-                JOIN candidates c ON c.id = ca.candidate_id
-                WHERE ca.org_id=$1 AND ca.created_at >= $2
-                GROUP BY c.source
-                ORDER BY count DESC
-                """,
-                org_id, cutoff,
-            )
-
-            # Weekly velocity (last 8 weeks)
-            velocity = await conn.fetch(
+            # Combine all 8 analytics queries into a single query for performance
+            row = await conn.fetchrow(
                 """
                 SELECT
-                    DATE_TRUNC('week', created_at) AS week,
-                    COUNT(*) FILTER (WHERE status='sourced') AS sourced,
-                    COUNT(*) FILTER (WHERE status='applied') AS applied,
-                    COUNT(*) FILTER (WHERE status='interview') AS interview,
-                    COUNT(*) FILTER (WHERE status IN ('selected','hired')) AS hired
-                FROM candidate_applications
-                WHERE org_id=$1 AND created_at >= $2
-                GROUP BY week
-                ORDER BY week
+                    (
+                        SELECT COALESCE(jsonb_object_agg(status, count), '{}'::jsonb)
+                        FROM (
+                            SELECT status, COUNT(*) AS count
+                            FROM candidate_applications
+                            WHERE org_id=$1 AND created_at >= $2
+                            GROUP BY status
+                        ) t
+                    ) AS funnel,
+                    (
+                        SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 86400)
+                        FROM candidate_applications
+                        WHERE org_id=$1 AND status IN ('selected', 'hired') AND created_at >= $2
+                    ) AS avg_time_to_hire,
+                    (
+                        SELECT COALESCE(jsonb_agg(row_to_json(t)), '[]'::jsonb)
+                        FROM (
+                            SELECT c.source, COUNT(*) AS count
+                            FROM candidate_applications ca
+                            JOIN candidates c ON c.id = ca.candidate_id
+                            WHERE ca.org_id=$1 AND ca.created_at >= $2
+                            GROUP BY c.source
+                            ORDER BY count DESC
+                        ) t
+                    ) AS sources,
+                    (
+                        SELECT COALESCE(jsonb_agg(row_to_json(t)), '[]'::jsonb)
+                        FROM (
+                            SELECT
+                                DATE_TRUNC('week', created_at) AS week,
+                                COUNT(*) FILTER (WHERE status='sourced') AS sourced,
+                                COUNT(*) FILTER (WHERE status='applied') AS applied,
+                                COUNT(*) FILTER (WHERE status='interview') AS interview,
+                                COUNT(*) FILTER (WHERE status IN ('selected','hired')) AS hired
+                            FROM candidate_applications
+                            WHERE org_id=$1 AND created_at >= $3
+                            GROUP BY week
+                            ORDER BY week
+                        ) t
+                    ) AS velocity,
+                    (
+                        SELECT COALESCE(jsonb_agg(row_to_json(t)), '[]'::jsonb)
+                        FROM (
+                            SELECT p.role_name, p.id,
+                                   COUNT(ca.id) AS total,
+                                   COUNT(ca.id) FILTER (WHERE ca.status='applied') AS applied,
+                                   COUNT(ca.id) FILTER (WHERE ca.status='interview') AS interview,
+                                   CASE WHEN COUNT(ca.id) > 0
+                                        THEN ROUND(100.0 * COUNT(ca.id) FILTER (WHERE ca.status IN ('selected','hired')) / COUNT(ca.id), 1)
+                                        ELSE 0 END AS conversion_rate
+                            FROM positions p
+                            LEFT JOIN candidate_applications ca ON ca.position_id = p.id
+                            WHERE p.org_id=$1 AND p.status='open'
+                            GROUP BY p.id, p.role_name
+                            ORDER BY conversion_rate DESC
+                            LIMIT 10
+                        ) t
+                    ) AS top_positions,
+                    (
+                        SELECT COALESCE(jsonb_agg(row_to_json(t)), '[]'::jsonb)
+                        FROM (
+                            SELECT d.name AS department, COUNT(DISTINCT p.id) AS positions,
+                                   COUNT(ca.id) AS candidates
+                            FROM departments d
+                            LEFT JOIN positions p ON p.department_id = d.id AND p.status='open'
+                            LEFT JOIN candidate_applications ca ON ca.position_id = p.id
+                            WHERE d.org_id=$1
+                            GROUP BY d.name
+                            ORDER BY candidates DESC
+                        ) t
+                    ) AS dept_stats,
+                    (
+                        SELECT COUNT(*) FROM candidate_applications
+                        WHERE org_id=$1 AND status='hired' AND created_at >= $2
+                    ) AS offer_accepted,
+                    (
+                        SELECT COUNT(*) FROM candidate_applications
+                        WHERE org_id=$1 AND status IN ('hired', 'selected') AND created_at >= $2
+                    ) AS offer_extended,
+                    (
+                        SELECT COUNT(*) FROM positions WHERE org_id=$1 AND status='open'
+                    ) AS active_positions
                 """,
-                org_id, velocity_cutoff,
+                org_id, cutoff, velocity_cutoff,
             )
+            
+            def _parse_json(val):
+                if not val:
+                    return {} if val is None else val
+                return json.loads(val) if isinstance(val, str) else val
 
-            # Top performing positions (by conversion rate)
-            top_positions = await conn.fetch(
-                """
-                SELECT p.role_name, p.id,
-                       COUNT(ca.id) AS total,
-                       COUNT(ca.id) FILTER (WHERE ca.status='applied') AS applied,
-                       COUNT(ca.id) FILTER (WHERE ca.status='interview') AS interview,
-                       CASE WHEN COUNT(ca.id) > 0
-                            THEN ROUND(100.0 * COUNT(ca.id) FILTER (WHERE ca.status IN ('selected','hired')) / COUNT(ca.id), 1)
-                            ELSE 0 END AS conversion_rate
-                FROM positions p
-                LEFT JOIN candidate_applications ca ON ca.position_id = p.id
-                WHERE p.org_id=$1 AND p.status='open'
-                GROUP BY p.id, p.role_name
-                ORDER BY conversion_rate DESC
-                LIMIT 10
-                """,
-                org_id,
-            )
-
-            # Department breakdown
-            dept_stats = await conn.fetch(
-                """
-                SELECT d.name AS department, COUNT(DISTINCT p.id) AS positions,
-                       COUNT(ca.id) AS candidates
-                FROM departments d
-                LEFT JOIN positions p ON p.department_id = d.id AND p.status='open'
-                LEFT JOIN candidate_applications ca ON ca.position_id = p.id
-                WHERE d.org_id=$1
-                GROUP BY d.name
-                ORDER BY candidates DESC
-                """,
-                org_id,
-            )
-
-            offer_accepted = await conn.fetchval(
-                """
-                SELECT COUNT(*) FROM candidate_applications
-                WHERE org_id=$1 AND status='hired' AND created_at >= $2
-                """,
-                org_id, cutoff,
-            )
-            offer_extended = await conn.fetchval(
-                """
-                SELECT COUNT(*) FROM candidate_applications
-                WHERE org_id=$1 AND status IN ('hired', 'selected') AND created_at >= $2
-                """,
-                org_id, cutoff,
-            )
-
-            active_positions = await conn.fetchval(
-                "SELECT COUNT(*) FROM positions WHERE org_id=$1 AND status='open'",
-                org_id,
-            )
+            funnel_dict = _parse_json(row["funnel"])
+            avg_time_to_hire = row["avg_time_to_hire"]
+            sources = _parse_json(row["sources"])
+            velocity = _parse_json(row["velocity"])
+            top_positions = _parse_json(row["top_positions"])
+            dept_stats = _parse_json(row["dept_stats"])
+            offer_accepted = row["offer_accepted"]
+            offer_extended = row["offer_extended"]
+            active_positions = row["active_positions"]
 
         total_candidates = sum(funnel_dict.values())
         total_applied = funnel_dict.get("applied", 0) + funnel_dict.get("interview", 0) + funnel_dict.get("selected", 0)
@@ -376,7 +364,7 @@ class DashboardService:
             "sources": [{"source": r["source"] or "unknown", "count": r["count"]} for r in sources],
             "velocity": [
                 {
-                    "week": r["week"].isoformat() if r["week"] else None,
+                    "week": r["week"] if r["week"] else None,
                     "sourced": r["sourced"],
                     "applied": r["applied"],
                     "interview": r["interview"],

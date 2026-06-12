@@ -75,9 +75,11 @@ class PipelineEventRepository:
         conn: asyncpg.Connection,
         position_id: int,
         org_id: int,
-        limit: int = 50
+        limit: int = 50,
+        page: int = 1,
     ) -> list[dict]:
         """Get recent events for a position's activity tab."""
+        offset = (page - 1) * limit
         rows = await conn.fetch(
             """
             SELECT pe.*, u.name AS user_name, u.avatar_url AS user_avatar,
@@ -87,9 +89,9 @@ class PipelineEventRepository:
             LEFT JOIN candidates c ON c.id = pe.candidate_id
             WHERE pe.position_id = $1 AND pe.org_id = $2
             ORDER BY pe.created_at DESC
-            LIMIT $3
+            LIMIT $3 OFFSET $4
             """,
-            position_id, org_id, limit
+            position_id, org_id, limit, offset
         )
         return [dict(r) for r in rows]
 
@@ -97,9 +99,11 @@ class PipelineEventRepository:
     async def list_recent(
         conn: asyncpg.Connection,
         org_id: int,
-        limit: int = 30
+        limit: int = 30,
+        page: int = 1,
     ) -> list[dict]:
         """Dashboard activity feed — recent org-wide events."""
+        offset = (page - 1) * limit
         rows = await conn.fetch(
             """
             SELECT pe.*, u.name AS user_name,
@@ -111,8 +115,8 @@ class PipelineEventRepository:
             LEFT JOIN positions p ON p.id = pe.position_id
             WHERE pe.org_id = $1
             ORDER BY pe.created_at DESC
-            LIMIT $2
+            LIMIT $2 OFFSET $3
             """,
-            org_id, limit
+            org_id, limit, offset
         )
         return [dict(r) for r in rows]

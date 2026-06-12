@@ -68,16 +68,20 @@ class UserRepository:
         conn: asyncpg.Connection,
         org_id: int,
         department_id: Optional[int] = None,
+        page: int = 1,
+        limit: int = 50,
     ) -> List[dict]:
         """List users in an org, optionally scoped to a single department."""
+        offset = (page - 1) * limit
         if department_id is not None:
             rows = await conn.fetch(
                 """
                 SELECT id, org_id, email, name, role, phone, avatar_url, timezone,
                        is_active, department_id, auto_approve_jds, notification_preferences, last_login_at, created_at
                 FROM users WHERE org_id = $1 AND department_id = $2 ORDER BY created_at DESC
+                LIMIT $3 OFFSET $4
                 """,
-                org_id, department_id,
+                org_id, department_id, limit, offset
             )
         else:
             rows = await conn.fetch(
@@ -85,8 +89,9 @@ class UserRepository:
                 SELECT id, org_id, email, name, role, phone, avatar_url, timezone,
                        is_active, department_id, auto_approve_jds, notification_preferences, last_login_at, created_at
                 FROM users WHERE org_id = $1 ORDER BY created_at DESC
+                LIMIT $2 OFFSET $3
                 """,
-                org_id,
+                org_id, limit, offset
             )
         return [dict(r) for r in rows]
 
