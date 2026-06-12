@@ -5,7 +5,7 @@
 > (does each feature actually work?), the v3 redesign build status, and live production-hardening
 > debt. Older snapshots are in [`archive/`](archive/).
 >
-> **Last updated:** 2026-06-12 · **Branch:** `feature/phase2-items` · verified against code + commit log.
+> **Last updated:** 2026-06-12 (10:20 IST) · **Branch:** `feature/phase2-items` · verified against code + commit log.
 
 ---
 
@@ -64,7 +64,7 @@ found 4 P0s and 14 P1s. State today:
 | ID | Issue | Status | Evidence |
 |---|---|---|---|
 | P0-1 | `/dev/*` live by default (account takeover) | ✅ Fixed | `DEV_MODE: bool = False` fail-safe, [config.py:19](../backend/config.py#L19) · commit `90e6413` |
-| P0-2 | RLS inert (no tenant DB backstop) | ⚠️ Built, **activation pending** | policies + `talentlab_app` role + `set_config` wiring; `test_rls_isolation.py` ✓ · commit `e342cae`. See [RLS_ACTIVATION.md](RLS_ACTIVATION.md) |
+| P0-2 | RLS inert (no tenant DB backstop) | ⚠️ **One env var from live** | Dual-pool wired: `get_admin_connection()` for migrations/platform_admin/Celery, `get_connection()` for all request traffic; `set_org_context` in per-org tasks; `test_rls_isolation.py` ✓ · commits `e342cae` + `feat/rls-activation`. **To activate: add `APP_DATABASE_URL=postgresql://talentlab_app:talentlab_app@localhost:5432/talentlab_dev` to `.env` and restart.** See [RLS_ACTIVATION.md](RLS_ACTIVATION.md) |
 | P0-3 | GDPR cross-tenant deletion | ✅ Fixed | org-scope check + rate limit · commit `90e6413` |
 | P0-4 | Collusion detection never fired (`TypeError`) | ✅ Fixed | `_answer_similarity` takes dicts · commit `90e6413` |
 | P1-1…14 | Interview emails, 24h reminder, round-result UI, rejection draft, outreach signature, apply profiling steps, apply confirmation email, pre-eval page, status_token + portal fields, real talent-pool embeddings, `above_threshold_count`, Providers key allowlist | ✅ Fixed | commits `982efaa`, `778d882`, `e47acf9` · backend suite green |
@@ -75,11 +75,11 @@ found 4 P0s and 14 P1s. State today:
 
 The whole reason this file exists: a short, true list — not the old pile of contradicting plans.
 
-1. **Activate RLS (P0-2) — the one real security step left.** Built and proven; the running app still
-   uses the superuser DSN, so policies are an inert no-op. Do the dual-pool cutover. Full runbook:
-   [RLS_ACTIVATION.md](RLS_ACTIVATION.md). *~1 focused day, watch it live.*
-   - Sub-check while there: `db/connection.py` sets the GUC session-local (`set_config(..., false)`) and
-     resets on release. Confirm no pooled-connection leak across requests, or switch to transaction-local.
+1. **Flip RLS live (P0-2) — one line in `.env`.** The dual-pool cutover is coded and tested.
+   Add `APP_DATABASE_URL="postgresql://talentlab_app:talentlab_app@localhost:5432/talentlab_dev"` to
+   your `.env`, restart API + Celery, then smoke: login → dashboard → sourcing run → platform admin.
+   If any surface returns empty rows, that path is missing org context — rollback = remove the line.
+   Runbook: [RLS_ACTIVATION.md](RLS_ACTIVATION.md). *~15 minutes when you can watch it live.*
 2. **Upgrade the core-loop test from API-level to a full Playwright UI walk.** `test_candidate_core_loop.py`
    is an API integration test (commit `8040f7b`); the assessment's bar is one E2E test that walks the real
    UI: career → apply → ATS → recruiter review → interview → decision. That test becomes the definition of done.

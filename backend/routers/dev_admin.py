@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 
 from backend.config import settings
-from backend.db.connection import get_connection
+from backend.db.connection import get_admin_connection
 from backend.utils.security import hash_password, create_access_token
 
 router = APIRouter(prefix="/api/v1/dev", tags=["Dev Tools"])
@@ -29,7 +29,7 @@ def _require_dev_mode():
 async def list_orgs():
     """List all organizations."""
     _require_dev_mode()
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         rows = await conn.fetch(
             "SELECT id, name, slug, created_at FROM organizations ORDER BY created_at DESC"
         )
@@ -42,7 +42,7 @@ async def list_orgs():
 async def db_stats(org_id: Optional[int] = Query(None)):
     """Row counts for all main tables. Scoped to org_id if provided, else all orgs."""
     _require_dev_mode()
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         if org_id:
             tables = {
                 "chat_sessions": ("SELECT COUNT(*) FROM chat_sessions WHERE org_id = $1", org_id),
@@ -86,7 +86,7 @@ async def db_stats(org_id: Optional[int] = Query(None)):
 async def list_all_chat_sessions(org_id: Optional[int] = Query(None)):
     """List chat sessions, optionally filtered by org."""
     _require_dev_mode()
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         if org_id:
             rows = await conn.fetch(
                 """SELECT id, title, workflow_stage, status, created_at, updated_at
@@ -108,7 +108,7 @@ async def list_all_chat_sessions(org_id: Optional[int] = Query(None)):
 async def list_all_users(org_id: Optional[int] = Query(None)):
     """List users across all orgs or filtered by org."""
     _require_dev_mode()
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         if org_id:
             rows = await conn.fetch(
                 """SELECT u.id, u.name, u.email, u.role, u.department_id, u.is_active,
@@ -162,7 +162,7 @@ async def create_user(body: CreateUserBody):
 
     hashed = hash_password(body.password)
 
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         # Resolve or create org
         if body.org_id:
             org_id = body.org_id
@@ -207,7 +207,7 @@ async def generate_user_token(user_id: int):
     without a real login flow. Paste the token or use the 'Login as' button.
     """
     _require_dev_mode()
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         user = await conn.fetchrow(
             "SELECT id, org_id, role, department_id FROM users WHERE id = $1",
             user_id
@@ -230,7 +230,7 @@ async def generate_user_token(user_id: int):
 async def reset_chat_sessions(org_id: Optional[int] = Query(None, description="Org to reset, or None for all")):
     """Hard-delete ALL chat sessions + messages for an org or globally."""
     _require_dev_mode()
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         if org_id:
             result = await conn.execute("DELETE FROM chat_sessions WHERE org_id = $1", org_id)
         else:
@@ -244,7 +244,7 @@ async def reset_chat_sessions(org_id: Optional[int] = Query(None, description="O
 async def reset_positions(org_id: Optional[int] = Query(None)):
     """Hard-delete ALL positions and hire requests (cascade: applications, pipeline events) for an org or globally."""
     _require_dev_mode()
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         if org_id:
             await conn.execute("DELETE FROM candidate_applications WHERE org_id = $1", org_id)
             await conn.execute("DELETE FROM pipeline_events WHERE org_id = $1", org_id)
@@ -263,7 +263,7 @@ async def reset_positions(org_id: Optional[int] = Query(None)):
 async def reset_notifications(org_id: Optional[int] = Query(None)):
     """Clear all notifications for an org or globally."""
     _require_dev_mode()
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         if org_id:
             await conn.execute("DELETE FROM notifications WHERE org_id = $1", org_id)
         else:
@@ -279,7 +279,7 @@ async def reset_all_org_data(org_id: Optional[int] = Query(None)):
     If org_id is absent (global), deletes EVERYTHING (orgs, users, departments).
     """
     _require_dev_mode()
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         if org_id is not None:
             await conn.execute("DELETE FROM notifications WHERE org_id = $1", org_id)
             await conn.execute("DELETE FROM pipeline_events WHERE org_id = $1", org_id)
@@ -302,7 +302,7 @@ async def reset_all_org_data(org_id: Optional[int] = Query(None)):
 async def restore_deleted_session(session_id: str):
     """Restore a soft-deleted session (set status back to 'active')."""
     _require_dev_mode()
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         result = await conn.execute(
             "UPDATE chat_sessions SET status = 'active', updated_at = NOW() WHERE id = $1",
             session_id

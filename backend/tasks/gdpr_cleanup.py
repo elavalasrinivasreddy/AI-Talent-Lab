@@ -38,11 +38,11 @@ def process_verified_deletions() -> dict:
     logger.info("Processing verified deletion requests...")
 
     async def _process():
-        from backend.db.connection import get_connection
-        async with get_connection() as conn:
+        from backend.db.connection import get_admin_connection
+        async with get_admin_connection() as conn:
             pending = await conn.fetch(
                 """
-                SELECT id FROM data_deletion_requests
+                SELECT id, org_id FROM data_deletion_requests
                 WHERE status='verified'
                 ORDER BY verified_at ASC
                 LIMIT 50
@@ -52,7 +52,7 @@ def process_verified_deletions() -> dict:
         processed = 0
         for req in pending:
             try:
-                await GDPRService.process_deletion(req["id"])
+                await GDPRService.process_deletion(req["id"], req["org_id"])
                 processed += 1
             except Exception as e:
                 logger.error(f"Failed to process deletion request {req['id']}: {e}")

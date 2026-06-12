@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from backend.celery_app import celery_app
 from backend.config import settings
 from backend.adapters.candidate_sources import get_candidate_source_adapter
-from backend.db.connection import get_connection
+from backend.db.connection import get_connection, get_admin_connection, set_org_context, reset_org_context
 from backend.db.repositories.candidates import CandidateRepository
 from backend.db.repositories.positions import PositionRepository
 from backend.db.repositories.organizations import OrgRepository
@@ -60,7 +60,7 @@ async def _run_pipeline(
     _task_start = time.time()
     _sourced_count = 0
     _task_failed = False
-
+    ctx_token = set_org_context(org_id)
     try:
         logger.info(f"[Pipeline] Starting search for position {position_id} (org {org_id})")
 
@@ -180,6 +180,7 @@ async def _run_pipeline(
                     )
             except Exception:
                 pass
+        reset_org_context(ctx_token)
 
 
 async def _process_candidate(
@@ -372,7 +373,7 @@ def source_candidates_for_position(position_id: int, org_id: int):
     from backend.utils.async_runner import run_async
 
     async def _get_dept():
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             row = await conn.fetchrow(
                 "SELECT department_id, created_by FROM positions WHERE id=$1 AND org_id=$2",
                 position_id, org_id,
@@ -412,6 +413,7 @@ def score_candidate_application(self, candidate_id: int, application_id: int, po
 async def _score_application(candidate_id: int, application_id: int, position_id: int, org_id: int):
     _start = time.time()
     logger.info(f"Starting ATS scoring for organic application {application_id}")
+    ctx_token = set_org_context(org_id)
     try:
         async with get_connection() as conn:
             position = await PositionRepository.get(conn, position_id, org_id)
@@ -488,6 +490,8 @@ async def _score_application(candidate_id: int, application_id: int, position_id
         except Exception:
             pass
         raise
+    finally:
+        reset_org_context(ctx_token)
 
 @celery_app.task(name="tasks.trigger_pre_evaluation")
 def trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: int, org_id: int):
@@ -500,7 +504,8 @@ async def _trigger_pre_evaluation(application_id: int, candidate_id: int, positi
     import random
     from datetime import datetime, timedelta, timezone
     from backend.db.repositories.pre_evaluations import PreEvaluationRepository
-    
+
+    ctx_token = set_org_context(org_id)
     async with get_connection() as conn:
         from backend.db.repositories.positions import PositionRepository
         position = await PositionRepository.get(conn, position_id, org_id)
@@ -585,6 +590,7 @@ async def _trigger_pre_evaluation(application_id: int, candidate_id: int, positi
             )
             
         logger.info(f"Triggered pre-evaluation for application {application_id} with token {token}")
+    reset_org_context(ctx_token)
 
 # NOTE: Pre-evaluation grading is handled exclusively by the nightly batch task in
 # backend/tasks/pre_eval_grade.py (registered in celery beat). The earlier per-submission

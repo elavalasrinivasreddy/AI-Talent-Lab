@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import settings
-from backend.db.connection import init_db, close_pool, health_check
+from backend.db.connection import init_db, close_pool, close_admin_pool, health_check
 from backend.db.vector_store import startup_probe as chroma_probe
 from backend.exceptions import register_exception_handlers
 from backend.middleware.cors import setup_cors
@@ -79,6 +79,7 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Shutting down...")
     await close_pool()
+    await close_admin_pool()
 
 
 # ── App Factory ────────────────────────────────────────────────────────────────

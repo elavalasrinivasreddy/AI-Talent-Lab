@@ -42,9 +42,9 @@ def run_scheduled_searches() -> dict:
       - jd_markdown is not empty (has a JD to match against)
     """
     async def _search():
-        from backend.db.connection import get_connection
+        from backend.db.connection import get_admin_connection
 
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             positions = await conn.fetch(
                 """
                 SELECT id, org_id, role_name, search_interval_hours,
