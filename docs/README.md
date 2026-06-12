@@ -17,9 +17,10 @@ seven overlapping status/plan files into one living tracker plus a clean referen
 
 | Doc | Read it when you want to know… |
 |---|---|
-| [STATUS.md](STATUS.md) | **Where are we, what works, what's next.** The living tracker. Open first. |
+| [STATUS.md](STATUS.md) | **Where are we, what works, what's next.** Phase-wise tracker (A–F) with completion counts. Open first. |
 | [product/01_overview.md](product/01_overview.md) | **What we're building and why** — vision, users, end-to-end workflow, invariants. |
 | [product/04_strategy.md](product/04_strategy.md) | **The strategic read** — the real moat, the core risk, opinionated next moves. |
+| [product/05_market_validation.md](product/05_market_validation.md) | **Will this survive in the market?** — competitive reality, SaaS-readiness gaps, beachhead, 90-day sell-first plan. |
 | [product/03_roadmap.md](product/03_roadmap.md) | **What's coming** — Phase 2/3 features, compliance, monetization. |
 
 ---
@@ -33,6 +34,8 @@ seven overlapping status/plan files into one living tracker plus a clean referen
 | [product/02_features.md](product/02_features.md) | Full feature catalog (for live build status, see [STATUS.md](STATUS.md)) |
 | [product/03_roadmap.md](product/03_roadmap.md) | Validation, competitive landscape, role-based UX, Phase 2/3, compliance, monetization, mobile |
 | [product/04_strategy.md](product/04_strategy.md) | Strategic read — vision validation, the data moat, the core solo-founder risk, what to do next |
+| [product/05_market_validation.md](product/05_market_validation.md) | Market validation brief (2026-06-13) — competitive landscape research, SaaS gap audit, ICE-ranked enhancements, 90-day plan |
+| [product/06_sales_brief.md](product/06_sales_brief.md) | **For the business team (non-technical)** — pitch, ideal client profile, competition cheat sheet, founder pricing, what not to promise, objection handling |
 
 ### Architecture — how it's built
 | Doc | Contents |
@@ -57,6 +60,7 @@ seven overlapping status/plan files into one living tracker plus a clean referen
 | [qa/bug_fixes_log.md](qa/bug_fixes_log.md) | Bug ledger — every fix, chronological |
 | [qa/testing_validation_tracker.md](qa/testing_validation_tracker.md) | Validation of bug fixes + JD-chat E2E flow |
 | [reviews/](reviews/) | Per-surface code-review findings (19 surfaces + consolidated findings) |
+| [reviews/2026-06-13_full_codebase_review.md](reviews/2026-06-13_full_codebase_review.md) | Full 3-lens review (engineering · QA · UI design) with prioritized fix queue |
 | [integrations/calendar.md](integrations/calendar.md) | Google/Outlook calendar OAuth guide |
 | [DEMO_GUIDE.md](DEMO_GUIDE.md) | Demo walkthrough script |
 
