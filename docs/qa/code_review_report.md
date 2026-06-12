@@ -277,8 +277,8 @@ Fallback uses a plain text "Loading…" div.
 
 | # | Finding | Status | Effort | Impact |
 |---|---------|--------|--------|--------|
-| 10 | **Extract SQL from routers** into services → repositories (CRITICAL-03) | ⏳ **PARTIAL** | 2-3 weeks | Testability, maintainability |
-| 11 | **Break up God services** into focused modules | ⏳ **DEFERRED** | 1 week | Cognitive load reduction |
+| 10 | **Extract SQL from routers** into services → repositories (CRITICAL-03) | ✅ **DONE** | 2-3 weeks | Testability, maintainability |
+| 11 | **Break up God services** into focused modules | ✅ **DONE** | 1 week | Cognitive load reduction |
 | 12 | **Implement stub repositories** (applications, scorecards, talent_pool) | ✅ **DONE** | 1 week | Architecture compliance |
 | 13 | **Add rate limiting** to panel/apply public endpoints (MEDIUM-04) | ✅ **DONE** | 2 hrs | Brute-force prevention |
 | 14 | **Add pagination** to user list and funnel endpoints (MEDIUM-06) | ✅ **DONE** | 3 hrs | Scalability |

@@ -465,3 +465,104 @@ class HireRequestRepository:
             return int(result.split()[-1])
         except (ValueError, IndexError):
             return 0
+
+    # ── Notification & User helpers ────────────────────────────────────────
+
+    @staticmethod
+    async def create_notification(
+        conn: asyncpg.Connection,
+        org_id: int,
+        user_id: int,
+        type: str,
+        title: str,
+        message: str,
+        action_url: Optional[str] = None,
+    ) -> None:
+        await conn.execute(
+            """
+            INSERT INTO notifications (org_id, user_id, type, title, message, action_url)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            """,
+            org_id, user_id, type, title, message, action_url,
+        )
+
+    @staticmethod
+    async def get_active_users_by_role(
+        conn: asyncpg.Connection,
+        org_id: int,
+        role: str,
+        department_id: Optional[int] = None,
+    ) -> List[dict]:
+        query = "SELECT id, email, name FROM users WHERE org_id=$1 AND role=$2 AND is_active=TRUE"
+        params: list = [org_id, role]
+        if department_id is not None:
+            query += " AND department_id=$3"
+            params.append(department_id)
+        rows = await conn.fetch(query, *params)
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    async def get_approvers_for_dept(
+        conn: asyncpg.Connection,
+        org_id: int,
+        department_id: Optional[int],
+    ) -> List[dict]:
+        if department_id:
+            approvers = await conn.fetch(
+                """
+                SELECT u.email, u.name
+                  FROM users u
+                 WHERE u.org_id = $1
+                   AND u.role = 'dept_admin'
+                   AND u.department_id = $2
+                   AND u.is_active = TRUE
+                """,
+                org_id, department_id,
+            )
+            if approvers:
+                return [dict(a) for a in approvers]
+        approvers = await conn.fetch(
+            """
+            SELECT u.email, u.name
+              FROM users u
+             WHERE u.org_id = $1
+               AND u.role = 'org_head'
+               AND u.is_active = TRUE
+            """,
+            org_id,
+        )
+        return [dict(a) for a in approvers]
+
+    @staticmethod
+    async def get_user_name(conn: asyncpg.Connection, user_id: int) -> Optional[str]:
+        row = await conn.fetchrow("SELECT name FROM users WHERE id = $1", user_id)
+        return row["name"] if row else None
+
+    @staticmethod
+    async def get_chat_session_position(
+        conn: asyncpg.Connection,
+        session_id: str,
+        org_id: int,
+    ) -> Optional[int]:
+        row = await conn.fetchrow(
+            "SELECT position_id FROM chat_sessions WHERE id = $1 AND org_id = $2",
+            session_id, org_id,
+        )
+        return row["position_id"] if row else None
+
+    @staticmethod
+    async def submit_position_for_approval(
+        conn: asyncpg.Connection,
+        position_id: int,
+        org_id: int,
+    ) -> None:
+        await conn.execute(
+            """
+            UPDATE positions
+               SET requires_approval = TRUE,
+                   approval_status = 'pending',
+                   updated_at = NOW()
+             WHERE id = $1 AND org_id = $2
+            """,
+            position_id, org_id,
+        )

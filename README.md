@@ -313,7 +313,10 @@ AI Talent Lab/
 │   │   ├── migrations.py          # CREATE TABLE IF NOT EXISTS migrations
 │   │   └── repositories/          # SQL query layer (one file per domain)
 │   ├── routers/                   # HTTP route handlers (thin layer)
-│   ├── services/                  # Business logic layer
+│   ├── services/                  # Business logic layer (includes modular domains)
+│   │   ├── hire_requests/         # Modularized hire request service
+│   │   ├── positions/             # Modularized position service
+│   │   └── ...                    # Other services
 │   └── tasks/                     # Celery background tasks
 │
 ├── frontend/
@@ -382,7 +385,7 @@ AI Talent Lab/
 
 These rules are enforced across the entire codebase:
 
-1. **Three-layer architecture** — Routers → Services → Repositories. No layer skipped.
+1. **Three-layer architecture** — Routers → Services → Repositories. No layer skipped. All SQL is strictly isolated within the `repositories/` directory.
 2. **Tenant isolation** — Every business data table has `org_id`. Every query filters by it.
 3. **Background tasks via Celery** — No `FastAPI.BackgroundTasks`. Redis broker only.
 4. **PostgreSQL everywhere** — Dev and prod. Docker Compose provides local Postgres. Never SQLite.

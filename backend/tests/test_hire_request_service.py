@@ -74,7 +74,7 @@ def _make_request(
     id: int = 1,
     org_id: int = 1,
     status: str = "pending",
-    dept_id: int = 10,
+    dept_id: int | None = 10,
     requested_by: int = 99,
     accepted_by=None,
     accepted_by_name=None,
@@ -166,7 +166,7 @@ async def test_create_produces_pending_status():
 
     with patch.object(hr_repo.HireRequestRepository, "create", _fake_create), \
          patch.object(hr_repo.HireRequestRepository, "get_by_id", _fake_get), \
-         patch("backend.services.hire_request_service.HireRequestService._notify_approvers_on_create",
+         patch("backend.services.hire_requests.crud._notify_approvers_on_create",
                AsyncMock(return_value=None)):
         result = await HireRequestService.create(
             conn,
