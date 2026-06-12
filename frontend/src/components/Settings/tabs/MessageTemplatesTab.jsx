@@ -4,6 +4,7 @@ import SlideOver from '../../common/SlideOver'
 import Icon from '../../common/Icon'
 import ConfirmModal from '../../common/ConfirmModal'
 import Toast from '../../common/Toast'
+import DOMPurify from 'dompurify'
 
 const VARIABLES = ['{{candidate_name}}', '{{role_name}}', '{{org_name}}',
   '{{magic_link}}', '{{interview_date}}', '{{interview_time}}', '{{round_name}}']
@@ -355,10 +356,10 @@ export default function MessageTemplatesTab() {
           </div>
           <div style={{ padding: '16px', borderBottom: '1px solid #eee' }}>
             <div style={{ fontSize: '13px', color: '#666' }}>
-              <strong>Subject:</strong> <span dangerouslySetInnerHTML={{ __html: renderPreviewText(activeForm.subject) }} />
+              <strong>Subject:</strong> <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderPreviewText(activeForm.subject)) }} />
             </div>
           </div>
-          <div style={{ padding: '24px', fontSize: '14px', lineHeight: '1.6', color: '#333', whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: renderPreviewText(activeForm.body) }} />
+          <div style={{ padding: '24px', fontSize: '14px', lineHeight: '1.6', color: '#333', whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderPreviewText(activeForm.body)) }} />
         </div>
       </div> {/* Close Right Column */}
     </div>
@@ -457,10 +458,10 @@ export default function MessageTemplatesTab() {
             </div>
             <div style={{ padding: '16px', borderBottom: '1px solid #eee' }}>
               <div style={{ fontSize: '13px', color: '#666' }}>
-                <strong>Subject:</strong> <span dangerouslySetInnerHTML={{ __html: renderPreviewText(viewingPreview.subject) }} />
+                <strong>Subject:</strong> <span dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderPreviewText(viewingPreview.subject)) }} />
               </div>
             </div>
-            <div style={{ padding: '24px', fontSize: '14px', lineHeight: '1.6', color: '#333', whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: renderPreviewText(viewingPreview.body) }} />
+            <div style={{ padding: '24px', fontSize: '14px', lineHeight: '1.6', color: '#333', whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderPreviewText(viewingPreview.body)) }} />
           </div>
         )}
       </SlideOver>

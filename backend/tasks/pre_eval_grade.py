@@ -204,7 +204,7 @@ async def _detect_collusion(conn, rows: list):
         )
 
 
-@celery_app.task(name="tasks.pre_eval_grade")
+@celery_app.task(name="backend.tasks.pre_eval_grade.pre_eval_grade")
 def pre_eval_grade():
     """Nightly batch task to grade submitted pre-evaluations."""
     from backend.utils.async_runner import run_async

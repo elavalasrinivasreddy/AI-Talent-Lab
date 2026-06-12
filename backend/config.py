@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     # ── Redis ──────────────────────────────────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # ── DB Pool Config ─────────────────────────────────────────────────────
+    DB_POOL_MIN: int = 2
+    DB_POOL_MAX: int = 20
+
     # ── Auth ───────────────────────────────────────────────────────────────
     JWT_SECRET: str  # REQUIRED — no default, app fails without it
     JWT_EXPIRY_HOURS: int = 24

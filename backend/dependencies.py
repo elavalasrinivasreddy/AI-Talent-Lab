@@ -33,6 +33,15 @@ PLATFORM_ADMIN = "platform_admin"
 _PRIVILEGED_OVER_DEPT = {ORG_HEAD, DEPT_ADMIN}
 
 
+async def _check_jwt_denylist(jti: str) -> None:
+    """Check if a JWT has been revoked. Raises InvalidCredentialsError if so."""
+    from backend.utils.redis_pool import get_redis
+    r = await get_redis()
+    is_blacklisted = await r.get(f"denylist:{jti}")
+    if is_blacklisted:
+        raise InvalidCredentialsError("Token has been revoked")
+
+
 async def get_db() -> AsyncGenerator[asyncpg.Connection, None]:
     """Yield an app-pool connection (RLS enforced when APP_DATABASE_URL set)."""
     async with get_connection() as conn:
@@ -68,15 +77,7 @@ async def get_current_user(request: Request) -> dict:
 
     jti = payload.get("jti")
     if jti:
-        import redis.asyncio as redis
-        from backend.config import settings
-        r = redis.from_url(settings.REDIS_URL)
-        try:
-            is_blacklisted = await r.get(f"denylist:{jti}")
-            if is_blacklisted:
-                raise InvalidCredentialsError("Token has been revoked")
-        finally:
-            await r.aclose()
+        await _check_jwt_denylist(jti)
 
     return {
         "id": int(payload["sub"]),
@@ -144,15 +145,7 @@ async def require_platform_admin(request: Request) -> dict:
     
     jti = payload.get("jti")
     if jti:
-        import redis.asyncio as redis
-        from backend.config import settings
-        r = redis.from_url(settings.REDIS_URL)
-        try:
-            is_blacklisted = await r.get(f"denylist:{jti}")
-            if is_blacklisted:
-                raise InvalidCredentialsError("Token has been revoked")
-        finally:
-            await r.aclose()
+        await _check_jwt_denylist(jti)
 
     if payload.get("role") != PLATFORM_ADMIN:
         raise InsufficientPermissionsError("Platform admin access required")

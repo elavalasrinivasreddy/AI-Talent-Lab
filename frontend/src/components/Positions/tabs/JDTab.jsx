@@ -9,6 +9,7 @@ import { marked } from 'marked'
 import TurndownService from 'turndown'
 import { positionsApi } from '../../../utils/api'
 import { useAuth } from '../../../context/AuthContext'
+import DOMPurify from 'dompurify'
 import './JDTab.css'
 
 export default function JDTab({ position, onUpdate }) {
@@ -222,7 +223,7 @@ export default function JDTab({ position, onUpdate }) {
           ref={editRef}
           className="jd-wysiwyg"
           contentEditable={true}
-          dangerouslySetInnerHTML={{ __html: marked(content) }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked(content)) }}
           onBlur={(e) => setContent(turndownService.turndown(e.target.innerHTML))}
           style={{ border: '1px solid var(--border-200)', borderRadius: '8px', padding: '24px', outline: 'none', minHeight: '400px' }}
         />

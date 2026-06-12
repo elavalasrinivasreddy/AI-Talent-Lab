@@ -9,6 +9,7 @@ import {
     IconCopy, IconDownload, IconEdit, IconCheck, IconX,
     IconShield, IconFileText, IconLoader, IconArrowRight, IconSparkles,
 } from '../icons';
+import DOMPurify from 'dompurify';
 
 function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
@@ -428,7 +429,7 @@ const FinalJDCard = () => {
                                     className="jd-wysiwyg"
                                     contentEditable={true}
                                     suppressContentEditableWarning={true}
-                                    dangerouslySetInnerHTML={{ __html: marked(tempMarkdown) }}
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked(tempMarkdown)) }}
                                     // No border/box/focus ring — editing happens in place on the
                                     // same content the user already sees, with no UI change (#2).
                                     // .jd-body styles the descendant elements identically to view mode.
@@ -479,7 +480,7 @@ const FinalJDCard = () => {
                                     </div>
                                 )}
                                 {(pendingFixes && pendingFixes.some(f => f.status === 'pending')) ? (
-                                    <div dangerouslySetInnerHTML={{ __html: renderDiffContent() }} />
+                                    <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderDiffContent()) }} />
                                 ) : (
                                     <ReactMarkdown>{editedMarkdown}</ReactMarkdown>
                                 )}

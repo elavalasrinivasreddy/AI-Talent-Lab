@@ -7,6 +7,7 @@
  * Usage: <Icon name="bell" size={18} />
  * Unknown names render nothing (and warn in dev) so a typo never crashes a page.
  */
+import DOMPurify from 'dompurify';
 
 // Each entry is the inner SVG markup for a 24x24 viewBox, stroke=currentColor.
 const PATHS = {
@@ -85,7 +86,7 @@ export default function Icon({ name, size = 16, strokeWidth = 2, title, style, .
       // Only the static, trusted PATHS constant is injected here — never user
       // input. Accessibility uses aria-label (React-escaped attribute), so no
       // dynamic value reaches innerHTML.
-      dangerouslySetInnerHTML={{ __html: inner }}
+      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(inner) }}
       {...rest}
     />
   )

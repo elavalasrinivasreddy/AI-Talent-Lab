@@ -3663,3 +3663,169 @@ Created a `run_async` helper in `backend/utils/async_runner.py` that maintains a
 - `backend/tasks/rejection_task.py`
 - `backend/tasks/copilot_analysis.py`
 - `backend/tasks/email_outreach.py`
+
+---
+
+## 211. Redis Connection Leak in Auth Dependency
+
+**Problem Statement:**
+Every authenticated request created a new Redis connection for JWT denylist checking and closed it immediately. This was extremely inefficient and could exhaust Redis connections under load, creating a severe bottleneck for scalability.
+
+**Idea / Solution:**
+Created a shared async Redis connection pool singleton at `backend/utils/redis_pool.py`. Updated the JWT denylist checks in `backend/dependencies.py` to use the pool rather than creating and tearing down a new Redis client on every authenticated API request.
+
+**Files Modified:**
+- `backend/utils/redis_pool.py` (created)
+- `backend/dependencies.py`
+
+---
+
+## 212. Missing org_id Filter in Apply Router SQL
+
+**Problem Statement:**
+The `UPDATE candidate_applications SET consent_given_at = NOW()` query in `backend/routers/apply.py` lacked an `org_id` filter. This meant a manipulated `application_id` from a different org could potentially be updated, violating the strict tenant isolation rule.
+
+**Idea / Solution:**
+Added the missing `org_id = $2` parameter to the `UPDATE` query to ensure proper tenant isolation.
+
+**Files Modified:**
+- `backend/routers/apply.py`
+
+---
+
+## 213. Database Performance / Missing Composite Indexes
+
+**Problem Statement:**
+Dashboard queries often filter by combinations like `org_id + status` and `org_id + created_at`, but the existing database indexes were single-column only. This caused inefficient range scans for combined filters.
+
+**Idea / Solution:**
+Added 4 missing composite indexes (`idx_applications_org_status`, `idx_applications_org_created`, `idx_positions_org_status_created`, `idx_interviews_org_scheduled`) to `backend/db/migrations.py`.
+
+**Files Modified:**
+- `backend/db/migrations.py`
+
+---
+
+## 214. Celery Task Naming Bug (pre_eval_grade)
+
+**Problem Statement:**
+The `pre_eval_grade` Celery task was failing to trigger because the task decorator in `backend/tasks/pre_eval_grade.py` defined the name as `tasks.pre_eval_grade` while the beat schedule expected it. However, the convention requires the full module path.
+
+**Idea / Solution:**
+Fixed the bug where the `pre_eval_grade` Celery task was failing to trigger due to a naming mismatch. Both sides now correctly use the standard module naming convention: `backend.tasks.pre_eval_grade.pre_eval_grade`.
+
+**Files Modified:**
+- `backend/celery_app.py`
+- `backend/tasks/pre_eval_grade.py`
+
+---
+
+## 215. Rate Limiting Missing on Panel & Apply Endpoints
+
+**Problem Statement:**
+Public endpoints that accept JWT tokens in the URL path (like magic links for applying or submitting panel feedback) had no rate limiting, making them vulnerable to brute-force attacks.
+
+**Idea / Solution:**
+Added `@limiter.limit` decorators to all public, token-based Panel and Apply endpoints (e.g. `verify`, `consent`, `send_message`, `submit_feedback`) using the project's `slowapi` instance.
+
+**Files Modified:**
+- `backend/routers/panel.py`
+- `backend/routers/apply.py`
+
+---
+
+## 216. Password Maximum Length Not Enforced
+
+**Problem Statement:**
+Minimum length was enforced but there was no maximum. An attacker could send an extremely long password string, causing bcrypt to consume excessive CPU and enabling a DoS attack.
+
+**Idea / Solution:**
+Added a 128-character maximum length limit to `backend/utils/validators.py` to prevent potential CPU-exhaustion (DoS) attacks on the bcrypt hashing algorithm.
+
+**Files Modified:**
+- `backend/utils/validators.py`
+
+---
+
+## 217. Talent Pool Response Size Bloat (Resume Embedding)
+
+**Problem Statement:**
+The `get_talent_pool` backend service was unnecessarily fetching the large `resume_embedding` vector array from the database for every candidate and then manually removing it in Python, wasting database bandwidth and memory.
+
+**Idea / Solution:**
+Stopped querying the large `resume_embedding` vector array when returning list views in `backend/services/talent_pool_service.py` by removing it from the `SELECT` clause entirely.
+
+**Files Modified:**
+- `backend/services/talent_pool_service.py`
+
+---
+
+## 218. Configurable DB Connection Pool
+
+**Problem Statement:**
+The connection pool size was hardcoded to a minimum of 2 and a maximum of 10 connections. With heavy dashboard queries, this could easily saturate the pool.
+
+**Idea / Solution:**
+Added `DB_POOL_MIN` and `DB_POOL_MAX` to `config.py` and updated the `asyncpg` pool creation logic so it can be dynamically tuned for production.
+
+**Files Modified:**
+- `backend/config.py`
+- `backend/db/connection.py`
+
+---
+
+## 219. XSS Vulnerability in dangerouslySetInnerHTML
+
+**Problem Statement:**
+The frontend used `dangerouslySetInnerHTML` with raw `marked()` output across several components. If the LLM or user provided malicious markdown containing `<script>` or `onerror` handlers, it would result in Stored XSS.
+
+**Idea / Solution:**
+Installed `dompurify` and sanitized all 8 instances of `dangerouslySetInnerHTML` across `FinalJDCard.jsx`, `JDTab.jsx`, `MessageTemplatesTab.jsx`, and `Icon.jsx`.
+
+**Files Modified:**
+- `frontend/package.json`
+- `frontend/src/components/Chat/cards/FinalJDCard.jsx`
+- `frontend/src/components/Positions/tabs/JDTab.jsx`
+- `frontend/src/components/Settings/tabs/MessageTemplatesTab.jsx`
+- `frontend/src/components/common/Icon.jsx`
+
+---
+
+## 220. Missing React Error Boundary
+
+**Problem Statement:**
+No React Error Boundary existed. If a component threw an error during rendering, the entire application would crash to a blank white screen, leaving the user with no recovery option.
+
+**Idea / Solution:**
+Created a global `ErrorBoundary.jsx` component and updated `router.jsx` to wrap the core application layout. This ensures that any React render crashes display a graceful "Something went wrong" recovery screen instead of a white page.
+
+**Files Modified:**
+- `frontend/src/components/common/ErrorBoundary.jsx` (created)
+- `frontend/src/styles/globals.css`
+- `frontend/src/router.jsx`
+
+---
+
+## 221. Spinner Used for Page Loading Instead of Skeleton
+
+**Problem Statement:**
+The Suspense fallback used a plain text "Loading…" component. Project guidelines mandate skeleton loading states on all data-loading components (no spinners or text-only states) to provide a polished UX.
+
+**Idea / Solution:**
+Swapped out the basic "Loading..." text fallback in `router.jsx` with a much smoother skeleton layout grid that matches the dashboard skeleton style.
+
+**Files Modified:**
+- `frontend/src/router.jsx`
+
+---
+
+## 222. Inefficient defaultRoute Calculation
+
+**Problem Statement:**
+The `defaultRouteForRole` function inside `AuthContext.jsx` was being recalculated on every single render of the context provider, wasting CPU cycles on a stable value.
+
+**Idea / Solution:**
+Wrapped `defaultRouteForRole(user?.role)` in a `useMemo` hook inside `AuthContext.jsx` to prevent it from unnecessarily re-evaluating on every state change.
+
+**Files Modified:**
+- `frontend/src/context/AuthContext.jsx`

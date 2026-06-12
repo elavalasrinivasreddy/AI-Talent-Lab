@@ -12,6 +12,7 @@ import SetPasswordPage from './components/Auth/SetPasswordPage'
 import Sidebar from './components/Sidebar/Sidebar'
 import NotificationBell from './components/common/NotificationBell'
 import { ChatProvider } from './context/ChatContext'
+import ErrorBoundary from './components/common/ErrorBoundary'
 
 // ── Lazy imports (heavy pages — code-split into separate chunks) ─────────────
 const ChatPage             = lazy(() => import('./components/Chat/ChatPage'))
@@ -41,7 +42,18 @@ const PreEvaluationPage = lazy(() => import('./pages/CandidatePortal/PreEvaluati
 const PositionsListPage    = lazy(() => import('./components/Positions/PositionsListPage'))
 
 // ── Shared fallback ──────────────────────────────────────────────────────────
-const PageLoading = <div className="page-loading">Loading…</div>
+const PageLoading = (
+  <div className="page-loading">
+    <div className="page-loading-skeleton">
+      <div className="skeleton-block" style={{ height: 48, borderRadius: 12, marginBottom: 16 }} />
+      <div className="skeleton-block" style={{ height: 200, borderRadius: 14, marginBottom: 16 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="skeleton-block" style={{ height: 120, borderRadius: 12 }} />
+        <div className="skeleton-block" style={{ height: 120, borderRadius: 12 }} />
+      </div>
+    </div>
+  </div>
+)
 
 // ── Auth Guard ──────────────────────────────────
 
@@ -111,9 +123,11 @@ function AppLayout() {
           </div>
         )}
         <main className={`app-main ${isChatPage ? 'app-main--full' : ''}`}>
-          <Suspense fallback={PageLoading}>
-            <Outlet />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={PageLoading}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
     </ChatProvider>

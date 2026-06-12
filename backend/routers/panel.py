@@ -5,11 +5,12 @@ All routes under /api/v1/panel/
 """
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 
 from backend.services.interview_service import PanelFeedbackService
+from backend.middleware.rate_limiter import limiter
 
 router = APIRouter(prefix="/api/v1/panel", tags=["Panel Feedback"])
 logger = logging.getLogger(__name__)
@@ -42,7 +43,8 @@ class EnrichRequest(BaseModel):
 # ── Verify token & load context ───────────────────────────────────────────────
 
 @router.get("/{token}")
-async def verify_panel_token(token: str):
+@limiter.limit("30/minute")
+async def verify_panel_token(token: str, request: Request):
     """
     Verify panel magic link token and return full feedback context.
     Called when panel member opens the magic link.
@@ -63,7 +65,8 @@ async def verify_panel_token(token: str):
 # ── AI Enrich rough notes ─────────────────────────────────────────────────────
 
 @router.post("/{token}/enrich")
-async def enrich_notes(token: str, body: EnrichRequest):
+@limiter.limit("10/minute")
+async def enrich_notes(token: str, body: EnrichRequest, request: Request):
     """
     AI-enriched version of rough panel notes.
     Returns: { strengths_enriched, concerns_enriched }
@@ -85,7 +88,8 @@ async def enrich_notes(token: str, body: EnrichRequest):
 # ── Submit or save-draft feedback ─────────────────────────────────────────────
 
 @router.post("/{token}/submit")
-async def submit_feedback(token: str, body: SubmitFeedbackRequest):
+@limiter.limit("10/minute")
+async def submit_feedback(token: str, body: SubmitFeedbackRequest, request: Request):
     """
     Submit final feedback or save draft.
     - is_draft=false → final submit (marks token as used, triggers recruiter notification)

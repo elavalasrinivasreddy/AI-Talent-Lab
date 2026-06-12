@@ -514,6 +514,10 @@ async def run_migrations(conn) -> None:
     CREATE INDEX IF NOT EXISTS idx_talent_pool ON candidates(org_id, in_talent_pool) WHERE in_talent_pool = TRUE;
     CREATE INDEX IF NOT EXISTS idx_candidate_consents_candidate ON candidate_consents(candidate_id);
     CREATE INDEX IF NOT EXISTS idx_candidate_consents_org ON candidate_consents(org_id);
+    CREATE INDEX IF NOT EXISTS idx_applications_org_status ON candidate_applications(org_id, status);
+    CREATE INDEX IF NOT EXISTS idx_applications_org_created ON candidate_applications(org_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_positions_org_status_created ON positions(org_id, status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_interviews_org_scheduled ON interviews(org_id, scheduled_at);
     """
     await conn.execute(index_sql)
 

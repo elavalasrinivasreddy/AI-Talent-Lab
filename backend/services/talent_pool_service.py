@@ -80,7 +80,7 @@ class TalentPoolService:
                 f"""
                 SELECT c.id, c.name, c.email, c.current_title, c.current_company,
                        c.location, c.experience_years, c.source, c.skill_tags,
-                       c.talent_pool_reason, c.talent_pool_added_at, c.resume_embedding,
+                       c.talent_pool_reason, c.talent_pool_added_at,
                        COALESCE(c.contact_status, 'active') AS contact_status
                 FROM candidates c
                 WHERE {where}
@@ -93,8 +93,6 @@ class TalentPoolService:
         candidates = []
         for r in rows:
             d = dict(r)
-            # Don't expose embedding in list view
-            d.pop("resume_embedding", None)
             # Parse skill_tags if JSON string
             if d.get("skill_tags") and isinstance(d["skill_tags"], str):
                 try:

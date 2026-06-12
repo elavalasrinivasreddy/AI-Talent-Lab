@@ -62,7 +62,7 @@ celery_app.conf.beat_schedule = {
         "schedule": 3600.0,  # every hour — emails candidates ~24h before their interview
     },
     "batch-grade-pre-evaluations": {
-        "task": "tasks.pre_eval_grade",
+        "task": "backend.tasks.pre_eval_grade.pre_eval_grade",
         "schedule": 10800.0,  # every 3 hours
     },
     "gdpr-retention-cleanup": {

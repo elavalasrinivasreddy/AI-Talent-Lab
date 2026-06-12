@@ -51,10 +51,11 @@ def get_org_context() -> Optional[int]:
 
 
 async def _make_pool(dsn: str) -> asyncpg.Pool:
+    from backend.config import settings
     return await asyncpg.create_pool(
         dsn=dsn,
-        min_size=2,
-        max_size=10,
+        min_size=settings.DB_POOL_MIN,
+        max_size=settings.DB_POOL_MAX,
         command_timeout=60,
     )
 

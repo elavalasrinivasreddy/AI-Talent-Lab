@@ -12,6 +12,7 @@ from typing import Optional
 from backend.services.apply_service import ApplyService
 from backend.services.resume_service import extract_resume_text, validate_resume_file
 from backend.services.gdpr_service import GDPRService
+from backend.middleware.rate_limiter import limiter
 
 router = APIRouter(prefix="/api/v1/apply", tags=["Apply"])
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ class ConsentRequest(BaseModel):
 # ── GDPR consent (before chat starts) ────────────────────────────────────────
 
 @router.post("/{token}/consent")
+@limiter.limit("20/minute")
 async def record_apply_consent(token: str, body: ConsentRequest, request: Request):
     """
     Record candidate consent before the apply chat begins.
@@ -64,8 +66,8 @@ async def record_apply_consent(token: str, body: ConsentRequest, request: Reques
     from backend.db.connection import get_connection
     async with get_connection() as conn:
         await conn.execute(
-            "UPDATE candidate_applications SET consent_given_at = NOW() WHERE id = $1",
-            application_id,
+            "UPDATE candidate_applications SET consent_given_at = NOW() WHERE id = $1 AND org_id = $2",
+            application_id, org_id,
         )
 
     return {"ok": True, "consented": True}
@@ -74,7 +76,8 @@ async def record_apply_consent(token: str, body: ConsentRequest, request: Reques
 # ── Verify token & load context ───────────────────────────────────────────────
 
 @router.get("/{token}")
-async def verify_token(token: str):
+@limiter.limit("30/minute")
+async def verify_token(token: str, request: Request):
     """
     Verify the magic link token and return full apply page context.
     Called when candidate opens the magic link URL.
@@ -93,7 +96,8 @@ async def verify_token(token: str):
 # ── Send candidate message ────────────────────────────────────────────────────
 
 @router.post("/{token}/message")
-async def send_message(token: str, body: SendMessageRequest):
+@limiter.limit("20/minute")
+async def send_message(token: str, body: SendMessageRequest, request: Request):
     """
     Process a candidate chat message. Returns AI response and updated state.
     """

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import api, { setTokenGetter } from '../utils/api'
 
 const AuthContext = createContext(null)
@@ -147,6 +147,8 @@ export function AuthProvider({ children }) {
     }
   }, [logout])
 
+  const defaultRoute = useMemo(() => defaultRouteForRole(user?.role), [user?.role])
+
   const value = {
     user,
     org,
@@ -160,7 +162,7 @@ export function AuthProvider({ children }) {
     logout,
     refreshUser,
     setUser,
-    defaultRoute: defaultRouteForRole(user?.role),
+    defaultRoute,
   }
 
   return (
