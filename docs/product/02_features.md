@@ -13,8 +13,9 @@ Status legend: ✅ done · ⚠️ partial (backend only / mock) · ❌ not start
 > ⚠️ **Outdated claim (corrected 2026-06-11):** "functional end-to-end" reflects UI build status, not
 > verified runtime behavior. A full code audit found several ✅ features below are wired-looking but
 > silently broken (e.g. interview invite emails are a no-op, collusion detection was dead, status portal
-> 404s, talent-pool AI-match uses random vectors). **See [`../PRODUCT_STATUS.md`](../PRODUCT_STATUS.md)
-> for the real per-feature state before trusting any ✅ in this table.** This catalog is the *intended*
+> 404s, talent-pool AI-match uses random vectors). **See [`../STATUS.md`](../STATUS.md)
+> for the real per-feature state before trusting any ✅ in this table** (most of those audit findings are
+> now fixed — the tracker has current state). This catalog is the *intended*
 > feature set; it has not been re-verified line-by-line.
 
 | # | Feature | Status | Notes |

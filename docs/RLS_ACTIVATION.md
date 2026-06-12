@@ -21,7 +21,7 @@
 ## (original plan retained below for the activation work)
 # P0-2 — Real RLS Implementation Plan
 
-> Closes the inert-RLS hole in [PRODUCT_STATUS.md](PRODUCT_STATUS.md). The 18 policies exist but
+> Closes the inert-RLS hole tracked in [`STATUS.md`](STATUS.md) (P0-2). The 18 policies exist but
 > `SET LOCAL app.current_org_id` is never run, so they evaluate against NULL and do nothing.
 > This is architectural — `get_connection()` is shared by request handlers, Celery, login, platform
 > admin, and dev tools. Do it deliberately, with the gotchas below, then test before committing.

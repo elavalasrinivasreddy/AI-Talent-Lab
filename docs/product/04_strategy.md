@@ -1,8 +1,12 @@
-# Product Assessment — Vision, Design, Gaps, Alternatives
+# Product Strategy — Vision, Design, Gaps, Alternatives
 
-> Strategic companion to [`PRODUCT_STATUS.md`](PRODUCT_STATUS.md) (functional truth) and the
-> aspirational [`product/03_roadmap.md`](product/03_roadmap.md). Written 2026-06-11, builder-to-builder,
-> grounded in the full code audit. Opinionated on purpose — disagree where your context beats mine.
+> Strategic companion to [`../STATUS.md`](../STATUS.md) (live status) and the forward
+> [`03_roadmap.md`](03_roadmap.md). Written 2026-06-11, builder-to-builder, grounded in the full code
+> audit. Opinionated on purpose — disagree where your context beats mine.
+>
+> *Note (2026-06-12): the audit this references is now mostly executed — P0/P1s closed, RLS built,
+> Sentry added, core-loop test landed. The strategic argument (the data moat, narrow-the-surface, the
+> definition of done) still stands; check [`../STATUS.md`](../STATUS.md) for current state.*
 
 ---
 
@@ -68,7 +72,7 @@ The v3 design system is genuinely good and is your clearest competitive edge aft
    (`--color-primary`); `constants.js` pipeline palette differs from the doc. Pick ONE source of truth and reconcile.
 2. **Interaction-integrity holes the visuals hide** — bulk reject uses a browser `window.prompt()`; bias-fix
    buttons are wired via `window.acceptBiasFix` globals. These break the design system's own quality bar and are
-   fragile. (Both in [PRODUCT_STATUS.md](PRODUCT_STATUS.md).)
+   fragile. (Both in [`../STATUS.md`](../STATUS.md).)
 3. **Missing states** in several flows (status portal renders an always-empty timeline; pre-eval CTA points at a
    non-existent page). Visually "done," functionally dead.
 
