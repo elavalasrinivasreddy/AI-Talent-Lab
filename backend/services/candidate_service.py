@@ -10,6 +10,7 @@ from typing import Optional, Any
 from backend.adapters.llm.factory import get_llm, get_embedding_model
 from backend.config import settings
 from backend.services.llm_usage_logger import llm_context
+from backend.utils.crypto import decrypt_field
 from backend.db.connection import get_connection
 from backend.db.repositories.candidates import CandidateRepository
 from backend.db.repositories.positions import PositionRepository
@@ -241,6 +242,16 @@ class CandidateService:
                         candidate[field] = json.loads(val)
                     except Exception:
                         pass
+
+            # Decrypt and expose CTC compensation if the column is present
+            comp_enc = candidate.get("compensation_enc")
+            if comp_enc:
+                try:
+                    decrypted = decrypt_field(comp_enc, settings.ENCRYPTION_KEY)
+                    candidate["compensation"] = json.loads(decrypted)
+                except Exception:
+                    # Key mismatch or corrupt blob — surface raw value so data is not silently lost
+                    candidate["compensation"] = comp_enc
 
             return candidate
 

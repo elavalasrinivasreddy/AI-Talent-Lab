@@ -12,7 +12,7 @@ import { defineConfig, devices } from '@playwright/test';
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './tests',
+  testDir: './e2e',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -30,6 +30,9 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    actionTimeout: 15_000,
+    navigationTimeout: 20_000,
   },
 
   /* Configure projects for major browsers */
@@ -70,10 +73,10 @@ export default defineConfig({
     // },
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-  },
+  /*
+   * No webServer block: this suite assumes BOTH dev servers are already up —
+   *   Vite frontend on :5173 (npm run dev) and FastAPI backend on :8000
+   *   (uvicorn, started with DEV_MODE=true so /api/v1/dev/* seeding works).
+   * Vite proxies /api -> :8000, so the test seeds + walks through one origin.
+   */
 });

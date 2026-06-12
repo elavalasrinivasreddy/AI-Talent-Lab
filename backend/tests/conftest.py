@@ -3,7 +3,7 @@ import asyncio
 import pytest
 import pytest_asyncio
 import asyncpg
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from testcontainers.postgres import PostgresContainer
 from fastapi.testclient import TestClient
 
@@ -85,6 +85,26 @@ async def db_conn(db_pool):
         yield conn
 
 from httpx import AsyncClient, ASGITransport
+
+
+def _make_redis_mock():
+    """Return a mock redis client where get() always returns None (no token blacklisted)."""
+    mock = MagicMock()
+    mock.get = AsyncMock(return_value=None)
+    mock.set = AsyncMock(return_value=True)
+    mock.delete = AsyncMock(return_value=1)
+    mock.aclose = AsyncMock()
+    return mock
+
+
+@pytest.fixture(scope="session", autouse=True)
+def mock_redis():
+    """Patch redis.asyncio.from_url for the entire test session.
+    Tests run without a live Redis — JWT denylist checks always return not-blacklisted."""
+    redis_mock = _make_redis_mock()
+    with patch("redis.asyncio.from_url", return_value=redis_mock):
+        yield redis_mock
+
 
 @pytest_asyncio.fixture
 async def client(db_pool):

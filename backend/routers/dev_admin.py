@@ -4,7 +4,9 @@ ONLY ENABLED WHEN settings.DEV_MODE is True.
 Public routes — no auth required. DEV_MODE=False makes all routes return 404.
 Route: /api/v1/dev/*
 """
+import json
 import logging
+import uuid
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, EmailStr
@@ -294,6 +296,129 @@ async def reset_all_org_data(org_id: Optional[int] = Query(None)):
             msg = "Global data cleared. ALL orgs, users, and departments wiped."
     logger.warning(f"[DEV] Full reset for org {org_id or 'ALL'}")
     return {"ok": True, "message": msg}
+
+
+# ── Core-Loop Seeding (E2E test fixture) ──────────────────────────────────────
+
+class SeedCoreLoopBody(BaseModel):
+    """All fields optional — sensible defaults so the E2E test can call with {}."""
+    org_name: Optional[str] = None       # auto-generated unique name if absent
+    hr_email: Optional[str] = None        # auto-generated unique email if absent
+    hr_password: str = "TestPass123!"
+    hr_name: str = "Test Recruiter"
+    role_name: str = "Backend Engineer"
+    candidate_name: str = "Ada Lovelace"
+    candidate_email: str = "ada.candidate@example.com"
+    skill_match_score: float = 82.0
+    app_status: str = "screening"
+
+
+@router.post("/seed-core-loop")
+async def seed_core_loop(body: SeedCoreLoopBody):
+    """
+    Seed a full recruiter core-loop fixture in one call, for Playwright E2E:
+      org → department → hr user → position(open) → candidate →
+      application(status, already-scored) → pipeline event.
+
+    Skips the LLM apply chat entirely — the application is inserted pre-scored.
+    Returns every id + login creds + the public status_token so the browser
+    test can walk login → pipeline → candidate detail → status portal.
+    """
+    _require_dev_mode()
+    sfx = uuid.uuid4().hex[:8]
+    org_name = body.org_name or f"E2E Loop Org {sfx}"
+    hr_email = body.hr_email or f"recruiter+{sfx}@e2e.test"
+    cand_email = body.candidate_email
+    if "+" not in cand_email and cand_email.count("@") == 1:
+        local, domain = cand_email.split("@")
+        cand_email = f"{local}+{sfx}@{domain}"
+
+    hashed = hash_password(body.hr_password)
+    slug = org_name.lower().replace(" ", "-")
+
+    # Pre-scored skill match so the candidate detail page renders a real score.
+    skill_data = json.dumps({
+        "summary": "Strong backend match seeded for E2E.",
+        "matched_skills": ["Python", "PostgreSQL", "FastAPI"],
+        "missing_skills": ["Kubernetes"],
+        "extra_skills": ["Rust"],
+        "career_trajectory": "steady_growth",
+        "red_flags": [],
+    })
+
+    async with get_admin_connection() as conn:
+        org_id = await conn.fetchval(
+            """INSERT INTO organizations (name, slug, segment, size, created_at)
+               VALUES ($1, $2, 'Technology', 'Mid-Market', NOW()) RETURNING id""",
+            org_name, slug,
+        )
+        dept_id = await conn.fetchval(
+            "INSERT INTO departments (org_id, name) VALUES ($1, 'Engineering') RETURNING id",
+            org_id,
+        )
+        user_id = await conn.fetchval(
+            """INSERT INTO users (name, email, password_hash, role, org_id, department_id,
+                                  is_active, created_at)
+               VALUES ($1, $2, $3, 'hr', $4, $5, true, NOW()) RETURNING id""",
+            body.hr_name, hr_email, hashed, org_id, dept_id,
+        )
+        pos_id = await conn.fetchval(
+            """INSERT INTO positions (org_id, department_id, role_name, status, created_at)
+               VALUES ($1, $2, $3, 'open', NOW()) RETURNING id""",
+            org_id, dept_id, body.role_name,
+        )
+        cand_id = await conn.fetchval(
+            """INSERT INTO candidates (org_id, name, email, current_title, current_company,
+                                       experience_years, location, source)
+               VALUES ($1, $2, $3, 'Senior Backend Engineer', 'Acme Corp', 7,
+                       'Bengaluru', 'manual') RETURNING id""",
+            org_id, body.candidate_name, cand_email,
+        )
+        app_row = await conn.fetchrow(
+            """INSERT INTO candidate_applications
+                   (candidate_id, position_id, org_id, department_id,
+                    skill_match_score, skill_match_data, status, applied_at, status_token)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), gen_random_uuid()::text)
+               RETURNING id, status_token""",
+            cand_id, pos_id, org_id, dept_id,
+            body.skill_match_score, skill_data, body.app_status,
+        )
+        await conn.execute(
+            """INSERT INTO pipeline_events
+                   (org_id, candidate_id, position_id, application_id, event_type)
+               VALUES ($1, $2, $3, $4, 'application_received')""",
+            org_id, cand_id, pos_id, app_row["id"],
+        )
+
+    logger.info(f"[DEV] Seeded core-loop fixture org={org_id} pos={pos_id} cand={cand_id}")
+    return {
+        "ok": True,
+        "org_id": org_id,
+        "department_id": dept_id,
+        "user_id": user_id,
+        "position_id": pos_id,
+        "candidate_id": cand_id,
+        "application_id": app_row["id"],
+        "status_token": app_row["status_token"],
+        "hr_email": hr_email,
+        "hr_password": body.hr_password,
+        "candidate_email": cand_email,
+    }
+
+
+@router.delete("/seed-core-loop/{org_id}")
+async def teardown_core_loop(org_id: int):
+    """Tear down a core-loop fixture org and all its data (E2E cleanup)."""
+    _require_dev_mode()
+    async with get_admin_connection() as conn:
+        await conn.execute("DELETE FROM pipeline_events WHERE org_id = $1", org_id)
+        await conn.execute("DELETE FROM candidate_applications WHERE org_id = $1", org_id)
+        await conn.execute("DELETE FROM candidates WHERE org_id = $1", org_id)
+        await conn.execute("DELETE FROM positions WHERE org_id = $1", org_id)
+        await conn.execute("DELETE FROM users WHERE org_id = $1", org_id)
+        await conn.execute("DELETE FROM departments WHERE org_id = $1", org_id)
+        await conn.execute("DELETE FROM organizations WHERE id = $1", org_id)
+    return {"ok": True, "org_id": org_id}
 
 
 # ── Session Restore ───────────────────────────────────────────────────────────

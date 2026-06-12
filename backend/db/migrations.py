@@ -1213,6 +1213,14 @@ async def run_migrations(conn) -> None:
     await conn.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS meta JSONB;")
     logger.info("  notifications.meta column ensured.")
 
+    # ── CTC encryption column ─────────────────────────────────────────────────
+    # Stores JSON {"current": ..., "expected": ..., "declined": ...} optionally
+    # encrypted with AES-256-GCM (see backend/utils/crypto.py).
+    await conn.execute(
+        "ALTER TABLE candidate_applications ADD COLUMN IF NOT EXISTS compensation_enc TEXT;"
+    )
+    logger.info("  candidate_applications.compensation_enc column ensured.")
+
     # Ensure interviews.reminder_sent_at exists (drives the 24h auto-reminder task).
     await conn.execute("ALTER TABLE interviews ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMP;")
     logger.info("  interviews.reminder_sent_at column ensured.")
