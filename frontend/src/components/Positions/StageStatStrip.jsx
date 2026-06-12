@@ -5,14 +5,12 @@
  * Per docs/design/pages/03_position_detail.md §3.
  */
 import React from 'react'
-import { PIPELINE_STAGES } from '../../utils/constants'
-
-const STAGES = ['sourced', 'emailed', 'applied', 'screening', 'interview', 'selected', 'rejected']
+import { PIPELINE_STAGES, KANBAN_STAGE_ORDER } from '../../utils/constants'
 
 export default function StageStatStrip({ summary, activeStage, onStageClick }) {
   return (
     <div className="pd-stage-strip">
-      {STAGES.map(key => {
+      {KANBAN_STAGE_ORDER.map(key => {
         const cfg = PIPELINE_STAGES[key] || { label: key, color: 'var(--color-text-muted, #94A3B8)' }
         const data = summary?.stages?.[key] || { count: 0, delta_today: 0 }
         const isActive = activeStage === key

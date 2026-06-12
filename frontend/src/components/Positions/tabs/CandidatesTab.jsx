@@ -5,13 +5,13 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { candidatesApi } from '../../../utils/api'
-import { PIPELINE_STAGES, getScoreStyle } from '../../../utils/constants'
+import { PIPELINE_STAGES, getScoreStyle, KANBAN_STAGE_ORDER } from '../../../utils/constants'
 import StatusBadge from '../../common/StatusBadge'
 import ScoreCircle from '../../common/ScoreCircle'
 import Toast from '../../common/Toast'
 import './CandidatesTab.css'
 
-const FILTER_STAGES = ['all', 'sourced', 'emailed', 'applied', 'screening', 'interview', 'selected', 'rejected']
+const FILTER_STAGES = ['all', ...KANBAN_STAGE_ORDER]
 
 export default function CandidatesTab({ positionId }) {
   const [candidates, setCandidates] = useState([])
