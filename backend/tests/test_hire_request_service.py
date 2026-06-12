@@ -74,7 +74,7 @@ def _make_request(
     id: int = 1,
     org_id: int = 1,
     status: str = "pending",
-    dept_id: int = 10,
+    dept_id: int | None = 10,
     requested_by: int = 99,
     accepted_by=None,
     accepted_by_name=None,

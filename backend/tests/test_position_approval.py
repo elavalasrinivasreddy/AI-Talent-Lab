@@ -305,11 +305,12 @@ async def test_approval_decision_approved_fires_sourcing(monkeypatch):
     # Also patch the import inside record_approval_decision
     import importlib
     import sys
+    import types
 
-    class _FakeCP:
-        run_candidate_search = _FakeTask()
+    fake_mod = types.ModuleType("backend.tasks.candidate_pipeline")
+    fake_mod.run_candidate_search = _FakeTask()  # type: ignore
 
-    sys.modules.setdefault("backend.tasks.candidate_pipeline", _FakeCP())
+    sys.modules.setdefault("backend.tasks.candidate_pipeline", fake_mod)
 
     await PositionService.record_approval_decision(
         position_id=7,
@@ -391,11 +392,12 @@ async def test_approval_decision_changes_requested_no_sourcing(monkeypatch):
             celery_delay_calls.append(args)
 
     import sys
+    import types
 
-    class _FakeCP:
-        run_candidate_search = _FakeTask()
+    fake_mod = types.ModuleType("backend.tasks.candidate_pipeline")
+    fake_mod.run_candidate_search = _FakeTask()  # type: ignore
 
-    sys.modules["backend.tasks.candidate_pipeline"] = _FakeCP()
+    sys.modules["backend.tasks.candidate_pipeline"] = fake_mod
 
     await PositionService.record_approval_decision(
         position_id=7,
