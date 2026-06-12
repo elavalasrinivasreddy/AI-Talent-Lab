@@ -16,6 +16,7 @@ from backend.db.repositories.candidates import CandidateRepository
 from backend.db.repositories.pipeline_events import PipelineEventRepository
 from backend.db.repositories.notifications import NotificationRepository
 from backend.agents.candidate_chat import CandidateChatController
+from backend.utils.crypto import encrypt_field
 
 logger = logging.getLogger(__name__)
 
@@ -349,16 +350,25 @@ class ApplyService:
                 **session_state.get("screening_responses", {}),
             }
 
+            # Build encrypted CTC blob
+            compensation_payload = json.dumps({
+                "current": session_state.get("compensation_current"),
+                "expected": session_state.get("compensation_expected"),
+                "declined": session_state.get("compensation_declined", False),
+            })
+            compensation_enc = encrypt_field(compensation_payload, settings.ENCRYPTION_KEY)
+
             # Update application status
             await conn.execute(
                 """
                 UPDATE candidate_applications
                 SET status='applied', applied_at=NOW(),
-                    screening_responses=$1, updated_at=NOW()
+                    screening_responses=$1, compensation_enc=$4, updated_at=NOW()
                 WHERE id=$2 AND org_id=$3
                 """,
                 json.dumps(screening_responses),
-                application_id, org_id
+                application_id, org_id,
+                compensation_enc,
             )
 
             # Update candidate if role changed
@@ -388,15 +398,17 @@ class ApplyService:
             # Notify recruiter — find who created the position
             app_row = await conn.fetchrow(
                 """
-                SELECT p.created_by, c.name AS candidate_name, p.role_name, ca.position_id
+                SELECT p.created_by, c.name AS candidate_name, c.email AS candidate_email,
+                       p.role_name, ca.position_id, ca.status_token, o.name AS org_name
                 FROM candidate_applications ca
                 JOIN positions p ON p.id = ca.position_id
                 JOIN candidates c ON c.id = ca.candidate_id
+                JOIN organizations o ON o.id = ca.org_id
                 WHERE ca.id=$1
                 """,
                 application_id
             )
-            
+
             position_id = app_row["position_id"] if app_row else None
 
             if app_row and app_row["created_by"]:
@@ -408,6 +420,25 @@ class ApplyService:
                     "message": f"{app_row['candidate_name']} has submitted their application via chat.",
                     "action_url": f"/positions/{position_id}?tab=candidates",
                 })
+
+        # ── Candidate confirmation email (interview process overview) ─────────
+        # Sent outside the connection block so a mail failure never rolls back the
+        # application. Best-effort: a missing email or send failure is logged only.
+        if app_row and app_row["candidate_email"]:
+            try:
+                from backend.services.email_service import EmailService
+                from backend.config import settings as _settings
+                base = _settings.MAGIC_LINK_BASE_URL or _settings.FRONTEND_URL
+                status_url = f"{base}/status/{app_row['status_token']}" if app_row["status_token"] else None
+                await EmailService.send_application_received(
+                    to_email=app_row["candidate_email"],
+                    candidate_name=app_row["candidate_name"],
+                    role_name=app_row["role_name"],
+                    org_name=app_row["org_name"],
+                    status_url=status_url,
+                )
+            except Exception as e:
+                logger.warning(f"Application confirmation email failed: {e}")
 
         # ── GDPR: Record consent + set data retention ────────────────────────
         try:

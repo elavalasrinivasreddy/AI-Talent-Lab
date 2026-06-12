@@ -16,7 +16,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from backend.celery_app import celery_app
-from backend.db.connection import get_connection
+from backend.db.connection import get_admin_connection
 from backend.services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
@@ -28,29 +28,36 @@ def _run_async(coro):
         loop = asyncio.get_event_loop()
         if loop.is_running():
             import concurrent.futures
+            from backend.utils.async_runner import run_async
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(asyncio.run, coro).result()
+                return pool.submit(run_async, coro).result()
         return loop.run_until_complete(coro)
     except RuntimeError:
-        return asyncio.run(coro)
+        from backend.utils.async_runner import run_async
+        return run_async(coro)
 
 
 # ── Outreach batch ────────────────────────────────────────────────────────────
 
 @celery_app.task(name="backend.tasks.email_outreach.send_outreach_batch")
-def send_outreach_batch(application_ids: list[int]) -> dict:
+def send_outreach_batch(application_ids: list[int], org_id: int | None = None) -> dict:
     """
     Send personalized outreach emails with magic links to a batch of candidates.
     Called after sourcing + ATS scoring finds new candidates for a position.
+    `org_id` (when given) scopes the batch to one tenant. Apply tokens are
+    generated on the fly for freshly sourced candidates that don't have one yet.
     """
     async def _send():
+        from backend.services.apply_service import generate_apply_token
+        from backend.config import settings
+        base = settings.MAGIC_LINK_BASE_URL or settings.FRONTEND_URL
         sent = 0
         failed = 0
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             for app_id in application_ids:
                 row = await conn.fetchrow(
                     """
-                    SELECT ca.id, ca.magic_link_token, ca.org_id,
+                    SELECT ca.id, ca.candidate_id, ca.magic_link_token, ca.org_id,
                            c.name AS candidate_name, c.email,
                            p.role_name, o.name AS org_name
                     FROM candidate_applications ca
@@ -58,17 +65,29 @@ def send_outreach_batch(application_ids: list[int]) -> dict:
                     JOIN positions p ON p.id = ca.position_id
                     JOIN organizations o ON o.id = ca.org_id
                     WHERE ca.id = $1 AND ca.status = 'sourced'
-                      AND ca.magic_link_token IS NOT NULL
                       AND ca.magic_link_sent_at IS NULL
+                      AND ($2::int IS NULL OR ca.org_id = $2)
                     """,
-                    app_id,
+                    app_id, org_id,
                 )
                 if not row or not row["email"]:
                     failed += 1
                     continue
 
+                # Generate an apply token if the candidate doesn't have one yet
+                # (sourcing inserts rows without tokens; without this, outreach
+                # would silently skip every freshly sourced candidate).
+                token = row["magic_link_token"]
+                if not token:
+                    token = generate_apply_token(row["id"], row["candidate_id"], row["org_id"])
+                    await conn.execute(
+                        "UPDATE candidate_applications SET magic_link_token=$1, "
+                        "magic_link_expires_at=NOW() + interval '14 days' WHERE id=$2",
+                        token, row["id"],
+                    )
+
                 # Build the apply link
-                apply_url = f"https://app.aitalentlab.com/apply/{row['magic_link_token']}"
+                apply_url = f"{base}/apply/{token}"
 
                 ok = await EmailService.send_candidate_outreach(
                     to_email=row["email"],
@@ -119,7 +138,7 @@ def send_followup_reminders() -> dict:
     """
     async def _followup():
         sent = 0
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             rows = await conn.fetch(
                 """
                 SELECT ca.id, ca.magic_link_token, ca.org_id,
@@ -162,13 +181,63 @@ def send_followup_reminders() -> dict:
     return result
 
 
+# ── Interview reminders (24h before) ──────────────────────────────────────────
+
+@celery_app.task(name="backend.tasks.email_outreach.send_interview_reminders")
+def send_interview_reminders() -> dict:
+    """Email a reminder to candidates whose interview is within the next 24h and
+    who haven't been reminded yet. Runs hourly via Celery Beat; reminder_sent_at
+    guards against duplicates."""
+    async def _remind():
+        sent = 0
+        async with get_admin_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT i.id, i.scheduled_at, i.meeting_link, i.round_name,
+                       c.name AS candidate_name, c.email AS candidate_email,
+                       p.role_name, o.name AS org_name
+                FROM interviews i
+                JOIN candidates c ON c.id = i.candidate_id
+                JOIN positions p ON p.id = i.position_id
+                JOIN organizations o ON o.id = i.org_id
+                WHERE i.status NOT IN ('cancelled', 'completed')
+                  AND i.reminder_sent_at IS NULL
+                  AND i.scheduled_at IS NOT NULL
+                  AND i.scheduled_at BETWEEN NOW() AND NOW() + interval '24 hours'
+                LIMIT 200
+                """
+            )
+            for row in rows:
+                if not row["candidate_email"]:
+                    continue
+                ok = await EmailService.send_interview_reminder(
+                    to_email=row["candidate_email"],
+                    candidate_name=row["candidate_name"],
+                    role_name=row["role_name"],
+                    org_name=row["org_name"],
+                    round_name=row["round_name"] or "Interview",
+                    scheduled_at=row["scheduled_at"],
+                    meeting_link=row["meeting_link"],
+                )
+                if ok:
+                    await conn.execute(
+                        "UPDATE interviews SET reminder_sent_at=NOW() WHERE id=$1", row["id"]
+                    )
+                    sent += 1
+        return {"reminders_sent": sent}
+
+    result = _run_async(_remind())
+    logger.info(f"Interview reminders: {result}")
+    return result
+
+
 # ── Interview invites ─────────────────────────────────────────────────────────
 
 @celery_app.task(name="backend.tasks.email_outreach.send_interview_invite")
 def send_interview_invite(interview_id: int) -> dict:
     """Send interview invitation email to the candidate."""
     async def _send():
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             row = await conn.fetchrow(
                 """
                 SELECT i.id, i.scheduled_at, i.duration_minutes, i.meeting_link,
@@ -213,7 +282,7 @@ def send_interview_invite(interview_id: int) -> dict:
 def send_panel_invite(panel_member_id: int) -> dict:
     """Send panel feedback magic link to an interviewer."""
     async def _send():
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             row = await conn.fetchrow(
                 """
                 SELECT ip.panelist_name, ip.panelist_email, ip.magic_link_token,
@@ -260,7 +329,7 @@ def send_panel_invite(panel_member_id: int) -> dict:
 def send_rejection_email(application_id: int) -> dict:
     """Send rejection notification to a candidate."""
     async def _send():
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             row = await conn.fetchrow(
                 """
                 SELECT ca.id, ca.rejection_draft, ca.org_id,

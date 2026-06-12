@@ -648,6 +648,7 @@ async def get_audit_logs(
     offset: int = Query(0, ge=0),
     user_id: Optional[int] = Query(None),
     action: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
     user: dict = Depends(require_org_head),
 ):
     """List audit logs (admin only)."""
@@ -657,7 +658,8 @@ async def get_audit_logs(
         limit=limit,
         offset=offset,
         user_id_filter=user_id,
-        action_filter=action
+        action_filter=action,
+        search_filter=search
     )
 
 

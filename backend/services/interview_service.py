@@ -210,35 +210,94 @@ class InterviewService:
             if updated and data.get("overall_result") == "rejected":
                 # Auto-draft rejection email in background
                 from backend.tasks.rejection_task import draft_rejection_async
-                draft_rejection_async.delay(interview_id, org_id, user_id)
+                draft_rejection_async.delay(interview_id, org_id, user_id)  # type: ignore
         return updated
 
     @staticmethod
-    async def send_invites(interview_id: int, org_id: int) -> dict:
-        """Mark invites as sent (email simulation). Returns panel with links."""
+    async def send_invites(
+        interview_id: int, org_id: int,
+        send_candidate: bool = True, send_panel: bool = True,
+    ) -> dict:
+        """Send the interview invitation to the candidate and unique magic-link
+        feedback emails to each panel member. Per-email failures are logged and
+        do not abort the batch. Returns what was emailed + the panel links."""
+        from backend.services.email_service import EmailService
+
         async with get_connection() as conn:
-            interview = await InterviewRepository.get(conn, interview_id, org_id)
-            if not interview:
+            info = await conn.fetchrow(
+                """
+                SELECT i.id, i.round_name, i.round_number, i.scheduled_at,
+                       i.duration_minutes, i.meeting_link,
+                       c.name AS candidate_name, c.email AS candidate_email,
+                       p.role_name AS role_name, o.name AS org_name
+                FROM interviews i
+                JOIN candidates c    ON c.id = i.candidate_id
+                JOIN positions p     ON p.id = i.position_id
+                JOIN organizations o ON o.id = i.org_id
+                WHERE i.id=$1 AND i.org_id=$2
+                """,
+                interview_id, org_id,
+            )
+            if not info:
                 raise ValueError("Interview not found")
 
             panel = await PanelRepository.get_panel(conn, interview_id)
 
             await conn.execute(
                 "UPDATE interviews SET invite_sent_at=NOW() WHERE id=$1 AND org_id=$2",
-                interview_id, org_id
+                interview_id, org_id,
             )
+
+        round_name = info["round_name"] or f"Round {info['round_number']}"
+        role_name = info["role_name"] or "the role"
+        candidate_name = info["candidate_name"] or "the candidate"
+
+        candidate_emailed = False
+        if send_candidate and info["candidate_email"]:
+            try:
+                candidate_emailed = await EmailService.send_interview_invite(
+                    to_email=info["candidate_email"],
+                    candidate_name=info["candidate_name"],
+                    role_name=role_name,
+                    org_name=info["org_name"],
+                    round_name=round_name,
+                    scheduled_at=info["scheduled_at"],
+                    duration_minutes=info["duration_minutes"] or 60,
+                    meeting_link=info["meeting_link"],
+                )
+            except Exception as e:
+                logger.warning("Interview invite email to candidate failed (interview %s): %s", interview_id, e)
+
+        panel_links, panel_emailed = [], []
+        for p in panel:
+            feedback_url = f"{settings.FRONTEND_URL}/panel/{p['magic_link_token']}"
+            panel_links.append({
+                "name": p["panelist_name"],
+                "email": p["panelist_email"],
+                "panel_url": feedback_url,
+            })
+            if send_panel and p.get("panelist_email"):
+                try:
+                    ok = await EmailService.send_panel_feedback_link(
+                        to_email=p["panelist_email"],
+                        panelist_name=p["panelist_name"],
+                        candidate_name=candidate_name,
+                        role_name=role_name,
+                        org_name=info["org_name"],
+                        round_name=round_name,
+                        feedback_url=feedback_url,
+                    )
+                    panel_emailed.append({"email": p["panelist_email"], "sent": ok})
+                except Exception as e:
+                    logger.warning("Panel feedback email failed for %s (interview %s): %s", p.get("panelist_email"), interview_id, e)
+                    panel_emailed.append({"email": p["panelist_email"], "sent": False})
 
         return {
             "sent": True,
             "interview_id": interview_id,
-            "panel_links": [
-                {
-                    "name": p["panelist_name"],
-                    "email": p["panelist_email"],
-                    "panel_url": f"{settings.FRONTEND_URL}/panel/{p['magic_link_token']}",
-                }
-                for p in panel
-            ],
+            "candidate_emailed": candidate_emailed,
+            "panel_emailed": panel_emailed,
+            "panel_links": panel_links,
         }
 
     @staticmethod
@@ -422,14 +481,14 @@ class PanelFeedbackService:
                 })
 
                 # Check if all panel submitted
-                submitted_count = await conn.fetchval(
+                submitted_count = (await conn.fetchval(
                     "SELECT COUNT(*) FROM interview_panel WHERE interview_id=$1 AND feedback_submitted=TRUE",
                     interview_id
-                )
-                total_panel = await conn.fetchval(
+                )) or 0
+                total_panel = (await conn.fetchval(
                     "SELECT COUNT(*) FROM interview_panel WHERE interview_id=$1",
                     interview_id
-                )
+                )) or 0
 
                 # Notify recruiter
                 created_by = await conn.fetchval(

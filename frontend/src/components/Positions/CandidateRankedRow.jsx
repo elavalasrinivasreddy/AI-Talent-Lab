@@ -7,7 +7,7 @@
 import React, { useState } from 'react'
 import Chip from '../common/Chip'
 import Icon from '../common/Icon'
-import { PIPELINE_STAGES, getScoreStyle } from '../../utils/constants'
+import { PIPELINE_STAGES, getScoreStyle, KANBAN_STAGE_ORDER } from '../../utils/constants'
 
 const SOURCE_MAP = {
   'ai_sourced': { label: 'AI-sourced', variant: 'primary', icon: 'cpu' },
@@ -18,7 +18,7 @@ const SOURCE_MAP = {
   'manual':     { label: 'Manual', variant: 'neutral', icon: 'user' },
 }
 
-const VISIBLE_STAGES = ['sourced', 'emailed', 'applied', 'screening', 'interview', 'selected', 'rejected']
+const VISIBLE_STAGES = KANBAN_STAGE_ORDER
 
 function timeInStage(updatedAt) {
   if (!updatedAt) return '—'
@@ -130,12 +130,12 @@ export default function CandidateRankedRow({
 
       {/* Reasoning chips */}
       <div className="pd-rr-reasoning">
-        {matchedCount > 0 && (
+        {matchedCount > 0 ? (
           <Chip variant="success" size="xs">+{matchedCount} skills</Chip>
-        )}
-        {expMatch && (
-          <Chip variant={expMatch.startsWith('+') ? 'success' : 'warning'} size="xs">{expMatch}</Chip>
-        )}
+        ) : null}
+        {expMatch ? (
+          <Chip variant={String(expMatch).startsWith('+') ? 'success' : 'warning'} size="xs">{expMatch}</Chip>
+        ) : null}
         {missingItems.map((m, i) => (
           <Chip key={i} variant="danger" size="xs">−{m}</Chip>
         ))}
@@ -146,9 +146,9 @@ export default function CandidateRankedRow({
         {visibleSkills.map((s, i) => (
           <span key={i} className="pd-rr-skill-tag">{s}</span>
         ))}
-        {overflowSkills > 0 && (
+        {overflowSkills > 0 ? (
           <span className="pd-rr-skill-more">+{overflowSkills}</span>
-        )}
+        ) : null}
       </div>
 
       {/* Source */}
@@ -161,7 +161,7 @@ export default function CandidateRankedRow({
       {/* Time in stage */}
       <div className={`pd-rr-time ${stale ? 'stale' : ''}`}>
         {tis}
-        {stale && <span className="pd-rr-stale-label">(stale)</span>}
+        {stale ? <span className="pd-rr-stale-label">(stale)</span> : null}
       </div>
 
       {/* Actions */}

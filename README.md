@@ -348,12 +348,15 @@ AI Talent Lab/
 │
 ├── docs/                          # Consolidated documentation (see docs/README.md)
 │   ├── README.md                  # Master index
-│   ├── STATUS.md                  # Redesign build-status tracker
-│   ├── product/                   # Overview, features, roadmap
+│   ├── STATUS.md                  # ⭐ Single living tracker: where we are + what's next
+│   ├── product/                   # Overview, features, roadmap, strategy
 │   ├── architecture/              # Stack, data model, backend, AI agents, frontend
 │   ├── design/                    # Design system + per-page specs (design/pages/)
+│   ├── qa/                        # Bug ledger + test validation
+│   ├── reviews/                   # Per-surface code reviews
 │   ├── integrations/              # Calendar guide
-│   └── TECH_DEBT.md
+│   ├── RLS_ACTIVATION.md          # Live runbook: turn RLS on
+│   └── archive/                   # Superseded planning docs (dated history)
 ├── docker-compose.yml             # PostgreSQL 16 + Redis 7
 └── .env.example                   # All environment variable documentation
 ```
@@ -440,12 +443,13 @@ All planning and architectural decisions live in `docs/`. Start at **[`docs/READ
 
 | Area | Where |
 |---|---|
-| Product overview, features (w/ build status), roadmap | `docs/product/` |
+| **Where we are + what's next** (start here) | **`docs/STATUS.md`** |
+| Product overview, features, roadmap, strategy | `docs/product/` |
 | Stack, data model, backend, AI agents, frontend | `docs/architecture/` |
 | Design system + per-page specs | `docs/design/` (`docs/design/pages/NN_*.md`) |
-| Redesign build status (what's done vs pending) | `docs/STATUS.md` |
+| Bug ledger + test validation | `docs/qa/` |
+| RLS activation runbook | `docs/RLS_ACTIVATION.md` |
 | Calendar OAuth guide | `docs/integrations/calendar.md` |
-| Production hardening tracker | `docs/TECH_DEBT.md` |
 
 Each per-page spec in `docs/design/pages/` carries a **Build status** banner and merges
 the v3 redesign spec with the pre-v3 behavioral spec (appendix).

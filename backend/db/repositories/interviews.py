@@ -33,7 +33,7 @@ class InterviewRepository:
             data.get("duration_minutes", 60), data.get("meeting_link"),
             data.get("status", "scheduled"), data.get("notes"),
         )
-        return dict(row)
+        return dict(row) if row else {}
 
     @staticmethod
     async def get(conn: asyncpg.Connection, interview_id: int, org_id: int) -> Optional[dict]:
@@ -121,7 +121,7 @@ class PanelRepository:
             data["panelist_name"], data["panelist_email"],
             data.get("magic_link_token"), data.get("magic_link_expires_at"),
         )
-        return dict(row)
+        return dict(row) if row else {}
 
     @staticmethod
     async def get_panel(conn: asyncpg.Connection, interview_id: int) -> list[dict]:
@@ -203,7 +203,7 @@ class ScorecardRepository:
             data.get("additional_comments"),
             data.get("raw_notes_strengths"), data.get("raw_notes_concerns"),
         )
-        return dict(row)
+        return dict(row) if row else {}
 
     @staticmethod
     async def list_for_interview(conn: asyncpg.Connection, interview_id: int) -> list[dict]:

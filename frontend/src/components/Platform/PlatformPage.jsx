@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { timeAgo } from '../../utils/date'
+import ProvidersTab from '../Settings/tabs/ProvidersTab'
 import './PlatformPage.css'
 
 const BASE = (import.meta.env.VITE_API_URL || '/api/v1') + '/platform'
@@ -85,6 +86,7 @@ export default function PlatformPage() {
             { key: 'overview', label: 'Overview' },
             { key: 'orgs', label: `Organisations (${orgs.length})` },
             { key: 'activity', label: 'Activity' },
+            { key: 'providers', label: 'Providers & API Keys' },
           ].map(t => (
             <button
               key={t.key}
@@ -186,6 +188,15 @@ export default function PlatformPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Providers & API Keys */}
+        {tab === 'providers' && (
+          <div className="plat-section">
+            <div className="plat-providers-wrapper">
+              <ProvidersTab />
             </div>
           </div>
         )}

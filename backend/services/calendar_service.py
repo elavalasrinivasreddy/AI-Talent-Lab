@@ -138,7 +138,13 @@ class GoogleCalendarAdapter:
 
 def get_calendar_adapter():
     if CALENDAR_PROVIDER == "google":
-        return GoogleCalendarAdapter
+        # GoogleCalendarAdapter is still a stub (raises NotImplementedError). Until
+        # it's implemented, fall back to mock with a loud warning rather than
+        # crashing interview scheduling in production.
+        logger.warning(
+            "CALENDAR_PROVIDER=google but the Google adapter is not implemented yet; "
+            "falling back to MockCalendarAdapter (mock slots + meeting links)."
+        )
     return MockCalendarAdapter
 
 

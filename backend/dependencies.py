@@ -14,7 +14,7 @@ from typing import AsyncGenerator
 
 import asyncpg
 
-from backend.db.connection import get_connection
+from backend.db.connection import get_connection, get_admin_connection
 from backend.utils.security import decode_access_token, verify_magic_link_token
 from backend.exceptions import (
     InvalidCredentialsError,
@@ -34,15 +34,23 @@ _PRIVILEGED_OVER_DEPT = {ORG_HEAD, DEPT_ADMIN}
 
 
 async def get_db() -> AsyncGenerator[asyncpg.Connection, None]:
-    """Yield an async database connection from the pool."""
+    """Yield an app-pool connection (RLS enforced when APP_DATABASE_URL set)."""
     async with get_connection() as conn:
+        yield conn
+
+
+async def get_admin_db() -> AsyncGenerator[asyncpg.Connection, None]:
+    """Yield a superuser connection — RLS bypassed. Use for cross-org reads
+    (platform_admin routes) where intentional multi-tenant access is required."""
+    async with get_admin_connection() as conn:
         yield conn
 
 
 async def get_current_user(request: Request) -> dict:
     """
     Decode JWT from Authorization header, return user dict.
-    Sets SET LOCAL app.current_org_id for RLS enforcement.
+    RLS org context (app.current_org_id) is applied by the tenant middleware +
+    get_connection(), not here — see backend/middleware/tenant_context.py.
     """
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):

@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import settings
-from backend.db.connection import init_db, close_pool, health_check
+from backend.db.connection import init_db, close_pool, close_admin_pool, health_check
 from backend.db.vector_store import startup_probe as chroma_probe
 from backend.exceptions import register_exception_handlers
 from backend.middleware.cors import setup_cors
@@ -50,6 +50,23 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# ── Error monitoring (Sentry) ───────────────────────────────────────────────────
+# No-op unless SENTRY_DSN is set, so dev/local stays untouched. Captures unhandled
+# exceptions across API + Celery so silent task failures surface on a dashboard.
+if settings.SENTRY_DSN:
+    try:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.ENVIRONMENT,
+            traces_sample_rate=0.1,
+            send_default_pii=False,
+        )
+        logger.info("Sentry error monitoring enabled (env=%s).", settings.ENVIRONMENT)
+    except Exception as e:
+        logger.warning("Sentry init skipped: %s", e)
+
+
 # ── Lifespan ───────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
@@ -62,6 +79,7 @@ async def lifespan(app: FastAPI):
     yield
     logger.info("Shutting down...")
     await close_pool()
+    await close_admin_pool()
 
 
 # ── App Factory ────────────────────────────────────────────────────────────────

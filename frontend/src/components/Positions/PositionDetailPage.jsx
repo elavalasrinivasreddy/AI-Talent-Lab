@@ -70,7 +70,7 @@ export default function PositionDetailPage() {
         const stagesWithCandidates = Object.entries(data.stages)
           .filter(([, v]) => v.count > 0)
           .sort((a, b) => {
-            const order = ['screening', 'interview', 'applied', 'sourced', 'emailed', 'selected', 'rejected']
+            const order = ['screening', 'interview', 'applied', 'sourced', 'emailed', 'selected', 'rejected', 'on_hold']
             return order.indexOf(a[0]) - order.indexOf(b[0])
           })
         if (stagesWithCandidates.length > 0) {

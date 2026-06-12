@@ -6,6 +6,20 @@ See docs/architecture/03_backend.md §16.
 from celery import Celery
 from backend.config import settings
 
+# Error monitoring for the worker process (separate from the API). No-op unless
+# SENTRY_DSN is set; Sentry auto-instruments Celery once initialized in-process.
+if settings.SENTRY_DSN:
+    try:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=settings.SENTRY_DSN,
+            environment=settings.ENVIRONMENT,
+            traces_sample_rate=0.1,
+            send_default_pii=False,
+        )
+    except Exception:
+        pass
+
 celery_app = Celery(
     "talentlab",
     broker=settings.celery_broker,
@@ -19,6 +33,7 @@ celery_app = Celery(
         "backend.tasks.copilot_analysis",
         "backend.tasks.auth_cleanup",
         "backend.tasks.hire_request_locks",
+        "backend.tasks.rejection_task",
     ],
 )
 
@@ -41,6 +56,10 @@ celery_app.conf.beat_schedule = {
     "send-followup-reminders": {
         "task": "backend.tasks.email_outreach.send_followup_reminders",
         "schedule": 3600.0,  # every hour
+    },
+    "send-interview-reminders": {
+        "task": "backend.tasks.email_outreach.send_interview_reminders",
+        "schedule": 3600.0,  # every hour — emails candidates ~24h before their interview
     },
     "batch-grade-pre-evaluations": {
         "task": "tasks.pre_eval_grade",

@@ -76,6 +76,9 @@ class GDPRService:
                 consent_given, consent_text, ip_address, user_agent,
             )
 
+            if not row:
+                raise RuntimeError("Failed to insert consent record")
+
             # If this is the data_processing consent for an application, mark it
             if consent_type == "data_processing" and application_id and consent_given:
                 await conn.execute(
@@ -220,17 +223,18 @@ class GDPRService:
                     """,
                     cand["org_id"], cand["id"], email, token,
                 )
-                requests_created.append(row["id"])
+                if row:
+                    requests_created.append(row["id"])
 
-                # Audit
-                await conn.execute(
-                    """
-                    INSERT INTO audit_log (org_id, action, entity_type, entity_id, details)
-                    VALUES ($1, $2, $3, $4, $5)
-                    """,
-                    cand["org_id"], "deletion_requested", "candidate", str(cand["id"]),
-                    json.dumps({"request_id": row["id"]}),
-                )
+                    # Audit
+                    await conn.execute(
+                        """
+                        INSERT INTO audit_log (org_id, action, entity_type, entity_id, details)
+                        VALUES ($1, $2, $3, $4, $5)
+                        """,
+                        cand["org_id"], "deletion_requested", "candidate", str(cand["id"]),
+                        json.dumps({"request_id": row["id"]}),
+                    )
 
         return {
             "message": "If your email is in our system, you will receive a verification link.",
@@ -274,15 +278,17 @@ class GDPRService:
             }
 
     @staticmethod
-    async def process_deletion(request_id: int) -> dict:
+    async def process_deletion(request_id: int, org_id: int) -> dict:
         """
         Step 3: Actually execute the data deletion/anonymization.
         Anonymizes candidate data while preserving aggregate hiring metrics.
+        `org_id` scopes the request to the caller's org — prevents cross-tenant
+        deletion by guessing another org's request id.
         """
         async with get_connection() as conn:
             req = await conn.fetchrow(
-                "SELECT * FROM data_deletion_requests WHERE id=$1",
-                request_id,
+                "SELECT * FROM data_deletion_requests WHERE id=$1 AND org_id=$2",
+                request_id, org_id,
             )
             if not req:
                 return {"error": "Request not found"}
@@ -478,8 +484,9 @@ class GDPRService:
                     cand["email"] or "unknown@expired",
                     token,
                 )
-                await GDPRService.process_deletion(req["id"])
-                processed += 1
+                if req:
+                    await GDPRService.process_deletion(req["id"], cand["org_id"])
+                    processed += 1
 
             logger.info(f"GDPR retention cleanup: anonymized {processed} candidates")
             return {"processed": processed}

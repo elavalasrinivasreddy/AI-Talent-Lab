@@ -16,6 +16,10 @@ logger = logging.getLogger(__name__)
 STEPS = [
     "greeting",
     "interest",
+    "current_role",
+    "experience",
+    "compensation",
+    "notice_period",
     "resume_upload",
     "screening_questions",
     "completion",
@@ -64,6 +68,18 @@ class CandidateChatController:
 
         elif step == "interest":
             return await self._step_interest(user_message)
+
+        elif step == "current_role":
+            return await self._step_current_role(user_message)
+
+        elif step == "experience":
+            return await self._step_experience(user_message)
+
+        elif step == "compensation":
+            return await self._step_compensation(user_message)
+
+        elif step == "notice_period":
+            return await self._step_notice_period(user_message)
 
         elif step == "resume_upload":
             # Resume upload handled separately via file endpoint
@@ -119,12 +135,66 @@ class CandidateChatController:
                 self.state
             )
 
-        # Interested → move to resume_upload
-        self.state["step"] = "resume_upload"
+        # Interested → start the short profiling sequence
+        self.state["step"] = "current_role"
 
         return (
             "Wonderful! Let's get started.\n\n"
-            "Please share your latest resume.\n\n"
+            "First, what's your **current role and company**? "
+            "(e.g. \"Senior Backend Engineer at Acme\")",
+            self.state
+        )
+
+    async def _step_current_role(self, user_message: str) -> tuple[str, dict]:
+        """Capture current title + company, then ask about experience."""
+        answer = (user_message or "").strip()
+        # Naive split on " at " — store the whole thing as title if no split.
+        if " at " in answer.lower():
+            title, _, company = answer.partition(" at ")
+            self.state["current_title"] = title.strip()
+            self.state["current_company"] = company.strip()
+        else:
+            self.state["current_title"] = answer
+            self.state["current_company"] = None
+
+        self.state["step"] = "experience"
+        return (
+            "Thanks! How many **years of experience** do you have overall, and how "
+            "many are directly relevant to this role?",
+            self.state
+        )
+
+    async def _step_experience(self, user_message: str) -> tuple[str, dict]:
+        """Capture experience (stored as free text), then ask compensation."""
+        self.state["experience_years"] = (user_message or "").strip()
+        self.state["step"] = "compensation"
+        return (
+            "Got it. What's your **current and expected compensation** (CTC)? "
+            "Feel free to say \"prefer not to say\" if you'd rather skip this.",
+            self.state
+        )
+
+    async def _step_compensation(self, user_message: str) -> tuple[str, dict]:
+        """Capture compensation (or a decline), then ask notice period."""
+        answer = (user_message or "").strip()
+        decline_kw = ["prefer not", "skip", "rather not", "decline", "n/a", "later"]
+        if any(kw in answer.lower() for kw in decline_kw):
+            self.state["compensation_declined"] = True
+        else:
+            self.state["compensation_current"] = answer
+        self.state["step"] = "notice_period"
+        return (
+            "No problem. Lastly — what's your **notice period / availability** to start?",
+            self.state
+        )
+
+    async def _step_notice_period(self, user_message: str) -> tuple[str, dict]:
+        """Capture notice period, then move to resume upload."""
+        self.state["notice_period"] = (user_message or "").strip()
+        self.state["step"] = "resume_upload"
+        return (
+            "Perfect — almost done!\n\n"
+            "Please share your latest resume. "
             "You can upload a **PDF or Word document** (max 5MB).",
             self.state
         )

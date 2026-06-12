@@ -16,7 +16,8 @@ class AuditService:
         limit: int = 50, 
         offset: int = 0,
         user_id_filter: Optional[int] = None,
-        action_filter: Optional[str] = None
+        action_filter: Optional[str] = None,
+        search_filter: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Fetch audit logs for an organization.
@@ -36,6 +37,11 @@ class AuditService:
             params.append(action_filter)
             param_idx += 1
 
+        if search_filter:
+            filters.append(f"(COALESCE(u.name, 'System') ILIKE ${param_idx} OR u.email ILIKE ${param_idx} OR a.action ILIKE ${param_idx} OR a.ip_address ILIKE ${param_idx} OR COALESCE(a.entity_type || ' #' || a.entity_id::TEXT, a.entity_type) ILIKE ${param_idx} OR to_char(a.created_at, 'Mon DD, YYYY') ILIKE ${param_idx} OR to_char(a.created_at, 'FMMonth DD, YYYY') ILIKE ${param_idx} OR CAST(a.created_at AS TEXT) ILIKE ${param_idx})")
+            params.append(f"%{search_filter}%")
+            param_idx += 1
+
         where_clause = " AND ".join(filters)
 
         query = f"""
@@ -53,6 +59,7 @@ class AuditService:
         count_query = f"""
             SELECT COUNT(*) 
             FROM audit_log a
+            LEFT JOIN users u ON u.id = a.user_id
             WHERE {where_clause}
         """
 
