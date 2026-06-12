@@ -159,8 +159,20 @@ export default function CareerPage() {
 
   if (loading) {
     return (
-      <div className="cp-state-page">
-        <div className="cp-spinner" />
+      <div className="cp-container" style={{ background: '#f8fafc', minHeight: '100vh' }}>
+        <div className="skeleton-line w-full h-64 mb-8"></div>
+        <div className="cp-stats-strip" style={{ gap: '16px', padding: '0 24px' }}>
+          <div className="skeleton-line w-full h-24"></div>
+          <div className="skeleton-line w-full h-24"></div>
+          <div className="skeleton-line w-full h-24"></div>
+          <div className="skeleton-line w-full h-24"></div>
+        </div>
+        <div style={{ padding: '40px 24px' }}>
+          <div className="skeleton-line w-48 h-8 mb-6"></div>
+          <div className="skeleton-line w-full h-32 mb-4"></div>
+          <div className="skeleton-line w-full h-32 mb-4"></div>
+          <div className="skeleton-line w-full h-32"></div>
+        </div>
       </div>
     )
   }
@@ -262,7 +274,12 @@ export default function CareerPage() {
       {positionId ? (
         <div className="cp-position-detail">
           {loadingPosition ? (
-            <div className="cp-spinner" style={{ margin: '40px auto' }} />
+            <div style={{ padding: '40px 0' }}>
+              <div className="skeleton-line w-48 h-8 mb-6"></div>
+              <div className="skeleton-line w-full h-32 mb-4"></div>
+              <div className="skeleton-line w-full h-32 mb-4"></div>
+              <div className="skeleton-line w-full h-32"></div>
+            </div>
           ) : activePosition ? (
             <>
               <div className="cp-position-header">

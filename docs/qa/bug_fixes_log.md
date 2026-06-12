@@ -3829,3 +3829,47 @@ Wrapped `defaultRouteForRole(user?.role)` in a `useMemo` hook inside `AuthContex
 
 **Files Modified:**
 - `frontend/src/context/AuthContext.jsx`
+
+---
+
+## 223. Dashboard Sequential Count Queries
+
+**Problem Statement:**
+The dashboard `get_stats()` method fired 7 separate sequential COUNT queries, significantly delaying page load times on the frontend and placing unnecessary load on the database.
+
+**Idea / Solution:**
+Refactored `DashboardService.get_analytics` to replace multiple sequential SQL queries with a single query using PostgreSQL JSON aggregation functions (`jsonb_object_agg`, `jsonb_agg`). This reduces network round-trips and DB overhead.
+
+**Files Modified:**
+- `backend/services/dashboard_service.py`
+
+---
+
+## 224. Missing Pagination on List Endpoints
+
+**Problem Statement:**
+Several major list endpoints (`users`, `organizations`, `activity`) returned all rows from the database without limits, creating performance risks as data sizes grow.
+
+**Idea / Solution:**
+Implemented standard `limit` and `offset` pagination via `cursor/offset` support in both the repository SQL queries and the REST endpoints.
+
+**Files Modified:**
+- `backend/routers/auth.py`
+- `backend/routers/platform.py`
+- `backend/routers/dashboard.py`
+- `backend/services/dashboard_service.py`
+- `backend/db/repositories/users.py`
+- `backend/db/repositories/pipeline_events.py`
+
+---
+
+## 225. Spinners Used Instead of Skeletons on Public Pages
+
+**Problem Statement:**
+The career portal pages showed CSS spinners during load instead of skeleton outlines, violating the frontend design system requirements which specify that skeletons must be used for all data loading.
+
+**Idea / Solution:**
+Replaced the `cp-spinner` loading state with properly sized skeleton placeholder blocks (`skeleton-line`) in the public `CareerPage.jsx` when loading the position details. Verified other public pages already use skeleton loading components.
+
+**Files Modified:**
+- `frontend/src/components/Careers/CareerPage.jsx`

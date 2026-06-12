@@ -83,17 +83,17 @@ The whole reason this file exists: a short, true list — not the old pile of co
 
 ---
 
-## ⚠️ Live operational debt (carried forward from the old TECH_DEBT tracker)
+## ⚠️ Live operational debt (carried forward from the old TECH_DEBT tracker and latest Code Review)
 
-Most of the old [TECH_DEBT.md](archive/2026-05-19_TECH_DEBT.md) is resolved (rate limiting, pagination,
-JWT denylist, magic-link cleanup, HTML-injection escaping, notification IDOR, bundle splitting — all ✅).
-What's still open:
+Most of the old [TECH_DEBT.md](archive/2026-05-19_TECH_DEBT.md) and recent code review items are resolved (rate limiting, pagination across list endpoints, JWT denylist, HTML-injection escaping, notification IDOR, dashboard SQL sequential query consolidation, public page skeleton loaders — all ✅).
+What's still open (Deferred Items):
 
 | Sev | Item | Notes |
 |---|---|---|
-| ✅ | `HireRequestService` unit/integration tests | 33 tests: status transitions, role guards, tenant isolation, cancel semantics, payload validation |
-| ✅ | Test depth on critical paths | 106 total tests: pre-eval, panel feedback, GDPR, HireRequestService all covered |
-| ✅ | CTC AES-256 encryption | `backend/utils/crypto.py` (AES-256-GCM); `compensation_enc` column in `candidate_applications`; active when `ENCRYPTION_KEY` is set in `.env`; no-op when empty |
+| 🔴 | Three-Layer Architecture Violation (`CRITICAL-03`) | Routers/Services contain raw SQL instead of Repositories. Massive refactoring deferred to post-MVP production. |
+| 🟠 | God Objects (`HIGH-04`) | Large services (>500 lines) need splitting. Tied to architectural cleanup. |
+| 🟠 | Stub Repositories (`HIGH-05`) | Ties into `CRITICAL-03`. Repositories are empty because logic is in services. |
+| 🟢 | Deployment Configurations (`LOW-01`, `LOW-02`) | X-Forwarded-For spoofing and Encryption Key config deferred to production environment setup. |
 
 ---
 

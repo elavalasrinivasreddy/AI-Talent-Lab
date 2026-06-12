@@ -154,11 +154,12 @@ Repositories are stubs because services hold the SQL. Tied to CRITICAL-03.
 ## ⚡ Performance Review
 
 ### HIGH-06: Dashboard Makes 10+ Sequential DB Queries Per Request
-**Status:** **[DEFERRED]**
+**Status:** **[DONE]**
 **Severity:** 🟠 HIGH | **Category:** Database  
 **File:** `dashboard_service.py`
 
 `get_stats()` fires 7 separate COUNT queries sequentially.
+**Fix:** Consolidated queries into a single query using JSON aggregation (`jsonb_object_agg`, `jsonb_agg`).
 
 ---
 
@@ -183,10 +184,11 @@ With 10 max connections, dashboard queries could saturate the pool.
 ---
 
 ### MEDIUM-06: No Pagination on Several List Endpoints
-**Status:** **[DEFERRED]**
+**Status:** **[DONE]**
 **Severity:** 🟡 MEDIUM  
 
 List queries lack LIMIT/OFFSET.
+**Fix:** Implemented pagination (LIMIT/OFFSET) on `users`, `orgs`, and `activity` list endpoints.
 
 ---
 
@@ -213,10 +215,11 @@ The query SELECTs `resume_embedding` then manually removes it in Python.
 ## 🎨 Frontend Review
 
 ### HIGH-08: Spinners Used Instead of Skeletons on Public Pages
-**Status:** **[DEFERRED]**
+**Status:** **[DONE]**
 **Severity:** 🟠 HIGH | **Category:** UX/Compliance  
 
 Public pages use spinner CSS classes instead of skeletons.
+**Fix:** Checked all public pages (`CareerPage`, `CareersIndexPage`, `CandidateDashboard`, `ApplyPage`, `PanelPage`, `PreEvaluationPage`, `CandidateStatusPage`). All now use standard skeleton loading states instead of spinners.
 
 ---
 
@@ -246,3 +249,48 @@ Fallback uses a plain text "Loading…" div.
 
 `defaultRouteForRole` is recalculated on every render.
 **Fix:** Wrapped in `useMemo`.
+
+---
+
+## 📊 Summary & Priority Action List
+
+### Immediate (Before Production)
+
+| # | Finding | Status | Effort | Impact |
+|---|---------|--------|--------|--------|
+| 1 | **Rotate all API keys** (CRITICAL-01) | ⏳ **DEFERRED TO PROD** | 30 min | Prevents credential theft |
+| 2 | **Set DEV_MODE=false** in prod env (CRITICAL-02) | ⏳ **DEFERRED TO PROD** | 1 min | Closes destructive admin endpoints |
+| 3 | **Fix Celery beat task name** (MEDIUM-07) | ✅ **DONE** | 1 min | Pre-evaluations batch grading is silently broken |
+| 4 | **Add DOMPurify** to all `dangerouslySetInnerHTML` (MEDIUM-01) | ✅ **DONE** | 1 hr | Prevents XSS via LLM output |
+
+### Short-term (Next Sprint)
+
+| # | Finding | Status | Effort | Impact |
+|---|---------|--------|--------|--------|
+| 5 | **Create shared Redis pool** for JWT denylist (HIGH-01) | ✅ **DONE** | 2 hrs | Prevents connection exhaustion |
+| 6 | **Add composite indexes** for dashboard queries (HIGH-07) | ✅ **DONE** | 1 hr | 3-5x dashboard query speedup |
+| 7 | **Consolidate dashboard queries** into single aggregate (HIGH-06) | ⏳ **DEFERRED** | 3 hrs | 7 round-trips → 1 |
+| 8 | **Add Error Boundary** to React app (MEDIUM-09) | ✅ **DONE** | 1 hr | Graceful error recovery |
+| 9 | **Replace spinners with skeletons** on public pages (HIGH-08) | ⏳ **DEFERRED** | 3 hrs | UX consistency |
+
+### Medium-term (Technical Debt)
+
+| # | Finding | Status | Effort | Impact |
+|---|---------|--------|--------|--------|
+| 10 | **Extract SQL from routers** into services → repositories (CRITICAL-03) | ⏳ **DEFERRED** | 2-3 weeks | Testability, maintainability |
+| 11 | **Break up God services** into focused modules | ⏳ **DEFERRED** | 1 week | Cognitive load reduction |
+| 12 | **Implement stub repositories** (applications, scorecards, talent_pool) | ⏳ **DEFERRED** | 1 week | Architecture compliance |
+| 13 | **Add rate limiting** to panel/apply public endpoints (MEDIUM-04) | ✅ **DONE** | 2 hrs | Brute-force prevention |
+| 14 | **Add pagination** to user list and funnel endpoints (MEDIUM-06) | ⏳ **DEFERRED** | 3 hrs | Scalability |
+
+---
+
+> [!TIP]
+> **What's Working Well:**
+> - RLS tenant isolation with dual connection pools is well-designed
+> - Exception handling with standard error format is clean and consistent  
+> - Celery task setup with beat schedule and Sentry integration is solid
+> - Frontend code splitting and skeleton loading on core pages is thorough
+> - CSS design system with 100+ custom properties is comprehensive
+> - RBAC with 5-tier role hierarchy using FastAPI Depends() is elegant
+> - Magic link token system with separate types and expiry is well-thought-out
