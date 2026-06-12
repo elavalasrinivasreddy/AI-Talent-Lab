@@ -3603,3 +3603,63 @@ Updated `statePerStage` in `JDStepper.jsx` to accept `isReadOnly` as an argument
 
 **Files Modified:**
 - `frontend/src/components/Chat/JDStepper.jsx`
+---
+
+## 207. On Hold Count Missing from Stage Stat Strip
+
+**Problem Statement:**
+The "On Hold" count was showing as zero in the `StageStatStrip` on the Position Detail Page, even when candidates with the "on_hold" status existed in the pipeline. This happened because the backend `get_pipeline_summary` endpoint explicitly dropped the "on_hold" status from the response payload by iterating over a hardcoded array of `all_stages` that omitted it.
+
+**Idea / Solution:**
+Added `"on_hold"` to the `all_stages` array inside `get_pipeline_summary` in `backend/routers/positions.py`. This ensures the endpoint correctly calculates and returns counts, average times, and confidence scores for candidates placed in the "On Hold" stage.
+
+**Files Modified:**
+- `backend/routers/positions.py`
+---
+
+## 208. Candidate Ranked Row "0" Alignment Bug
+
+**Problem Statement:**
+In the "Stack" view of the Position Detail Page, candidates with `0` matched skills or `0` years of experience were causing a large raw text `0` to render in the UI, breaking the alignment of the `MATCH` column. This occurred because React evaluates `0 && <Component>` to `0` and renders it as text, rather than treating `0` as falsy and ignoring it.
+
+**Idea / Solution:**
+Replaced the `&&` short-circuit evaluations with strict ternary operators `? : null` across all falsy-prone variable checks (`matchedCount`, `expMatch`, `overflowSkills`, and `stale`) in `CandidateRankedRow.jsx`. This forces React to render `null` instead of `0`, resolving the grid column layout shift and keeping the missing skills chips aligned perfectly under the MATCH column.
+
+**Files Modified:**
+- `frontend/src/components/Positions/CandidateRankedRow.jsx`
+---
+
+## 209. Score Breakdown UI Redesign and Math Fix
+
+**Problem Statement:**
+The "Score Breakdown" visualizer on the Candidate Detail Page was a single horizontal stacked bar. When segment values were low (e.g., 0.0), the text inside the segments would overlap and become unreadable. Additionally, there was a math calculation bug: the backend ATS score provides component scores (`emb_score`, `skills_match`, `experience_match`) as percentages (0-100), but `ScoreBreakdownBand.jsx` was incorrectly multiplying them by an additional `100` before applying weights. This resulted in massively inflated positive points (e.g., 1916 instead of 19) and forced the UI to display a massive phantom "Gap Penalty" (e.g., -1897) to reconcile the inflated base with the true final score.
+
+**Idea / Solution:**
+- **Math Fix:** Removed the `* 100` multiplier in `ScoreBreakdownBand.jsx` so that the base scores scale correctly according to their weights (`40% emb, 40% skills, 20% exp`).
+- **UI Redesign:** Replaced the single stacked bar chart with a premium 4-card grid layout. The new grid cleanly separates Semantic Match, Key Skills, and Experience into their own metric cards containing mini-progress bars. The 4th card displays the Final ATS Score and prominently tags any true gap penalties caused by missing mandatory requirements, resulting in a much cleaner, responsive UX.
+
+**Files Modified:**
+- `frontend/src/components/Candidates/ScoreBreakdownBand.jsx`
+- `frontend/src/components/Candidates/CandidateDetailPage.css`
+
+---
+
+## 210. Celery RuntimeError: Event loop is closed
+
+**Problem Statement:**
+When Celery workers executed background tasks (like candidate sourcing or GDPR cleanup) that accessed the database via `asyncpg`, they crashed with `RuntimeError: Event loop is closed`. This occurred because the tasks were using `asyncio.run(coroutine())`. `asyncio.run` creates a new event loop and closes it when finished. Since `asyncpg` connection pools are tied to the event loop they were created in, closing the loop caused subsequent database queries in the same worker process to fail.
+
+**Idea / Solution:**
+Created a `run_async` helper in `backend/utils/async_runner.py` that maintains a single, persistent event loop per Celery worker process using `asyncio.new_event_loop()`. Updated all background tasks in `backend/tasks/` to use `run_async` instead of `asyncio.run`. This ensures the event loop remains active for the lifespan of the worker, preserving the connection pool integrity. Also fixed minor syntax errors in `gdpr_cleanup.py` and `auth_cleanup.py`.
+
+**Files Modified:**
+- `backend/utils/async_runner.py` (created)
+- `backend/tasks/pre_eval_grade.py`
+- `backend/tasks/scheduled_search.py`
+- `backend/tasks/hire_request_locks.py`
+- `backend/tasks/gdpr_cleanup.py`
+- `backend/tasks/candidate_pipeline.py`
+- `backend/tasks/auth_cleanup.py`
+- `backend/tasks/rejection_task.py`
+- `backend/tasks/copilot_analysis.py`
+- `backend/tasks/email_outreach.py`

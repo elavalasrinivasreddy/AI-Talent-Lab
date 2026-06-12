@@ -21,11 +21,13 @@ def _run_async(coro):
         loop = asyncio.get_event_loop()
         if loop.is_running():
             import concurrent.futures
+            from backend.utils.async_runner import run_async
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(asyncio.run, coro).result()
+                return pool.submit(run_async, coro).result()
         return loop.run_until_complete(coro)
     except RuntimeError:
-        return asyncio.run(coro)
+        from backend.utils.async_runner import run_async
+        return run_async(coro)
 
 
 @celery_app.task(name="backend.tasks.scheduled_search.run_scheduled_searches")
@@ -40,9 +42,9 @@ def run_scheduled_searches() -> dict:
       - jd_markdown is not empty (has a JD to match against)
     """
     async def _search():
-        from backend.db.connection import get_connection
+        from backend.db.connection import get_admin_connection
 
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             positions = await conn.fetch(
                 """
                 SELECT id, org_id, role_name, search_interval_hours,

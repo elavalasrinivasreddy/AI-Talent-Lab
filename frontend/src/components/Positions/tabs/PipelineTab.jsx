@@ -7,11 +7,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { dashboardApi, candidatesApi } from '../../../utils/api'
-import { PIPELINE_STAGES, getScoreStyle } from '../../../utils/constants'
+import { PIPELINE_STAGES, getScoreStyle, KANBAN_STAGE_ORDER } from '../../../utils/constants'
 import Toast from '../../common/Toast'
 import './PipelineTab.css'
 
-const VISIBLE_STAGES = ['sourced', 'emailed', 'applied', 'screening', 'interview', 'selected', 'rejected', 'on_hold']
+const VISIBLE_STAGES = KANBAN_STAGE_ORDER
 const SORT_OPTIONS = [
   { value: 'score_desc', label: 'Score: High → Low' },
   { value: 'score_asc', label: 'Score: Low → High' },

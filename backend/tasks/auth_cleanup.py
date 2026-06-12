@@ -44,11 +44,8 @@ def cleanup_consumed_magic_links() -> dict:
             deleted_count = result["deleted_count"] if result else 0
         return {"deleted_count": deleted_count}
 
-    try:
-        result = asyncio.run(_cleanup())
-    except RuntimeError:
-        loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(_cleanup())
+    from backend.utils.async_runner import run_async
+    result = run_async(_cleanup())
 
     logger.info(
         f"Consumed magic links cleanup complete: {result['deleted_count']} row(s) deleted."

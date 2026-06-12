@@ -108,8 +108,9 @@ Signed JWT payload: `{type: apply|panel_feedback|password_reset, entity_id, exp}
 | Tenant isolation | every query filtered by `org_id` (`middleware/tenant_context.py`) |
 | Postgres RLS | second defense — `SET LOCAL app.current_org_id` per transaction; policy `org_id = current_setting('app.current_org_id')::int` on every business table |
 
-Open hardening items (rate limiting on `/hire-requests/*`, cursor pagination, JWT
-denylist, `consumed_magic_links` cleanup) are tracked in [`../TECH_DEBT.md`](../TECH_DEBT.md).
+Open hardening items are tracked in [`../STATUS.md`](../STATUS.md) ("Live operational debt").
+The items once listed here (rate limiting on `/hire-requests/*`, cursor pagination, JWT denylist,
+`consumed_magic_links` cleanup) are all resolved.
 
 ---
 

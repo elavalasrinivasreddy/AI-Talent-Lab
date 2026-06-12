@@ -6,7 +6,7 @@ from typing import Dict, Any, List
 
 from celery import shared_task
 from backend.celery_app import celery_app
-from backend.db.connection import get_connection
+from backend.db.connection import get_admin_connection
 from backend.db.repositories.pre_evaluations import PreEvaluationRepository
 from backend.db.repositories.positions import PositionRepository
 from backend.db.repositories.candidates import CandidateRepository
@@ -18,7 +18,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 logger = logging.getLogger(__name__)
 
 async def _batch_grade_pre_evaluations():
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         # Fetch all pending submitted pre-evaluations
         rows = await conn.fetch(
             """
@@ -207,4 +207,5 @@ async def _detect_collusion(conn, rows: list):
 @celery_app.task(name="tasks.pre_eval_grade")
 def pre_eval_grade():
     """Nightly batch task to grade submitted pre-evaluations."""
-    asyncio.run(_batch_grade_pre_evaluations())
+    from backend.utils.async_runner import run_async
+    run_async(_batch_grade_pre_evaluations())

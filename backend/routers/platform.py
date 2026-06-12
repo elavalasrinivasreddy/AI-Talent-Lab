@@ -7,7 +7,7 @@ import logging
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.dependencies import require_platform_admin, get_db
+from backend.dependencies import require_platform_admin, get_admin_db
 
 router = APIRouter(prefix="/api/v1/platform", tags=["Platform"])
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 @router.get("/stats")
 async def get_platform_stats(
     _=Depends(require_platform_admin),
-    db: asyncpg.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_admin_db),
 ):
     """Aggregate metrics across all organisations."""
     row = await db.fetchrow(
@@ -45,7 +45,7 @@ async def get_platform_stats(
 @router.get("/orgs")
 async def list_platform_orgs(
     _=Depends(require_platform_admin),
-    db: asyncpg.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_admin_db),
 ):
     """List all organisations with their usage metrics."""
     rows = await db.fetch(
@@ -73,7 +73,7 @@ async def list_platform_orgs(
 async def get_org_detail(
     org_id: int,
     _=Depends(require_platform_admin),
-    db: asyncpg.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_admin_db),
 ):
     """Get detailed info for one org (platform admin only)."""
     row = await db.fetchrow(
@@ -103,7 +103,7 @@ async def get_org_detail(
 @router.get("/activity")
 async def get_platform_activity(
     _=Depends(require_platform_admin),
-    db: asyncpg.Connection = Depends(get_db),
+    db: asyncpg.Connection = Depends(get_admin_db),
 ):
     """Recent activity stream across all orgs (last 50 events)."""
     rows = await db.fetch(

@@ -22,20 +22,8 @@ def cleanup_expired_data() -> dict:
     """
     logger.info("Starting GDPR retention cleanup task...")
 
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If already in an async context, create a new loop
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                result = pool.submit(
-                    asyncio.run,
-                    GDPRService.cleanup_expired_data()
-                ).result()
-        else:
-            result = loop.run_until_complete(GDPRService.cleanup_expired_data())
-    except RuntimeError:
-        result = asyncio.run(GDPRService.cleanup_expired_data())
+    from backend.utils.async_runner import run_async
+    result = run_async(GDPRService.cleanup_expired_data())
 
     logger.info(f"GDPR cleanup complete: {result}")
     return result
@@ -50,11 +38,11 @@ def process_verified_deletions() -> dict:
     logger.info("Processing verified deletion requests...")
 
     async def _process():
-        from backend.db.connection import get_connection
-        async with get_connection() as conn:
+        from backend.db.connection import get_admin_connection
+        async with get_admin_connection() as conn:
             pending = await conn.fetch(
                 """
-                SELECT id FROM data_deletion_requests
+                SELECT id, org_id FROM data_deletion_requests
                 WHERE status='verified'
                 ORDER BY verified_at ASC
                 LIMIT 50
@@ -64,18 +52,15 @@ def process_verified_deletions() -> dict:
         processed = 0
         for req in pending:
             try:
-                await GDPRService.process_deletion(req["id"])
+                await GDPRService.process_deletion(req["id"], req["org_id"])
                 processed += 1
             except Exception as e:
                 logger.error(f"Failed to process deletion request {req['id']}: {e}")
 
         return {"processed": processed, "total_pending": len(pending)}
 
-    try:
-        result = asyncio.run(_process())
-    except RuntimeError:
-        loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(_process())
+    from backend.utils.async_runner import run_async
+    result = run_async(_process())
 
     logger.info(f"Verified deletions processed: {result}")
     return result

@@ -40,8 +40,9 @@ def generate_copilot_suggestions() -> dict:
         loop = asyncio.get_event_loop()
         if loop.is_running():
             import concurrent.futures
+            from backend.utils.async_runner import run_async
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                future = pool.submit(asyncio.run, _run())
+                future = pool.submit(run_async, _run())
                 total = future.result(timeout=300)
         else:
             total = loop.run_until_complete(_run())

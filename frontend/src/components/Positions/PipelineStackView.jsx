@@ -7,14 +7,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { dashboardApi, candidatesApi, positionsApi } from '../../utils/api'
-import { PIPELINE_STAGES } from '../../utils/constants'
+import { PIPELINE_STAGES, KANBAN_STAGE_ORDER } from '../../utils/constants'
 import StageHealthHeader from './StageHealthHeader'
 import CandidateRankedRow from './CandidateRankedRow'
 import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts'
 import Icon from '../common/Icon'
 import Toast from '../common/Toast'
 
-const VISIBLE_STAGES = ['sourced', 'emailed', 'applied', 'screening', 'interview', 'selected', 'rejected']
+const VISIBLE_STAGES = KANBAN_STAGE_ORDER
 
 export default function PipelineStackView({
   positionId,

@@ -587,7 +587,7 @@ async def get_pipeline_summary(
         }
 
         stages = {}
-        all_stages = ["sourced", "emailed", "applied", "screening", "interview", "selected", "rejected"]
+        all_stages = ["sourced", "emailed", "applied", "screening", "interview", "selected", "rejected", "on_hold"]
         for s in all_stages:
             base = stage_map.get(s, {"count": 0, "delta_today": 0})
             entered = enter_map.get(s, 0)

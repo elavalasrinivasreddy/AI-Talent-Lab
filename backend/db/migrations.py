@@ -1213,6 +1213,14 @@ async def run_migrations(conn) -> None:
     await conn.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS meta JSONB;")
     logger.info("  notifications.meta column ensured.")
 
+    # ── CTC encryption column ─────────────────────────────────────────────────
+    # Stores JSON {"current": ..., "expected": ..., "declined": ...} optionally
+    # encrypted with AES-256-GCM (see backend/utils/crypto.py).
+    await conn.execute(
+        "ALTER TABLE candidate_applications ADD COLUMN IF NOT EXISTS compensation_enc TEXT;"
+    )
+    logger.info("  candidate_applications.compensation_enc column ensured.")
+
     # Ensure interviews.reminder_sent_at exists (drives the 24h auto-reminder task).
     await conn.execute("ALTER TABLE interviews ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMP;")
     logger.info("  interviews.reminder_sent_at column ensured.")
@@ -1279,8 +1287,8 @@ async def _provision_app_role(conn) -> None:
     """
     from backend.config import settings
 
-    role = getattr(settings, "APP_DB_ROLE", "talentlab_app")
-    password = getattr(settings, "APP_DB_PASSWORD", "talentlab_app")
+    role = settings.APP_DB_ROLE
+    password = settings.APP_DB_PASSWORD
     # Basic identifier safety — role name is config-controlled, but be defensive.
     if not role.replace("_", "").isalnum():
         logger.warning("APP_DB_ROLE %r is not a safe identifier; skipping role provisioning.", role)

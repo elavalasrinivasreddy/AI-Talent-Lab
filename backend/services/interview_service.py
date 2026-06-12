@@ -210,7 +210,7 @@ class InterviewService:
             if updated and data.get("overall_result") == "rejected":
                 # Auto-draft rejection email in background
                 from backend.tasks.rejection_task import draft_rejection_async
-                draft_rejection_async.delay(interview_id, org_id, user_id)
+                draft_rejection_async.delay(interview_id, org_id, user_id)  # type: ignore
         return updated
 
     @staticmethod
@@ -287,7 +287,7 @@ class InterviewService:
                         round_name=round_name,
                         feedback_url=feedback_url,
                     )
-                    panel_emailed.append({"email": p["panelist_email"], "sent": bool(ok)})
+                    panel_emailed.append({"email": p["panelist_email"], "sent": ok})
                 except Exception as e:
                     logger.warning("Panel feedback email failed for %s (interview %s): %s", p.get("panelist_email"), interview_id, e)
                     panel_emailed.append({"email": p["panelist_email"], "sent": False})
@@ -481,14 +481,14 @@ class PanelFeedbackService:
                 })
 
                 # Check if all panel submitted
-                submitted_count = await conn.fetchval(
+                submitted_count = (await conn.fetchval(
                     "SELECT COUNT(*) FROM interview_panel WHERE interview_id=$1 AND feedback_submitted=TRUE",
                     interview_id
-                )
-                total_panel = await conn.fetchval(
+                )) or 0
+                total_panel = (await conn.fetchval(
                     "SELECT COUNT(*) FROM interview_panel WHERE interview_id=$1",
                     interview_id
-                )
+                )) or 0
 
                 # Notify recruiter
                 created_by = await conn.fetchval(

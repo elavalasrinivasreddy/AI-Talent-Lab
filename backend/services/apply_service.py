@@ -16,6 +16,7 @@ from backend.db.repositories.candidates import CandidateRepository
 from backend.db.repositories.pipeline_events import PipelineEventRepository
 from backend.db.repositories.notifications import NotificationRepository
 from backend.agents.candidate_chat import CandidateChatController
+from backend.utils.crypto import encrypt_field
 
 logger = logging.getLogger(__name__)
 
@@ -349,16 +350,25 @@ class ApplyService:
                 **session_state.get("screening_responses", {}),
             }
 
+            # Build encrypted CTC blob
+            compensation_payload = json.dumps({
+                "current": session_state.get("compensation_current"),
+                "expected": session_state.get("compensation_expected"),
+                "declined": session_state.get("compensation_declined", False),
+            })
+            compensation_enc = encrypt_field(compensation_payload, settings.ENCRYPTION_KEY)
+
             # Update application status
             await conn.execute(
                 """
                 UPDATE candidate_applications
                 SET status='applied', applied_at=NOW(),
-                    screening_responses=$1, updated_at=NOW()
+                    screening_responses=$1, compensation_enc=$4, updated_at=NOW()
                 WHERE id=$2 AND org_id=$3
                 """,
                 json.dumps(screening_responses),
-                application_id, org_id
+                application_id, org_id,
+                compensation_enc,
             )
 
             # Update candidate if role changed

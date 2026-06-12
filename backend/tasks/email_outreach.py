@@ -16,7 +16,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from backend.celery_app import celery_app
-from backend.db.connection import get_connection
+from backend.db.connection import get_admin_connection
 from backend.services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
@@ -28,11 +28,13 @@ def _run_async(coro):
         loop = asyncio.get_event_loop()
         if loop.is_running():
             import concurrent.futures
+            from backend.utils.async_runner import run_async
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(asyncio.run, coro).result()
+                return pool.submit(run_async, coro).result()
         return loop.run_until_complete(coro)
     except RuntimeError:
-        return asyncio.run(coro)
+        from backend.utils.async_runner import run_async
+        return run_async(coro)
 
 
 # ── Outreach batch ────────────────────────────────────────────────────────────
@@ -51,7 +53,7 @@ def send_outreach_batch(application_ids: list[int], org_id: int | None = None) -
         base = settings.MAGIC_LINK_BASE_URL or settings.FRONTEND_URL
         sent = 0
         failed = 0
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             for app_id in application_ids:
                 row = await conn.fetchrow(
                     """
@@ -136,7 +138,7 @@ def send_followup_reminders() -> dict:
     """
     async def _followup():
         sent = 0
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             rows = await conn.fetch(
                 """
                 SELECT ca.id, ca.magic_link_token, ca.org_id,
@@ -188,7 +190,7 @@ def send_interview_reminders() -> dict:
     guards against duplicates."""
     async def _remind():
         sent = 0
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             rows = await conn.fetch(
                 """
                 SELECT i.id, i.scheduled_at, i.meeting_link, i.round_name,
@@ -235,7 +237,7 @@ def send_interview_reminders() -> dict:
 def send_interview_invite(interview_id: int) -> dict:
     """Send interview invitation email to the candidate."""
     async def _send():
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             row = await conn.fetchrow(
                 """
                 SELECT i.id, i.scheduled_at, i.duration_minutes, i.meeting_link,
@@ -280,7 +282,7 @@ def send_interview_invite(interview_id: int) -> dict:
 def send_panel_invite(panel_member_id: int) -> dict:
     """Send panel feedback magic link to an interviewer."""
     async def _send():
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             row = await conn.fetchrow(
                 """
                 SELECT ip.panelist_name, ip.panelist_email, ip.magic_link_token,
@@ -327,7 +329,7 @@ def send_panel_invite(panel_member_id: int) -> dict:
 def send_rejection_email(application_id: int) -> dict:
     """Send rejection notification to a candidate."""
     async def _send():
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             row = await conn.fetchrow(
                 """
                 SELECT ca.id, ca.rejection_draft, ca.org_id,

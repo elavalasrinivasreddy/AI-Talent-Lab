@@ -14,12 +14,14 @@ def draft_rejection_async(self, interview_id: int, org_id: int, user_id: int):
     Draft a rejection email for the candidate when interview result = rejected.
     Stores the draft in notifications so recruiter can review + send.
     """
-    import asyncio
+    from backend.utils.async_runner import run_async
     from backend.db.connection import get_connection
     from backend.agents.interview_agents import draft_rejection_email
     from backend.db.repositories.notifications import NotificationRepository
 
     async def _run():
+        from backend.db.connection import get_connection, set_org_context, reset_org_context
+        ctx_token = set_org_context(org_id)
         try:
             async with get_connection() as conn:
                 row = await conn.fetchrow(
@@ -66,5 +68,7 @@ def draft_rejection_async(self, interview_id: int, org_id: int, user_id: int):
         except Exception as exc:
             logger.error(f"rejection_task failed: {exc}", exc_info=True)
             raise self.retry(exc=exc)
+        finally:
+            reset_org_context(ctx_token)
 
-    asyncio.run(_run())
+    run_async(_run())

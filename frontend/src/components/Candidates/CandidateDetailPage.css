@@ -106,15 +106,40 @@
 .cd-tags-add-btn { padding:3px 8px; border:1px dashed var(--color-border); border-radius:var(--radius-sm); background:transparent; color:var(--color-text-muted); font-size:12px; cursor:pointer; transition:all var(--transition-fast); font-family:inherit; }
 .cd-tags-add-btn:hover { border-color:var(--color-primary); color:var(--color-primary); }
 
-/* ── Score Breakdown Band ── */
-.cd-score-band { background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:var(--space-4); margin-bottom:var(--space-3); }
-.cd-score-band-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-2); }
-.cd-score-band-title { font-size:var(--font-size-sm); font-weight:600; color:var(--color-text-primary); }
-.cd-score-band-formula { font-size:11px; font-family:var(--font-mono); color:var(--color-text-muted); }
-.cd-score-band-bar { display:flex; height:32px; border-radius:var(--radius-sm); overflow:hidden; gap:1px; }
-.cd-score-band-segment { display:flex; align-items:center; justify-content:center; min-width:40px; transition:width 0.4s ease; }
-.cd-score-band-seg-label { font-size:10px; font-weight:600; color:#fff; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,0.3); }
+/* ── Score Breakdown Grid (v4) ── */
+.cd-score-breakdown { background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:var(--space-4); margin-bottom:var(--space-3); }
+.cd-sb-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-3); }
+.cd-sb-title { font-size:var(--font-size-sm); font-weight:600; color:var(--color-text-primary); }
+.cd-sb-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:var(--space-3); }
+.cd-sb-card { background:var(--color-bg-base); border:1px solid var(--color-border); border-radius:var(--radius-md); padding:var(--space-3); position:relative; overflow:hidden; display:flex; flex-direction:column; }
+.cd-sb-card.emb { border-top: 3px solid #3b82f6; }
+.cd-sb-card.skills { border-top: 3px solid var(--color-success); }
+.cd-sb-card.exp { border-top: 3px solid var(--color-warning); }
+.cd-sb-card.final { border-top: 3px solid var(--color-primary); background: linear-gradient(180deg, var(--color-primary-bg) 0%, var(--color-bg-base) 100%); }
+.cd-sb-card.final.danger-border { border-top: 3px solid var(--color-danger); background: linear-gradient(180deg, rgba(239,68,68,0.1) 0%, var(--color-bg-base) 100%); }
+.cd-sb-card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:var(--space-2); gap:4px; }
+.cd-sb-card-title { font-size:12px; font-weight:600; color:var(--color-text-primary); margin:0 0 2px 0; }
+.cd-sb-card-weight { font-size:11px; color:var(--color-text-muted); }
+.cd-sb-card-points { font-size:16px; font-weight:700; }
+.cd-sb-card.emb .cd-sb-card-points { color:#3b82f6; }
+.cd-sb-card.skills .cd-sb-card-points { color:var(--color-success); }
+.cd-sb-card.exp .cd-sb-card-points { color:var(--color-warning); }
+.cd-sb-card.final .cd-sb-card-points { color:var(--color-primary); font-size:18px; }
+.cd-sb-card.final.danger-border .cd-sb-card-points { color:var(--color-danger); }
+.cd-sb-raw-score { font-size:11px; color:var(--color-text-secondary); margin-bottom:4px; display:flex; justify-content:space-between; margin-top:auto; }
+.cd-sb-raw-score strong { color:var(--color-text-primary); }
+.cd-sb-progress-bg { height:6px; background:var(--color-border); border-radius:4px; overflow:hidden; }
+.cd-sb-progress-fill { height:100%; border-radius:4px; transition:width 0.5s ease; }
+.cd-sb-card.emb .cd-sb-progress-fill { background:#3b82f6; }
+.cd-sb-card.skills .cd-sb-progress-fill { background:var(--color-success); }
+.cd-sb-card.exp .cd-sb-progress-fill { background:var(--color-warning); }
+.cd-sb-card.final .cd-sb-progress-fill { background:var(--color-primary); }
+.cd-sb-card.final.danger-border .cd-sb-progress-fill { background:var(--color-danger); }
+.cd-sb-penalty-tag { display:inline-flex; align-items:center; gap:4px; font-size:10px; color:var(--color-danger); background:rgba(239,68,68,0.1); padding:2px 6px; border-radius:4px; margin-top:4px; font-weight:500; }
 
+@media (max-width:900px) {
+  .cd-sb-grid { grid-template-columns:repeat(2, 1fr); }
+}
 /* ── Compare-to-Ideal Grid ── */
 .cd-compare { background:var(--color-bg-card); border:1px solid var(--color-border); border-radius:var(--radius-lg); overflow:hidden; margin-bottom:var(--space-3); }
 .cd-compare-header { display:flex; justify-content:space-between; align-items:center; padding:var(--space-4) var(--space-5); border-bottom:1px solid var(--color-border); flex-wrap:wrap; gap:var(--space-2); }

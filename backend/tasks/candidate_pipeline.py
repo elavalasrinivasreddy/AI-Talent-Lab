@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from backend.celery_app import celery_app
 from backend.config import settings
 from backend.adapters.candidate_sources import get_candidate_source_adapter
-from backend.db.connection import get_connection
+from backend.db.connection import get_connection, get_admin_connection, set_org_context, reset_org_context
 from backend.db.repositories.candidates import CandidateRepository
 from backend.db.repositories.positions import PositionRepository
 from backend.db.repositories.organizations import OrgRepository
@@ -45,9 +45,9 @@ def run_candidate_search(self, position_id: int, org_id: int, department_id: int
     5. Create pipeline events
     6. Notify recruiter
     """
-    import asyncio
+    from backend.utils.async_runner import run_async
     try:
-        asyncio.run(_run_pipeline(position_id, org_id, department_id, triggered_by))
+        run_async(_run_pipeline(position_id, org_id, department_id, triggered_by))
     except Exception as exc:
         logger.error(f"Candidate pipeline failed for position {position_id}: {exc}", exc_info=True)
         raise self.retry(exc=exc)
@@ -60,7 +60,7 @@ async def _run_pipeline(
     _task_start = time.time()
     _sourced_count = 0
     _task_failed = False
-
+    ctx_token = set_org_context(org_id)
     try:
         logger.info(f"[Pipeline] Starting search for position {position_id} (org {org_id})")
 
@@ -180,6 +180,7 @@ async def _run_pipeline(
                     )
             except Exception:
                 pass
+        reset_org_context(ctx_token)
 
 
 async def _process_candidate(
@@ -369,17 +370,17 @@ def source_candidates_for_position(position_id: int, org_id: int):
     Alias called by scheduled_search — looks up department_id and
     delegates to the main run_candidate_search task.
     """
-    import asyncio
+    from backend.utils.async_runner import run_async
 
     async def _get_dept():
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             row = await conn.fetchrow(
                 "SELECT department_id, created_by FROM positions WHERE id=$1 AND org_id=$2",
                 position_id, org_id,
             )
         return row
 
-    row = asyncio.run(_get_dept())
+    row = run_async(_get_dept())
 
     if not row:
         logger.warning(f"Position {position_id} not found for scheduled search")
@@ -401,9 +402,9 @@ def score_candidate_application(self, candidate_id: int, application_id: int, po
     """
     ATS Score an organic application after the candidate completes the apply chat.
     """
-    import asyncio
+    from backend.utils.async_runner import run_async
     try:
-        asyncio.run(_score_application(candidate_id, application_id, position_id, org_id))
+        run_async(_score_application(candidate_id, application_id, position_id, org_id))
     except Exception as exc:
         logger.error(f"Organic ATS scoring failed for {application_id}: {exc}", exc_info=True)
         raise self.retry(exc=exc)
@@ -412,6 +413,7 @@ def score_candidate_application(self, candidate_id: int, application_id: int, po
 async def _score_application(candidate_id: int, application_id: int, position_id: int, org_id: int):
     _start = time.time()
     logger.info(f"Starting ATS scoring for organic application {application_id}")
+    ctx_token = set_org_context(org_id)
     try:
         async with get_connection() as conn:
             position = await PositionRepository.get(conn, position_id, org_id)
@@ -488,11 +490,13 @@ async def _score_application(candidate_id: int, application_id: int, position_id
         except Exception:
             pass
         raise
+    finally:
+        reset_org_context(ctx_token)
 
 @celery_app.task(name="tasks.trigger_pre_evaluation")
 def trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: int, org_id: int):
-    import asyncio
-    asyncio.run(_trigger_pre_evaluation(application_id, candidate_id, position_id, org_id))
+    from backend.utils.async_runner import run_async
+    run_async(_trigger_pre_evaluation(application_id, candidate_id, position_id, org_id))
 
 async def _trigger_pre_evaluation(application_id: int, candidate_id: int, position_id: int, org_id: int):
     import secrets
@@ -500,7 +504,8 @@ async def _trigger_pre_evaluation(application_id: int, candidate_id: int, positi
     import random
     from datetime import datetime, timedelta, timezone
     from backend.db.repositories.pre_evaluations import PreEvaluationRepository
-    
+
+    ctx_token = set_org_context(org_id)
     async with get_connection() as conn:
         from backend.db.repositories.positions import PositionRepository
         position = await PositionRepository.get(conn, position_id, org_id)
@@ -585,6 +590,7 @@ async def _trigger_pre_evaluation(application_id: int, candidate_id: int, positi
             )
             
         logger.info(f"Triggered pre-evaluation for application {application_id} with token {token}")
+    reset_org_context(ctx_token)
 
 # NOTE: Pre-evaluation grading is handled exclusively by the nightly batch task in
 # backend/tasks/pre_eval_grade.py (registered in celery beat). The earlier per-submission

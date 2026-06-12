@@ -1,3 +1,6 @@
+> 🗄️ **ARCHIVED 2026-06-12 — superseded by [`../STATUS.md`](../STATUS.md).** Kept for the `file:line`
+> evidence. Every P0/P1 below is now closed except RLS activation; do not treat this as current status.
+
 # Product Status — Functional Truth Tracker
 
 > **What this is:** the single source of truth for *"does each feature actually work end-to-end?"*
