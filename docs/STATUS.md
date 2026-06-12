@@ -104,14 +104,14 @@ This is the gap between "product" and "business."
 
 | # | Item | Status | Notes |
 |---|---|---|---|
-| F1 | Landing page + pricing + demo booking | ❌ | Highest ICE score — needed for discovery calls |
+| F1 | Landing page + pricing + demo booking | ⚠️ | Built 2026-06-13 (`landing/` — static, no build step). Needs: hosting + Calendly URL swap (see `landing/README.md`) |
 | F2 | Billing (Razorpay) + plan/quota enforcement + **LLM spend caps per org** | ❌ | Tiers exist only in docs; LLM usage tracked but uncapped (COGS risk) |
-| F3 | ToS + privacy policy pages | ❌ | GDPR deletion exists; the *policy* doesn't |
+| F3 | ToS + privacy policy pages | ⚠️ | Drafted 2026-06-13 (`landing/terms.html` + `privacy.html`, served in-app at `/legal/*`; linked from apply consent, career page, status page). Needs: [PLACEHOLDER] fill + lawyer review |
 | F4 | Email deliverability runbook (SPF/DKIM, domain warm-up) | ❌ | Outreach lands in spam without it |
 | F5 | Self-serve onboarding (seeded demo org, first-run checklist) | ❌ | Activation target: first JD + first application ≤ 7 days |
 | F6 | Production environment (staging, backups/DR, uptime monitoring, `ENCRYPTION_KEY`, X-Forwarded-For) | ⚠️ | Dockerfile + compose exist; rest pending |
 | F7 | External integration keys (Calendar OAuth, one enrichment provider or hide toggle) | ⚠️ | Credential work, not bugs; adapters fall back honestly |
-| F8 | Repo hygiene: push current code to GitHub; fix README (says SQLite, code is Postgres+RLS) | ⚠️ | GitHub has 1 stale commit |
+| F8 | Repo hygiene: push current code to GitHub; fix README (says SQLite, code is Postgres+RLS) | ⚠️ | Local README already correct; `.gitignore` hardened 2026-06-13. Remaining: `git rm --cached` the tracked sqlite/chroma files + push (commands in TODO.md done log) |
 | F9 | CI pipeline (pytest + lint on push, Playwright on PR) + fill/delete 5 stub test files | ❌ | Top items from [2026-06-13 review](reviews/2026-06-13_full_codebase_review.md) §4 |
 
 ---

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Talent Lab — Hiring software that does the work</title>
+<meta name="description" content="Chat-first hiring for Indian SMBs: AI writes the JD, screens every resume, runs interviews, and builds your private talent pool. Hire in weeks, not months.">
+<!-- ───────────────────────────────────────────────────────────────
+     CONFIG — swap these two values when ready:
+     1. Calendly (or any booking) URL → search for BOOKING_URL below
+     2. Contact email → search for CONTACT_EMAIL below
+     ─────────────────────────────────────────────────────────────── -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#090E1A; --bg-2:#0F1524; --bg-card:#111827; --bg-elevated:#1A2236;
+  --text:#F1F5F9; --text-2:#94A3B8; --text-3:#64748B;
+  --border:#1E3047; --border-strong:#2C3E5D;
+  --teal:#0D9488; --teal-hover:#14B8A6; --teal-soft:rgba(13,148,136,.12);
+  --teal-border:rgba(13,148,136,.32); --amber:#D97706;
+  --font-body:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-display:'Fraunces',Georgia,serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);line-height:1.6;-webkit-font-smoothing:antialiased}
+::selection{background:var(--teal-soft);color:var(--teal-hover)}
+a{color:var(--teal-hover);text-decoration:none}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+/* nav */
+nav{position:sticky;top:0;z-index:50;background:rgba(9,14,26,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{font-weight:800;font-size:1.05rem;color:var(--text);letter-spacing:-.01em}
+.logo span{color:var(--teal-hover)}
+.nav-links{display:flex;gap:28px;align-items:center}
+.nav-links a{color:var(--text-2);font-size:.9rem;font-weight:500;transition:color .15s}
+.nav-links a:hover{color:var(--text)}
+.btn{display:inline-block;padding:11px 22px;border-radius:10px;font-weight:700;font-size:.92rem;transition:all .18s;cursor:pointer;border:none}
+.btn-primary{background:var(--teal);color:#fff}
+.btn-primary:hover{background:var(--teal-hover);transform:translateY(-1px);box-shadow:0 8px 24px rgba(13,148,136,.3)}
+.btn-ghost{border:1px solid var(--border-strong);color:var(--text)}
+.btn-ghost:hover{border-color:var(--teal);color:var(--teal-hover)}
+.btn-lg{padding:15px 32px;font-size:1rem;border-radius:12px}
+
+/* hero */
+.hero{position:relative;padding:96px 0 80px;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-30%;left:50%;transform:translateX(-50%);width:900px;height:600px;background:radial-gradient(ellipse,rgba(13,148,136,.14) 0%,transparent 65%);pointer-events:none}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:var(--teal-soft);border:1px solid var(--teal-border);color:var(--teal-hover);font-size:.8rem;font-weight:600;padding:6px 14px;border-radius:99px;margin-bottom:28px}
+.hero h1{font-family:var(--font-display);font-weight:600;font-size:clamp(2.3rem,5.5vw,3.8rem);line-height:1.12;letter-spacing:-.015em;max-width:780px}
+.hero h1 em{font-style:normal;color:var(--teal-hover);position:relative}
+.hero p.sub{margin:24px 0 36px;font-size:1.15rem;color:var(--text-2);max-width:640px}
+.hero-ctas{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.hero-note{font-size:.85rem;color:var(--text-3);margin-top:18px}
+.stats{display:flex;gap:48px;margin-top:64px;flex-wrap:wrap}
+.stat b{display:block;font-family:var(--font-display);font-size:2rem;color:var(--text);font-weight:600}
+.stat span{font-size:.85rem;color:var(--text-3)}
+
+/* sections */
+section{padding:80px 0}
+.kicker{color:var(--teal-hover);font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px}
+h2{font-family:var(--font-display);font-weight:600;font-size:clamp(1.7rem,3.5vw,2.4rem);letter-spacing:-.01em;line-height:1.2;max-width:640px}
+.section-sub{color:var(--text-2);margin-top:14px;max-width:600px;font-size:1.02rem}
+
+/* how it works */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:48px;counter-reset:step}
+.step{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:28px;position:relative;counter-increment:step;transition:border-color .2s}
+.step:hover{border-color:var(--teal-border)}
+.step::before{content:"0" counter(step);font-family:var(--font-display);font-size:.95rem;color:var(--teal-hover);font-weight:600;display:block;margin-bottom:14px}
+.step h3{font-size:1.05rem;font-weight:700;margin-bottom:8px}
+.step p{font-size:.92rem;color:var(--text-2)}
+
+/* why */
+.why-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:48px}
+.why{border-left:2px solid var(--teal);padding:4px 0 4px 22px}
+.why h3{font-size:1.02rem;font-weight:700;margin-bottom:6px}
+.why p{font-size:.92rem;color:var(--text-2)}
+
+/* pricing */
+#pricing{background:var(--bg-2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.price-card{background:var(--bg-card);border:1px solid var(--teal-border);border-radius:20px;padding:44px;margin-top:48px;display:grid;grid-template-columns:1.1fr 1fr;gap:44px;position:relative;overflow:hidden}
+.price-card::after{content:'';position:absolute;top:0;right:0;width:340px;height:340px;background:radial-gradient(circle at top right,rgba(13,148,136,.12),transparent 70%);pointer-events:none}
+.price-tag{font-family:var(--font-display);font-size:2.6rem;font-weight:600;line-height:1.1}
+.price-tag small{font-size:1rem;color:var(--text-3);font-family:var(--font-body);font-weight:500}
+.pill{display:inline-block;background:rgba(217,119,6,.14);color:#F59E0B;border:1px solid rgba(217,119,6,.3);font-size:.78rem;font-weight:700;padding:5px 13px;border-radius:99px;margin-bottom:18px}
+.price-meta{margin-top:14px;color:var(--text-2);font-size:.95rem}
+.price-list{list-style:none;display:flex;flex-direction:column;gap:13px}
+.price-list li{padding-left:30px;position:relative;font-size:.95rem;color:var(--text-2)}
+.price-list li::before{content:'✓';position:absolute;left:0;top:0;width:20px;height:20px;border-radius:6px;background:var(--teal-soft);color:var(--teal-hover);font-size:.75rem;font-weight:800;display:flex;align-items:center;justify-content:center}
+.price-list li b{color:var(--text)}
+
+/* security */
+.sec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-top:44px}
+.sec-item{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:22px}
+.sec-item h3{font-size:.92rem;font-weight:700;margin-bottom:6px;color:var(--teal-hover)}
+.sec-item p{font-size:.84rem;color:var(--text-2)}
+.sec-note{margin-top:28px;font-size:.9rem;color:var(--text-3)}
+
+/* faq */
+.faq-item{border-bottom:1px solid var(--border);padding:22px 0}
+.faq-item:first-of-type{border-top:1px solid var(--border);margin-top:44px}
+.faq-item h3{font-size:1rem;font-weight:700;margin-bottom:8px}
+.faq-item p{font-size:.93rem;color:var(--text-2);max-width:760px}
+
+/* cta */
+.final-cta{text-align:center;padding:100px 0}
+.final-cta h2{margin:0 auto 16px}
+.final-cta p{color:var(--text-2);margin-bottom:36px}
+
+/* footer */
+footer{border-top:1px solid var(--border);padding:44px 0;font-size:.86rem;color:var(--text-3)}
+.foot-inner{display:flex;justify-content:space-between;flex-wrap:wrap;gap:20px}
+.foot-links{display:flex;gap:24px}
+.foot-links a{color:var(--text-3)}
+.foot-links a:hover{color:var(--text-2)}
+
+@media(max-width:760px){
+  .nav-links a:not(.btn){display:none}
+  .price-card{grid-template-columns:1fr;padding:30px}
+  .stats{gap:28px}
+  section{padding:60px 0}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-inner">
+    <div class="logo">AI Talent <span>Lab</span></div>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#why">Why us</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#security">Security</a>
+      <a class="btn btn-primary" href="#book">Book a demo</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-badge">● Founder pricing — first 10 clients only</div>
+    <h1>Hiring software that <em>does the work</em>, not just stores the data.</h1>
+    <p class="sub">Your HR person describes the role in a chat. We write the JD, collect and
+    shortlist applicants, run the interview process, and build you a private talent bank —
+    so you hire in <strong>weeks, not months</strong>.</p>
+    <div class="hero-ctas">
+      <!-- BOOKING_URL: replace href with your Calendly link, e.g. https://calendly.com/your-handle/demo -->
+      <a class="btn btn-primary btn-lg" id="book" href="mailto:elavalasrinivasreddy@gmail.com?subject=Demo%20request%20—%20AI%20Talent%20Lab">Book a 30-min demo</a>
+      <a class="btn btn-ghost btn-lg" href="#pricing">See pricing</a>
+    </div>
+    <p class="hero-note">Built for Indian companies with 50–500 employees. Rupee pricing. DPDP-compliant.</p>
+    <div class="stats">
+      <div class="stat"><b>45 → ~20 days</b><span>target time-to-fill vs India SMB average</span></div>
+      <div class="stat"><b>60–70%</b><span>of recruiter time spent on repetitive work — automated</span></div>
+      <div class="stat"><b>Top 10, not 300</b><span>resumes your team actually reads per role</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="how">
+  <div class="wrap">
+    <div class="kicker">How it works</div>
+    <h2>One role, end to end — without the Excel sheet and the WhatsApp group chaos.</h2>
+    <div class="steps">
+      <div class="step"><h3>Describe the role in a chat</h3>
+        <p>Your HR person talks to the system like a person. It drafts a polished job description in minutes — benchmarked against the market and scanned for biased language.</p></div>
+      <div class="step"><h3>Candidates apply in a chat, on their phone</h3>
+        <p>A branded careers page where applying takes minutes — no account creation, no clunky forms. Consent is captured up front, properly.</p></div>
+      <div class="step"><h3>AI reads every resume and ranks it</h3>
+        <p>Each application is scored against the role with reasons. Your team reviews the best 10, not all 300. The AI never auto-rejects anyone — humans make every decision.</p></div>
+      <div class="step"><h3>Interviews run themselves</h3>
+        <p>Panel invites, feedback scorecards, reminder emails, and status updates to candidates — all in one place. Nobody gets ghosted.</p></div>
+      <div class="step"><h3>Your private talent pool grows</h3>
+        <p>Every applicant joins <em>your</em> consented candidate database — not a job portal's. Next time you hire a similar role, you start warm.</p></div>
+      <div class="step"><h3>You see everything</h3>
+        <p>Funnel, source quality, hiring velocity, and time-to-fill analytics — so you know what's working without asking anyone for a report.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="why">
+  <div class="wrap">
+    <div class="kicker">Why AI Talent Lab</div>
+    <h2>The tools you can buy today are filing cabinets. This one is a worker.</h2>
+    <div class="why-grid">
+      <div class="why"><h3>It does the work</h3><p>Traditional ATS tools store candidates; your HR still writes every JD and reads every resume. We actually do those steps.</p></div>
+      <div class="why"><h3>Candidates love applying</h3><p>Minutes in a chat on the phone, and they're kept informed at every stage. Your employer brand improves; better candidates say yes.</p></div>
+      <div class="why"><h3>You build an asset</h3><p>Your talent pool belongs to you — exportable, consented, growing every month. On job portals, the database belongs to the portal.</p></div>
+      <div class="why"><h3>A human makes every decision</h3><p>The AI drafts, scores, and suggests. It never rejects anyone on its own — important for fairness, and for your peace of mind.</p></div>
+      <div class="why"><h3>Built for India</h3><p>Rupee pricing, DPDP-compliant consent and deletion, and a workflow designed around how Indian SMBs actually hire.</p></div>
+      <div class="why"><h3>Founder on the phone</h3><p>Pilot clients get personal onboarding by the founder, a direct support line, and feedback shipped in weeks — not a ticket queue.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="kicker">Pricing</div>
+    <h2>Founder pricing — early access at a fraction of the eventual list price.</h2>
+    <p class="section-sub">For the first 10 clients, in exchange for honest feedback and a reference if you're happy. List pricing (₹15,000+/mo tier) comes later.</p>
+    <div class="price-card">
+      <div>
+        <div class="pill">First 10 clients only</div>
+        <div class="price-tag">₹2,999–4,999 <small>/ month</small></div>
+        <p class="price-meta">Based on company size and number of open roles. Monthly or quarterly invoice. <strong>Annual prepay → 2 months free.</strong></p>
+        <p class="price-meta" style="margin-top:24px">
+          <!-- BOOKING_URL: replace href with your Calendly link -->
+          <a class="btn btn-primary" href="mailto:elavalasrinivasreddy@gmail.com?subject=Founder%20pricing%20—%20AI%20Talent%20Lab">Talk to the founder</a>
+        </p>
+      </div>
+      <ul class="price-list">
+        <li><b>Full product</b> — JD chat, branded careers page, AI screening, interviews, talent pool, analytics</li>
+        <li><b>Personal onboarding</b> by the founder, live on your first roles</li>
+        <li><b>Direct support line</b> — a person, not a ticket queue</li>
+        <li><b>Input into the roadmap</b> — pilot feedback ships in weeks</li>
+        <li><b>Your data stays yours</b> — exportable any time, never locked in</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="security">
+  <div class="wrap">
+    <div class="kicker">Security &amp; compliance</div>
+    <h2>Candidate data is sensitive. We treat it that way.</h2>
+    <div class="sec-grid">
+      <div class="sec-item"><h3>Tenant isolation</h3><p>Each company's data is fully isolated — enforced at the database level (row-level security), not just in application code.</p></div>
+      <div class="sec-item"><h3>Encryption</h3><p>Sensitive fields like salary expectations are encrypted at rest (AES-256).</p></div>
+      <div class="sec-item"><h3>DPDP consent</h3><p>Candidates give explicit consent before any data is collected — built for India's DPDP Act.</p></div>
+      <div class="sec-item"><h3>Right to deletion</h3><p>Any candidate can request deletion of their data, and it actually gets deleted.</p></div>
+      <div class="sec-item"><h3>Audit logs</h3><p>Every significant action in your organization is logged and reviewable.</p></div>
+      <div class="sec-item"><h3>AI transparency</h3><p>AI involvement is disclosed to candidates, and the AI never auto-rejects anyone.</p></div>
+    </div>
+    <p class="sec-note">Detailed security note available on request — <a href="mailto:elavalasrinivasreddy@gmail.com?subject=Security%20note%20request">ask us</a>.</p>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="kicker">Honest answers</div>
+    <h2>What we won't pretend.</h2>
+    <div class="faq-item"><h3>Do you send WhatsApp messages to candidates?</h3><p>Email today; WhatsApp is on the near-term roadmap.</p></div>
+    <div class="faq-item"><h3>Do you auto-post jobs to Naukri or LinkedIn?</h3><p>Not yet. You get a branded careers page and shareable links; portal posting is planned. Keep Naukri — we organize what comes out of it, and your applicants build <em>your</em> database, not the portal's.</p></div>
+    <div class="faq-item"><h3>Can candidates self-book interview slots?</h3><p>Scheduling is in the product today; candidate self-booking is coming with calendar sync.</p></div>
+    <div class="faq-item"><h3>Is there a mobile app?</h3><p>The product works fully in the phone browser — for your team and for candidates. No app store download needed.</p></div>
+    <div class="faq-item"><h3>Will the AI reject good people?</h3><p>It never rejects anyone — it ranks and explains. Every decision is made by your team; the AI just saves them the reading time.</p></div>
+    <div class="faq-item"><h3>You're early-stage. Will you be around?</h3><p>Honest answer: founder-built, early-stage — which is exactly why you get founder pricing, direct access, and influence on the roadmap. Your data is exportable; you're never locked in.</p></div>
+  </div>
+</section>
+
+<section class="final-cta">
+  <div class="wrap">
+    <h2>See one role go through, end to end.</h2>
+    <p>A 30-minute demo: chat → JD → careers page → a candidate applies on a phone → shortlist appears → interview booked.</p>
+    <!-- BOOKING_URL: replace href with your Calendly link -->
+    <a class="btn btn-primary btn-lg" href="mailto:elavalasrinivasreddy@gmail.com?subject=Demo%20request%20—%20AI%20Talent%20Lab">Book a demo</a>
+    <p class="hero-note" style="margin-top:20px">Or write to us: <a href="mailto:elavalasrinivasreddy@gmail.com">elavalasrinivasreddy@gmail.com</a><!-- CONTACT_EMAIL --></p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-inner">
+    <div>© 2026 AI Talent Lab. Built in India, for India.</div>
+    <div class="foot-links">
+      <a href="terms.html">Terms of Service</a>
+      <a href="privacy.html">Privacy Policy</a>
+      <a href="mailto:elavalasrinivasreddy@gmail.com">Contact</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

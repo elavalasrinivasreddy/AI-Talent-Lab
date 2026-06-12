@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import api from '../../utils/api'
+import { TERMS_URL, PRIVACY_URL } from '../../config/legal'
 import Icon from '../common/Icon'
 import Toast from '../common/Toast'
 import './CareerPage.css'
@@ -456,7 +457,13 @@ export default function CareerPage() {
 
       <footer className="cp-footer">
         <div>Powered by AI Talent Lab</div>
-        <Link to="/">Platform</Link>
+        <div>
+          <a href={TERMS_URL} target="_blank" rel="noopener">Terms</a>
+          {' · '}
+          <a href={PRIVACY_URL} target="_blank" rel="noopener">Privacy</a>
+          {' · '}
+          <Link to="/">Platform</Link>
+        </div>
       </footer>
 
       {showApplyModal && (

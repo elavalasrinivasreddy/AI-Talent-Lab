@@ -16,11 +16,11 @@
 
 *A prospect's path is: landing page → demo → security questions → invoice. Close gaps in that order.*
 
-- [ ] **Landing page + pricing page + demo-booking link** (F1) — static, fast; founder pricing per [sales brief](docs/product/06_sales_brief.md) §6. *~2 days*
-- [ ] **ToS + Privacy Policy pages** (F3) — linked from landing + app footer + apply chat consent step. *~½ day*
-- [ ] **Security one-pager** — sales brief §7 promises "detailed security note available on request"; it doesn't exist yet. One page: tenant isolation/RLS, CTC encryption, DPDP consent, deletion rights, audit logs. *~½ day*
-- [ ] **Repo hygiene** (F8/E5) — push current code to GitHub; fix README (says SQLite, code is Postgres+RLS); verify `.gitignore` covers `talent_lab.sqlite`, `chroma/*.bin`, `__pycache__`, `uploads/`. *~½ day*
-- [ ] **Demo video (3 min)** from [DEMO_GUIDE.md](docs/DEMO_GUIDE.md) — sales can send it before/after calls. *~½ day*
+- [x] **Landing page + pricing page + demo-booking link** (F1) — done 2026-06-13 → `landing/` (static single page + pricing section). **Open:** host it; swap `BOOKING_URL` mailto → Calendly (3 spots, see `landing/README.md`).
+- [x] **ToS + Privacy Policy pages** (F3) — done 2026-06-13 → `landing/terms.html` + `privacy.html`; copies served in-app at `/legal/*` (`frontend/public/legal/`); linked from apply consent screen, apply footer, career page, status page (`VITE_MARKETING_URL` switches links to the hosted site). **Open:** fill [PLACEHOLDERS] + lawyer review, then remove draft banners.
+- [x] **Security one-pager** — done 2026-06-13 → [docs/product/07_security_one_pager.md](product/07_security_one_pager.md), claims code-traced against STATUS.md/RLS docs.
+- [ ] **Repo hygiene** (F8/E5) — local README already says Postgres (GitHub copy is the stale one); `.gitignore` hardened 2026-06-13 (`*.sqlite`, `uploads/`). **Remaining (run locally):** `git rm --cached backend/db/talent_lab.sqlite && git rm -r --cached backend/db/chroma` → commit → push.
+- [ ] **Demo video (3 min)** from [DEMO_GUIDE.md](DEMO_GUIDE.md) — *deferred by decision 2026-06-13; plan later.*
 
 ## Sprint 2 — Make it chargeable + safe to operate (the "SaaS layer")
 
@@ -75,3 +75,5 @@ Business API application — both have multi-week lead times and cost nothing to
 ## Done log
 
 *(Move finished items here with date + commit, so STATUS.md updates stay easy.)*
+
+- **2026-06-13** — Sprint 1: landing site (`landing/`), ToS + Privacy drafts (landing + in-app `/legal/*` + consent/footer links), security one-pager (`docs/product/07_security_one_pager.md`), `.gitignore` hardening. STATUS.md F1/F3/F8 updated. Demo video deferred. *(commit: pending push)*

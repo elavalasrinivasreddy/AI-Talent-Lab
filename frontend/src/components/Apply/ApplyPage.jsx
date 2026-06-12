@@ -5,6 +5,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
+import { TERMS_URL, PRIVACY_URL } from '../../config/legal'
 import './ApplyPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '/api/v1') + '/apply'
@@ -432,7 +433,13 @@ export default function ApplyPage() {
       </div>
       <div className="apply-footer">
         <span>Powered by AI Talent Lab · AI-assisted hiring</span>
-        <a href="/delete-my-data" target="_blank" rel="noopener">Privacy & Data Deletion</a>
+        <span>
+          <a href={TERMS_URL} target="_blank" rel="noopener">Terms</a>
+          {' · '}
+          <a href={PRIVACY_URL} target="_blank" rel="noopener">Privacy</a>
+          {' · '}
+          <a href="/delete-my-data" target="_blank" rel="noopener">Data Deletion</a>
+        </span>
       </div>
     </div>
   )
@@ -592,7 +599,9 @@ function ConsentScreen({ context, onConsent }) {
         </div>
 
         <p className="apply-consent-privacy">
-          <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>
+          <a href={TERMS_URL} target="_blank" rel="noopener">Terms of Service</a>
+          {' · '}
+          <a href={PRIVACY_URL} target="_blank" rel="noopener">Privacy Policy</a>
           {' · '}
           <a href="/delete-my-data" target="_blank" rel="noopener">Data Rights</a>
         </p>

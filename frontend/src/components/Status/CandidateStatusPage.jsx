@@ -5,6 +5,7 @@
  */
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
+import { TERMS_URL, PRIVACY_URL } from '../../config/legal'
 import './CandidateStatusPage.css'
 
 const STATUS_STEPS = ['Application Received', 'Under Review', 'Interview Stage', 'Offer Stage', 'Hired']
@@ -201,7 +202,13 @@ export default function CandidateStatusPage() {
 
         <footer className="cs-footer">
           <span>Powered by AI Talent Lab</span>
-          <a href="/delete-my-data">Privacy & Data Deletion</a>
+          <span>
+            <a href={TERMS_URL} target="_blank" rel="noopener">Terms</a>
+            {' · '}
+            <a href={PRIVACY_URL} target="_blank" rel="noopener">Privacy</a>
+            {' · '}
+            <a href="/delete-my-data">Data Deletion</a>
+          </span>
         </footer>
       </div>
     </div>
