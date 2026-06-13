@@ -17,7 +17,6 @@ import asyncpg
 from backend.dependencies import get_db, get_current_user
 from backend.middleware.rate_limiter import limiter
 from backend.services.hire_request_service import HireRequestService
-from backend.db.repositories.hire_requests import HireRequestRepository
 from backend.models.hire_request import (
     HireRequestCreate,
     HireRequestUpdate,

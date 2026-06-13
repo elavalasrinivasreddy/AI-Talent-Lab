@@ -20,7 +20,7 @@ def draft_rejection_async(self, interview_id: int, org_id: int, user_id: int):
     from backend.db.repositories.notifications import NotificationRepository
 
     async def _run():
-        from backend.db.connection import get_connection, set_org_context, reset_org_context
+        from backend.db.connection import set_org_context, reset_org_context
         ctx_token = set_org_context(org_id)
         try:
             async with get_connection() as conn:

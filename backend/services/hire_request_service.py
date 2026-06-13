@@ -1,10 +1,12 @@
 """
 services/hire_request_service.py – Business logic for hire requests.
 
-Facade: delegates to backend.services.hire_requests.* sub-modules.
-Routers and tests call HireRequestService.method() exactly as before.
+INTENTIONAL THIN FACADE (E6, verified 2026-06-13): the migration into
+backend.services.hire_requests.* is complete. This class is the stable public
+entry point — routers and tests call HireRequestService.method() exactly as
+before; every method just delegates to a sub-module function and holds no logic
+of its own. Add new behaviour to the relevant hire_requests/* module, not here.
 """
-from typing import Optional
 import asyncpg
 
 from backend.services.hire_requests import (
@@ -22,7 +24,7 @@ from backend.services.hire_requests import (
     release_review,
     approve_modified,
 )
-from backend.services.hire_requests.crud import _validate_payload, _BadTransitionError
+from backend.services.hire_requests.crud import _validate_payload
 
 
 class HireRequestService:

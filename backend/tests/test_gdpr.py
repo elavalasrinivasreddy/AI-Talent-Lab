@@ -16,9 +16,7 @@ Tests:
   6. process-deletion scoped to org — wrong org returns error (not found)
   7. process-deletion on wrong-status request returns error
 """
-import json
 import uuid
-from unittest.mock import patch, AsyncMock
 
 import asyncpg
 import pytest
@@ -228,7 +226,7 @@ async def test_process_deletion_pending_status_returns_error(seeded, db_pool):
 @pytest.mark.asyncio
 async def test_process_deletion_via_api_requires_org_head(seeded, client):
     """POST /process-deletion/{id} without auth returns 401/403."""
-    r = await client.post(f"/api/v1/gdpr/process-deletion/1")
+    r = await client.post("/api/v1/gdpr/process-deletion/1")
     assert r.status_code in (401, 403, 422)
 
 

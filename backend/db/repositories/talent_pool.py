@@ -1,5 +1,4 @@
 import asyncpg
-import json
 from typing import Optional
 
 class TalentPoolRepository:

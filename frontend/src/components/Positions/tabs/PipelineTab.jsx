@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { dashboardApi, candidatesApi } from '../../../utils/api'
 import { PIPELINE_STAGES, getScoreStyle, KANBAN_STAGE_ORDER } from '../../../utils/constants'
 import Toast from '../../common/Toast'
+import ConfirmModal from '../../common/ConfirmModal'
 import './PipelineTab.css'
 
 const VISIBLE_STAGES = KANBAN_STAGE_ORDER
@@ -32,6 +33,8 @@ export default function PipelineTab({ positionId }) {
   const [currentPage, setCurrentPage] = useState(1)
   const [viewMode, setViewMode] = useState('grid') // 'grid' | 'kanban'
   const [toast, setToast] = useState(null)
+  const [bulkRejectOpen, setBulkRejectOpen] = useState(false)
+  const [bulkThreshold, setBulkThreshold] = useState('80')
   const navigate = useNavigate()
 
   const load = useCallback(async () => {
@@ -132,7 +135,43 @@ export default function PipelineTab({ positionId }) {
   return (
     <div className="pipeline-container">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      
+
+      <ConfirmModal
+        isOpen={bulkRejectOpen}
+        onClose={() => setBulkRejectOpen(false)}
+        title="Bulk reject by ATS score"
+        message="Candidates in this stage scoring below the threshold will be rejected. This cannot be undone."
+        confirmText="Reject below threshold"
+        confirmVariant="danger"
+        onConfirm={async () => {
+          const score = parseFloat(bulkThreshold)
+          if (isNaN(score) || score < 0 || score > 100) {
+            setToast({ message: 'Enter a valid score between 0 and 100', type: 'error' })
+            throw new Error('invalid threshold')
+          }
+          await handleBulkReject(score)
+        }}
+      >
+        <label htmlFor="bulk-reject-threshold" style={{ display: 'block', fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2)' }}>
+          ATS score threshold
+        </label>
+        <input
+          id="bulk-reject-threshold"
+          type="number"
+          min="0"
+          max="100"
+          step="1"
+          value={bulkThreshold}
+          onChange={e => setBulkThreshold(e.target.value)}
+          autoFocus
+          style={{
+            width: '100%', padding: 'var(--space-2) var(--space-3)', fontSize: '14px',
+            color: 'var(--color-text-primary)', background: 'var(--color-bg-input, #161D2F)',
+            border: '1px solid var(--color-border, #1E3047)', borderRadius: 'var(--radius-md, 10px)',
+          }}
+        />
+      </ConfirmModal>
+
       {/* View Mode Toggle */}
       <div className="pipeline-toolbar">
         <div className="pipeline-view-toggle">
@@ -234,15 +273,8 @@ export default function PipelineTab({ positionId }) {
                 className="pipeline-action-btn" 
                 style={{ marginLeft: '12px', background: 'var(--color-danger, #EF4444)', color: 'white', padding: '0 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 onClick={() => {
-                  const threshold = window.prompt("Enter ATS score threshold to reject (candidates below this score will be rejected):", "80");
-                  if (threshold !== null) {
-                    const score = parseFloat(threshold);
-                    if (!isNaN(score)) {
-                      handleBulkReject(score);
-                    } else {
-                      setToast({ message: 'Invalid score threshold entered', type: 'error' });
-                    }
-                  }
+                  setBulkThreshold('80');
+                  setBulkRejectOpen(true);
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>

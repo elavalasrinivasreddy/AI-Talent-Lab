@@ -4,9 +4,8 @@ Per docs/design/pages/05_jd_chat.md Part 2 — 8-step flow:
   greeting → interest → current_role → experience → compensation →
   notice_period → resume_upload → screening_questions → completion
 """
-import json
 import logging
-from typing import AsyncGenerator, Optional
+from typing import Optional
 
 from backend.adapters.llm.factory import get_llm
 
@@ -237,6 +236,11 @@ class CandidateChatController:
         org_name = org.get("name", "the company")
 
         self.state["step"] = "completion"
+        # Application is fully submitted here (the /message endpoint auto-completes on
+        # step == "completion": status→applied, confirmation email, ATS dispatch). The
+        # video intro below is a purely optional post-submission add-on — skipping or
+        # abandoning it never affects the submitted application.
+        self.state["video_offer"] = True
         return (
             f"That's everything! 🎉\n\n"
             f"Your application for **{role_name}** at **{org_name}** has been submitted.\n\n"
@@ -244,6 +248,8 @@ class CandidateChatController:
             f"• Our hiring team will review your profile shortly\n"
             f"• If shortlisted, you'll receive an email with interview details\n"
             f"• We'll keep you updated at each stage\n\n"
+            f"📹 **Optional:** want to stand out? Record a short 30–60s video intro using "
+            f"the button below — it's completely optional and your application is already in.\n\n"
             f"Good luck! 🍀",
             self.state
         )

@@ -27,7 +27,6 @@ from backend.exceptions import (
     AccountLockedError,
     NotFoundError,
     ValidationError,
-    MagicLinkExpiredError,
     MagicLinkUsedError,
 )
 from backend.services.email_service import EmailService
@@ -430,6 +429,10 @@ class AuthService:
 
         if await UserRepository.get_by_email(conn, email):
             raise AlreadyExistsError("This email is already registered")
+
+        # Plan quota: block adding a seat beyond the plan's user limit.
+        from backend.services.quota_service import QuotaService
+        await QuotaService.enforce_seats(conn, org_id)
 
         user = await UserRepository.create(
             conn,

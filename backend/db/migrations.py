@@ -1229,6 +1229,42 @@ async def run_migrations(conn) -> None:
     await conn.execute("ALTER TABLE interviews ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMP;")
     logger.info("  interviews.reminder_sent_at column ensured.")
 
+    # ── SaaS layer: plan / quota / billing (Sprint 2, F2) ─────────────────────
+    # Plan tier drives quota + LLM-budget enforcement (services/plans.py,
+    # services/quota_service.py). llm_monthly_budget_usd is an optional per-org
+    # override of the plan default. All idempotent.
+    await conn.execute(
+        "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'starter';"
+    )
+    await conn.execute(
+        "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS plan_started_at TIMESTAMP DEFAULT NOW();"
+    )
+    await conn.execute(
+        "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS llm_monthly_budget_usd NUMERIC(12, 2);"
+    )
+    logger.info("  organizations plan/billing columns ensured.")
+
+    # Invoice ledger — written by the billing adapter (simulation now, Razorpay
+    # when keys arrive). Provider-agnostic; provider_ref holds the external id.
+    await conn.execute("""
+    CREATE TABLE IF NOT EXISTS invoices (
+        id            SERIAL PRIMARY KEY,
+        org_id        INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        plan          TEXT NOT NULL,
+        amount        NUMERIC(12, 2) NOT NULL DEFAULT 0,
+        currency      VARCHAR(8) NOT NULL DEFAULT 'INR',
+        status        VARCHAR(20) NOT NULL DEFAULT 'created',
+        provider      VARCHAR(20) NOT NULL DEFAULT 'simulation',
+        provider_ref  TEXT,
+        period_start  DATE,
+        period_end    DATE,
+        created_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+        paid_at       TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_invoices_org ON invoices(org_id, created_at DESC);
+    """)
+    logger.info("  invoices table ensured.")
+
     # Enable RLS
     logger.info("  Enabling Row-Level Security...")
     await conn.execute(RLS_SETUP)

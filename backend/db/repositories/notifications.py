@@ -3,7 +3,6 @@ db/repositories/notifications.py – NotificationRepository
 In-app notifications for recruiter users.
 """
 import logging
-from typing import Optional
 import asyncpg
 
 logger = logging.getLogger(__name__)

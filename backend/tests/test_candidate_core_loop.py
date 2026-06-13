@@ -7,11 +7,9 @@ container, no browser/LLM needed. If any of these silently break again, this fai
 import json
 import uuid
 
-import asyncpg
 import pytest
 import pytest_asyncio
 
-from backend.config import settings
 
 
 @pytest_asyncio.fixture
@@ -19,8 +17,7 @@ async def seeded_app(db_pool):
     """Seed org → dept → candidate → position → application. status_token is NOT
     set explicitly, so it must come from the column DEFAULT (the P1-8 fix)."""
     sfx = uuid.uuid4().hex[:8]
-    conn = await asyncpg.connect(settings.DATABASE_URL)
-    try:
+    async with db_pool.acquire() as conn:
         org = await conn.fetchval(
             "INSERT INTO organizations (name,slug,segment,size) "
             "VALUES ($1,$2,'tech','small') RETURNING id",
@@ -48,12 +45,15 @@ async def seeded_app(db_pool):
             "VALUES ($1,$2,$3,$4,'application_received')",
             org, cand, pos, app_row["id"],
         )
-        yield {
-            "org": org, "dept": dept, "candidate": cand, "position": pos,
-            "app_id": app_row["id"], "status_token": app_row["status_token"],
-        }
-        # Clean up in FK dependency order (organizations isn't ON DELETE CASCADE
-        # from candidate_applications/pipeline_events, so delete children first).
+        
+    yield {
+        "org": org, "dept": dept, "candidate": cand, "position": pos,
+        "app_id": app_row["id"], "status_token": app_row["status_token"],
+    }
+    
+    # Clean up in FK dependency order (organizations isn't ON DELETE CASCADE
+    # from candidate_applications/pipeline_events, so delete children first).
+    async with db_pool.acquire() as conn:
         for tbl in ("pre_evaluations", "pipeline_events", "candidate_applications",
                     "candidates", "positions", "departments", "organizations"):
             col = "id" if tbl == "organizations" else "org_id"
@@ -61,8 +61,6 @@ async def seeded_app(db_pool):
                 await conn.execute(f"DELETE FROM {tbl} WHERE {col}=$1", org)
             except Exception:
                 pass
-    finally:
-        await conn.close()
 
 
 @pytest.mark.asyncio
@@ -85,21 +83,18 @@ async def test_status_portal_returns_timeline(seeded_app, client):
 
 
 @pytest.mark.asyncio
-async def test_pre_evaluation_get_submit_and_surfaces_in_status(seeded_app, client):
+async def test_pre_evaluation_get_submit_and_surfaces_in_status(seeded_app, client, db_pool):
     """P1-7 + P1-8: pre-eval is fetchable + submittable by token, and its token
     surfaces in the status portal so the candidate can find the assessment."""
     token = "loop-preeval-token-123"
     questions = [{"question_id": "q1", "question": "Why this role?"}]
-    conn = await asyncpg.connect(settings.DATABASE_URL)
-    try:
+    async with db_pool.acquire() as conn:
         await conn.execute(
             "INSERT INTO pre_evaluations (org_id,application_id,candidate_id,position_id,status,token,questions) "
             "VALUES ($1,$2,$3,$4,'pending',$5,$6)",
             seeded_app["org"], seeded_app["app_id"], seeded_app["candidate"],
             seeded_app["position"], token, json.dumps(questions),
         )
-    finally:
-        await conn.close()
 
     # GET by token returns the questions
     r = await client.get(f"/api/v1/pre-evaluations/{token}")

@@ -3,7 +3,6 @@ adapters/candidate_sources/base.py – CandidateSourceAdapter ABC
 All sourcing adapters must implement this interface.
 """
 from abc import ABC, abstractmethod
-from typing import Any
 
 
 class CandidateSourceAdapter(ABC):

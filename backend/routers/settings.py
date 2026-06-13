@@ -666,7 +666,7 @@ async def get_audit_logs(
 
 # ── Providers ─────────────────────────────────────────────────────────────────
 
-from backend.models.settings import ProviderConfig, ProvidersUpdate
+from backend.models.settings import ProvidersUpdate
 
 @router.get("/providers")
 async def get_providers(

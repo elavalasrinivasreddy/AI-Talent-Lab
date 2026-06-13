@@ -10,9 +10,7 @@ Tasks:
   send_panel_invites      — Email panel feedback links to interviewers
   send_rejection_emails   — Send rejection notices
 """
-import json
 import logging
-from datetime import datetime, timedelta, timezone
 
 from backend.celery_app import celery_app
 from backend.db.connection import get_admin_connection
@@ -250,7 +248,7 @@ def send_interview_invite(interview_id: int) -> dict:
                 candidate_name=row["candidate_name"],
                 role_name=row["role_name"],
                 org_name=row["org_name"],
-                round_name=row["round_name"] or f"Interview",
+                round_name=row["round_name"] or "Interview",
                 scheduled_at=row["scheduled_at"],
                 duration_minutes=row["duration_minutes"],
                 meeting_link=row["meeting_link"],

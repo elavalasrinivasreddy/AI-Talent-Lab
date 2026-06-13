@@ -63,7 +63,7 @@ async def check_bias(jd_text: str) -> list[BiasIssue]:
             
         try:
             result = json.loads(json_str)
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             logger.error(f"Failed to parse bias check JSON. Raw content: {content}")
             return []
 

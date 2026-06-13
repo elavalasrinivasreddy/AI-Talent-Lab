@@ -47,12 +47,14 @@ that surfaces it.
 
 | Token | Value | Use |
 |---|---|---|
-| `--p` | `#0D9488` | Brand · CTAs · active nav · AI affordances |
-| `--p-h` | `#0F766E` | Hover · gradient mid |
-| `--p-a` | `#134E4A` | Active · gradient deep |
-| `--p-bg` | `rgba(13,148,136,.12)` | Tint (chip bg, hover) |
-| `--p-bd` | `rgba(13,148,136,.30)` | Border tint, focus rings |
-| `--p-glow` | `rgba(13,148,136,.18)` | Box-shadow halo |
+| `--color-primary` | `#0D9488` | Brand · CTAs · active nav · AI affordances |
+| `--color-primary-hover` | `#0F766E` | Hover · gradient mid |
+| `--color-primary-active` | `#134E4A` | Active · gradient deep |
+| `--color-primary-bg` | `rgba(13,148,136,.12)` | Tint (chip bg, hover) |
+| `--color-primary-soft` | `rgba(13,148,136,.18)` | Soft fill / subtle highlight |
+| `--color-primary-border` | `rgba(13,148,136,.30)` | Border tint, focus rings |
+
+> The primary halo is the shadow token `--shadow-glow-primary` (see §4).
 
 No competitor ATS uses teal (Greenhouse green, Lever blue-grey, Ashby dark, indigo
 `#6366f1` = AI slop). Reads as serious AI infrastructure; works dark + light.
@@ -61,14 +63,17 @@ No competitor ATS uses teal (Greenhouse green, Lever blue-grey, Ashby dark, indi
 
 | Token | Value | Stage |
 |---|---|---|
-| `--ps-sourced` | `#8B5CF6` purple | AI activity |
-| `--ps-emailed` | `#06B6D4` cyan | Outreach in flight |
-| `--ps-applied` | `#3B82F6` blue | Candidate action |
-| `--ps-screening` | `var(--p)` teal | System reviewing |
-| `--ps-interview` | `#D97706` amber | Humans involved |
-| `--ps-selected` | `#10B981` emerald | Success |
-| `--ps-rejected` | `#64748B` gray | Closed |
-| `--ps-hold` | `#F59E0B` amber-orange | Paused |
+| `--color-stage-sourced` | `#8B5CF6` purple | AI activity |
+| `--color-stage-emailed` | `#06B6D4` cyan | Outreach in flight |
+| `--color-stage-applied` | `#3B82F6` blue | Candidate action |
+| `--color-stage-screening` | `var(--color-primary)` teal | System reviewing |
+| `--color-stage-interview` | `#D97706` amber | Humans involved |
+| `--color-stage-offer` | (see `globals.css`) | Offer extended |
+| `--color-stage-selected` | `#10B981` emerald | Success |
+| `--color-stage-rejected` | `#64748B` gray | Closed |
+
+> `globals.css` defines `--color-stage-{sourced,emailed,applied,screening,interview,offer,selected,rejected}`.
+> There is **no** `--color-stage-hold` token — the on-hold state is styled via the warning palette (`--color-warning`).
 
 > Note: this palette differs slightly from the older `constants.js` values in
 > `frontend/src/utils/constants.js`. `constants.js` is the runtime source of truth for
@@ -86,47 +91,58 @@ No competitor ATS uses teal (Greenhouse green, Lever blue-grey, Ashby dark, indi
 | `--st-bias` | `#10B981` | Bias Check (SOFT SKIP) |
 | `--st-complete` | `#94A3B8` | Complete |
 
+> These LangGraph stage colors are **not** defined as CSS custom properties in `globals.css`;
+> they live inline / in component constants. Names above are the doc's logical labels, not CSS tokens.
+
 ### Semantic
 
 | Token | Value | Use |
 |---|---|---|
-| `--ok` / `--ok-bg` | `#10B981` / `rgba(16,185,129,.12)` | Hired, healthy |
-| `--warn` / `--warn-bg` | `#D97706` / `rgba(217,119,6,.12)` | Attention |
-| `--bad` / `--bad-bg` | `#EF4444` / `rgba(239,68,68,.12)` | Error, missing |
-| `--info` / `--info-bg` | `#3B82F6` / `rgba(59,130,246,.12)` | Neutral signal |
+| `--color-success` / `--color-success-bg` | `#10B981` / `rgba(16,185,129,.12)` | Hired, healthy |
+| `--color-warning` / `--color-warning-bg` | `#D97706` / `rgba(217,119,6,.12)` | Attention |
+| `--color-danger` / `--color-danger-bg` | `#EF4444` / `rgba(239,68,68,.12)` | Error, missing |
+| `--color-info` / `--color-info-bg` | `#3B82F6` / `rgba(59,130,246,.12)` | Neutral signal |
 
 ### Surface scale (dark default / light `[data-theme="light"]`)
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--bg-0` | `#06080F` | `#F1F5F9` | Page bg |
-| `--bg-1` | `#0B0F1A` | `#FFFFFF` | Sidebar, rail |
-| `--bg-2` | `#111827` | `#FFFFFF` | Card |
-| `--bg-3` | `#1A2236` | `#F8FAFC` | Elevated/input |
-| `--bg-4` | `#243049` | `#E2E8F0` | Hover |
-| `--bd` | `#1E3047` | `#E2E8F0` | Border |
-| `--bd-strong` | `#2C3E5D` | `#CBD5E1` | Hover/focus border |
+| `--color-bg-primary` | `#06080F` | `#F1F5F9` | Page bg |
+| `--color-bg-secondary` | `#0B0F1A` | `#FFFFFF` | Sidebar, rail |
+| `--color-bg-card` | `#111827` | `#FFFFFF` | Card |
+| `--color-bg-elevated` | `#1A2236` | `#F8FAFC` | Elevated |
+| `--color-bg-input` | `#1A2236` | `#F8FAFC` | Form inputs |
+| `--color-bg-hover` | `#243049` | `#E2E8F0` | Hover |
+| `--color-border` | `#1E3047` | `#E2E8F0` | Border |
+| `--color-border-strong` | `#2C3E5D` | `#CBD5E1` | Hover/focus border |
+
+> Also in `globals.css`: `--color-bg-tertiary`, `--color-bg-active`, `--color-bg-overlay`,
+> `--color-border-light`, `--color-border-focus`. Exact values: `globals.css` is the source of truth.
 
 ### Text scale
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `--tx-0` | `#F8FAFC` | `#0F172A` | Primary |
-| `--tx-1` | `#E2E8F0` | `#1E293B` | Slightly muted |
-| `--tx-2` | `#94A3B8` | `#475569` | Secondary/meta |
-| `--tx-3` | `#64748B` | `#64748B` | Tertiary/hint |
-| `--tx-4` | `#475569` | `#94A3B8` | Disabled |
+| `--color-text-primary` | `#F8FAFC` | `#0F172A` | Primary text |
+| `--color-text-secondary` | `#94A3B8` | `#475569` | Secondary / meta |
+| `--color-text-tertiary` | `#64748B` | `#64748B` | Tertiary / hint |
+| `--color-text-muted` | `#475569` | `#94A3B8` | Muted / disabled |
+| `--color-text-inverse` | — | — | Text on primary/colored fills |
 
 ---
 
 ## 2. Typography
 
 ```css
---ff: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
---fm: 'JetBrains Mono', ui-monospace, monospace;
+--font-primary: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+--font-mono:    'JetBrains Mono', ui-monospace, monospace;
 ```
 
 Google Fonts link in `frontend/index.html` (weights 300–800 + mono 400–600).
+
+`globals.css` also exposes the scale as tokens — prefer these over hard-coded values:
+`--font-size-{xs,sm,base,md,lg,xl,2xl,3xl}`, `--font-weight-{light,regular,medium,semibold,bold,extrabold}`,
+`--line-height-{tight,normal,relaxed}`.
 
 | Use | Size | Weight | Tracking |
 |---|---|---|---|
@@ -135,9 +151,9 @@ Google Fonts link in `frontend/index.html` (weights 300–800 + mono 400–600).
 | `.h3` card head | 15px | 700 | 0 |
 | Body | 14px | 400 | 0 |
 | Body sm | 13px | 400 | 0 |
-| `.muted` | 13px | 400 | `--tx-2` |
-| `.tiny` | 11px | 400 | `--tx-3` |
-| `.kicker` overline | 10.5px | 700 | 0.08em UPPER · `--tx-3` |
+| `.muted` | 13px | 400 | `--color-text-secondary` |
+| `.tiny` | 11px | 400 | `--color-text-tertiary` |
+| `.kicker` overline | 10.5px | 700 | 0.08em UPPER · `--color-text-tertiary` |
 | `.num` | inherit | inherit | `tabular-nums` for scores/$ |
 
 ---
@@ -145,20 +161,22 @@ Google Fonts link in `frontend/index.html` (weights 300–800 + mono 400–600).
 ## 3. Radius & spacing
 
 ```css
---r-1:4px --r-2:8px --r-3:12px --r-4:16px --r-5:20px --r-f:999px
---s-1:4px --s-2:8px --s-3:12px --s-4:16px --s-5:20px --s-6:24px --s-8:32px --s-10:40px --s-12:48px
+--radius-sm:4px --radius-md:8px --radius-lg:12px --radius-xl:16px --radius-2xl:20px --radius-full:999px
+--space-1:4px --space-2:8px --space-3:12px --space-4:16px --space-5:20px --space-6:24px --space-8:32px --space-10:40px --space-12:48px --space-16:64px
 ```
 
-8pt system (`--s-2` base). Cards `--r-4`; chips/buttons `--r-2`; pills `--r-f`.
+8pt system (`--space-2` base). Cards `--radius-xl`; chips/buttons `--radius-md`; pills `--radius-full`.
 
 ## 4. Shadows
 
 ```css
---sh-1: 0 1px 2px rgba(0,0,0,.4);                            /* subtle */
---sh-2: 0 4px 14px rgba(0,0,0,.35);                          /* card hover */
---sh-3: 0 12px 36px rgba(0,0,0,.45);                         /* modal/hero */
---sh-glow: 0 0 0 1px var(--p-bd), 0 6px 24px var(--p-glow);  /* primary halo */
+--shadow-sm: 0 1px 2px rgba(0,0,0,.4);                                               /* subtle */
+--shadow-md: 0 4px 14px rgba(0,0,0,.35);                                             /* card / card hover */
+--shadow-lg: 0 12px 36px rgba(0,0,0,.45);                                            /* modal/hero */
+--shadow-glow-primary: 0 0 0 1px var(--color-primary-border), 0 6px 24px var(--color-primary-soft); /* primary halo */
 ```
+
+(`globals.css` also defines `--shadow-card` for the default card elevation.)
 
 Light-mode shadows are softer. Default cards are border + bg, no shadow.
 
@@ -171,12 +189,12 @@ Shared atoms — build once, use everywhere. **Status:** `StatusBadge`, `Badge`,
 `Icon` / `Chip` / `Stat` / `RoleGate`** all exist in `components/common/` (Phase B
 landed 2026-05-29).
 
-> **Token reconciliation (important for page work):** `globals.css` currently defines
-> the v2.2 names (`--color-primary`, `--color-bg-card`, `--color-text-*`, `--space-*`,
-> `--radius-*`), NOT the short v3 names in this doc (`--p`, `--bg-2`, `--tx-0`). The new
-> atoms reference the real `--color-*` tokens with hex fallbacks. When you do a full
-> token pass, either add the short aliases to `globals.css` or update this doc to the
-> `--color-*` names — don't write components against `--p` until it exists.
+> **Token reconciliation — done 2026-06-13 (Sprint 4 / D1):** this doc now uses the real
+> `globals.css` names (`--color-primary`, `--color-bg-*`, `--color-text-*`, `--color-stage-*`,
+> `--space-*`, `--radius-*`, `--shadow-*`). The short v3 aliases (`--p`, `--bg-2`, `--tx-0`,
+> `--ps-*`, `--r-*`, `--s-*`, `--sh-*`) were **never** added to `globals.css` and should not
+> be used — write components against the `--color-*` / `--space-*` / `--radius-*` tokens above.
+> `globals.css` remains the source of truth for exact values.
 
 - `<Icon name size />` — inline-SVG set (Lucide names). Replaces emoji icons in Sidebar,
   AnalyticsPage KPIStrip, SettingsPage tabs. File: `components/common/Icon.jsx`.

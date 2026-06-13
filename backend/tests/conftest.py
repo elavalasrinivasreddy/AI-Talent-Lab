@@ -5,14 +5,12 @@ import pytest_asyncio
 import asyncpg
 from unittest.mock import patch, AsyncMock, MagicMock
 from testcontainers.postgres import PostgresContainer
-from fastapi.testclient import TestClient
 
 # Set required environment variables for tests before importing config
 os.environ["JWT_SECRET"] = "test-secret-key-do-not-use-in-prod"
 os.environ["GEMINI_API_KEY"] = "mock-api-key"
 
 from backend.main import app
-from backend.db.connection import get_pool, _pool
 from backend.db.migrations import run_migrations
 from backend.config import settings
 
@@ -66,9 +64,10 @@ async def db_pool():
     """Provide an isolated database pool per test and prevent lifespan interference."""
     pool = await asyncpg.create_pool(_test_db_url, min_size=1, max_size=5)
     
-    # Patch the global pool in backend.db.connection to use this test pool
+    # Patch the global pools in backend.db.connection to use this test pool
     import backend.db.connection as db_conn
     db_conn._pool = pool
+    db_conn._admin_pool = pool
 
     # Prevent lifespan from re-running migrations or closing our test pool
     with patch("backend.main.init_db", new=AsyncMock()), patch("backend.main.close_pool", new=AsyncMock()):
@@ -77,6 +76,7 @@ async def db_pool():
     # Only close after the test is completely done
     await pool.close()
     db_conn._pool = None
+    db_conn._admin_pool = None
 
 @pytest_asyncio.fixture
 async def db_conn(db_pool):
@@ -104,6 +104,21 @@ def mock_redis():
     redis_mock = _make_redis_mock()
     with patch("redis.asyncio.from_url", return_value=redis_mock):
         yield redis_mock
+
+
+@pytest.fixture(scope="session", autouse=True)
+def disable_rate_limiter():
+    """Disable slowapi rate limiting for the whole test session.
+
+    Tests fire many auth calls from the same loopback IP; the 10/min auth cap
+    would otherwise 429 later tests non-deterministically once the suite grows.
+    No test asserts rate-limit behavior, so disabling it globally is safe and
+    keeps the suite order-independent."""
+    from backend.middleware.rate_limiter import limiter
+    previous = limiter.enabled
+    limiter.enabled = False
+    yield
+    limiter.enabled = previous
 
 
 @pytest_asyncio.fixture

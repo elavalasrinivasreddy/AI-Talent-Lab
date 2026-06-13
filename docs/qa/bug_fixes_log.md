@@ -3907,3 +3907,552 @@ The `apply.py` and `candidates.py` routers executed raw SQL directly against the
 - `backend/db/repositories/candidates.py`
 - `backend/routers/apply.py`
 - `backend/routers/candidates.py`
+
+---
+
+## 228. Pipeline Bulk-Reject Used Native `window.prompt` (DOM Hack — E2/D2)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+The "Bulk Reject" action on the on-hold pipeline stage collected the ATS score threshold with a native `window.prompt()` (`PipelineTab.jsx:237`). Native prompts are unstyled, break the dark-theme design system, can't validate input inline, are blocked in some embedded/webview contexts, and aren't testable via Playwright. Flagged in the 2026-06-13 code review as one of two DOM hacks to remove in Sprint 3.
+
+**Idea / Solution:**
+Replaced the native prompt with the existing `ConfirmModal`, extended with an optional `children` slot so callers can inject form fields without forking the component (backward-compatible — existing call sites unaffected). `PipelineTab` now drives the threshold through controlled React state (`bulkRejectOpen`, `bulkThreshold`) and a real `<input type="number">` (0–100, validated on confirm). Invalid input shows a toast and keeps the modal open (via `ConfirmModal`'s throw-to-stay-open contract); valid input calls the unchanged `handleBulkReject(score)`. No `window.*` globals involved.
+
+**Files Modified:**
+- `frontend/src/components/common/ConfirmModal.jsx` (added optional `children` slot)
+- `frontend/src/components/Positions/tabs/PipelineTab.jsx` (state + ConfirmModal wiring; removed `window.prompt`)
+
+---
+
+## 229. Test Suite — Filled 5 Stub Endpoint Suites + Rate-Limiter Throttled Tests (Q1)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+Five backend test files (`test_positions.py`, `test_interviews.py`, `test_talent_pool.py`, `test_settings.py`, `test_dashboard.py`) were empty stubs (`# TODO: Implement`), leaving those routers untested (Q1). Separately, once real tests were added, running them together surfaced a latent test-infra bug: the auth routes carry a `10 requests / minute / IP` slowapi limit, and because every test registers/logs in from the same loopback IP, the 11th+ auth call returned `429 Too Many Requests` at fixture setup — failing later tests non-deterministically and making the suite order-dependent.
+
+**Idea / Solution:**
+Implemented real tests for all five suites against the verified endpoint contracts — auth enforcement (401 without token) plus fresh-org happy-path response shapes; `test_settings` additionally does a create→list department round-trip (exercising `require_org_head`, since the first registered user is an `org_head`). Added a session-scoped, autouse `disable_rate_limiter` fixture in `conftest.py` that flips `limiter.enabled = False` for the test session (restored on teardown). No test asserts rate-limit behavior, so disabling it globally is safe and makes the suite order-independent — also hardening the pre-existing suites against the same throttling. Result: 26 tests pass.
+
+**Files Modified:**
+- `backend/tests/test_positions.py`
+- `backend/tests/test_interviews.py`
+- `backend/tests/test_talent_pool.py`
+- `backend/tests/test_settings.py`
+- `backend/tests/test_dashboard.py`
+- `backend/tests/conftest.py` (added `disable_rate_limiter` session fixture)
+
+---
+
+## 230. JD Bias-Fix Widgets Used `window.*` Globals + Injected `onclick` (DOM Hack — E3/D2)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+The inline inclusivity-diff widgets in `FinalJDCard.jsx` were built as raw HTML strings with inline `onclick="window.acceptBiasFix(${idx})"` / `window.rejectBiasFix(${idx})` handlers, backed by two `window.*` globals registered/torn-down in a `useEffect` (plus a latest-ref pattern to keep them current). This is the second DOM hack flagged in the 2026-06-13 code review. **It was also a live bug:** the widget HTML is rendered through `DOMPurify.sanitize()`, which strips inline `on*` event handlers by default — so the per-suggestion ✓/✕ accept/reject buttons did nothing when clicked. Users could only resolve suggestions via "Accept all" or the prev/next nav.
+
+**Idea / Solution:**
+Switched to React event delegation. The injected buttons now carry `data-bias-action="accept|reject"` and `data-idx="N"` attributes (DOMPurify preserves `data-*`), and a single React `onClick={handleDiffClick}` on the diff container resolves `e.target.closest('[data-bias-action]')`, parses the index, and dispatches to the existing `handleAcceptFix` / `handleRejectFix` callbacks. Removed both `window.acceptBiasFix` / `window.rejectBiasFix` globals, their registration `useEffect`, and the `acceptFixRef` / `rejectFixRef` latest-ref plumbing. Net effect: no globals, no injected handlers, and the inline ✓/✕ buttons actually work again — all through React's synthetic event system.
+
+**Files Modified:**
+- `frontend/src/components/Chat/cards/FinalJDCard.jsx` (event delegation via `data-*` + `handleDiffClick`; removed `window.*` bias-fix globals and ref plumbing)
+
+---
+
+## 231. Dead-File Sweep (E4)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+The 2026-06-13 code review flagged stray/unused files for removal (E4): `frontend/src/utils/candidates.py`, `frontend/tests/example.spec.ts`, the `frontend/src/components/Dashboard/legacy/` folder (to confirm), and any `old_frontend/` / `old_backend/` directories in the working folder.
+
+**Idea / Solution:**
+Verified each target before removing. Deleted two genuinely-dead files: `frontend/src/utils/candidates.py` (0 bytes, an orphaned Python file in the JS frontend, zero imports) and `frontend/tests/example.spec.ts` (the default Playwright scaffold that navigates `playwright.dev` — tests nothing in this app). **Kept** `Dashboard/legacy/` — it is *not* unused: `DashboardPage.jsx:24` lazy-imports `LegacyDashboard` and renders it at line 121 when `legacyMode` is active (`?legacy_dashboard=1` query param), a deliberate escape hatch. `old_frontend/` and `old_backend/` do not exist in the working folder — nothing to clean.
+
+**Files Removed:**
+- `frontend/src/utils/candidates.py`
+- `frontend/tests/example.spec.ts`
+
+**Files Kept (verified in use):**
+- `frontend/src/components/Dashboard/legacy/LegacyDashboard.jsx` + `.css` (reachable via `?legacy_dashboard=1`)
+
+---
+
+## 232. First Frontend Unit Tests — `utils/api.js` (Q3)
+**Date:** 2026-06-13
+**Status:** Done
+
+**Problem Statement:**
+The frontend had a Vitest + jsdom harness configured (`vite.config.js` `test` block, `setupTests.js`) and a single example test (`Button.test.jsx`), but the central API client `utils/api.js` — which every authenticated request flows through — had no coverage (Q3). There was also no `test` script in `package.json`, so the suite couldn't be run via `npm`.
+
+**Idea / Solution:**
+Added `src/utils/api.test.js` (10 cases) exercising the request client through its public surface (`api` default export + `setTokenGetter`) with a stubbed global `fetch`: (1) Bearer-token + JSON content-type injection when a token is present; (2) Authorization omitted when no token; (3) body serialization + method for POST; (4) no body on GET; (5) success wrapped in `{ data }`; (6) `204 No Content` → `{ data: null }`; (7) error normalization from `error.message` with `status`/`code` attached; (8) fallback to `detail`; (9) fallback to `HTTP <status>` when the body isn't JSON; (10) `401` surfaced with `status: 401` for the auth layer. Also added `"test": "vitest run"` / `"test:watch": "vitest"` to `package.json`. Verified the assertions line-by-line against `api.js`'s `_fetch` logic; suite must be run on Node 20+ (Vitest 4 / rolldown requirement — the dev sandbox runs Node 18 and cannot execute it).
+
+**Files Modified:**
+- `frontend/src/utils/api.test.js` (new — 10 tests)
+- `frontend/package.json` (added `test` / `test:watch` scripts)
+
+---
+
+## 233. Frontend Unit Tests — Hire-Request Helpers + Dashboard Metadata (Q3 cont.)
+**Date:** 2026-06-13
+**Status:** Done
+
+**Problem Statement:**
+Q3 also called for tests on `HireRequests/helpers.js` and `Dashboard/useDashboardData.js` — both untested. `helpers.js` holds the hire-request relay/state machine that drives every list/detail badge; a regression there silently mislabels requests.
+
+**Idea / Solution:**
+Added `HireRequests/helpers.test.js` (pure-function coverage of `computeRelayStates` across all statuses incl. the `fulfilled` → `position_approval_status` branch, `statusLabel`, `statusTone`, `formatCompBand`, `formatExperience`). For `useDashboardData.js` (an async/effect hook — its runtime path is E2E territory), added `useDashboardData.test.js` locking down the pure exported metadata maps (`SUGGESTION_META`, `PULSE_EVENT_META`): every entry has `icon`/`color` and a valid `kind`, plus a `default` fallback. Dash-containing assertions use `toContain`/regex to stay robust to en/em-dash encoding. Verified import-resolution + parse via esbuild bundle against the real source modules (Node 20+ required to execute Vitest).
+
+**Files Modified:**
+- `frontend/src/components/HireRequests/helpers.test.js` (new)
+- `frontend/src/components/Dashboard/useDashboardData.test.js` (new)
+
+---
+
+## 234. Backend Coverage Floor (Q5)
+**Date:** 2026-06-13
+**Status:** Done
+
+**Problem Statement:**
+No coverage measurement existed for the backend (Q5) — nothing recorded current % or could fail CI on a regression.
+
+**Idea / Solution:**
+Added `pytest-cov>=5.0.0` to `backend/requirements.txt` and a root `.coveragerc` (`source = backend`, branch coverage, omitting tests/migrations/`__init__`). Exposed a `make coverage` target that runs `pytest --cov=backend --cov-report=term-missing --cov-fail-under=$(COV_MIN)`. The floor is **not** baked into `pytest.ini` on purpose — single-file/local `pytest <file>` runs would otherwise report low coverage and fail spuriously; the floor belongs to CI / the explicit `make coverage` command. `COV_MIN` **baseline measured 2026-06-13: 37.54%** across 132 tests — calibrated to **37** (just below baseline; bump as coverage grows).
+
+**Files Modified:**
+- `backend/requirements.txt` (added `pytest-cov`)
+- `.coveragerc` (new)
+- `Makefile` (`coverage` target — see #235)
+
+---
+
+## 235. One-Command E2E Runner (Q6)
+**Date:** 2026-06-13
+**Status:** Done
+
+**Problem Statement:**
+Running the Playwright core-loop required manually booting both dev servers in the right mode (uvicorn `DEV_MODE=true` :8000, Vite :5173) — easy to get wrong, and the spec has no `webServer` block by design (it self-seeds across one proxied origin).
+
+**Idea / Solution:**
+Added a `Makefile` with `make e2e` → `scripts/e2e.sh`, which boots the backend (`DEV_MODE=true uvicorn`) and frontend (`vite`) in the background, polls `/docs` and the Vite port until both are ready, runs `npx playwright test`, and tears both servers down on exit/interrupt via a trap. The core-loop spec self-seeds through `POST /api/v1/dev/seed-core-loop`, so no separate seed step is needed. Ports overridable via `E2E_BACK_PORT`/`E2E_FRONT_PORT`. The Makefile also exposes `test-backend` / `test-frontend` convenience targets.
+
+**Files Modified:**
+- `Makefile` (new — `e2e`, `coverage`, `test-backend`, `test-frontend`)
+- `scripts/e2e.sh` (new)
+
+---
+
+## 236. Service Facades Confirmed Thin (E6)
+**Date:** 2026-06-13
+**Status:** Done
+
+**Problem Statement:**
+The review (E6) asked to confirm `hire_request_service.py` and `position_service.py` are thin re-exports (vs. half-finished migrations) and document the intent.
+
+**Idea / Solution:**
+Verified both: `position_service.py` is a 19-line class composing the decomposed `positions/*` mixins (`PositionCRUD`/`Pipeline`/`Approvals`/`Interviews`) with no logic; `hire_request_service.py` is a class whose every method one-line-delegates to a `hire_requests/*` sub-module function. The migration is complete. Updated both module docstrings (and added a `PositionService` class docstring) to mark them as **intentional, stable thin facades** — new behaviour goes in the sub-modules, not here — so the pattern isn't re-flagged in future reviews. No behavioural change.
+
+**Files Modified:**
+- `backend/services/position_service.py` (docstrings only)
+- `backend/services/hire_request_service.py` (docstring only)
+
+---
+
+## 237. Gate the Local `/uploads` Static Mount (E7)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+`backend/main.py` unconditionally created `./uploads/` and mounted it as **public, unauthenticated** static files at `/uploads/*`. That exposes candidate resumes/videos (PII, under the GDPR/DPDP commitments) with no org-scoped RLS — fine for dev, unacceptable for production (E7).
+
+**Idea / Solution:**
+Added `SERVE_LOCAL_UPLOADS: bool = True` to `config.py` and gated the `os.makedirs` + `app.mount` behind it (logs a notice when disabled). Dev is unchanged (default `True`); production sets `SERVE_LOCAL_UPLOADS=false` to drop the mount entirely. Documented the object-storage migration plan (private bucket + `ObjectStorageAdapter` + org/role-checked signed URLs + retention) and a pre-pilot checklist in `docs/architecture/uploads.md`.
+
+**Files Modified:**
+- `backend/config.py` (added `SERVE_LOCAL_UPLOADS`)
+- `backend/main.py` (gated the `/uploads` mount)
+- `docs/architecture/uploads.md` (new — object-storage plan + checklist)
+
+---
+
+## 238. Deprecated `datetime.utcnow()` in Interviews List
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+`backend/routers/interviews.py:70` used `datetime.utcnow()`, which emits a `DeprecationWarning` on Python 3.12+ (surfaced in the `make coverage` run) and is scheduled for removal. It was the only remaining `utcnow()` call in the backend.
+
+**Idea / Solution:**
+Replaced with `datetime.now(timezone.utc).replace(tzinfo=None)` — a non-deprecated call that preserves the exact prior behaviour (a *naive* UTC datetime). Naive is required here because `now` is compared against the `interviews.scheduled_at` column, which is a timezone-less `TIMESTAMP`; an aware datetime would change comparison semantics under asyncpg. Imported `timezone` in the function-local datetime import. Removes the last `utcnow()` deprecation warning from the suite.
+
+**Files Modified:**
+- `backend/routers/interviews.py` (utcnow → now(timezone.utc).replace(tzinfo=None))
+
+---
+
+## 239. Sprint 4 QA — Career-Page Branding (Phase D#2) + 2 Polish Fixes
+**Date:** 2026-06-13
+**Status:** Fixed (QA ✅ by code-trace; live walk still recommended)
+
+**Problem Statement:**
+Career-page branding was built-but-never-QA'd. Code-trace verified the full path: `CareerBrandTab` → PATCH/GET `/settings/org` (gated `require_org_head`) → `OrgRepository` → DB columns (`career_primary_color/_banner_url/_tagline`, migration L826-829) → public `/careers/{slug}` → `CareerPage` applies color/banner/tagline. Two minor issues found: (1) cleared fields couldn't be reset because the PATCH used `exclude_none` and the tab sent `null`; (2) save errors were swallowed (`catch {}`).
+
+**Idea / Solution:**
+`CareerBrandTab` now sends empty strings (`?? ''`) instead of `null` so a cleared field actually resets, and surfaces failures via a `Toast`. STATUS Phase D #2 → ✅.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/CareerBrandTab.jsx` (reset-to-empty, error Toast)
+- `docs/STATUS.md`, `docs/reviews/2026-06-13_sprint4_qa.md`
+
+---
+
+## 240. Sprint 4 QA — Audit-Log UI (Phase D#7) + Action Filter
+**Date:** 2026-06-13
+**Status:** Fixed (QA ✅ by code-trace)
+
+**Problem Statement:**
+Audit-log UI built-but-never-QA'd. Code-trace verified `AuditTab` → GET `/settings/audit-logs` (gated `require_org_head`) → `AuditService.get_logs` returns `{total, logs[]}`; row fields match the table; debounced search + pagination + per-page CSV all wired. Finding: the UI exposed only free-text search, not the `action`/`user_id` filter params the backend already supports.
+
+**Idea / Solution:**
+Added an Action filter `<select>` (options accumulated across loads) that passes the backend `action` param. STATUS Phase D #7 → ✅.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/AuditTab.jsx` (action filter)
+- `docs/STATUS.md`
+
+---
+
+## 241. Sprint 4 QA — team_lead Dashboard (Phase D#8)
+**Date:** 2026-06-13
+**Status:** Verified ✅ (code-trace)
+
+**Problem Statement:**
+team_lead dashboard built-but-never-QA'd. Code-trace verified `DashboardPage` role-routes `team_lead` → `TeamLeadDashboard`, fed by `useDashboardData`; `lanes.{now,next,pulse}` shape matches all consumers; File-Hire-Request CTA → `/hire-requests/new`; onboarding empty-state handled. No defects found.
+
+**Idea / Solution:**
+No code change required. STATUS Phase D #8 → ✅.
+
+**Files Modified:**
+- `docs/STATUS.md`, `docs/reviews/2026-06-13_sprint4_qa.md`
+
+---
+
+## 242. GDPR SAR Data-Export UI (Phase D#6)
+**Date:** 2026-06-13
+**Status:** Built
+
+**Problem Statement:**
+Backend `GET /gdpr/export/{candidate_id}` existed but the Settings → Data export tab was a placeholder, so an admin could not run a standalone Subject Access Request for an arbitrary candidate (only deletion-request-linked exports in the GDPR/DPDP tab worked).
+
+**Idea / Solution:**
+New `DataExportTab` — export by candidate ID plus an org-scoped talent-pool lookup helper, structured summary (counts per section), and copy/download JSON. Wired into `SettingsPage` (placeholder removed, `phase:2` flag dropped). Admin-gated.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/DataExportTab.jsx` (new)
+- `frontend/src/components/Settings/SettingsPage.jsx` (import + registry)
+- `docs/STATUS.md`
+
+---
+
+## 243. Video Intro — Post-Submission Add-on (Phase D#3)
+**Date:** 2026-06-13
+**Status:** Built ⚠️ — automated gate cleared (suite 133 passed incl. `test_video_intro`, `npm run build` clean); only a live click-through remains
+
+**Problem Statement:**
+The candidate upload UI, `/upload-video` storage, recruiter `<video>` player, and `get_with_application` data plumbing all existed, but the apply step machine never emitted `step: "video_intro"`, so the whole feature was unreachable.
+
+**Idea / Solution:**
+Wired as a **post-submission add-on** (chosen to avoid touching completion side-effects = zero risk of lost applications): `_step_complete` now invites an optional video and sets `video_offer`; `ApplyPage` shows the existing upload card at `step === 'completion'` (skip is local; `sendMessage` already no-ops at completion). Added unit test `tests/test_video_intro.py` locking the contract. Recruiter player already live via `get_with_application` (needs `position_id` context). **Not yet ✅** — needs the backend suite run + a live walk (stack can't boot in the dev sandbox).
+
+**Files Modified:**
+- `backend/agents/candidate_chat.py` (completion message + `video_offer`)
+- `frontend/src/components/Apply/ApplyPage.jsx` (optional video card at completion)
+- `backend/tests/test_video_intro.py` (new)
+- `docs/STATUS.md`
+
+---
+
+## 244. Onboarding First-Run Scaffold (F5)
+**Date:** 2026-06-13
+**Status:** Built (scaffold)
+
+**Problem Statement:**
+The empty dashboard showed only a single-CTA hero; no guided first-run checklist (F5).
+
+**Idea / Solution:**
+New `OnboardingChecklist` — role-aware steps (HR/admin vs team_lead), a progress bar, and a primary "publish your first job" / "file your first hire request" step with deep links. Rendered from `TodaysBriefing`'s onboarding branch. Deferred (per F5): seeded demo-org dev tool (`/dev/seed-core-loop` exists) and richer per-step completion detection — finalize after the first pilot.
+
+**Files Modified:**
+- `frontend/src/components/Dashboard/OnboardingChecklist.jsx` (new)
+- `frontend/src/components/Dashboard/TodaysBriefing.jsx` (use checklist)
+
+---
+
+## 245. Design-Token Doc Reconciliation (D1)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+`docs/design/00_design_system.md` documented an old shorthand token vocabulary (`--p`, `--bg-0..4`, `--tx-*`, `--ps-*`, `--r-*`, `--s-*`, `--sh-*`, `--ff/--fm`) that never existed in `globals.css` (which uses `--color-*`, `--space-*`, `--radius-*`, `--shadow-*`). The doc itself flagged the drift.
+
+**Idea / Solution:**
+Rewrote every token table to the real `globals.css` names (no code churn). Noted tokens absent from CSS (`--color-stage-hold`, LangGraph `--st-*`) and the resolved reconciliation note. `globals.css` remains the value source of truth.
+
+**Files Modified:**
+- `docs/design/00_design_system.md`
+
+---
+
+## 246. A11y Pass — Apply Chat + Career Page (D4)
+**Date:** 2026-06-13
+**Status:** Fixed (7 issues); open items logged
+
+**Problem Statement:**
+No accessibility audit on the two candidate-facing surfaces. Static axe/WCAG review found unlabeled form controls, an unlabeled apply modal, an icon-only close button, and a silent typing indicator.
+
+**Idea / Solution:**
+Applied 7 fixes: `aria-label` on the chat composer textarea + both hidden file inputs; `role="status"` on the typing indicator; `role="dialog"`/`aria-modal`/`aria-labelledby` on the career apply modal; `aria-label="Close"` on its close button; `htmlFor`/`id` on the modal Name/Email fields. Open items (user-brand-color contrast, modal focus trap, decorative-emoji `aria-hidden`) + a live-axe-core E2E recipe logged in the review doc. Note: this is a static audit — axe-core couldn't run live (no bootable stack).
+
+**Files Modified:**
+- `frontend/src/components/Apply/ApplyPage.jsx`, `frontend/src/components/Careers/CareerPage.jsx`
+- `docs/reviews/2026-06-13_sprint4_a11y.md` (new)
+
+---
+
+## 247. Plan & Quota Enforcement (Sprint 2 / F2a)
+**Date:** 2026-06-13
+**Status:** Built + unit-tested (needs Docker/Postgres for live pytest)
+
+**Problem Statement:**
+Plan tiers (Starter/Professional/Business/Founder-pilot) existed only in the pricing docs — nothing in the product enforced them. An org on any tier could open unlimited positions, receive unlimited applications, and add unlimited seats. Without enforcement the product is not chargeable (validation brief §5).
+
+**Idea / Solution:**
+Added a single source of truth for plan limits (`services/plans.py`: `PLAN_LIMITS`, `WARN_THRESHOLD=0.8`) and a live-counting enforcement service (`services/quota_service.py`) using a **soft-warn → hard-block** model (decision 2026-06-13): below 80% allowed; 80–100% allowed but `warn=True`; at/over 100% `enforce_*` raises `QuotaExceededError` (HTTP 402 with `{resource, used, limit, plan}`). Counts are read live from the DB (no separate counter to drift). Schema: idempotent `ALTER organizations ADD plan / plan_started_at / llm_monthly_budget_usd`. Enforcement wired at the three chokepoints — active positions (`chat_service` before `PositionRepository.create`), seats (`auth_service.add_user`), and inbound applications/month (`careers.start_application`). New `test_quota.py` covers the evaluator boundaries + DB-backed seat/position/budget blocks.
+
+**Files Modified:**
+- `backend/services/plans.py` (new), `backend/services/quota_service.py` (new)
+- `backend/exceptions.py` (`QuotaExceededError`, `BudgetExceededError`, `BillingError`)
+- `backend/db/migrations.py` (organizations plan columns)
+- `backend/services/chat_service.py`, `backend/services/auth_service.py`, `backend/routers/careers.py`
+- `backend/tests/test_quota.py` (new)
+
+---
+
+## 248. LLM Spend Caps per Org (Sprint 2 / F2b)
+**Date:** 2026-06-13
+**Status:** Built + unit-tested
+
+**Problem Statement:**
+`llm_usage_log` recorded `cost_usd` per call but nothing capped it. A runaway agent loop or a heavy org could burn an unbounded LLM bill — the COGS risk called out in the validation brief §5.
+
+**Idea / Solution:**
+Added a per-org monthly LLM budget (plan default in `PLAN_LIMITS`, overridable per org via `organizations.llm_monthly_budget_usd`). `QuotaService.check_llm_budget` sums `cost_usd` for the current calendar month and applies the same warn→block model; `enforce_llm_budget` raises `BudgetExceededError` (402) over budget. Hard-stop wired into the JD-chat agent entry (`chat_service.run_chat_stream`) — the org's largest LLM cost driver — emitting an SSE error and returning instead of crashing the stream. Soft-warn is surfaced via `GET /billing/usage`. Even Founder-pilot orgs keep a finite safety ceiling ($250).
+
+**Files Modified:**
+- `backend/services/quota_service.py`, `backend/services/plans.py`
+- `backend/services/chat_service.py` (budget gate at stream start)
+- `backend/tests/test_quota.py` (warn-then-block + per-org override)
+
+---
+
+## 249. Razorpay Billing Adapter — Simulation-First (Sprint 2 / F2c)
+**Date:** 2026-06-13
+**Status:** Built + endpoint-tested (simulation); live path activates with KYC + keys
+
+**Problem Statement:**
+No billing path existed, so no plan could be purchased or assigned. Razorpay KYC takes days, so the build couldn't block on it.
+
+**Idea / Solution:**
+Mirrored the email-adapter pattern exactly: `adapters/billing/base.py` (ABC) with `SimulationBilling` (default, every payment succeeds + logs) and `RazorpayBilling` (lazy SDK import; HMAC-SHA256 webhook verify) selected by `BILLING_PROVIDER`. `services/billing_service.py` owns the provider-agnostic bookkeeping the adapter doesn't — writing the `invoices` row and assigning the org's plan on confirmation (the single place a plan changes, so quota stays coherent). New `routers/billing.py`: `GET /usage` (live quota+budget), `GET /plans`, `GET /invoices`, `POST /checkout`, `POST /confirm`, `POST /webhook`. Full checkout → invoice → plan-assignment flow works end-to-end in simulation with no account.
+
+**Files Modified:**
+- `backend/adapters/billing/{__init__,base,simulation,razorpay}.py` (new)
+- `backend/services/billing_service.py` (new), `backend/routers/billing.py` (new)
+- `backend/db/migrations.py` (`invoices` table), `backend/config.py` (`BILLING_PROVIDER` + Razorpay keys)
+- `backend/main.py` (register router), `backend/requirements.txt` (optional `razorpay`)
+- `backend/tests/test_billing.py` (new)
+
+---
+
+## 250. CI Pipeline — GitHub Actions (Sprint 2 / E1·Q2·F9)
+**Date:** 2026-06-13
+**Status:** Added
+
+**Problem Statement:**
+No CI. Every quality gate built so far (132-test suite, coverage floor, frontend units, lint, e2e runner) depended on a developer remembering to run it locally, so regressions could land silently.
+
+**Idea / Solution:**
+Added `.github/workflows/ci.yml` mirroring the Makefile targets. **Backend** job: `ruff check` + `pytest` with the `COV_MIN` coverage floor (testcontainers spins its own Postgres on the runner's Docker; Redis is mocked, so no service containers needed). **Frontend** job: eslint + vitest + production build. **E2E** job (PRs only): Postgres + Redis service containers, Playwright via `make e2e`. Runs on every push + PR. Closes the remaining half of F9 (stub tests were done in Sprint 3).
+
+**Files Modified:**
+- `.github/workflows/ci.yml` (new)
+
+---
+
+## 251. ENCRYPTION_KEY Generation + Production Config Docs (Sprint 2)
+**Date:** 2026-06-13
+**Status:** Documented
+
+**Problem Statement:**
+`ENCRYPTION_KEY` (AES-256-GCM for candidate CTC) was a no-op when unset with no prod guidance, and the X-Forwarded-For caveat (rate limiting + audit IPs are wrong behind a proxy without `--proxy-headers`) was only a one-line note in STATUS. Neither is externally blocked.
+
+**Idea / Solution:**
+Wrote `docs/architecture/production_config.md`: how to generate `ENCRYPTION_KEY` (`secrets.token_urlsafe`/`openssl rand`), the don't-rotate-casually caveat, set-it-before-first-pilot warning; the reverse-proxy setup (`uvicorn --proxy-headers --forwarded-allow-ips <CIDR>` + the nginx `X-Forwarded-For` block, with the explicit "never use `*`" warning); the billing env table; and pointers to the RLS/uploads/DEV_MODE prod settings. Remaining F6 items (staging, backups/DR, uptime) noted as hosting-dependent.
+
+**Files Modified:**
+- `docs/architecture/production_config.md` (new)
+
+---
+
+## 252. BillingService.start_checkout() Silent Plan Fallback (Dead Validation)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+`BillingService.start_checkout()` called `plans.normalize_plan(plan)` — which silently coerces any invalid input to `"starter"` — and then checked `if plan not in plans.VALID_PLANS`. Because normalize always returns a valid key, the guard could never be True. An API caller passing `"enterprise_x"` would silently get billed as `"starter"` instead of receiving a 422 validation error.
+
+**Idea / Solution:**
+Moved the validation before normalization: check the raw (lowercased, stripped) input against `VALID_PLANS` first, raise `ValidationError` with the bad key in the message, then proceed. Keeps the same behaviour for valid inputs; rejects unknowns loudly.
+
+**Files Modified:**
+- `backend/services/billing_service.py`
+
+---
+
+## 253. BillingService.confirm() No Idempotency Guard on Already-Paid Invoice
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+`BillingService.confirm()` fetched the invoice and immediately called `provider.confirm_payment()` without checking whether the invoice was already `paid`. Webhook retries (Razorpay retries failed webhooks 3× by default) or a double-click on the confirm button would re-call the provider, re-UPDATE the `paid_at` timestamp, and re-UPDATE the org plan. For simulation this is a silent no-op; for a real Razorpay order, the second `confirm_payment` call might return an error or charge differently, causing a 502 on what should be an idempotent re-confirmation.
+
+**Idea / Solution:**
+Added an early return before calling the provider: if `invoice["status"] == "paid"`, return the already-paid response immediately. The org plan assignment is unchanged (same plan gets re-assigned on the original call, not on retry).
+
+**Files Modified:**
+- `backend/services/billing_service.py`
+
+---
+
+## 254. AuditTab CSV Export — Unescaped Double Quotes (RFC 4180 Violation)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+The audit log CSV export wrapped all values in double quotes but did not escape double-quote characters within values (user names, actions, entity IDs). A value like `Admin "OrgHead" User` produced `"Admin "OrgHead" User"`, which is invalid per RFC 4180 and breaks imports in Excel, Google Sheets, and any strict CSV parser — the fields after the unescaped quote would silently shift columns.
+
+**Idea / Solution:**
+Added an `esc()` helper that applies RFC 4180 escaping (`"` → `""`) before wrapping in outer quotes, replacing all 7 inline template literals in the CSV row builder.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/AuditTab.jsx`
+
+---
+
+## 255. Ruff Lint Debt Cleanup + Lint Gate Config (Sprint 2 / CI)
+**Date:** 2026-06-13
+**Status:** Config + manual fix applied; auto-fix sweep run via `ruff --fix`
+
+**Problem Statement:**
+The Sprint 2 CI pipeline runs `ruff check backend`, but ruff had never been run before — `ruff check backend` reported **106 pre-existing errors** (73 F401 unused-import, 9 E402 import-not-at-top, 7 F841 unused-var, 6 E701 multi-statement, 5 F541 empty f-string, 5 F811 redefinition). Left unaddressed, the lint gate would be red on every push from day one, making it useless. None originated from Sprint 2 code (new files were F401-audited).
+
+**Idea / Solution:**
+Configured a deliberate lint policy in `pyproject.toml` (`[tool.ruff.lint]`): keep the high-signal pyflakes (F) rules; ignore `E402` (intentional here — env setup before importing config in `conftest`, plus ordered/late module imports in a few routers/adapters) and `E701` (trivial style); per-file-ignore `F401` in `__init__.py` (intentional re-exports). Removed the one dead import ruff couldn't auto-fix (`chromadb.config.Settings` in `db/vector_store.py` — only `import chromadb` drives `HAS_CHROMA`). The remaining 83 safe fixes (F401/F541/F811 — the F811s were redundant local `get_connection` re-imports in `positions.py` ×4 + `rejection_task.py`) and 7 F841 unsafe fixes are applied via `ruff check backend --fix [--unsafe-fixes]` (diff reviewed). Result: `ruff check backend` is green; the CI gate now catches only *new* violations.
+
+**Files Modified:**
+- `pyproject.toml` (ruff lint config), `backend/db/vector_store.py` (dead import)
+- backend-wide `--fix` sweep (unused imports/vars across existing modules — run locally, diff reviewed)
+
+---
+
+
+## 256. Public Career Page Empty Results + RLS Empty String Crash
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+The public endpoint `/api/v1/careers/{org_slug}` threw an `InvalidTextRepresentationError: invalid input syntax for type integer: ""` during SQL queries. This happened because the pool reset `app.current_org_id` to an empty string, and the legacy RLS policies tried to cast it to an integer. Even after fixing the RLS policies in the database to use `NULLIF`, the career page returned 0 results because the public route connected under the RLS-restricted app role without setting a JWT org context.
+
+**Idea / Solution:**
+1. Ran a script to update local Postgres RLS policies to use the correct `NULLIF(current_setting('app.current_org_id', true), '')::int` syntax originally introduced in migrations (which were skipped due to `IF NOT EXISTS`).
+2. Changed `get_connection()` to `get_admin_connection()` in `backend/routers/careers.py` for public endpoints (`get_career_page`, `get_position_detail`, `start_application`, `get_career_fit`). This properly bypasses RLS for these unauthenticated surfaces that rely on explicitly parameterized `WHERE org_id=$1` clauses instead of JWTs.
+
+**Files Modified:**
+- `backend/routers/careers.py` (switched to get_admin_connection)
+- Database schema (local RLS policy recreation)
+
+---
+
+## 257. Race Condition in Candidate Creation (`NoneType` is not subscriptable)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+Users encountered `TypeError: 'NoneType' object is not subscriptable` at `candidate["id"]` in `start_application` (`backend/routers/careers.py`). This was caused by a classic "find or create" race condition. If two requests for the same candidate email arrived simultaneously, both `SELECT` queries returned `None`. The first `INSERT` succeeded, but the second `INSERT` raised a `UniqueViolation` (or returned nothing if intercepted), resulting in `candidate` being `None` when accessed on the next line.
+
+**Idea / Solution:**
+Replaced the plain `INSERT INTO candidates ... RETURNING id` with an upsert pattern: `ON CONFLICT (org_id, email) DO UPDATE SET name=EXCLUDED.name RETURNING id`. This guarantees that even in the case of concurrent requests, the query returns a valid candidate record with its ID. Added a fallback 500 error check just in case it still returns `None`.
+
+**Files Modified:**
+- `backend/routers/careers.py`
+
+---
+
+## 258. Race Condition in Candidate Applications Creation (`NoneType` is not subscriptable)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+Following bug 257, users encountered a nearly identical error: `TypeError: 'NoneType' object is not subscriptable` at `app["id"]` on line 217 in `backend/routers/careers.py`. This occurred for the exact same reason: a "find or create" race condition, this time for the `candidate_applications` table. Two concurrent requests for the same candidate and position both evaluate `if not app:` to true, and both try to `INSERT`. The second `INSERT` hits the `UNIQUE (candidate_id, position_id)` constraint, resulting in `app` being `None` after `fetchrow`.
+
+**Idea / Solution:**
+Applied the same upsert pattern to the application insertion query: `ON CONFLICT (candidate_id, position_id) DO UPDATE SET candidate_id=EXCLUDED.candidate_id RETURNING id`. This guarantees that the database always returns the application record ID, even if another thread inserted it milliseconds prior. Added an HTTP 500 safety check.
+
+**Files Modified:**
+- `backend/routers/careers.py`
+
+---
+
+## 259. Fix squashed oval shapes for UI pills/chips
+
+**Problem Statement:**
+UI chips (like capabilities on the landing page or GDPR labels) were rendering as squashed ovals instead of pill shapes. This occurred because the CSS variable `--radius-full` was set to `50%`. While `50%` creates a circle for perfectly square elements, it creates a stretched ellipse for rectangular elements.
+
+**Idea / Solution:**
+Changed `--radius-full` to `9999px` in `globals.css` to force the browser to render perfect pill shapes regardless of width. Also added an inner highlight to `.mkt-cap` in `marketing.css` for a more premium glass effect.
+
+**Files Modified:**
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/marketing.css`
+
+---
+
+## 260. Fix dull "Get started" button contrast (CSS Specificity Conflict)
+
+**Problem Statement:**
+The "Get started" primary button in the marketing navigation bar looked dull because the text color was semi-transparent gray instead of bright white. This was due to a CSS specificity conflict where the `.mkt-nav-links a` selector (`0,1,1`) overrode the `.mkt-btn-primary` class (`0,1,0`).
+
+**Idea / Solution:**
+Updated the CSS selector to `.mkt-nav-links a:not(.mkt-btn)` so it exclusively targets text links and prevents applying the secondary text color to styled buttons.
+
+**Files Modified:**
+- `frontend/src/styles/marketing.css`
+
+---
+
+---
+
+## 48. Public Candidate Portal 404 & E2E Failure
+**Symptom:** The Playwright E2E test `public candidate status portal shows the timeline` failed because the status endpoint returned a 404 Not Found.
+**Root Cause:** The public, unauthenticated routes in `routers/status.py` and `routers/apply.py` were using `get_connection()`, which strictly enforces Row-Level Security (RLS) policies based on `org_id` context. Since public magic link tokens do not carry an authenticated dashboard session context, the RLS policies hid the database rows.
+**Fix:** Modified the public unauthenticated routes in `backend/routers/status.py` and `backend/routers/apply.py` to use `get_admin_connection()` instead, bypassing RLS and allowing secure magic link tokens to fetch the required candidate and application data successfully.
+
+---
+
+## 51. Pytest Core Loop DB Connection Race Condition
+**Symptom:** The test `test_pre_evaluation_get_submit_and_surfaces_in_status` in `test_candidate_core_loop.py` failed with `RuntimeError: Event loop is closed` and `asyncpg.exceptions._base.InterfaceError: cannot perform operation: another operation is in progress`.
+**Root Cause:** The `seeded_app` fixture and test methods were generating raw, unmanaged database connections using `asyncpg.connect()` rather than leveraging the pytest session `db_pool`. Furthermore, the internal test configuration only patched the application-level `_pool`, leaving `_admin_pool` to dynamically generate a new connection pool that was orphaned from the test loop lifecycle, causing conflicts when the event loop closed.
+**Fix:** Updated `conftest.py` to ensure both `db_conn._pool` and `db_conn._admin_pool` map strictly to the managed pytest `db_pool` fixture. Refactored the core loop test to accept the `db_pool` fixture directly and execute its database setup/teardown transactions using `async with db_pool.acquire() as conn:`.

@@ -95,6 +95,32 @@ class FeedbackAlreadySubmittedError(AppError):
         super().__init__("FEEDBACK_ALREADY_SUBMITTED", message, 409)
 
 
+# ── Billing / Quota Errors ────────────────────────────────────────────────────
+
+class QuotaExceededError(AppError):
+    """Org has hit a plan limit (active positions, candidates/month, seats).
+
+    402 Payment Required — the action is valid but the plan must be upgraded.
+    ``details`` carries {resource, used, limit, plan} so the UI can render a
+    targeted upgrade prompt.
+    """
+    def __init__(self, message: str = "Plan limit reached", details: dict = None):
+        super().__init__("QUOTA_EXCEEDED", message, 402, details)
+
+
+class BudgetExceededError(AppError):
+    """Org has spent its monthly LLM budget — AI features pause until next month
+    or an upgrade. 402 Payment Required."""
+    def __init__(self, message: str = "Monthly AI usage budget reached", details: dict = None):
+        super().__init__("BUDGET_EXCEEDED", message, 402, details)
+
+
+class BillingError(AppError):
+    """Billing provider / invoice error."""
+    def __init__(self, message: str = "Billing service error", details: dict = None):
+        super().__init__("BILLING_ERROR", message, 502, details)
+
+
 # ── External Service Errors ───────────────────────────────────────────────────
 
 class LLMError(AppError):

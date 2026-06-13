@@ -2,7 +2,7 @@
 services/audit_service.py – Business logic for audit logs.
 """
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 
 from backend.db.connection import get_connection
 

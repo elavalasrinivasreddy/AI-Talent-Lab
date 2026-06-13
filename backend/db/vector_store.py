@@ -11,7 +11,6 @@ from backend.adapters.llm.factory import get_embedding_model
 
 try:
     import chromadb
-    from chromadb.config import Settings
     HAS_CHROMA = True
 except ImportError:
     HAS_CHROMA = False

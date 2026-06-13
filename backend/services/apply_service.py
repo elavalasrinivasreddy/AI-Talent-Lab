@@ -12,7 +12,6 @@ import jwt
 
 from backend.config import settings
 from backend.db.connection import get_connection
-from backend.db.repositories.candidates import CandidateRepository
 from backend.db.repositories.pipeline_events import PipelineEventRepository
 from backend.db.repositories.notifications import NotificationRepository
 from backend.agents.candidate_chat import CandidateChatController
@@ -72,7 +71,7 @@ class ApplyService:
             return {"valid": False, "expired": "expired" in str(e), "error": str(e)}
 
         application_id = payload["application_id"]
-        candidate_id = payload["candidate_id"]
+        _candidate_id = payload["candidate_id"]  # noqa: F841 — validated but unused; data comes from DB join
         org_id = payload["org_id"]
 
         async with get_connection() as conn:

@@ -71,7 +71,6 @@ class TalentPoolService:
             params.append(reason)
             i += 1
 
-        where = " AND ".join(filters)
 
         async with get_connection() as conn:
             total = await TalentPoolRepository.get_pool_count(conn, org_id, filters, params)

@@ -12,22 +12,31 @@ export default function AuditTab() {
   const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [actionFilter, setActionFilter] = useState('');
+  // Distinct action types seen so far, accumulated across loads so the dropdown
+  // doesn't lose options when a filter narrows the current page.
+  const [knownActions, setKnownActions] = useState([]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const fetchLogs = async (pageNum, search = '') => {
+  const fetchLogs = async (pageNum, search = '', action = '') => {
     setLoading(true);
     setError(null);
     try {
       const offset = (pageNum - 1) * limit;
       const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
+      const actionParam = action ? `&action=${encodeURIComponent(action)}` : '';
       // We assume /settings/audit-logs exists
-      const res = await api.get(`/settings/audit-logs?limit=${limit}&offset=${offset}${searchParam}`);
-      setLogs(res.data?.logs || []);
+      const res = await api.get(`/settings/audit-logs?limit=${limit}&offset=${offset}${searchParam}${actionParam}`);
+      const rows = res.data?.logs || [];
+      setLogs(rows);
       setTotal(res.data?.total || 0);
+      setKnownActions(prev => Array.from(
+        new Set([...prev, ...rows.map(l => l.action).filter(Boolean)])
+      ).sort());
     } catch (err) {
       console.error('Error fetching audit logs:', err);
       setError('Failed to load audit logs.');
@@ -38,11 +47,11 @@ export default function AuditTab() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, actionFilter]);
 
   useEffect(() => {
-    fetchLogs(page, debouncedSearch);
-  }, [page, debouncedSearch]);
+    fetchLogs(page, debouncedSearch, actionFilter);
+  }, [page, debouncedSearch, actionFilter]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -59,30 +68,45 @@ export default function AuditTab() {
 
       <div className="st-card">
         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div className="st-input-icon" style={{ flex: 1, maxWidth: '400px' }}>
-            <Icon name="search" />
-            <input 
-              type="text" 
-              className="st-input" 
-              placeholder="Search by user, action, entity, IP or date..." 
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flex: 1 }}>
+            <div className="st-input-icon" style={{ flex: 1, maxWidth: '400px' }}>
+              <Icon name="search" />
+              <input
+                type="text"
+                className="st-input"
+                placeholder="Search by user, action, entity, IP or date..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <select
+              className="st-input"
+              style={{ maxWidth: '200px' }}
+              value={actionFilter}
+              onChange={e => setActionFilter(e.target.value)}
+              aria-label="Filter by action"
+            >
+              <option value="">All actions</option>
+              {knownActions.map(a => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
           </div>
-          <button 
+          <button
             className="st-btn st-btn-secondary" 
             onClick={() => {
               const headers = ['Timestamp', 'User Name', 'User Email', 'Action', 'Entity Type', 'Entity ID', 'IP Address'];
+              const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"` // RFC 4180 CSV escaping
               const csvContent = [
                 headers.join(','),
                 ...logs.map(l => [
-                  `"${new Date(l.created_at).toISOString()}"`,
-                  `"${l.user_name || 'System'}"`,
-                  `"${l.user_email || ''}"`,
-                  `"${l.action}"`,
-                  `"${l.entity_type || ''}"`,
-                  `"${l.entity_id || ''}"`,
-                  `"${l.ip_address || ''}"`
+                  esc(new Date(l.created_at).toISOString()),
+                  esc(l.user_name || 'System'),
+                  esc(l.user_email || ''),
+                  esc(l.action),
+                  esc(l.entity_type || ''),
+                  esc(l.entity_id || ''),
+                  esc(l.ip_address || ''),
                 ].join(','))
               ].join('\n');
               const blob = new Blob([csvContent], { type: 'text/csv' });

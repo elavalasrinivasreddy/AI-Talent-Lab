@@ -1,0 +1,22 @@
+# Coverage config for the backend test suite (Q5).
+# Run via `make coverage` (or the command in docs/TODO.md). The CI floor is
+# enforced with --cov-fail-under (see the Makefile `coverage` target / COV_MIN),
+# NOT baked into pytest.ini — so partial/local `pytest <file>` runs aren't forced
+# to compute coverage or fail on a single-file subset.
+[run]
+source = backend
+branch = True
+omit =
+    backend/tests/*
+    backend/db/migrations.py
+    */__init__.py
+
+[report]
+show_missing = True
+skip_covered = False
+# Don't count defensive/unreachable lines against the floor.
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:

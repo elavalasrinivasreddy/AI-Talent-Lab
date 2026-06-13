@@ -1,14 +1,11 @@
-import asyncio
 import difflib
 import json
 import logging
-from typing import Dict, Any, List
+from typing import Dict
 
-from celery import shared_task
 from backend.celery_app import celery_app
 from backend.db.connection import get_admin_connection
 from backend.db.repositories.pre_evaluations import PreEvaluationRepository
-from backend.db.repositories.positions import PositionRepository
 from backend.db.repositories.candidates import CandidateRepository
 from backend.adapters.llm.factory import get_llm
 from backend.config import settings
