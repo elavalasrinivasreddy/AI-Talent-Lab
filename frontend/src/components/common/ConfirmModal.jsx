@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-export default function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText = 'Confirm', confirmVariant = 'danger' }) {
+export default function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText = 'Confirm', confirmVariant = 'danger', children }) {
   const [confirming, setConfirming] = useState(false)
 
   if (!isOpen) return null
@@ -32,6 +32,9 @@ export default function ConfirmModal({ isOpen, onClose, onConfirm, title, messag
           </div>
           <h3 style={{ margin: '0 0 var(--space-2)', fontSize: '18px', color: 'var(--color-text-primary)' }}>{title}</h3>
           <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{message}</p>
+          {children && (
+            <div style={{ marginTop: 'var(--space-4)', textAlign: 'left' }}>{children}</div>
+          )}
         </div>
         <div className="btn-row" style={{ justifyContent: 'center', marginTop: 'var(--space-6)' }}>
           <button className="btn btn-secondary" onClick={onClose} disabled={confirming}>Cancel</button>

@@ -3907,3 +3907,19 @@ The `apply.py` and `candidates.py` routers executed raw SQL directly against the
 - `backend/db/repositories/candidates.py`
 - `backend/routers/apply.py`
 - `backend/routers/candidates.py`
+
+---
+
+## 228. Pipeline Bulk-Reject Used Native `window.prompt` (DOM Hack — E2/D2)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+The "Bulk Reject" action on the on-hold pipeline stage collected the ATS score threshold with a native `window.prompt()` (`PipelineTab.jsx:237`). Native prompts are unstyled, break the dark-theme design system, can't validate input inline, are blocked in some embedded/webview contexts, and aren't testable via Playwright. Flagged in the 2026-06-13 code review as one of two DOM hacks to remove in Sprint 3.
+
+**Idea / Solution:**
+Replaced the native prompt with the existing `ConfirmModal`, extended with an optional `children` slot so callers can inject form fields without forking the component (backward-compatible — existing call sites unaffected). `PipelineTab` now drives the threshold through controlled React state (`bulkRejectOpen`, `bulkThreshold`) and a real `<input type="number">` (0–100, validated on confirm). Invalid input shows a toast and keeps the modal open (via `ConfirmModal`'s throw-to-stay-open contract); valid input calls the unchanged `handleBulkReject(score)`. No `window.*` globals involved.
+
+**Files Modified:**
+- `frontend/src/components/common/ConfirmModal.jsx` (added optional `children` slot)
+- `frontend/src/components/Positions/tabs/PipelineTab.jsx` (state + ConfirmModal wiring; removed `window.prompt`)
