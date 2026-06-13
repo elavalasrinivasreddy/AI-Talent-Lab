@@ -96,9 +96,16 @@ app = FastAPI(
 # Register exception handlers
 register_exception_handlers(app)
 
-# Ensure uploads directory exists for local dev
-os.makedirs("uploads/videos", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Local uploads static mount — DEV ONLY (E7). Gated behind SERVE_LOCAL_UPLOADS
+# so production can disable it: serving user-uploaded resumes/videos as
+# unauthenticated static files is a privacy risk. In prod, set
+# SERVE_LOCAL_UPLOADS=false and serve uploads from object storage + signed URLs
+# (see docs/architecture/uploads.md).
+if settings.SERVE_LOCAL_UPLOADS:
+    os.makedirs("uploads/videos", exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+else:
+    logger.info("SERVE_LOCAL_UPLOADS=false — /uploads static mount disabled (use object storage).")
 
 # Register middleware
 setup_cors(app)

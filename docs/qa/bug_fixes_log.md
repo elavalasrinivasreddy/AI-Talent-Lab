@@ -3996,4 +3996,86 @@ Added `src/utils/api.test.js` (10 cases) exercising the request client through i
 
 ---
 
+## 233. Frontend Unit Tests — Hire-Request Helpers + Dashboard Metadata (Q3 cont.)
+**Date:** 2026-06-13
+**Status:** Done
+
+**Problem Statement:**
+Q3 also called for tests on `HireRequests/helpers.js` and `Dashboard/useDashboardData.js` — both untested. `helpers.js` holds the hire-request relay/state machine that drives every list/detail badge; a regression there silently mislabels requests.
+
+**Idea / Solution:**
+Added `HireRequests/helpers.test.js` (pure-function coverage of `computeRelayStates` across all statuses incl. the `fulfilled` → `position_approval_status` branch, `statusLabel`, `statusTone`, `formatCompBand`, `formatExperience`). For `useDashboardData.js` (an async/effect hook — its runtime path is E2E territory), added `useDashboardData.test.js` locking down the pure exported metadata maps (`SUGGESTION_META`, `PULSE_EVENT_META`): every entry has `icon`/`color` and a valid `kind`, plus a `default` fallback. Dash-containing assertions use `toContain`/regex to stay robust to en/em-dash encoding. Verified import-resolution + parse via esbuild bundle against the real source modules (Node 20+ required to execute Vitest).
+
+**Files Modified:**
+- `frontend/src/components/HireRequests/helpers.test.js` (new)
+- `frontend/src/components/Dashboard/useDashboardData.test.js` (new)
+
+---
+
+## 234. Backend Coverage Floor (Q5)
+**Date:** 2026-06-13
+**Status:** Done
+
+**Problem Statement:**
+No coverage measurement existed for the backend (Q5) — nothing recorded current % or could fail CI on a regression.
+
+**Idea / Solution:**
+Added `pytest-cov>=5.0.0` to `backend/requirements.txt` and a root `.coveragerc` (`source = backend`, branch coverage, omitting tests/migrations/`__init__`). Exposed a `make coverage` target that runs `pytest --cov=backend --cov-report=term-missing --cov-fail-under=$(COV_MIN)`. The floor is **not** baked into `pytest.ini` on purpose — single-file/local `pytest <file>` runs would otherwise report low coverage and fail spuriously; the floor belongs to CI / the explicit `make coverage` command. `COV_MIN` **baseline measured 2026-06-13: 37.54%** across 132 tests — calibrated to **37** (just below baseline; bump as coverage grows).
+
+**Files Modified:**
+- `backend/requirements.txt` (added `pytest-cov`)
+- `.coveragerc` (new)
+- `Makefile` (`coverage` target — see #235)
+
+---
+
+## 235. One-Command E2E Runner (Q6)
+**Date:** 2026-06-13
+**Status:** Done
+
+**Problem Statement:**
+Running the Playwright core-loop required manually booting both dev servers in the right mode (uvicorn `DEV_MODE=true` :8000, Vite :5173) — easy to get wrong, and the spec has no `webServer` block by design (it self-seeds across one proxied origin).
+
+**Idea / Solution:**
+Added a `Makefile` with `make e2e` → `scripts/e2e.sh`, which boots the backend (`DEV_MODE=true uvicorn`) and frontend (`vite`) in the background, polls `/docs` and the Vite port until both are ready, runs `npx playwright test`, and tears both servers down on exit/interrupt via a trap. The core-loop spec self-seeds through `POST /api/v1/dev/seed-core-loop`, so no separate seed step is needed. Ports overridable via `E2E_BACK_PORT`/`E2E_FRONT_PORT`. The Makefile also exposes `test-backend` / `test-frontend` convenience targets.
+
+**Files Modified:**
+- `Makefile` (new — `e2e`, `coverage`, `test-backend`, `test-frontend`)
+- `scripts/e2e.sh` (new)
+
+---
+
+## 236. Service Facades Confirmed Thin (E6)
+**Date:** 2026-06-13
+**Status:** Done
+
+**Problem Statement:**
+The review (E6) asked to confirm `hire_request_service.py` and `position_service.py` are thin re-exports (vs. half-finished migrations) and document the intent.
+
+**Idea / Solution:**
+Verified both: `position_service.py` is a 19-line class composing the decomposed `positions/*` mixins (`PositionCRUD`/`Pipeline`/`Approvals`/`Interviews`) with no logic; `hire_request_service.py` is a class whose every method one-line-delegates to a `hire_requests/*` sub-module function. The migration is complete. Updated both module docstrings (and added a `PositionService` class docstring) to mark them as **intentional, stable thin facades** — new behaviour goes in the sub-modules, not here — so the pattern isn't re-flagged in future reviews. No behavioural change.
+
+**Files Modified:**
+- `backend/services/position_service.py` (docstrings only)
+- `backend/services/hire_request_service.py` (docstring only)
+
+---
+
+## 237. Gate the Local `/uploads` Static Mount (E7)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+`backend/main.py` unconditionally created `./uploads/` and mounted it as **public, unauthenticated** static files at `/uploads/*`. That exposes candidate resumes/videos (PII, under the GDPR/DPDP commitments) with no org-scoped RLS — fine for dev, unacceptable for production (E7).
+
+**Idea / Solution:**
+Added `SERVE_LOCAL_UPLOADS: bool = True` to `config.py` and gated the `os.makedirs` + `app.mount` behind it (logs a notice when disabled). Dev is unchanged (default `True`); production sets `SERVE_LOCAL_UPLOADS=false` to drop the mount entirely. Documented the object-storage migration plan (private bucket + `ObjectStorageAdapter` + org/role-checked signed URLs + retention) and a pre-pilot checklist in `docs/architecture/uploads.md`.
+
+**Files Modified:**
+- `backend/config.py` (added `SERVE_LOCAL_UPLOADS`)
+- `backend/main.py` (gated the `/uploads` mount)
+- `docs/architecture/uploads.md` (new — object-storage plan + checklist)
+
+---
+
 

@@ -82,6 +82,14 @@ class Settings(BaseSettings):
     # Set to "tavily" in production .env; "simulation" is dev-only.
     DEFAULT_SOURCE_ADAPTER: str = "simulation"
 
+    # ── Local file uploads (E7) ────────────────────────────────────────────
+    # Serves the local ./uploads dir as static files at /uploads. Fine for dev,
+    # but in production this exposes user-uploaded resumes/videos as
+    # unauthenticated static files. Set SERVE_LOCAL_UPLOADS=false in prod and
+    # move uploads to object storage (S3/GCS + signed URLs) before pilots upload
+    # real resumes. See docs/architecture/uploads.md.
+    SERVE_LOCAL_UPLOADS: bool = True
+
     # ── Magic Link Expiry ──────────────────────────────────────────────────
     APPLY_LINK_EXPIRY_HOURS: int = 72
     PANEL_LINK_EXPIRY_HOURS: int = 168
