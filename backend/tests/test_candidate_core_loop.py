@@ -7,11 +7,9 @@ container, no browser/LLM needed. If any of these silently break again, this fai
 import json
 import uuid
 
-import asyncpg
 import pytest
 import pytest_asyncio
 
-from backend.config import settings
 
 
 @pytest_asyncio.fixture
