@@ -3980,4 +3980,20 @@ Verified each target before removing. Deleted two genuinely-dead files: `fronten
 
 ---
 
+## 232. First Frontend Unit Tests — `utils/api.js` (Q3)
+**Date:** 2026-06-13
+**Status:** Done
+
+**Problem Statement:**
+The frontend had a Vitest + jsdom harness configured (`vite.config.js` `test` block, `setupTests.js`) and a single example test (`Button.test.jsx`), but the central API client `utils/api.js` — which every authenticated request flows through — had no coverage (Q3). There was also no `test` script in `package.json`, so the suite couldn't be run via `npm`.
+
+**Idea / Solution:**
+Added `src/utils/api.test.js` (10 cases) exercising the request client through its public surface (`api` default export + `setTokenGetter`) with a stubbed global `fetch`: (1) Bearer-token + JSON content-type injection when a token is present; (2) Authorization omitted when no token; (3) body serialization + method for POST; (4) no body on GET; (5) success wrapped in `{ data }`; (6) `204 No Content` → `{ data: null }`; (7) error normalization from `error.message` with `status`/`code` attached; (8) fallback to `detail`; (9) fallback to `HTTP <status>` when the body isn't JSON; (10) `401` surfaced with `status: 401` for the auth layer. Also added `"test": "vitest run"` / `"test:watch": "vitest"` to `package.json`. Verified the assertions line-by-line against `api.js`'s `_fetch` logic; suite must be run on Node 20+ (Vitest 4 / rolldown requirement — the dev sandbox runs Node 18 and cannot execute it).
+
+**Files Modified:**
+- `frontend/src/utils/api.test.js` (new — 10 tests)
+- `frontend/package.json` (added `test` / `test:watch` scripts)
+
+---
+
 
