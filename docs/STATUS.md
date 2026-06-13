@@ -5,6 +5,7 @@
 > Older snapshots live in [`archive/`](archive/).
 >
 > **Last updated:** 2026-06-13 · **Branch:** `feature/phase2-items` · verified against code + commit log.
+> **Sprint 1 (front door) + Sprint 3 (code-review quality) closed** — see [`../TODO.md`](../TODO.md) + bug log #228–#238.
 
 ---
 
@@ -23,7 +24,7 @@ See [`product/05_market_validation.md`](product/05_market_validation.md) for the
 | **C** | Hardening & audit closure | 24 | 1 | 0 | ███████░ ~98% |
 | **D** | Phase-2 features | 1 | 6 | 5 | ███░░░░░ ~33% |
 | **E** | Phase-3 features | 0 | 0 | 9 | ░░░░░░░░ 0% |
-| **F** | SaaS launch readiness ← **active** | 0 | 3 | 5 | █░░░░░░░ ~19% |
+| **F** | SaaS launch readiness ← **active** | 1 | 5 | 3 | ██░░░░░░ ~25% |
 
 Legend: ✅ done + committed (code-traced or test-backed) · ⚠️ built but needs activation/QA/key · ❌ not started
 Priority: **P0** security/core-flow blocker · **P1** sold feature that didn't work · **P2** polish.
@@ -42,7 +43,7 @@ covered by the backend suite + Playwright core-loop E2E. Highlights:
 - ✅ Two-phase semantic ATS (cosine 0.35 gate → LLM weighted score → screening/on_hold routing)
 - ✅ Inbound apply loop (career page → apply chat → resume parse → screening Qs → recruiter notified) — `test_candidate_core_loop.py`
 - ✅ Candidate portal, interviews (invites, reminders, round results), panel magic-link feedback
-- ✅ Talent pool (bulk upload, real embeddings AI-match), analytics/dashboard — ⚠️ *no dedicated tests: `test_dashboard.py` and `test_talent_pool.py` are empty stubs (found 2026-06-13 review)*
+- ✅ Talent pool (bulk upload, real embeddings AI-match), analytics/dashboard — *dedicated tests filled 2026-06-13 (Sprint 3): `test_dashboard.py` + `test_talent_pool.py` were empty stubs, now real (part of 132-test suite)*
 - ✅ Notifications, AI interview kit, career page, debrief generator
 - ✅ v3 redesign: **19/19 surfaces** to spec (teal `#0D9488` + Plus Jakarta Sans) — per-page banners in [`design/pages/`](design/pages/)
 
@@ -66,7 +67,8 @@ The 2026-06-11 audit ([snapshot](archive/2026-06-11_PRODUCT_STATUS.md)) found 4 
 | P0-3 GDPR cross-tenant deletion | ✅ | org-scope check + rate limit · `90e6413` |
 | P0-4 Collusion detection dead | ✅ | `_answer_similarity` fixed · `90e6413` |
 | P1-1…14 (emails, reminders, round-result UI, portal fields, real embeddings, …) | ✅ | commits `982efaa`, `778d882`, `e47acf9` |
-| Test net | ⚠️ | **104 test functions / 18 real files** + 3 Playwright specs. **But:** 5 test files are empty `TODO` stubs (dashboard, interviews, positions, talent_pool, settings), no CI pipeline, zero frontend unit tests — see [reviews/2026-06-13_full_codebase_review.md](reviews/2026-06-13_full_codebase_review.md) |
+| Test net | ⚠️ | **2026-06-13 (Sprint 3):** 5 stub files filled → **132 backend tests green @ 37.54% coverage** (`pytest-cov`, floor `COV_MIN=37`, `make coverage`); first **frontend unit tests** added (`api.js`, `HireRequests/helpers.js`, dashboard metadata, `npm test`); **`make e2e`** one-command runner. **Remaining:** CI pipeline (F9). Bug log #228, #232–#235 |
+| Code-review cleanup (2026-06-13, Sprint 3) | ✅ | 2 DOM hacks → React (E2/E3 — `window.prompt`→ConfirmModal, bias-fix globals→event delegation, also repaired DOMPurify-stripped buttons); dead-file sweep (E4); service facades documented (E6); `/uploads` env-gated + object-storage plan (E7); `utcnow()` deprecation. Bug log #229–#231, #236–#238 |
 | Error monitoring | ✅ | Sentry: backend API + Celery + frontend |
 | Architecture debt (SQL→repositories, god-object split, stub repos) | ✅ | CRITICAL-03, HIGH-04, HIGH-05 all done |
 | Deployment configs (X-Forwarded-For, `ENCRYPTION_KEY`) | ⚠️ | Deferred to production environment setup — do in Phase F |
@@ -97,22 +99,22 @@ custom career domains, Chrome extension, API & webhooks — all ❌ by design. *
 [validation brief](product/05_market_validation.md), Naukri job-posting may get promoted to Phase F+1;
 everything else waits for customer pull.**
 
-## Phase F — SaaS launch readiness ← ACTIVE · 0 ✅ / 3 ⚠️ / 5 ❌
+## Phase F — SaaS launch readiness ← ACTIVE · 1 ✅ / 5 ⚠️ / 3 ❌
 
 New phase added 2026-06-13 from the [market validation brief](product/05_market_validation.md) §5–6.
 This is the gap between "product" and "business."
 
 | # | Item | Status | Notes |
 |---|---|---|---|
-| F1 | Landing page + pricing + demo booking | ⚠️ | Built 2026-06-13 (`landing/` — static, no build step). Needs: hosting + Calendly URL swap (see `landing/README.md`) |
+| F1 | Landing page + pricing + demo booking | ⚠️ | **Folded into the SPA 2026-06-13** (Sprint 1 — not a separate static site): `/` + `/pricing` public routes in `frontend/src/components/Marketing/`, pricing mirrors roadmap tiers. Code done + builds clean. Needs: hosting + Calendly URL swap (in `MarketingChrome.jsx`) |
 | F2 | Billing (Razorpay) + plan/quota enforcement + **LLM spend caps per org** | ❌ | Tiers exist only in docs; LLM usage tracked but uncapped (COGS risk) |
-| F3 | ToS + privacy policy pages | ⚠️ | Drafted 2026-06-13 (`landing/terms.html` + `privacy.html`, served in-app at `/legal/*`; linked from apply consent, career page, status page). Needs: [PLACEHOLDER] fill + lawyer review |
+| F3 | ToS + privacy policy pages | ⚠️ | Drafted 2026-06-13, served in-app at `/legal/*` (linked from apply consent, career page, status page). Needs: [PLACEHOLDER] fill + lawyer review |
 | F4 | Email deliverability runbook (SPF/DKIM, domain warm-up) | ❌ | Outreach lands in spam without it |
 | F5 | Self-serve onboarding (seeded demo org, first-run checklist) | ❌ | Activation target: first JD + first application ≤ 7 days |
 | F6 | Production environment (staging, backups/DR, uptime monitoring, `ENCRYPTION_KEY`, X-Forwarded-For) | ⚠️ | Dockerfile + compose exist; rest pending |
 | F7 | External integration keys (Calendar OAuth, one enrichment provider or hide toggle) | ⚠️ | Credential work, not bugs; adapters fall back honestly |
-| F8 | Repo hygiene: push current code to GitHub; fix README (says SQLite, code is Postgres+RLS) | ⚠️ | Local README already correct; `.gitignore` hardened 2026-06-13. Remaining: `git rm --cached` the tracked sqlite/chroma files + push (commands in TODO.md done log) |
-| F9 | CI pipeline (pytest + lint on push, Playwright on PR) + fill/delete 5 stub test files | ❌ | Top items from [2026-06-13 review](reviews/2026-06-13_full_codebase_review.md) §4 |
+| F8 | Repo hygiene: push current code to GitHub; fix README (says SQLite, code is Postgres+RLS) | ✅ | Done 2026-06-13 (Sprint 1): README/Postgres aligned, `.gitignore` hardened, tracked sqlite/chroma removed from index + pushed |
+| F9 | CI pipeline (pytest + lint on push, Playwright on PR) + fill/delete 5 stub test files | ⚠️ | **Stub-test half done** (Sprint 3 → 132 backend tests @ 37.54%, frontend unit tests, `make coverage`/`make e2e`). **Remaining:** GitHub Actions CI pipeline. From [2026-06-13 review](reviews/2026-06-13_full_codebase_review.md) §4 |
 
 ---
 
@@ -122,7 +124,7 @@ This is the gap between "product" and "business."
 > checklist of every doable gap from the validation brief + code review, with a blocked-on-keys list.
 > This file stays the source of truth for *state*; TODO.md is the *work queue*.
 
-1. **F1 + F3 + F4 + F8** — the "front door" batch (~week). Then start **25 discovery calls** (India SMB beachhead — [validation brief](product/05_market_validation.md) §4).
+1. **F1 + F3 + F4** — the "front door" batch (~week; F8 repo hygiene ✅ done, F1/F3 dev done — just hosting + lawyer review left). Then start **25 discovery calls** (India SMB beachhead — [validation brief](product/05_market_validation.md) §4).
 2. **F2 billing + quotas** — required before any paid pilot.
 3. **F5 onboarding** — built from watching the first pilots, not before.
 4. QA the six Phase-D ⚠️ items as pilots touch them; promote to ✅ only with a test.
