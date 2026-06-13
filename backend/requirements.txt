@@ -49,5 +49,10 @@ pytest-asyncio>=0.23.0
 pytest-cov>=5.0.0
 testcontainers[postgres]>=4.0.0
 
+# ── Billing (live path only) ───────────────────
+# Lazy-imported by adapters/billing/razorpay.py; only needed once
+# BILLING_PROVIDER=razorpay. Simulation (default) needs nothing.
+razorpay>=1.4.0
+
 # ── Markdown (for JD rendering in emails) ──────
 # (react-markdown handles frontend)

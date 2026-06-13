@@ -4222,4 +4222,89 @@ Applied 7 fixes: `aria-label` on the chat composer textarea + both hidden file i
 
 ---
 
+## 247. Plan & Quota Enforcement (Sprint 2 / F2a)
+**Date:** 2026-06-13
+**Status:** Built + unit-tested (needs Docker/Postgres for live pytest)
+
+**Problem Statement:**
+Plan tiers (Starter/Professional/Business/Founder-pilot) existed only in the pricing docs — nothing in the product enforced them. An org on any tier could open unlimited positions, receive unlimited applications, and add unlimited seats. Without enforcement the product is not chargeable (validation brief §5).
+
+**Idea / Solution:**
+Added a single source of truth for plan limits (`services/plans.py`: `PLAN_LIMITS`, `WARN_THRESHOLD=0.8`) and a live-counting enforcement service (`services/quota_service.py`) using a **soft-warn → hard-block** model (decision 2026-06-13): below 80% allowed; 80–100% allowed but `warn=True`; at/over 100% `enforce_*` raises `QuotaExceededError` (HTTP 402 with `{resource, used, limit, plan}`). Counts are read live from the DB (no separate counter to drift). Schema: idempotent `ALTER organizations ADD plan / plan_started_at / llm_monthly_budget_usd`. Enforcement wired at the three chokepoints — active positions (`chat_service` before `PositionRepository.create`), seats (`auth_service.add_user`), and inbound applications/month (`careers.start_application`). New `test_quota.py` covers the evaluator boundaries + DB-backed seat/position/budget blocks.
+
+**Files Modified:**
+- `backend/services/plans.py` (new), `backend/services/quota_service.py` (new)
+- `backend/exceptions.py` (`QuotaExceededError`, `BudgetExceededError`, `BillingError`)
+- `backend/db/migrations.py` (organizations plan columns)
+- `backend/services/chat_service.py`, `backend/services/auth_service.py`, `backend/routers/careers.py`
+- `backend/tests/test_quota.py` (new)
+
+---
+
+## 248. LLM Spend Caps per Org (Sprint 2 / F2b)
+**Date:** 2026-06-13
+**Status:** Built + unit-tested
+
+**Problem Statement:**
+`llm_usage_log` recorded `cost_usd` per call but nothing capped it. A runaway agent loop or a heavy org could burn an unbounded LLM bill — the COGS risk called out in the validation brief §5.
+
+**Idea / Solution:**
+Added a per-org monthly LLM budget (plan default in `PLAN_LIMITS`, overridable per org via `organizations.llm_monthly_budget_usd`). `QuotaService.check_llm_budget` sums `cost_usd` for the current calendar month and applies the same warn→block model; `enforce_llm_budget` raises `BudgetExceededError` (402) over budget. Hard-stop wired into the JD-chat agent entry (`chat_service.run_chat_stream`) — the org's largest LLM cost driver — emitting an SSE error and returning instead of crashing the stream. Soft-warn is surfaced via `GET /billing/usage`. Even Founder-pilot orgs keep a finite safety ceiling ($250).
+
+**Files Modified:**
+- `backend/services/quota_service.py`, `backend/services/plans.py`
+- `backend/services/chat_service.py` (budget gate at stream start)
+- `backend/tests/test_quota.py` (warn-then-block + per-org override)
+
+---
+
+## 249. Razorpay Billing Adapter — Simulation-First (Sprint 2 / F2c)
+**Date:** 2026-06-13
+**Status:** Built + endpoint-tested (simulation); live path activates with KYC + keys
+
+**Problem Statement:**
+No billing path existed, so no plan could be purchased or assigned. Razorpay KYC takes days, so the build couldn't block on it.
+
+**Idea / Solution:**
+Mirrored the email-adapter pattern exactly: `adapters/billing/base.py` (ABC) with `SimulationBilling` (default, every payment succeeds + logs) and `RazorpayBilling` (lazy SDK import; HMAC-SHA256 webhook verify) selected by `BILLING_PROVIDER`. `services/billing_service.py` owns the provider-agnostic bookkeeping the adapter doesn't — writing the `invoices` row and assigning the org's plan on confirmation (the single place a plan changes, so quota stays coherent). New `routers/billing.py`: `GET /usage` (live quota+budget), `GET /plans`, `GET /invoices`, `POST /checkout`, `POST /confirm`, `POST /webhook`. Full checkout → invoice → plan-assignment flow works end-to-end in simulation with no account.
+
+**Files Modified:**
+- `backend/adapters/billing/{__init__,base,simulation,razorpay}.py` (new)
+- `backend/services/billing_service.py` (new), `backend/routers/billing.py` (new)
+- `backend/db/migrations.py` (`invoices` table), `backend/config.py` (`BILLING_PROVIDER` + Razorpay keys)
+- `backend/main.py` (register router), `backend/requirements.txt` (optional `razorpay`)
+- `backend/tests/test_billing.py` (new)
+
+---
+
+## 250. CI Pipeline — GitHub Actions (Sprint 2 / E1·Q2·F9)
+**Date:** 2026-06-13
+**Status:** Added
+
+**Problem Statement:**
+No CI. Every quality gate built so far (132-test suite, coverage floor, frontend units, lint, e2e runner) depended on a developer remembering to run it locally, so regressions could land silently.
+
+**Idea / Solution:**
+Added `.github/workflows/ci.yml` mirroring the Makefile targets. **Backend** job: `ruff check` + `pytest` with the `COV_MIN` coverage floor (testcontainers spins its own Postgres on the runner's Docker; Redis is mocked, so no service containers needed). **Frontend** job: eslint + vitest + production build. **E2E** job (PRs only): Postgres + Redis service containers, Playwright via `make e2e`. Runs on every push + PR. Closes the remaining half of F9 (stub tests were done in Sprint 3).
+
+**Files Modified:**
+- `.github/workflows/ci.yml` (new)
+
+---
+
+## 251. ENCRYPTION_KEY Generation + Production Config Docs (Sprint 2)
+**Date:** 2026-06-13
+**Status:** Documented
+
+**Problem Statement:**
+`ENCRYPTION_KEY` (AES-256-GCM for candidate CTC) was a no-op when unset with no prod guidance, and the X-Forwarded-For caveat (rate limiting + audit IPs are wrong behind a proxy without `--proxy-headers`) was only a one-line note in STATUS. Neither is externally blocked.
+
+**Idea / Solution:**
+Wrote `docs/architecture/production_config.md`: how to generate `ENCRYPTION_KEY` (`secrets.token_urlsafe`/`openssl rand`), the don't-rotate-casually caveat, set-it-before-first-pilot warning; the reverse-proxy setup (`uvicorn --proxy-headers --forwarded-allow-ips <CIDR>` + the nginx `X-Forwarded-For` block, with the explicit "never use `*`" warning); the billing env table; and pointers to the RLS/uploads/DEV_MODE prod settings. Remaining F6 items (staging, backups/DR, uptime) noted as hosting-dependent.
+
+**Files Modified:**
+- `docs/architecture/production_config.md` (new)
+
+---
+
 

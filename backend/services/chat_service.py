@@ -104,6 +104,18 @@ class ChatService:
         if not state:
             state = create_initial_state(session_id, org_id, session_row["user_id"])
 
+        # LLM spend cap (F2b): JD generation is the org's largest LLM cost driver,
+        # so gate it on the monthly budget. Hard-stop only; soft-warn surfaces via
+        # /billing/usage. Budget failures must not crash the stream.
+        from backend.services.quota_service import QuotaService
+        from backend.exceptions import BudgetExceededError
+        try:
+            async with get_connection() as _bconn:
+                await QuotaService.enforce_llm_budget(_bconn, org_id)
+        except BudgetExceededError as be:
+            yield StreamHandler.emit_error(be.code, be.message)
+            return
+
         # Save user message to DB message log immediately
         if user_message:
             await ChatSessionRepository.add_message(session_id, "user", user_message)
@@ -316,6 +328,11 @@ class ChatService:
                 await conn.execute("DELETE FROM jd_variants WHERE position_id = $1", position_id)
                 audit_action = "position_updated"
             else:
+                # Plan quota: block a new active position once the plan limit is hit
+                # (soft-warn handled by the /billing/usage surface).
+                from backend.services.quota_service import QuotaService
+                await QuotaService.enforce_positions(conn, org_id)
+
                 user_row = await conn.fetchrow("SELECT role FROM users WHERE id = $1", user_id)
                 user_role = user_row["role"] if user_row else "hr"
                 assigned_to = user_id if user_role == "hr" else None

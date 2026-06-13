@@ -76,6 +76,14 @@ class Settings(BaseSettings):
     FROM_EMAIL: str = "hiring@aitalentlab.com"
     FROM_NAME: str = "AI Talent Lab"
 
+    # ── Billing (SaaS layer, Sprint 2 / F2) ────────────────────────────────
+    # Adapter pattern mirrors email: "simulation" works end-to-end with no
+    # account; switch to "razorpay" once KYC clears and keys are set.
+    BILLING_PROVIDER: str = "simulation"
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
+
     # ── Candidate Sourcing ─────────────────────────────────────────────────
     CANDIDATE_SOURCE_ADAPTER: str = "simulation"  # legacy global fallback
     # Default adapter when an org hasn't set one in Settings → Sourcing.

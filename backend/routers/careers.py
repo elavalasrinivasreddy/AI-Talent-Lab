@@ -202,6 +202,10 @@ async def start_application(org_slug: str, position_id: int, req: StartApplicati
             candidate["id"], position_id
         )
         if not app:
+            # Plan quota: cap inbound applications per calendar month. Only a brand
+            # new application counts; re-opening an existing one is free.
+            from backend.services.quota_service import QuotaService
+            await QuotaService.enforce_candidates(conn, org["id"])
             app = await conn.fetchrow(
                 "INSERT INTO candidate_applications (org_id, department_id, candidate_id, position_id, status) VALUES ($1, $2, $3, $4, 'sourced') RETURNING id",
                 org["id"], pos["department_id"], candidate["id"], position_id

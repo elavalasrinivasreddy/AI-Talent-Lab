@@ -5,14 +5,14 @@
 > Older snapshots live in [`archive/`](archive/).
 >
 > **Last updated:** 2026-06-13 · **Branch:** `feature/phase2-items` · verified against code + commit log.
-> **Sprint 1 (front door) + Sprint 3 (code-review quality) closed** — see [`../TODO.md`](../TODO.md) + bug log #228–#238.
+> **Sprints 1–4 closed** — front door (S1), **SaaS layer/billing (S2, bug log #247–#251)**, code-review quality (S3, #228–#238), Phase-D QA (S4, #239–#246). See [`../TODO.md`](../TODO.md).
 
 ---
 
 ## One-line status
 
 **Product engineering: Phases A–C complete (MVP + extended + hardening, 106 tests green, RLS live).**
-**Business: pre-launch, zero users, no billing — Phase F (SaaS launch readiness) is the active phase.**
+**Business: pre-launch, zero users; billing/quota layer built in simulation (Sprint 2) — Razorpay KYC + hosting are the gates left in Phase F (active).**
 See [`product/05_market_validation.md`](product/05_market_validation.md) for the market read and 90-day plan.
 
 ## Completion summary
@@ -24,7 +24,7 @@ See [`product/05_market_validation.md`](product/05_market_validation.md) for the
 | **C** | Hardening & audit closure | 24 | 1 | 0 | ███████░ ~98% |
 | **D** | Phase-2 features | 1 | 6 | 5 | ███░░░░░ ~33% |
 | **E** | Phase-3 features | 0 | 0 | 9 | ░░░░░░░░ 0% |
-| **F** | SaaS launch readiness ← **active** | 1 | 5 | 3 | ██░░░░░░ ~25% |
+| **F** | SaaS launch readiness ← **active** | 2 | 5 | 2 | ████░░░░ ~45% |
 
 Legend: ✅ done + committed (code-traced or test-backed) · ⚠️ built but needs activation/QA/key · ❌ not started
 Priority: **P0** security/core-flow blocker · **P1** sold feature that didn't work · **P2** polish.
@@ -99,7 +99,7 @@ custom career domains, Chrome extension, API & webhooks — all ❌ by design. *
 [validation brief](product/05_market_validation.md), Naukri job-posting may get promoted to Phase F+1;
 everything else waits for customer pull.**
 
-## Phase F — SaaS launch readiness ← ACTIVE · 1 ✅ / 5 ⚠️ / 3 ❌
+## Phase F — SaaS launch readiness ← ACTIVE · 2 ✅ / 5 ⚠️ / 2 ❌
 
 New phase added 2026-06-13 from the [market validation brief](product/05_market_validation.md) §5–6.
 This is the gap between "product" and "business."
@@ -107,14 +107,14 @@ This is the gap between "product" and "business."
 | # | Item | Status | Notes |
 |---|---|---|---|
 | F1 | Landing page + pricing + demo booking | ⚠️ | **Folded into the SPA 2026-06-13** (Sprint 1 — not a separate static site): `/` + `/pricing` public routes in `frontend/src/components/Marketing/`, pricing mirrors roadmap tiers. Code done + builds clean. Needs: hosting + Calendly URL swap (in `MarketingChrome.jsx`) |
-| F2 | Billing (Razorpay) + plan/quota enforcement + **LLM spend caps per org** | ❌ | Tiers exist only in docs; LLM usage tracked but uncapped (COGS risk) |
+| F2 | Billing (Razorpay) + plan/quota enforcement + **LLM spend caps per org** | ⚠️ | **Built 2026-06-13 (Sprint 2, bug log #247–#249).** Plan/quota enforcement (`services/plans.py` + `quota_service.py`, soft-warn→hard-block 402s; gates positions/seats/applications); per-org monthly **LLM budget** (COGS risk closed — `BudgetExceededError`, hard-stop in JD chat); Razorpay adapter **simulation-first** (`adapters/billing/*` + `routers/billing.py`, full checkout→invoice→plan flow works in sim). Tests: `test_quota.py`, `test_billing.py`. **Remaining before ✅:** Razorpay **KYC + live keys** (multi-week, start now) and a live pytest run (needs Docker/Postgres) |
 | F3 | ToS + privacy policy pages | ⚠️ | Drafted 2026-06-13, served in-app at `/legal/*` (linked from apply consent, career page, status page). Needs: [PLACEHOLDER] fill + lawyer review |
 | F4 | Email deliverability runbook (SPF/DKIM, domain warm-up) | ❌ | Outreach lands in spam without it |
 | F5 | Self-serve onboarding (seeded demo org, first-run checklist) | ❌ | Activation target: first JD + first application ≤ 7 days |
-| F6 | Production environment (staging, backups/DR, uptime monitoring, `ENCRYPTION_KEY`, X-Forwarded-For) | ⚠️ | Dockerfile + compose exist; rest pending |
+| F6 | Production environment (staging, backups/DR, uptime monitoring, `ENCRYPTION_KEY`, X-Forwarded-For) | ⚠️ | Dockerfile + compose exist. **2026-06-13 (Sprint 2):** `ENCRYPTION_KEY` generation + reverse-proxy `--proxy-headers`/`X-Forwarded-For` (rate-limit + audit IP correctness) + billing env now documented in [architecture/production_config.md](architecture/production_config.md). **Remaining:** staging, backups/DR, uptime monitoring (hosting-dependent) |
 | F7 | External integration keys (Calendar OAuth, one enrichment provider or hide toggle) | ⚠️ | Credential work, not bugs; adapters fall back honestly |
 | F8 | Repo hygiene: push current code to GitHub; fix README (says SQLite, code is Postgres+RLS) | ✅ | Done 2026-06-13 (Sprint 1): README/Postgres aligned, `.gitignore` hardened, tracked sqlite/chroma removed from index + pushed |
-| F9 | CI pipeline (pytest + lint on push, Playwright on PR) + fill/delete 5 stub test files | ⚠️ | **Stub-test half done** (Sprint 3 → 132 backend tests @ 37.54%, frontend unit tests, `make coverage`/`make e2e`). **Remaining:** GitHub Actions CI pipeline. From [2026-06-13 review](reviews/2026-06-13_full_codebase_review.md) §4 |
+| F9 | CI pipeline (pytest + lint on push, Playwright on PR) + fill/delete 5 stub test files | ✅ | **Done 2026-06-13.** Stub tests filled (Sprint 3 → 132 backend tests @ 37.54%, frontend units, `make coverage`/`make e2e`); **CI pipeline added (Sprint 2, bug log #250)** — `.github/workflows/ci.yml`: ruff+pytest (coverage floor, testcontainers Postgres) on push, vitest+build, Playwright on PR. From [2026-06-13 review](reviews/2026-06-13_full_codebase_review.md) §4 |
 
 ---
 
@@ -125,7 +125,7 @@ This is the gap between "product" and "business."
 > This file stays the source of truth for *state*; TODO.md is the *work queue*.
 
 1. **F1 + F3 + F4** — the "front door" batch (~week; F8 repo hygiene ✅ done, F1/F3 dev done — just hosting + lawyer review left). Then start **25 discovery calls** (India SMB beachhead — [validation brief](product/05_market_validation.md) §4).
-2. **F2 billing + quotas** — required before any paid pilot.
+2. **F2 billing + quotas** — ✅ built in simulation (Sprint 2). Left before a paid pilot: Razorpay **KYC + live keys** (`BILLING_PROVIDER=razorpay`) and a live pytest run.
 3. **F5 onboarding** — built from watching the first pilots, not before.
 4. QA the six Phase-D ⚠️ items as pilots touch them; promote to ✅ only with a test.
 5. **No new features unless a pilot customer is blocked without it** (rule from the 90-day plan).
