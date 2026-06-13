@@ -7,7 +7,7 @@ bookmark this URL and check their status at any time.
 """
 from fastapi import APIRouter
 from backend.exceptions import NotFoundError
-from backend.db.connection import get_connection
+from backend.db.connection import get_admin_connection
 
 router = APIRouter(prefix="/api/v1/status", tags=["Candidate Status"])
 
@@ -29,7 +29,7 @@ async def get_application_status(status_token: str):
     Return candidate-safe application status via permanent status_token.
     Does NOT expose internal scoring, recruiter notes, or ATS data.
     """
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         app_row = await conn.fetchrow(
             """
             SELECT ca.id, ca.status, ca.applied_at, ca.created_at,
@@ -61,7 +61,7 @@ async def get_application_status(status_token: str):
         "rejected": "Application closed",
     }
 
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         interviews = await conn.fetch(
             """
             SELECT round_name, round_type, scheduled_at, status, duration_minutes

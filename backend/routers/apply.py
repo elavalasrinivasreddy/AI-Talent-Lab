@@ -62,9 +62,9 @@ async def record_apply_consent(token: str, body: ConsentRequest, request: Reques
     )
 
     # Stamp consent timestamp on the application
-    from backend.db.connection import get_connection
+    from backend.db.connection import get_admin_connection
     from backend.db.repositories.applications import ApplicationRepository
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         await ApplicationRepository.record_consent(conn, application_id, org_id)
 
     return {"ok": True, "consented": True}
@@ -207,9 +207,9 @@ async def upload_video_intro(token: str, request: Request, file: UploadFile = Fi
 
     video_url = f"/uploads/videos/{app_id}/{safe_filename}"
 
-    from backend.db.connection import get_connection
+    from backend.db.connection import get_admin_connection
     from backend.db.repositories.applications import ApplicationRepository
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         await ApplicationRepository.record_video_intro(conn, app_id, org_id, video_url)
 
     return {
@@ -253,13 +253,13 @@ async def get_application_status(token: str, request: Request):
                     "message": context.get("error", "Invalid link")}
         )
 
-    from backend.db.connection import get_connection
+    from backend.db.connection import get_admin_connection
     from backend.db.repositories.applications import ApplicationRepository
 
     app_id = context.get("application_id")
     org_id = context.get("org", {}).get("id")
 
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         app_row = await ApplicationRepository.get_application(conn, app_id, org_id)
         if not app_row:
             raise HTTPException(status_code=404, detail={"code": "NOT_FOUND", "message": "Application not found"})

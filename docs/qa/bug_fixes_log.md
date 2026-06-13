@@ -4442,3 +4442,10 @@ Updated the CSS selector to `.mkt-nav-links a:not(.mkt-btn)` so it exclusively t
 - `frontend/src/styles/marketing.css`
 
 ---
+
+---
+
+## 48. Public Candidate Portal 404 & E2E Failure
+**Symptom:** The Playwright E2E test `public candidate status portal shows the timeline` failed because the status endpoint returned a 404 Not Found.
+**Root Cause:** The public, unauthenticated routes in `routers/status.py` and `routers/apply.py` were using `get_connection()`, which strictly enforces Row-Level Security (RLS) policies based on `org_id` context. Since public magic link tokens do not carry an authenticated dashboard session context, the RLS policies hid the database rows.
+**Fix:** Modified the public unauthenticated routes in `backend/routers/status.py` and `backend/routers/apply.py` to use `get_admin_connection()` instead, bypassing RLS and allowing secure magic link tokens to fetch the required candidate and application data successfully.
