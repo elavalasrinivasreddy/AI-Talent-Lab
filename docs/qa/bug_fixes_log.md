@@ -3945,3 +3945,20 @@ Implemented real tests for all five suites against the verified endpoint contrac
 - `backend/tests/conftest.py` (added `disable_rate_limiter` session fixture)
 
 ---
+
+## 230. JD Bias-Fix Widgets Used `window.*` Globals + Injected `onclick` (DOM Hack — E3/D2)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+The inline inclusivity-diff widgets in `FinalJDCard.jsx` were built as raw HTML strings with inline `onclick="window.acceptBiasFix(${idx})"` / `window.rejectBiasFix(${idx})` handlers, backed by two `window.*` globals registered/torn-down in a `useEffect` (plus a latest-ref pattern to keep them current). This is the second DOM hack flagged in the 2026-06-13 code review. **It was also a live bug:** the widget HTML is rendered through `DOMPurify.sanitize()`, which strips inline `on*` event handlers by default — so the per-suggestion ✓/✕ accept/reject buttons did nothing when clicked. Users could only resolve suggestions via "Accept all" or the prev/next nav.
+
+**Idea / Solution:**
+Switched to React event delegation. The injected buttons now carry `data-bias-action="accept|reject"` and `data-idx="N"` attributes (DOMPurify preserves `data-*`), and a single React `onClick={handleDiffClick}` on the diff container resolves `e.target.closest('[data-bias-action]')`, parses the index, and dispatches to the existing `handleAcceptFix` / `handleRejectFix` callbacks. Removed both `window.acceptBiasFix` / `window.rejectBiasFix` globals, their registration `useEffect`, and the `acceptFixRef` / `rejectFixRef` latest-ref plumbing. Net effect: no globals, no injected handlers, and the inline ✓/✕ buttons actually work again — all through React's synthetic event system.
+
+**Files Modified:**
+- `frontend/src/components/Chat/cards/FinalJDCard.jsx` (event delegation via `data-*` + `handleDiffClick`; removed `window.*` bias-fix globals and ref plumbing)
+
+---
+
+

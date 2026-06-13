@@ -185,6 +185,20 @@ const FinalJDCard = () => {
         setHasUnsavedChanges(true);
     }, [advanceFocus]);
 
+    // Delegated handler for the inline diff widgets. The widgets are injected as
+    // sanitized HTML (DOMPurify strips inline on* handlers), so accept/reject are
+    // wired via data-* attributes + a single React onClick on the container —
+    // no window globals, no inline onclick.
+    const handleDiffClick = useCallback((e) => {
+        const btn = e.target.closest('[data-bias-action]');
+        if (!btn) return;
+        const idx = parseInt(btn.getAttribute('data-idx'), 10);
+        if (Number.isNaN(idx)) return;
+        const action = btn.getAttribute('data-bias-action');
+        if (action === 'accept') handleAcceptFix(idx);
+        else if (action === 'reject') handleRejectFix(idx);
+    }, [handleAcceptFix, handleRejectFix]);
+
     const handleAcceptAll = () => {
         let updated = editedMarkdown;
         const newFixes = pendingFixes.map((f) => {
@@ -352,8 +366,8 @@ const FinalJDCard = () => {
   </span>
   <span style="display:inline-flex; align-items:center; gap:3px; padding:1px 6px; border-left:1px solid rgba(239,68,68,0.2);">
     <span style="font-size:10px; padding:1px 5px; border-radius:3px; background:${categoryColor}22; color:${categoryColor}; font-weight:600; letter-spacing:0.02em; text-transform:uppercase;">${fix.category || 'bias'}</span>
-    <button onclick="window.acceptBiasFix(${idx})" title="Accept fix" style="background:#10B981; color:white; border:none; border-radius:3px; padding:2px 8px; cursor:pointer; font-size:11px; font-weight:600; line-height:1.4;">✓</button>
-    <button onclick="window.rejectBiasFix(${idx})" title="Dismiss" style="background:transparent; color:#94A3B8; border:1px solid #334155; border-radius:3px; padding:2px 8px; cursor:pointer; font-size:11px; font-weight:600; line-height:1.4; margin-left:2px;">✕</button>
+    <button type="button" data-bias-action="accept" data-idx="${idx}" title="Accept fix" style="background:#10B981; color:white; border:none; border-radius:3px; padding:2px 8px; cursor:pointer; font-size:11px; font-weight:600; line-height:1.4;">✓</button>
+    <button type="button" data-bias-action="reject" data-idx="${idx}" title="Dismiss" style="background:transparent; color:#94A3B8; border:1px solid #334155; border-radius:3px; padding:2px 8px; cursor:pointer; font-size:11px; font-weight:600; line-height:1.4; margin-left:2px;">✕</button>
   </span>
 </span>`;
                     html = html.replace(regex, diffWidget);
@@ -367,20 +381,6 @@ const FinalJDCard = () => {
         return html;
     };
 
-
-    // Latest-ref pattern: the innerHTML buttons always call the current handler
-    const acceptFixRef = useRef(handleAcceptFix);
-    const rejectFixRef = useRef(handleRejectFix);
-    useEffect(() => { acceptFixRef.current = handleAcceptFix; });
-    useEffect(() => { rejectFixRef.current = handleRejectFix; });
-    useEffect(() => {
-        window.acceptBiasFix = (idx) => acceptFixRef.current(idx);
-        window.rejectBiasFix = (idx) => rejectFixRef.current(idx);
-        return () => {
-            delete window.acceptBiasFix;
-            delete window.rejectBiasFix;
-        };
-    }, []);
 
     return (
         <>
@@ -480,7 +480,7 @@ const FinalJDCard = () => {
                                     </div>
                                 )}
                                 {(pendingFixes && pendingFixes.some(f => f.status === 'pending')) ? (
-                                    <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderDiffContent()) }} />
+                                    <div onClick={handleDiffClick} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderDiffContent()) }} />
                                 ) : (
                                     <ReactMarkdown>{editedMarkdown}</ReactMarkdown>
                                 )}
