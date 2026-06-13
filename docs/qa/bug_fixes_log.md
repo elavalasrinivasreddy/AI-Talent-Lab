@@ -3961,4 +3961,23 @@ Switched to React event delegation. The injected buttons now carry `data-bias-ac
 
 ---
 
+## 231. Dead-File Sweep (E4)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+The 2026-06-13 code review flagged stray/unused files for removal (E4): `frontend/src/utils/candidates.py`, `frontend/tests/example.spec.ts`, the `frontend/src/components/Dashboard/legacy/` folder (to confirm), and any `old_frontend/` / `old_backend/` directories in the working folder.
+
+**Idea / Solution:**
+Verified each target before removing. Deleted two genuinely-dead files: `frontend/src/utils/candidates.py` (0 bytes, an orphaned Python file in the JS frontend, zero imports) and `frontend/tests/example.spec.ts` (the default Playwright scaffold that navigates `playwright.dev` — tests nothing in this app). **Kept** `Dashboard/legacy/` — it is *not* unused: `DashboardPage.jsx:24` lazy-imports `LegacyDashboard` and renders it at line 121 when `legacyMode` is active (`?legacy_dashboard=1` query param), a deliberate escape hatch. `old_frontend/` and `old_backend/` do not exist in the working folder — nothing to clean.
+
+**Files Removed:**
+- `frontend/src/utils/candidates.py`
+- `frontend/tests/example.spec.ts`
+
+**Files Kept (verified in use):**
+- `frontend/src/components/Dashboard/legacy/LegacyDashboard.jsx` + `.css` (reachable via `?legacy_dashboard=1`)
+
+---
+
 

@@ -33,8 +33,8 @@
 ## Sprint 3 — Code review queue (quality gaps)
 
 - [x] **Fill the 5 stub test files** (Q1) — done 2026-06-13. All 5 written against verified endpoint contracts (auth-required + happy-path shapes for a fresh org; settings includes a create→list round-trip). First local run: 15 passed; remaining 11 were auth rate-limit (429) at fixture setup, not assertion failures — fixed by a session-scoped `disable_rate_limiter` fixture in `conftest.py` (no test asserts 429; this also hardens the existing suite against order-dependent throttling). **Run locally** (needs Docker for testcontainers Postgres): `pytest backend/tests/test_positions.py test_interviews.py test_talent_pool.py test_settings.py test_dashboard.py`.
-- [ ] **Kill the two DOM hacks** (E2/E3/D2) — bias-fix `window.acceptBiasFix` + injected HTML in `FinalJDCard.jsx:355` → React components; `window.prompt` in `PipelineTab.jsx:237` → existing `ConfirmModal`. *~1 day*
-- [ ] **Dead-file sweep** (E4) — delete `frontend/src/utils/candidates.py`, `frontend/tests/example.spec.ts`, `Dashboard/legacy/` (confirm unused), clean `old_frontend/` + `old_backend/` out of the working folder. *~1 hour*
+- [x] **Kill the two DOM hacks** (E2/E3/D2) — bias-fix `window.acceptBiasFix` + injected HTML in `FinalJDCard.jsx:355` → React components; `window.prompt` in `PipelineTab.jsx:237` → existing `ConfirmModal`. *~1 day*
+- [x] **Dead-file sweep** (E4) — done 2026-06-13 (bug log #231). Deleted `frontend/src/utils/candidates.py` (0-byte orphan) + `frontend/tests/example.spec.ts` (Playwright scaffold). **Kept `Dashboard/legacy/`** — confirmed *in use*: lazy-loaded by `DashboardPage.jsx` and rendered when `?legacy_dashboard=1` (escape hatch). `old_frontend/`/`old_backend/` not present in the working folder.
 - [ ] **First frontend unit tests** (Q3) — `utils/api.js` (auth header, 401 handling, error normalization), then `useDashboardData.js`, `HireRequests/helpers.js`. *~1 day*
 - [ ] **Coverage floor** (Q5) — `pytest-cov`, record current %, fail CI below it. *~½ hour*
 - [ ] **`make e2e` script** (Q6) — boot both dev servers + seed + run Playwright, one command. *~½ day*
