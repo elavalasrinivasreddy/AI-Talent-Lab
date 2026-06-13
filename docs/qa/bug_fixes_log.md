@@ -4078,4 +4078,19 @@ Added `SERVE_LOCAL_UPLOADS: bool = True` to `config.py` and gated the `os.makedi
 
 ---
 
+## 238. Deprecated `datetime.utcnow()` in Interviews List
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+`backend/routers/interviews.py:70` used `datetime.utcnow()`, which emits a `DeprecationWarning` on Python 3.12+ (surfaced in the `make coverage` run) and is scheduled for removal. It was the only remaining `utcnow()` call in the backend.
+
+**Idea / Solution:**
+Replaced with `datetime.now(timezone.utc).replace(tzinfo=None)` — a non-deprecated call that preserves the exact prior behaviour (a *naive* UTC datetime). Naive is required here because `now` is compared against the `interviews.scheduled_at` column, which is a timezone-less `TIMESTAMP`; an aware datetime would change comparison semantics under asyncpg. Imported `timezone` in the function-local datetime import. Removes the last `utcnow()` deprecation warning from the suite.
+
+**Files Modified:**
+- `backend/routers/interviews.py` (utcnow → now(timezone.utc).replace(tzinfo=None))
+
+---
+
 
