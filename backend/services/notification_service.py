@@ -11,7 +11,6 @@ Notification types (from docs/architecture/03_backend.md §3):
   feedback_submitted, position_filled, sourcing_complete,
   magic_link_clicked, candidate_rejected, system_alert
 """
-import json
 import logging
 from typing import Optional
 

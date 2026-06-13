@@ -1,116 +1,151 @@
-# Project Status & What's Next
+# Project Status — Phase-Wise Tracker
 
 > **The single source of truth for "where are we and what do I do next."** Open this first.
-> It merges three things that used to live in separate, drifting files: functional truth
-> (does each feature actually work?), the v3 redesign build status, and live production-hardening
-> debt. Older snapshots are in [`archive/`](archive/).
+> Restructured 2026-06-13 into a phase-wise tracker (Phases A–F) with per-phase completion counts.
+> Older snapshots live in [`archive/`](archive/).
 >
-> **Last updated:** 2026-06-12 (14:45 IST) · **Branch:** `feature/phase2-items` · verified against code + commit log.
+> **Last updated:** 2026-06-13 · **Branch:** `refactor/service-decomposition` · verified against code + commit log.
+> **Sprints 1–4 closed** — front door (S1), **SaaS layer/billing (S2, bug log #247–#251)**, code-review quality (S3, #228–#238), Phase-D QA (S4, #239–#246).
+> **Sprint-closure review 2026-06-13** — adversarial review of Sprint 2 billing/quota code found 3 new bugs (#252–#254) and fixed them: `BillingService` plan-validation dead code + idempotency gap on confirm; `AuditTab` CSV injection. All items now green. See [`qa/bug_fixes_log.md`](qa/bug_fixes_log.md).
 
 ---
 
 ## One-line status
 
-**All P0/P1 issues fixed, RLS live, 106 backend tests green, Playwright E2E wired.** What remains: external integration keys (Calendar, enrichment providers), and Phase-2 feature QA (branding, audit-log UI, self-scheduling, WhatsApp). Ready for guarded customer rollout.
+**Product engineering: Phases A–C complete (MVP + extended + hardening, 106 tests green, RLS live).**
+**Business: pre-launch, zero users; billing/quota layer built in simulation (Sprint 2) — Razorpay KYC + hosting are the gates left in Phase F (active).**
+See [`product/05_market_validation.md`](product/05_market_validation.md) for the market read and 90-day plan.
+
+## Completion summary
+
+| Phase | Scope | ✅ Done | ⚠️ Partial | ❌ Not started | Progress |
+|---|---|---|---|---|---|
+| **A** | Core MVP (foundation) | 24 | 0 | 0 | ████████ 100% |
+| **B** | Extended features | 8 | 2 | 1 | ██████░░ ~82% |
+| **C** | Hardening & audit closure | 24 | 1 | 0 | ███████░ ~98% |
+| **D** | Phase-2 features | 1 | 6 | 5 | ███░░░░░ ~33% |
+| **E** | Phase-3 features | 0 | 0 | 9 | ░░░░░░░░ 0% |
+| **F** | SaaS launch readiness ← **active** | 2 | 5 | 2 | ████░░░░ ~45% |
+
+Legend: ✅ done + committed (code-traced or test-backed) · ⚠️ built but needs activation/QA/key · ❌ not started
+Priority: **P0** security/core-flow blocker · **P1** sold feature that didn't work · **P2** polish.
+**Rule:** a feature is "done" when a test walks it and it has no open P0/P1 — not when the UI renders.
 
 ---
 
-## Legend
+## Phase A — Core MVP foundation ✅ 24/24
 
-| Mark | Meaning |
-|---|---|
-| ✅ | Done + committed (code-traced or test-backed) |
-| ⚠️ | Built but needs an activation step / external key before it's live |
-| 🔵 | Stub by design — waiting on an external credential or a deliberate decision |
-| ❌ | Not started |
+All 24 core features from [`product/02_features.md`](product/02_features.md) §1 are built, wired, and
+covered by the backend suite + Playwright core-loop E2E. Highlights:
 
-Priority: **P0** = security/core-flow blocker · **P1** = sold feature that didn't work · **P2** = polish.
+- ✅ Auth & multi-tenancy (JWT, roles, lockout, denylist) — `test_auth.py`
+- ✅ Hire request → approval → pickup (4 email touchpoints) — `test_hire_request_approval.py`
+- ✅ JD creation chat — 8-stage LangGraph: intake → internal skills → market research (Tavily) → 3 variants → streamed JD → bias check → team-lead approval → save → sourcing *(PDF-only upload; Position Setup Modal omits headcount/priority — P2)*
+- ✅ Two-phase semantic ATS (cosine 0.35 gate → LLM weighted score → screening/on_hold routing)
+- ✅ Inbound apply loop (career page → apply chat → resume parse → screening Qs → recruiter notified) — `test_candidate_core_loop.py`
+- ✅ Candidate portal, interviews (invites, reminders, round results), panel magic-link feedback
+- ✅ Talent pool (bulk upload, real embeddings AI-match), analytics/dashboard — *dedicated tests filled 2026-06-13 (Sprint 3): `test_dashboard.py` + `test_talent_pool.py` were empty stubs, now real (part of 132-test suite)*
+- ✅ Notifications, AI interview kit, career page, debrief generator
+- ✅ v3 redesign: **19/19 surfaces** to spec (teal `#0D9488` + Plus Jakarta Sans) — per-page banners in [`design/pages/`](design/pages/)
 
----
+## Phase B — Extended features · 8 ✅ / 2 ⚠️ / 1 ❌
 
-## ✅ What works end-to-end (the foundation)
+| Item | Status | Notes |
+|---|---|---|
+| Pipeline grid+Kanban, GDPR/DPDP flow, status portal, AI copilot bar, hiring notes, analytics deep-dive, approval workflow, talent-pool contact status | ✅ | See [`product/02_features.md`](product/02_features.md) §2 |
+| Video introduction upload | ⚠️ | Backend + DB done; apply-chat step + player UI pending |
+| Calendar integration | ⚠️ | `MockCalendarAdapter` only; real Google OAuth pending — [guide](integrations/calendar.md) |
+| Career page custom branding | ❌→⚠️ | UI built + settings wired (2026-06-12) but **needs QA** before ✅ |
 
-Code-traced as built + wired. Caveats noted where a step is shallow.
+## Phase C — Hardening & audit closure · ~98%
 
-- **Auth & roles** — login, register, magic-link, password reset, JWT, account lockout, Redis JWT denylist. (`test_auth.py` ✓)
-- **Hire request → approval → pickup** — filing, dept_admin approval, 4 email touchpoints, HR pickup seeds JD chat. (`test_hire_request_approval.py` ✓)
-- **JD creation chat** — 8-stage LangGraph: intake → internal skills → market research (Tavily) → 3 variants → streamed JD → bias check → team-lead approval → save → triggers sourcing. *(PDF-only upload; Position Setup Modal still omits headcount/priority — P2.)*
-- **Two-phase ATS** — cosine 0.35 gate → LLM weighted score → `screening`/`on_hold` routing; On-Hold tab + bulk reject.
-- **Inbound apply loop** — career page → apply chat (greeting → consent → interest → resume parse → profiling steps → screening Qs → save) → status=Applied → recruiter notified → ATS dispatched. **Now walked by `test_candidate_core_loop.py`.**
-- **Candidate portal** — password auth, multi-application timeline, status portal with live timeline + pre-eval launch.
-- **Interviews** — invite emails to candidate + panel (real send), round-result UI (pass/reject), rejection-draft task, 24h reminder task.
-- **Pre-eval** — nightly batch LLM grading against scorecard; **collusion detection now fires** (answer-shape fixed).
-- **Panel feedback** — magic link, single-use, AI enrich, debrief generation.
-- **Talent pool** — org-isolated, bulk upload (LLM-parsed, dedup), real embeddings AI-match, add-to-pipeline.
-- **Analytics/dashboard** — funnel, source, velocity, time-to-hire, agent ROI, ops. (`test_dashboard.py` ✓)
-- **Platform admin, dev console, audit logs, LLM usage analytics, notifications, GDPR flow.**
-- **Error monitoring** — Sentry across backend API, Celery workers, and frontend.
+The 2026-06-11 audit ([snapshot](archive/2026-06-11_PRODUCT_STATUS.md)) found 4 P0s + 14 P1s. All closed:
 
-**v3 redesign:** all **19/19 surfaces** rebuilt to the v3 spec (teal `#0D9488` + Plus Jakarta Sans).
-Per-surface detail: each [`design/pages/NN_*.md`](design/pages/) banner. Historical redesign tracker:
-[`archive/2026-05-30_redesign_STATUS.md`](archive/2026-05-30_redesign_STATUS.md).
+| Group | Status | Evidence |
+|---|---|---|
+| P0-1 `/dev/*` exposure | ✅ | `DEV_MODE: bool = False` fail-safe · commit `90e6413` |
+| P0-2 RLS inert | ✅ **Live** | `APP_DATABASE_URL` dual-pool; `test_rls_isolation.py` ✓ |
+| P0-3 GDPR cross-tenant deletion | ✅ | org-scope check + rate limit · `90e6413` |
+| P0-4 Collusion detection dead | ✅ | `_answer_similarity` fixed · `90e6413` |
+| P1-1…14 (emails, reminders, round-result UI, portal fields, real embeddings, …) | ✅ | commits `982efaa`, `778d882`, `e47acf9` |
+| Test net | ⚠️ | **2026-06-13 (Sprint 3):** 5 stub files filled → **132 backend tests green @ 37.54% coverage** (`pytest-cov`, floor `COV_MIN=37`, `make coverage`); first **frontend unit tests** added (`api.js`, `HireRequests/helpers.js`, dashboard metadata, `npm test`); **`make e2e`** one-command runner. **Remaining:** CI pipeline (F9). Bug log #228, #232–#235 |
+| Code-review cleanup (2026-06-13, Sprint 3) | ✅ | 2 DOM hacks → React (E2/E3 — `window.prompt`→ConfirmModal, bias-fix globals→event delegation, also repaired DOMPurify-stripped buttons); dead-file sweep (E4); service facades documented (E6); `/uploads` env-gated + object-storage plan (E7); `utcnow()` deprecation. Bug log #229–#231, #236–#238 |
+| Error monitoring | ✅ | Sentry: backend API + Celery + frontend |
+| Architecture debt (SQL→repositories, god-object split, stub repos) | ✅ | CRITICAL-03, HIGH-04, HIGH-05 all done |
+| Deployment configs (X-Forwarded-For, `ENCRYPTION_KEY`) | ⚠️ | Deferred to production environment setup — do in Phase F |
 
----
+## Phase D — Phase-2 features · 5 ✅ / 2 ⚠️ / 5 ❌
 
-## ✅ Closed since the 2026-06-11 audit
+From [`product/03_roadmap.md`](product/03_roadmap.md) §4:
 
-The audit (snapshot: [`archive/2026-06-11_PRODUCT_STATUS.md`](archive/2026-06-11_PRODUCT_STATUS.md))
-found 4 P0s and 14 P1s. State today:
-
-| ID | Issue | Status | Evidence |
+| # | Feature | Status | Notes |
 |---|---|---|---|
-| P0-1 | `/dev/*` live by default (account takeover) | ✅ Fixed | `DEV_MODE: bool = False` fail-safe, [config.py:19](../backend/config.py#L19) · commit `90e6413` |
-| P0-2 | RLS inert (no tenant DB backstop) | ✅ **Live** | `APP_DATABASE_URL` set in `.env`; dual-pool confirmed: `get_admin_connection()` for migrations/platform_admin/Celery, `get_connection()` (talentlab_app role, RLS enforced) for all request traffic; `test_rls_isolation.py` ✓ · 45/45 tests green |
-| P0-3 | GDPR cross-tenant deletion | ✅ Fixed | org-scope check + rate limit · commit `90e6413` |
-| P0-4 | Collusion detection never fired (`TypeError`) | ✅ Fixed | `_answer_similarity` takes dicts · commit `90e6413` |
-| P1-1…14 | Interview emails, 24h reminder, round-result UI, rejection draft, outreach signature, apply profiling steps, apply confirmation email, pre-eval page, status_token + portal fields, real talent-pool embeddings, `above_threshold_count`, Providers key allowlist | ✅ Fixed | commits `982efaa`, `778d882`, `e47acf9` · backend suite green |
+| 12 | JD chat interactive refinement | ✅ | Shipped (commits `099cdd0`–`62fe99e`) |
+| 1 | Google Calendar OAuth (real) | ⚠️ | Mock done; needs OAuth client + adapter |
+| 2 | Career page branding | ✅ | QA'd 2026-06-13 (code-trace): settings→PATCH `/settings/org` (gated `require_org_head`)→`OrgRepository`→DB cols→careers GET→`CareerPage` applies color/banner/tagline. Minor: cleared fields can't reset (PATCH `exclude_none`); silent save errors. See [reviews/2026-06-13_sprint4_qa.md](reviews/2026-06-13_sprint4_qa.md) |
+| 3 | Video intro frontend | ⚠️ | Built 2026-06-13 (Sprint 4) as a **post-submission add-on** (decision: avoids touching the apply completion state machine — zero risk of lost applications). `_step_complete` now offers an optional video + sets `video_offer`; `ApplyPage` shows the upload card at `completion` (skip is local; `/upload-video` unchanged). Recruiter player already live via `get_with_application` (needs `position_id` context — plain `get()` path doesn't surface it yet). Unit test `tests/test_video_intro.py` locks the contract. **Automated gate cleared 2026-06-13:** backend suite 133 passed (incl. this test), coverage 37.62% > floor; `npm run build` clean. **Only remaining before ✅:** a ~2-min live click-through of the optional-video card + recruiter player. |
+| 6 | GDPR data export (Art. 20) | ✅ | Built 2026-06-13 (Sprint 4): `Settings → Data export` tab (`DataExportTab.jsx`, was a placeholder) → standalone SAR export via `gdprApi.exportCandidateData` → talent-pool lookup helper + by-ID, structured summary + copy/download JSON. Admin-gated. (Deletion-context export remains in the GDPR/DPDP tab.) |
+| 7 | Audit log UI | ✅ | QA'd 2026-06-13 (code-trace): `AuditTab`→GET `/settings/audit-logs` (gated `require_org_head`)→`AuditService.get_logs` returns `{total, logs[]}`; response shape matches consumer; debounced search + pagination + CSV(page). Minor: UI exposes search only, not the user_id/action filter params backend supports. See QA review doc |
+| 8 | team_lead dashboard | ✅ | QA'd 2026-06-13 (code-trace): `DashboardPage` role-routes `team_lead`→`TeamLeadDashboard` fed by `useDashboardData`; `lanes.{now,next,pulse}` shape matches all consumers; File-Hire-Request CTA→`/hire-requests/new`; onboarding empty-state handled. See QA review doc |
+| 9 | Multi-approver relay | ⚠️ | dept_admin tier shipped; finance/CEO tiers + `approval_chain` remain |
+| 4 | WhatsApp integration | ❌ | **Promoted — India wedge, rank #5 in [validation brief](product/05_market_validation.md) §6** |
+| 5 | Self-scheduling links | ❌ | Blocked by calendar integration |
+| 10 | Hire-request wizard polish | ❌ | P2 |
+| 11 | Real LLM token streaming | ❌ | P2 |
+
+## Phase E — Phase-3 features · 0/9
+
+LinkedIn/Naukri real API, HRIS sync, Slack/Teams, offer management, referrals, multi-language JD,
+custom career domains, Chrome extension, API & webhooks — all ❌ by design. **Per the
+[validation brief](product/05_market_validation.md), Naukri job-posting may get promoted to Phase F+1;
+everything else waits for customer pull.**
+
+## Phase F — SaaS launch readiness ← ACTIVE · 2 ✅ / 5 ⚠️ / 2 ❌
+
+New phase added 2026-06-13 from the [market validation brief](product/05_market_validation.md) §5–6.
+This is the gap between "product" and "business."
+
+| # | Item | Status | Notes |
+|---|---|---|---|
+| F1 | Landing page + pricing + demo booking | ⚠️ | **Folded into the SPA 2026-06-13** (Sprint 1 — not a separate static site): `/` + `/pricing` public routes in `frontend/src/components/Marketing/`, pricing mirrors roadmap tiers. Code done + builds clean. Redesigned landing page and auth shell for premium aesthetic (glassmorphism, scroll animations, capability chips). Needs: hosting + Calendly URL swap (in `MarketingChrome.jsx`) |
+| F2 | Billing (Razorpay) + plan/quota enforcement + **LLM spend caps per org** | ⚠️ | **Built 2026-06-13 (Sprint 2, bug log #247–#249).** Plan/quota enforcement (`services/plans.py` + `quota_service.py`, soft-warn→hard-block 402s; gates positions/seats/applications); per-org monthly **LLM budget** (COGS risk closed — `BudgetExceededError`, hard-stop in JD chat); Razorpay adapter **simulation-first** (`adapters/billing/*` + `routers/billing.py`, full checkout→invoice→plan flow works in sim). Tests: `test_quota.py`, `test_billing.py`. **2 edge-case bugs fixed 2026-06-13 (review #252–#253):** silent plan fallback in `start_checkout` + idempotency gap in `confirm`. **Remaining before ✅:** Razorpay **KYC + live keys** (`BILLING_PROVIDER=razorpay`) and a live pytest run (needs Docker/Postgres) |
+| F3 | ToS + privacy policy pages | ⚠️ | Drafted 2026-06-13, served in-app at `/legal/*` (linked from apply consent, career page, status page). Needs: [PLACEHOLDER] fill + lawyer review |
+| F4 | Email deliverability runbook (SPF/DKIM, domain warm-up) | ❌ | Outreach lands in spam without it |
+| F5 | Self-serve onboarding (seeded demo org, first-run checklist) | ❌ | Activation target: first JD + first application ≤ 7 days |
+| F6 | Production environment (staging, backups/DR, uptime monitoring, `ENCRYPTION_KEY`, X-Forwarded-For) | ⚠️ | Dockerfile + compose exist. **2026-06-13 (Sprint 2):** `ENCRYPTION_KEY` generation + reverse-proxy `--proxy-headers`/`X-Forwarded-For` (rate-limit + audit IP correctness) + billing env now documented in [architecture/production_config.md](architecture/production_config.md). **Remaining:** staging, backups/DR, uptime monitoring (hosting-dependent) |
+| F7 | External integration keys (Calendar OAuth, one enrichment provider or hide toggle) | ⚠️ | Credential work, not bugs; adapters fall back honestly |
+| F8 | Repo hygiene: push current code to GitHub; fix README (says SQLite, code is Postgres+RLS) | ✅ | Done 2026-06-13 (Sprint 1): README/Postgres aligned, `.gitignore` hardened, tracked sqlite/chroma removed from index + pushed |
+| F9 | CI pipeline (pytest + lint on push, Playwright on PR) + fill/delete 5 stub test files | ✅ | **Done 2026-06-13.** Stub tests filled (Sprint 3 → 132 backend tests @ 37.54%, frontend units, `make coverage`/`make e2e`); **CI pipeline added (Sprint 2, bug log #250)** — `.github/workflows/ci.yml`: ruff+pytest (coverage floor, testcontainers Postgres) on push, vitest+build, Playwright on PR. From [2026-06-13 review](reviews/2026-06-13_full_codebase_review.md) §4 |
 
 ---
 
 ## 🎯 What's next (do these in order)
 
-The whole reason this file exists: a short, true list — not the old pile of contradicting plans.
+> **Day-to-day dev work queue:** [`../TODO.md`](../TODO.md) (created 2026-06-13) — sprint-ordered
+> checklist of every doable gap from the validation brief + code review, with a blocked-on-keys list.
+> This file stays the source of truth for *state*; TODO.md is the *work queue*.
 
-1. ~~**Flip RLS live (P0-2)**~~ ✅ **Done** — `APP_DATABASE_URL` set, tests pass.
-2. ~~**Playwright E2E core-loop test**~~ ✅ **Done** — `frontend/e2e/core-loop.spec.ts`: login → pipeline → candidate detail → status portal. Seed endpoint `POST /dev/seed-core-loop` provides pre-scored fixture. Run with both dev servers up: `cd frontend && npx playwright test`.
-3. **Wire the external integrations that are stubbed on missing keys** (credential work, not bugs):
-   real Google Calendar OAuth adapter, at least one real enrichment provider (Proxycurl/Apollo/Hunter) or
-   hide the toggle, Naukri last. Until then they fall back to mock/no-op honestly.
-4. ~~**Deepen the test net**~~ ✅ **Done** — 106 backend tests (was 45): pre-eval, panel feedback, GDPR, HireRequestService, CTC encryption all covered. See Live debt table.
-5. **Resume Phase-2 features** from [product/03_roadmap.md](product/03_roadmap.md): career-page branding (UI built, settings wired), audit-log UI (built), team_lead dashboard (wired in DashboardPage) — these are built but need QA + external integration keys for full activation. Next: GDPR export UI, self-scheduling, WhatsApp (India).
-
-**Rule:** a feature is "done" when a test walks it and it has no open P0/P1 here — not when the UI renders.
-
----
-
-## ⚠️ Live operational debt (carried forward from the old TECH_DEBT tracker and latest Code Review)
-
-Most of the old [TECH_DEBT.md](archive/2026-05-19_TECH_DEBT.md) and recent code review items are resolved (rate limiting, pagination across list endpoints, JWT denylist, HTML-injection escaping, notification IDOR, dashboard SQL sequential query consolidation, public page skeleton loaders — all ✅).
-What's still open (Deferred Items):
-
-| Sev | Item | Notes |
-|---|---|---|
-| 🔴 | Three-Layer Architecture Violation (`CRITICAL-03`) | ✅ **DONE**: Extracted SQL from all routers and major services into repositories. |
-| 🟠 | God Objects (`HIGH-04`) | ✅ **DONE**: Split large monolithic services (`hire_request_service`, `position_service`) into modular components. |
-| 🟠 | Stub Repositories (`HIGH-05`) | ✅ **DONE**: Populated `applications.py`, `scorecards.py`, and `talent_pool.py`. |
-| 🟢 | Deployment Configurations (`LOW-01`, `LOW-02`) | X-Forwarded-For spoofing and Encryption Key config deferred to production environment setup. |
+1. **F1 + F3 + F4** — the "front door" batch (~week; F8 repo hygiene ✅ done, F1/F3 dev done — just hosting + lawyer review left). Then start **25 discovery calls** (India SMB beachhead — [validation brief](product/05_market_validation.md) §4).
+2. **F2 billing + quotas** — ✅ built in simulation (Sprint 2). Left before a paid pilot: Razorpay **KYC + live keys** (`BILLING_PROVIDER=razorpay`) and a live pytest run.
+3. **F5 onboarding** — built from watching the first pilots, not before.
+4. QA the six Phase-D ⚠️ items as pilots touch them; promote to ✅ only with a test.
+5. **No new features unless a pilot customer is blocked without it** (rule from the 90-day plan).
 
 ---
 
 ## Where the detail lives
 
-- **Strategy / why** (vision, moat, what-to-do-next rationale): [product/04_strategy.md](product/04_strategy.md)
-- **Forward roadmap** (Phase 2/3, monetization, compliance): [product/03_roadmap.md](product/03_roadmap.md)
-- **Bug ledger + test validation**: [qa/bug_fixes_log.md](qa/bug_fixes_log.md) · [qa/testing_validation_tracker.md](qa/testing_validation_tracker.md)
-- **RLS activation runbook**: [RLS_ACTIVATION.md](RLS_ACTIVATION.md)
-- **Per-surface code reviews**: [reviews/](reviews/)
+- **Market validation / 90-day plan**: [product/05_market_validation.md](product/05_market_validation.md)
+- **Strategy / why** (moat, narrow-the-surface): [product/04_strategy.md](product/04_strategy.md)
+- **Forward roadmap detail**: [product/03_roadmap.md](product/03_roadmap.md)
+- **Bug ledger + validation**: [qa/bug_fixes_log.md](qa/bug_fixes_log.md) · [qa/testing_validation_tracker.md](qa/testing_validation_tracker.md)
+- **RLS runbook**: [RLS_ACTIVATION.md](RLS_ACTIVATION.md) · **Per-surface reviews**: [reviews/](reviews/)
+- **Full 3-lens code review (eng/QA/design, 2026-06-13)**: [reviews/2026-06-13_full_codebase_review.md](reviews/2026-06-13_full_codebase_review.md)
 - **Audit snapshot (file:line evidence)**: [archive/2026-06-11_PRODUCT_STATUS.md](archive/2026-06-11_PRODUCT_STATUS.md)
-
----
 
 ## How to keep this file honest
 
-- Update a row the moment its state changes (P0/P1 closed, integration activated, test added).
-- "Built" is not "done." Mark ⚠️ until the activation step (key, cutover, test) is complete.
-- When you finish everything in "What's next," re-audit and write a fresh snapshot into `archive/`.
+- Update a row the moment its state changes; recompute the phase counts in the summary table.
+- "Built" is not "done." Mark ⚠️ until the activation step (key, QA, cutover, test) completes.
+- When a phase closes, write a dated snapshot into `archive/` and collapse its section here to one line.
 - Code wins over docs. Where this file and the code disagree, fix this file.

@@ -13,9 +13,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-import jwt
 
-from backend.config import settings
 from backend.db.connection import get_connection
 
 logger = logging.getLogger(__name__)

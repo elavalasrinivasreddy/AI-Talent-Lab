@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../../../utils/api'
+import Toast from '../../common/Toast'
 
 export default function CareerBrandTab({ onPreviewUpdate }) {
   const [branding, setBranding] = useState({
@@ -10,6 +11,7 @@ export default function CareerBrandTab({ onPreviewUpdate }) {
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     api.get('/settings/org').then(({ data }) => {
@@ -30,16 +32,19 @@ export default function CareerBrandTab({ onPreviewUpdate }) {
   const handleSave = async () => {
     setSaving(true)
     setSaved(false)
+    setError(null)
     try {
+      // Send empty strings (not null) so a cleared field actually resets on the
+      // backend — the PATCH handler uses exclude_none, which would drop nulls.
       await api.patch('/settings/org', {
-        career_primary_color: branding.career_primary_color || null,
-        career_banner_url: branding.career_banner_url || null,
-        career_tagline: branding.career_tagline || null,
+        career_primary_color: branding.career_primary_color ?? '',
+        career_banner_url: branding.career_banner_url ?? '',
+        career_tagline: branding.career_tagline ?? '',
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
-    } catch {
-      // surface error via toast in a future iteration
+    } catch (e) {
+      setError(e?.response?.data?.error?.message || 'Could not save branding. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -47,6 +52,9 @@ export default function CareerBrandTab({ onPreviewUpdate }) {
 
   return (
     <div className="settings-form">
+      {error && (
+        <Toast message={error} type="error" onClose={() => setError(null)} />
+      )}
       <div className="settings-form-section">
         <h3>🏢 Career Page Branding</h3>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-4)' }}>

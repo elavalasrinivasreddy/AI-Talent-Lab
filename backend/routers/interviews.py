@@ -61,13 +61,15 @@ async def list_interviews(
     filter: upcoming | today | past | all
     """
     from backend.db.connection import get_connection
-    from datetime import datetime as dt, timedelta
+    from datetime import datetime as dt, timedelta, timezone
 
     org_id = current_user["org_id"]
     where = "i.org_id=$1"
     params = [org_id]
 
-    now = dt.utcnow()
+    # Naive UTC to match the timezone-less `scheduled_at` TIMESTAMP column.
+    # (Replaces deprecated dt.utcnow() with identical behaviour.)
+    now = dt.now(timezone.utc).replace(tzinfo=None)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = today_start + timedelta(days=1)
 

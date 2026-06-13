@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import api from '../../utils/api'
+import { TERMS_URL, PRIVACY_URL } from '../../config/legal'
 import Icon from '../common/Icon'
 import Toast from '../common/Toast'
 import './CareerPage.css'
@@ -456,23 +457,30 @@ export default function CareerPage() {
 
       <footer className="cp-footer">
         <div>Powered by AI Talent Lab</div>
-        <Link to="/">Platform</Link>
+        <div>
+          <a href={TERMS_URL} target="_blank" rel="noopener">Terms</a>
+          {' · '}
+          <a href={PRIVACY_URL} target="_blank" rel="noopener">Privacy</a>
+          {' · '}
+          <Link to="/">Platform</Link>
+        </div>
       </footer>
 
       {showApplyModal && (
         <div className="modal show" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="modal-content" style={{ width: '100%', maxWidth: '400px' }}>
+          <div className="modal-content" style={{ width: '100%', maxWidth: '400px' }} role="dialog" aria-modal="true" aria-labelledby="apply-modal-title">
             <div className="modal-header">
-              <h3 className="modal-title">Apply for {activePosition?.role_name}</h3>
-              <button onClick={() => setShowApplyModal(false)}>
+              <h3 className="modal-title" id="apply-modal-title">Apply for {activePosition?.role_name}</h3>
+              <button onClick={() => setShowApplyModal(false)} aria-label="Close">
                 <Icon name="x" size={20} />
               </button>
             </div>
             <div className="modal-body">
               <form onSubmit={submitApplication}>
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Full Name</label>
+                  <label htmlFor="apply-name" style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Full Name</label>
                   <input
+                    id="apply-name"
                     type="text"
                     required
                     value={applyForm.name}
@@ -481,8 +489,9 @@ export default function CareerPage() {
                   />
                 </div>
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Email Address</label>
+                  <label htmlFor="apply-email" style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Email Address</label>
                   <input
+                    id="apply-email"
                     type="email"
                     required
                     value={applyForm.email}

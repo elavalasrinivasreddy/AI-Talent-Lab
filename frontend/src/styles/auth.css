@@ -68,6 +68,53 @@
   animation: authOrbB 18s ease-in-out infinite;
 }
 
+/* ── Workflow Background Animation ────────────────────────────────────────*/
+.auth-pitch-bg-anim {
+  position: absolute;
+  inset: -100px;
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  opacity: 0.4;
+  filter: blur(3px);
+  pointer-events: none;
+  transform: rotate(-10deg) scale(1.1);
+  z-index: 0;
+  mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+}
+
+.auth-pitch-track {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: authScrollUp 35s linear infinite;
+  width: 160px;
+}
+
+.track-2 {
+  animation-duration: 45s;
+  animation-direction: reverse;
+  margin-top: -100px;
+}
+
+.auth-bg-card {
+  height: 120px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.type-jd { height: 160px; background: rgba(94, 234, 212, 0.2); }
+.type-candidate { height: 90px; border-radius: 40px; background: rgba(14, 165, 233, 0.2); }
+.type-score { height: 220px; background: rgba(168, 85, 247, 0.2); }
+.type-offer { height: 110px; background: rgba(34, 197, 94, 0.2); }
+
+@keyframes authScrollUp {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
 @keyframes authOrbA {
   0%, 100% { transform: translate(0, 0) scale(1); }
   50%      { transform: translate(60px, 40px) scale(1.08); }
@@ -136,32 +183,37 @@
   max-width: 460px;
 }
 
-.auth-pitch-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+.auth-pitch-caps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   margin: 32px 0 0;
   padding: 0;
   list-style: none;
 }
 
-.auth-pitch-stats li {
+.auth-pitch-caps li {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: rgba(241, 245, 249, 0.86);
+  line-height: 1.45;
 }
 
-.auth-pitch-stats strong {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+.auth-cap-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(13, 148, 136, 0.22);
   color: #5EEAD4;
-}
-
-.auth-pitch-stats span {
-  font-size: 12px;
-  color: rgba(241, 245, 249, 0.66);
-  line-height: 1.4;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 1px;
 }
 
 .auth-pitch-trust {
@@ -196,12 +248,11 @@
   .auth-pitch-sub {
     font-size: 14px;
   }
-  .auth-pitch-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
+  .auth-pitch-caps {
+    gap: 10px;
   }
-  .auth-pitch-stats strong {
-    font-size: 20px;
+  .auth-pitch-caps li {
+    font-size: 13px;
   }
   .auth-pitch-trust {
     display: none;

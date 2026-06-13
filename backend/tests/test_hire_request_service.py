@@ -20,7 +20,8 @@ from backend.exceptions import (
     ValidationError,
     NotFoundError,
 )
-from backend.services.hire_request_service import HireRequestService, _BadTransitionError
+from backend.services.hire_request_service import HireRequestService
+from backend.services.hire_requests.crud import _BadTransitionError
 
 
 # ── Shared helpers ─────────────────────────────────────────────────────────────
@@ -156,7 +157,6 @@ async def test_create_produces_pending_status():
     conn = _make_conn(pending_row)
 
     from backend.db.repositories import hire_requests as hr_repo
-    from backend.db.repositories import departments as dept_repo_mod
 
     async def _fake_create(c, **kwargs):
         return pending_row
@@ -581,7 +581,6 @@ async def test_dept_admin_wrong_dept_cannot_cancel():
 async def test_owner_can_update_pending_request():
     """Request owner can patch fields while status is 'pending'."""
     req = _make_request(status="pending", requested_by=99)
-    updated_req = {**req, "role_name": "Staff Engineer"}
     conn = _make_conn()
 
     from backend.db.repositories import hire_requests as hr_repo

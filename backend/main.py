@@ -42,6 +42,7 @@ from backend.routers import platform as platform_router
 from backend.routers import hire_requests as hire_requests_router
 from backend.routers import candidate_portal as candidate_portal_router
 from backend.routers import pre_evaluations as pre_evaluations_router
+from backend.routers import billing as billing_router
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -96,9 +97,16 @@ app = FastAPI(
 # Register exception handlers
 register_exception_handlers(app)
 
-# Ensure uploads directory exists for local dev
-os.makedirs("uploads/videos", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Local uploads static mount — DEV ONLY (E7). Gated behind SERVE_LOCAL_UPLOADS
+# so production can disable it: serving user-uploaded resumes/videos as
+# unauthenticated static files is a privacy risk. In prod, set
+# SERVE_LOCAL_UPLOADS=false and serve uploads from object storage + signed URLs
+# (see docs/architecture/uploads.md).
+if settings.SERVE_LOCAL_UPLOADS:
+    os.makedirs("uploads/videos", exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+else:
+    logger.info("SERVE_LOCAL_UPLOADS=false — /uploads static mount disabled (use object storage).")
 
 # Register middleware
 setup_cors(app)
@@ -129,6 +137,7 @@ app.include_router(platform_router.router)    # Platform admin — cross-org Saa
 app.include_router(hire_requests_router.router)  # Hire requests (dedicated CRUD)
 app.include_router(candidate_portal_router.router)  # Candidate portal — login + timeline + consent
 app.include_router(pre_evaluations_router.router)   # Public — pre-evaluation written test (token)
+app.include_router(billing_router.router)           # SaaS layer — plan/usage/checkout (F2)
 
 # ── Root & Health ──────────────────────────────────────────────────────────────
 

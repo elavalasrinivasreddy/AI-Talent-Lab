@@ -76,11 +76,27 @@ class Settings(BaseSettings):
     FROM_EMAIL: str = "hiring@aitalentlab.com"
     FROM_NAME: str = "AI Talent Lab"
 
+    # ── Billing (SaaS layer, Sprint 2 / F2) ────────────────────────────────
+    # Adapter pattern mirrors email: "simulation" works end-to-end with no
+    # account; switch to "razorpay" once KYC clears and keys are set.
+    BILLING_PROVIDER: str = "simulation"
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
+    RAZORPAY_WEBHOOK_SECRET: str = ""
+
     # ── Candidate Sourcing ─────────────────────────────────────────────────
     CANDIDATE_SOURCE_ADAPTER: str = "simulation"  # legacy global fallback
     # Default adapter when an org hasn't set one in Settings → Sourcing.
     # Set to "tavily" in production .env; "simulation" is dev-only.
     DEFAULT_SOURCE_ADAPTER: str = "simulation"
+
+    # ── Local file uploads (E7) ────────────────────────────────────────────
+    # Serves the local ./uploads dir as static files at /uploads. Fine for dev,
+    # but in production this exposes user-uploaded resumes/videos as
+    # unauthenticated static files. Set SERVE_LOCAL_UPLOADS=false in prod and
+    # move uploads to object storage (S3/GCS + signed URLs) before pilots upload
+    # real resumes. See docs/architecture/uploads.md.
+    SERVE_LOCAL_UPLOADS: bool = True
 
     # ── Magic Link Expiry ──────────────────────────────────────────────────
     APPLY_LINK_EXPIRY_HOURS: int = 72

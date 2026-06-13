@@ -7,3 +7,17 @@ exclude = ["**/node_modules", "**/__pycache__", "frontend"]
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+# Default selection is pyflakes (F) + pycodestyle errors (E). We keep the
+# high-signal F rules (unused imports/vars, redefinitions, undefined names) and
+# ignore two stylistic E rules that clash with intentional patterns here.
+ignore = [
+    "E402",  # module-import-not-at-top — deliberate: env setup before importing
+             # config (conftest), plus a few ordered/late module imports.
+    "E701",  # multiple-statements-on-one-line (colon) — trivial, not worth gating.
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Package __init__ files re-export names on purpose — not dead imports.
+"__init__.py" = ["F401"]

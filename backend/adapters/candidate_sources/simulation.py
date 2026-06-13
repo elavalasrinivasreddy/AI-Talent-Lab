@@ -7,8 +7,6 @@ import json
 import logging
 import random
 import re
-import string
-from typing import Optional
 
 from backend.adapters.candidate_sources.base import CandidateSourceAdapter
 from backend.adapters.llm.factory import get_llm

@@ -5,7 +5,6 @@ Manages chat_sessions (recruiter JD flow) and candidate_sessions (magic link).
 import json
 import logging
 from typing import Any, Optional
-from datetime import datetime
 
 from backend.db.connection import get_connection
 

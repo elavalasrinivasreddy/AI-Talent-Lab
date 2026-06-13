@@ -14,12 +14,23 @@ old_frontend/
 *.py[cod]
 *$py.class
 
+# Local databases / vector stores — never commit
+*.sqlite
+*.sqlite3
+backend/data/chroma/
+backend/db/chroma/
+
+# User uploads (resumes etc.) — never commit
+uploads/
+backend/uploads/
+
 # Local dev / tooling
 .claude/
 graphify-out/
-backend/data/chroma/
-backend/db/chroma/
 backend/dist/
 frontend/dist/
 .gstack/
 NAME.jpg
+
+# Testing coverage
+.coverage

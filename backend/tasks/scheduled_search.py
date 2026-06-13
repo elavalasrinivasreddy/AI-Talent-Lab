@@ -7,7 +7,6 @@ is in the past, triggers a new candidate sourcing + ATS scoring cycle.
 Per project rules: Celery + Redis for ALL background tasks from day one.
 """
 import logging
-from datetime import datetime, timedelta, timezone
 
 from backend.celery_app import celery_app
 

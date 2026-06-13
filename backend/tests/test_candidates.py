@@ -1,5 +1,4 @@
 import pytest
-from httpx import AsyncClient
 
 REGISTER_PAYLOAD = {
     "org_name": "Test Org Candidates",

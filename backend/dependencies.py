@@ -19,7 +19,6 @@ from backend.utils.security import decode_access_token, verify_magic_link_token
 from backend.exceptions import (
     InvalidCredentialsError,
     InsufficientPermissionsError,
-    TokenExpiredError,
 )
 
 ORG_HEAD = "org_head"

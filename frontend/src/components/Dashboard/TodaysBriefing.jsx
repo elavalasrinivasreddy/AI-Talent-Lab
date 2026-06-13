@@ -7,7 +7,7 @@
  *   positions — full positions list (to determine onboarding state)
  */
 import BriefingLane from './BriefingLane'
-import { Link } from 'react-router-dom'
+import OnboardingChecklist from './OnboardingChecklist'
 
 // Lane tints — semantic, not arbitrary colors
 const TINTS = {
@@ -29,27 +29,7 @@ export default function TodaysBriefing({ lanes, positions, role }) {
   const allLanesLoading = lanes.now.loading && lanes.next.loading && lanes.pulse.loading
 
   if (!allLanesLoading && !hasPositions && positions !== undefined && positions.length === 0) {
-    return (
-      <div className="tb-onboarding">
-        <div className="tb-onboarding-inner">
-          <div className="tb-onboarding-icon">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect width="20" height="14" x="2" y="7" rx="2"/>
-              <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-            </svg>
-          </div>
-          <h2 className="tb-onboarding-title">No active positions yet</h2>
-          <p className="tb-onboarding-desc">
-            {role === 'team_lead' 
-              ? 'File your first hire request to get the hiring process started.'
-              : 'Create your first position via the AI chat — it will source candidates, run bias checks, and build a JD in minutes.'}
-          </p>
-          <Link to={role === 'team_lead' ? '/hire-requests/new' : '/chat'} className="btn-primary tb-onboarding-cta">
-            {role === 'team_lead' ? 'File Hire Request' : 'Create your first position'}
-          </Link>
-        </div>
-      </div>
-    )
+    return <OnboardingChecklist role={role} positions={positions} />
   }
 
   return (

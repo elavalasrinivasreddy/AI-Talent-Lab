@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — AI Talent Lab</title>
+<meta name="robots" content="noindex">
+<!-- Synced from landing/privacy.html — keep both copies in sync -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="legal.css">
+</head>
+<body>
+
+<nav><div class="wrap nav-inner">
+  <a href="/" class="logo">AI Talent <span>Lab</span></a>
+  <a href="/">← Back</a>
+</div></nav>
+
+<main><div class="wrap">
+
+<div class="placeholder-warning">⚠ DRAFT — contains [PLACEHOLDERS] and has not been reviewed by a lawyer.
+Replace all bracketed values and obtain legal review before publishing. Remove this banner when done.</div>
+
+<h1>Privacy Policy</h1>
+<p class="updated">Last updated: [DATE]</p>
+
+<p>This Privacy Policy explains how <strong>[LEGAL ENTITY NAME]</strong> ("AI Talent Lab", "we",
+"us"), with its registered office at <strong>[REGISTERED ADDRESS]</strong>, collects and processes
+personal data through the AI Talent Lab platform ("Service"). It is written to comply with India's
+<strong>Digital Personal Data Protection Act, 2023 (DPDP Act)</strong> and, where applicable, the
+EU <strong>GDPR</strong>.</p>
+
+<h2>1. Who we are in each relationship</h2>
+<table>
+  <tr><th>You are…</th><th>Our role</th></tr>
+  <tr><td>A <strong>candidate</strong> applying via a company's career page on our platform</td>
+      <td>The hiring company is the data fiduciary (controller); we are a data processor acting on its instructions</td></tr>
+  <tr><td>A <strong>user at a customer company</strong> (recruiter, admin, interviewer)</td>
+      <td>We are the data fiduciary (controller) for your account data</td></tr>
+  <tr><td>A <strong>visitor</strong> to this website</td>
+      <td>We are the data fiduciary (controller)</td></tr>
+</table>
+
+<h2>2. What we collect</h2>
+<h3>Candidates</h3>
+<ul>
+  <li>Identity and contact details (name, email, phone) you provide in the apply chat</li>
+  <li>Your resume/CV and the information extracted from it (experience, skills, education)</li>
+  <li>Answers to screening questions; optional video introductions where offered</li>
+  <li>Salary/CTC expectations — <strong>stored encrypted (AES-256)</strong></li>
+  <li>Application status and interview history with that employer</li>
+  <li>Your consent record (what you agreed to, and when)</li>
+</ul>
+<h3>Customer users</h3>
+<ul><li>Name, work email, role, login and security records (e.g. failed-attempt lockouts), and actions
+taken in the product (audit logs)</li></ul>
+<h3>Website visitors</h3>
+<ul><li>[Describe: e.g. no cookies / basic analytics — UPDATE TO MATCH WHAT THE LANDING SITE ACTUALLY USES]</li></ul>
+
+<h2>3. How we use it</h2>
+<ul>
+  <li>To operate the hiring workflow: parse and evaluate applications against the role, schedule and
+  run interviews, notify you of your application status</li>
+  <li>To maintain the employer's private talent pool so you can be considered for future roles
+  <strong>with that employer</strong> (consent-based; pools are isolated per employer)</li>
+  <li>To send transactional emails (status updates, interview invitations, reminders)</li>
+  <li>To secure, debug, and improve the Service (audit logs, error monitoring)</li>
+  <li>For billing and account administration of customers</li>
+</ul>
+
+<h2>4. AI processing — disclosure</h2>
+<ul>
+  <li>We use large language models to draft job descriptions, parse resumes, score applications
+  against role requirements, and assist screening conversations. AI involvement is disclosed in
+  candidate-facing chats and emails.</li>
+  <li><strong>No solely automated rejection:</strong> the AI ranks and explains; hiring decisions
+  are made by humans at the employer.</li>
+  <li>Resume content and screening answers are processed by our LLM providers (see sub-processors)
+  solely to provide the Service — not to train their models, per our provider agreements.
+  [VERIFY THIS MATCHES YOUR ACTUAL LLM PROVIDER TERMS]</li>
+</ul>
+
+<h2>5. Consent (DPDP Act)</h2>
+<ul>
+  <li>Before a candidate's first application question, we present a consent notice describing what
+  is collected and why; the application proceeds only after consent is given.</li>
+  <li>Consent can be withdrawn at any time (see "Your rights"). Withdrawal does not affect prior
+  lawful processing.</li>
+</ul>
+
+<h2>6. Retention</h2>
+<ul>
+  <li>Candidate data is retained per the employer's configured retention period
+  ([DEFAULT, e.g. 12] months by default), after which it is automatically deleted by scheduled cleanup jobs.</li>
+  <li>Customer account and billing records are retained as required by law (e.g. tax records).</li>
+</ul>
+
+<h2>7. Your rights</h2>
+<p>Subject to applicable law (DPDP Act for India; GDPR where it applies), you may:</p>
+<ul>
+  <li><strong>Access / export</strong> a copy of your data</li>
+  <li><strong>Correct</strong> inaccurate data</li>
+  <li><strong>Delete</strong> your data ("right to erasure") — candidates can request deletion and
+  it is honored, including from the employer's talent pool</li>
+  <li><strong>Withdraw consent</strong> to further processing</li>
+  <li><strong>Grieve</strong>: raise a complaint with our Grievance Officer (below) and, if
+  unresolved, with the Data Protection Board of India (or your EU supervisory authority under GDPR)</li>
+</ul>
+<p>To exercise rights, email <a href="mailto:elavalasrinivasreddy@gmail.com">elavalasrinivasreddy@gmail.com</a>
+[or privacy@yourdomain] or use the in-product options where available (e.g. the public
+data-deletion page). Where we act as processor, we may forward your request to the employer (the
+data fiduciary) and assist them in honoring it.</p>
+
+<h2>8. Security</h2>
+<ul>
+  <li>Per-company tenant isolation enforced at the database level (PostgreSQL row-level security)</li>
+  <li>Encryption of sensitive fields (e.g. salary expectations) with AES-256; encryption in transit (TLS)</li>
+  <li>Password hashing, account lockout on repeated failures, revocable sessions</li>
+  <li>Organization-level audit logs of significant actions</li>
+  <li>Error monitoring with data minimization</li>
+</ul>
+<p>A detailed security note is available on request.</p>
+
+<h2>9. Sub-processors</h2>
+<p>We use a small number of service providers to operate the Service. Current categories:</p>
+<table>
+  <tr><th>Category</th><th>Purpose</th><th>Provider</th></tr>
+  <tr><td>LLM / AI</td><td>JD drafting, resume parsing, screening assistance</td><td>[PROVIDER(S), e.g. OpenAI / Anthropic / …]</td></tr>
+  <tr><td>Web research</td><td>Market data for JD benchmarking (no candidate data sent)</td><td>Tavily</td></tr>
+  <tr><td>Email delivery</td><td>Transactional email</td><td>[PROVIDER, e.g. SMTP service]</td></tr>
+  <tr><td>Error monitoring</td><td>Reliability</td><td>Sentry</td></tr>
+  <tr><td>Hosting / database</td><td>Infrastructure</td><td>[PROVIDER + REGION]</td></tr>
+</table>
+<p>[UPDATE this table to match production. If any provider stores data outside India, state the
+transfer safeguard used.]</p>
+
+<h2>10. Children</h2>
+<p>The Service is not directed at persons under 18, and we do not knowingly process their data.</p>
+
+<h2>11. Changes</h2>
+<p>We will post updates here and, for material changes affecting candidates or customers, notify by
+email or in-product notice.</p>
+
+<h2>12. Grievance Officer (DPDP Act) and contact</h2>
+<p><strong>[GRIEVANCE OFFICER NAME]</strong><br>
+[LEGAL ENTITY NAME], [REGISTERED ADDRESS]<br>
+Email: <a href="mailto:elavalasrinivasreddy@gmail.com">elavalasrinivasreddy@gmail.com</a> [or grievance@yourdomain]<br>
+We aim to acknowledge grievances within [X] days and resolve them within the timelines prescribed under the DPDP Act.</p>
+
+</div></main>
+
+<footer><div class="wrap foot-inner">
+  <div>© 2026 AI Talent Lab</div>
+  <div><a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a> · <a href="/">Home</a></div>
+</div></footer>
+
+</body>
+</html>

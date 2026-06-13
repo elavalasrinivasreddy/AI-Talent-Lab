@@ -5,6 +5,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
+import { TERMS_URL, PRIVACY_URL } from '../../config/legal'
 import './ApplyPage.css'
 
 const API_BASE = (import.meta.env.VITE_API_URL || '/api/v1') + '/apply'
@@ -350,31 +351,38 @@ export default function ApplyPage() {
           </div>
         )}
 
-        {/* Video intro upload (optional) */}
-        {step === 'video_intro' && videoState === 'idle' && (
+        {/* Optional video intro — offered as a post-submission add-on at completion.
+            Skipping/abandoning never affects the already-submitted application. */}
+        {(step === 'video_intro' || step === 'completion') && videoState === 'idle' && (
           <div className="apply-resume-upload">
             <input
               type="file"
               ref={videoInputRef}
               accept="video/*"
+              aria-label="Upload video introduction file"
               style={{ display: 'none' }}
               onChange={e => handleVideoUpload(e.target.files[0])}
             />
             <button className="apply-upload-btn" onClick={() => videoInputRef.current?.click()}>
-              📹 Upload Video Intro (MP4 · Max 100 MB)
+              📹 Add a Video Intro (optional · MP4 · Max 100 MB)
             </button>
             <button
               className="apply-upload-btn"
               style={{ background: 'transparent', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)', marginTop: 6 }}
-              onClick={() => { setVideoState('skipped'); sendMessage('Skip video intro') }}
+              onClick={() => setVideoState('skipped')}
             >
-              Skip — I'll pass on the video
+              No thanks — I'll skip the video
             </button>
           </div>
         )}
-        {step === 'video_intro' && videoState === 'uploading' && (
+        {(step === 'video_intro' || step === 'completion') && videoState === 'uploading' && (
           <div className="apply-resume-upload">
             <button className="apply-upload-btn" disabled>⏳ Uploading video…</button>
+          </div>
+        )}
+        {videoState === 'done' && (
+          <div className="apply-resume-upload">
+            <button className="apply-upload-btn" disabled>✅ Video intro added — thank you!</button>
           </div>
         )}
 
@@ -385,6 +393,7 @@ export default function ApplyPage() {
               type="file"
               ref={fileInputRef}
               accept=".pdf,.docx,.doc,.txt"
+              aria-label="Upload resume file"
               style={{ display: 'none' }}
               onChange={e => handleFileUpload(e.target.files[0])}
             />
@@ -402,8 +411,8 @@ export default function ApplyPage() {
         )}
 
         {sending && (
-          <div className="apply-typing">
-            <div className="apply-typing-dots">
+          <div className="apply-typing" role="status" aria-label="Assistant is typing">
+            <div className="apply-typing-dots" aria-hidden="true">
               <span /><span /><span />
             </div>
           </div>
@@ -415,6 +424,7 @@ export default function ApplyPage() {
       <div className="apply-input-area">
         <textarea
           className="apply-input"
+          aria-label="Type your reply"
           placeholder={isInputDisabled ? '' : 'Type your reply…'}
           value={input}
           onChange={e => setInput(e.target.value)}
@@ -432,7 +442,13 @@ export default function ApplyPage() {
       </div>
       <div className="apply-footer">
         <span>Powered by AI Talent Lab · AI-assisted hiring</span>
-        <a href="/delete-my-data" target="_blank" rel="noopener">Privacy & Data Deletion</a>
+        <span>
+          <a href={TERMS_URL} target="_blank" rel="noopener">Terms</a>
+          {' · '}
+          <a href={PRIVACY_URL} target="_blank" rel="noopener">Privacy</a>
+          {' · '}
+          <a href="/delete-my-data" target="_blank" rel="noopener">Data Deletion</a>
+        </span>
       </div>
     </div>
   )
@@ -592,7 +608,9 @@ function ConsentScreen({ context, onConsent }) {
         </div>
 
         <p className="apply-consent-privacy">
-          <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>
+          <a href={TERMS_URL} target="_blank" rel="noopener">Terms of Service</a>
+          {' · '}
+          <a href={PRIVACY_URL} target="_blank" rel="noopener">Privacy Policy</a>
           {' · '}
           <a href="/delete-my-data" target="_blank" rel="noopener">Data Rights</a>
         </p>

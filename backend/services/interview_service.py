@@ -369,7 +369,7 @@ class PanelFeedbackService:
     async def verify_and_load(token: str) -> dict:
         """Verify panel magic link token and return full context."""
         try:
-            payload = verify_panel_token(token)
+            verify_panel_token(token)  # validates token; raises ValueError if invalid/expired
         except ValueError as e:
             return {"valid": False, "expired": "expired" in str(e), "error": str(e)}
 
@@ -406,7 +406,7 @@ class PanelFeedbackService:
         """Run AI enrichment on rough panel notes."""
         from backend.agents.interview_agents import enrich_feedback
 
-        payload = verify_panel_token(token)
+        verify_panel_token(token)  # validates token; raises ValueError if invalid/expired
 
         async with get_connection() as conn:
             panel_data = await PanelRepository.get_by_token(conn, token)
@@ -498,7 +498,7 @@ class PanelFeedbackService:
                 if created_by:
                     if submitted_count >= total_panel:
                         title = "All Feedback Received 🎉"
-                        msg = f"All panelists have submitted feedback. Review debriefs now."
+                        msg = "All panelists have submitted feedback. Review debriefs now."
                     else:
                         title = "Panel Feedback Submitted"
                         msg = f"{panel_data['panelist_name']} submitted feedback ({submitted_count}/{total_panel})."

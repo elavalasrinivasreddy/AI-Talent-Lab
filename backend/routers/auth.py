@@ -8,7 +8,7 @@ import json
 
 import asyncpg
 
-from backend.dependencies import get_db, get_current_user, require_org_head, require_dept_admin
+from backend.dependencies import get_db, get_current_user, require_dept_admin
 from backend.services.auth_service import AuthService
 from backend.models.auth import (
     LoginRequest,

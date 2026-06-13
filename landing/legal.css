@@ -1,0 +1,32 @@
+/* Shared styles for legal pages (terms.html, privacy.html) */
+:root{
+  --bg:#090E1A; --bg-card:#111827; --text:#F1F5F9; --text-2:#94A3B8; --text-3:#64748B;
+  --border:#1E3047; --teal:#0D9488; --teal-hover:#14B8A6;
+  --font-body:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-display:'Fraunces',Georgia,serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--teal-hover);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:780px;margin:0 auto;padding:0 24px}
+nav{position:sticky;top:0;background:rgba(9,14,26,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{font-weight:800;font-size:1.05rem;color:var(--text)}
+.logo span{color:var(--teal-hover)}
+main{padding:64px 0 96px}
+h1{font-family:var(--font-display);font-weight:600;font-size:2.2rem;letter-spacing:-.01em;margin-bottom:8px}
+.updated{color:var(--text-3);font-size:.88rem;margin-bottom:40px}
+h2{font-family:var(--font-display);font-weight:600;font-size:1.35rem;margin:40px 0 12px}
+h3{font-size:1rem;font-weight:700;margin:24px 0 8px}
+p,li{color:var(--text-2);font-size:.96rem}
+ul,ol{padding-left:24px;margin:10px 0}
+li{margin-bottom:6px}
+strong{color:var(--text)}
+.placeholder-warning{background:rgba(217,119,6,.1);border:1px solid rgba(217,119,6,.35);border-radius:12px;padding:16px 20px;margin-bottom:36px;font-size:.88rem;color:#F59E0B}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.9rem}
+th,td{border:1px solid var(--border);padding:10px 14px;text-align:left;color:var(--text-2)}
+th{color:var(--text);background:var(--bg-card)}
+footer{border-top:1px solid var(--border);padding:36px 0;font-size:.86rem;color:var(--text-3)}
+.foot-inner{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.foot-inner a{color:var(--text-3)}

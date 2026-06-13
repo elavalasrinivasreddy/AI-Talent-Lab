@@ -11,7 +11,6 @@ Covers:
 import json
 import pytest
 import pytest_asyncio
-import asyncpg
 
 from backend.utils.crypto import encrypt_field, decrypt_field
 

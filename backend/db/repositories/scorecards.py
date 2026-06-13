@@ -1,5 +1,5 @@
 import asyncpg
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 class ScorecardRepository:
     

@@ -2,7 +2,6 @@
 db/repositories/candidates.py – CandidateRepository
 Handles all candidate + candidate_applications SQL. Filters by org_id on every query.
 """
-import json
 import logging
 from typing import Optional
 
