@@ -28,6 +28,11 @@ class _FakeConn:
     async def fetchrow(self, query, *args):
         return None
 
+    async def fetchval(self, query, *args):
+        # Quota counters (active positions, etc.) read via fetchval — a fresh
+        # mocked org has zero usage, so nothing is gated.
+        return 0
+
     async def fetch(self, query, *args):
         return []
 

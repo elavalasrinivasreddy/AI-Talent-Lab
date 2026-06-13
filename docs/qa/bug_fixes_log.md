@@ -4307,4 +4307,64 @@ Wrote `docs/architecture/production_config.md`: how to generate `ENCRYPTION_KEY`
 
 ---
 
+## 252. BillingService.start_checkout() Silent Plan Fallback (Dead Validation)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+`BillingService.start_checkout()` called `plans.normalize_plan(plan)` — which silently coerces any invalid input to `"starter"` — and then checked `if plan not in plans.VALID_PLANS`. Because normalize always returns a valid key, the guard could never be True. An API caller passing `"enterprise_x"` would silently get billed as `"starter"` instead of receiving a 422 validation error.
+
+**Idea / Solution:**
+Moved the validation before normalization: check the raw (lowercased, stripped) input against `VALID_PLANS` first, raise `ValidationError` with the bad key in the message, then proceed. Keeps the same behaviour for valid inputs; rejects unknowns loudly.
+
+**Files Modified:**
+- `backend/services/billing_service.py`
+
+---
+
+## 253. BillingService.confirm() No Idempotency Guard on Already-Paid Invoice
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+`BillingService.confirm()` fetched the invoice and immediately called `provider.confirm_payment()` without checking whether the invoice was already `paid`. Webhook retries (Razorpay retries failed webhooks 3× by default) or a double-click on the confirm button would re-call the provider, re-UPDATE the `paid_at` timestamp, and re-UPDATE the org plan. For simulation this is a silent no-op; for a real Razorpay order, the second `confirm_payment` call might return an error or charge differently, causing a 502 on what should be an idempotent re-confirmation.
+
+**Idea / Solution:**
+Added an early return before calling the provider: if `invoice["status"] == "paid"`, return the already-paid response immediately. The org plan assignment is unchanged (same plan gets re-assigned on the original call, not on retry).
+
+**Files Modified:**
+- `backend/services/billing_service.py`
+
+---
+
+## 254. AuditTab CSV Export — Unescaped Double Quotes (RFC 4180 Violation)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+The audit log CSV export wrapped all values in double quotes but did not escape double-quote characters within values (user names, actions, entity IDs). A value like `Admin "OrgHead" User` produced `"Admin "OrgHead" User"`, which is invalid per RFC 4180 and breaks imports in Excel, Google Sheets, and any strict CSV parser — the fields after the unescaped quote would silently shift columns.
+
+**Idea / Solution:**
+Added an `esc()` helper that applies RFC 4180 escaping (`"` → `""`) before wrapping in outer quotes, replacing all 7 inline template literals in the CSV row builder.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/AuditTab.jsx`
+
+---
+
+## 255. Ruff Lint Debt Cleanup + Lint Gate Config (Sprint 2 / CI)
+**Date:** 2026-06-13
+**Status:** Config + manual fix applied; auto-fix sweep run via `ruff --fix`
+
+**Problem Statement:**
+The Sprint 2 CI pipeline runs `ruff check backend`, but ruff had never been run before — `ruff check backend` reported **106 pre-existing errors** (73 F401 unused-import, 9 E402 import-not-at-top, 7 F841 unused-var, 6 E701 multi-statement, 5 F541 empty f-string, 5 F811 redefinition). Left unaddressed, the lint gate would be red on every push from day one, making it useless. None originated from Sprint 2 code (new files were F401-audited).
+
+**Idea / Solution:**
+Configured a deliberate lint policy in `pyproject.toml` (`[tool.ruff.lint]`): keep the high-signal pyflakes (F) rules; ignore `E402` (intentional here — env setup before importing config in `conftest`, plus ordered/late module imports in a few routers/adapters) and `E701` (trivial style); per-file-ignore `F401` in `__init__.py` (intentional re-exports). Removed the one dead import ruff couldn't auto-fix (`chromadb.config.Settings` in `db/vector_store.py` — only `import chromadb` drives `HAS_CHROMA`). The remaining 83 safe fixes (F401/F541/F811 — the F811s were redundant local `get_connection` re-imports in `positions.py` ×4 + `rejection_task.py`) and 7 F841 unsafe fixes are applied via `ruff check backend --fix [--unsafe-fixes]` (diff reviewed). Result: `ruff check backend` is green; the CI gate now catches only *new* violations.
+
+**Files Modified:**
+- `pyproject.toml` (ruff lint config), `backend/db/vector_store.py` (dead import)
+- backend-wide `--fix` sweep (unused imports/vars across existing modules — run locally, diff reviewed)
+
+---
 

@@ -5,14 +5,12 @@ import pytest_asyncio
 import asyncpg
 from unittest.mock import patch, AsyncMock, MagicMock
 from testcontainers.postgres import PostgresContainer
-from fastapi.testclient import TestClient
 
 # Set required environment variables for tests before importing config
 os.environ["JWT_SECRET"] = "test-secret-key-do-not-use-in-prod"
 os.environ["GEMINI_API_KEY"] = "mock-api-key"
 
 from backend.main import app
-from backend.db.connection import get_pool, _pool
 from backend.db.migrations import run_migrations
 from backend.config import settings
 

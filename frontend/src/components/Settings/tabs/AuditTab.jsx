@@ -96,16 +96,17 @@ export default function AuditTab() {
             className="st-btn st-btn-secondary" 
             onClick={() => {
               const headers = ['Timestamp', 'User Name', 'User Email', 'Action', 'Entity Type', 'Entity ID', 'IP Address'];
+              const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"` // RFC 4180 CSV escaping
               const csvContent = [
                 headers.join(','),
                 ...logs.map(l => [
-                  `"${new Date(l.created_at).toISOString()}"`,
-                  `"${l.user_name || 'System'}"`,
-                  `"${l.user_email || ''}"`,
-                  `"${l.action}"`,
-                  `"${l.entity_type || ''}"`,
-                  `"${l.entity_id || ''}"`,
-                  `"${l.ip_address || ''}"`
+                  esc(new Date(l.created_at).toISOString()),
+                  esc(l.user_name || 'System'),
+                  esc(l.user_email || ''),
+                  esc(l.action),
+                  esc(l.entity_type || ''),
+                  esc(l.entity_id || ''),
+                  esc(l.ip_address || ''),
                 ].join(','))
               ].join('\n');
               const blob = new Blob([csvContent], { type: 'text/csv' });

@@ -74,9 +74,12 @@ class BillingService:
     @staticmethod
     async def start_checkout(conn: asyncpg.Connection, org_id: int, plan: str) -> dict:
         """Begin a subscription for ``plan``; records a 'created' invoice row."""
-        plan = plans.normalize_plan(plan)
-        if plan not in plans.VALID_PLANS:
-            raise ValidationError("Unknown plan")
+        # Validate BEFORE normalising — normalize silently defaults invalid inputs to
+        # Starter, which would let a caller purchase any string as "starter" free plan.
+        plan_key = str(plan or "").strip().lower()
+        if plan_key not in plans.VALID_PLANS:
+            raise ValidationError(f"Unknown plan: {plan_key!r}. Valid: {list(plans.VALID_PLANS)}")
+        plan = plan_key
 
         amount = float(plans.PLAN_PRICING_INR[plan])
         provider = get_billing_provider()
@@ -113,6 +116,10 @@ class BillingService:
         )
         if not invoice:
             raise BillingError("Invoice not found for this reference")
+
+        # Idempotency guard: webhook retries or double-clicks must not re-confirm.
+        if invoice["status"] == "paid":
+            return {"status": "paid", "plan": invoice["plan"], "invoice_id": invoice["id"]}
 
         provider = get_billing_provider()
         result: PaymentResult = await provider.confirm_payment(provider_ref)

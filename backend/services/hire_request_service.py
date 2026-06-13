@@ -7,7 +7,6 @@ entry point — routers and tests call HireRequestService.method() exactly as
 before; every method just delegates to a sub-module function and holds no logic
 of its own. Add new behaviour to the relevant hire_requests/* module, not here.
 """
-from typing import Optional
 import asyncpg
 
 from backend.services.hire_requests import (
@@ -25,7 +24,7 @@ from backend.services.hire_requests import (
     release_review,
     approve_modified,
 )
-from backend.services.hire_requests.crud import _validate_payload, _BadTransitionError
+from backend.services.hire_requests.crud import _validate_payload
 
 
 class HireRequestService:

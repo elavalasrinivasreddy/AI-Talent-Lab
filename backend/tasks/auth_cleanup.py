@@ -10,7 +10,6 @@ Recommended cron schedule (Celery Beat):
     }
 """
 import logging
-import asyncio
 
 from backend.celery_app import celery_app
 

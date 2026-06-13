@@ -4,10 +4,8 @@ Unit tests for the invite-by-email path in AuthService.add_user.
 These tests are fully synchronous with the database — they monkeypatch the
 repository and email-service calls so no real DB or Resend connection is needed.
 """
-import asyncio
 import pytest
 
-from backend.services import auth_service as _auth_service_module
 from backend.services.auth_service import AuthService
 from backend.services.email_service import EmailService
 
@@ -22,7 +20,14 @@ async def _async_return(value):
 
 class _FakeConn:
     """Mimics the asyncpg.Connection API used by AuthService.add_user."""
-    pass
+
+    async def fetchrow(self, query, *args):
+        # Org plan lookup (seat quota) — None falls back to the default plan.
+        return None
+
+    async def fetchval(self, query, *args):
+        # Seat counter — a fresh mocked org has zero seats used.
+        return 0
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

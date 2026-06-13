@@ -48,10 +48,10 @@ class PositionApprovals:
             dept_admin_requires_org_review = org_settings.get("direct_hire_dept_admin_requires_org_head_review", True)
 
             async def get_active_user_by_role(role_name: str, dept_id: Optional[int] = None):
-                query = f"SELECT id, name FROM users WHERE org_id=$1 AND role=$2 AND is_active=TRUE"
+                query = "SELECT id, name FROM users WHERE org_id=$1 AND role=$2 AND is_active=TRUE"
                 params = [org_id, role_name]
                 if dept_id:
-                    query += f" AND department_id=$3"
+                    query += " AND department_id=$3"
                     params.append(dept_id)
                 query += " ORDER BY id LIMIT 1"
                 return await conn.fetchrow(query, *params)

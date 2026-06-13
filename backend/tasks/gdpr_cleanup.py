@@ -4,7 +4,6 @@ Runs weekly via Celery Beat to anonymize candidates past their retention date.
 Per project rules: Celery + Redis for ALL background tasks from day one.
 """
 import logging
-import asyncio
 
 from backend.celery_app import celery_app
 from backend.services.gdpr_service import GDPRService

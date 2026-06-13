@@ -7,7 +7,6 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import JSONResponse
 
 from backend.db.connection import get_connection
 

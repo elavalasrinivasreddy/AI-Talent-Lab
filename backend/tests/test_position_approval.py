@@ -8,12 +8,9 @@ Covers:
   2. record_approval_decision('approved') → fires Celery sourcing.
   3. record_approval_decision('changes_requested') → does NOT fire sourcing.
 """
-import asyncio
-import json
 import pytest
 
 from backend.services import chat_service as _chat_service_module
-from backend.services import position_service as _pos_service_module
 from backend.services.positions import approvals as _pos_approvals_module
 from backend.services.chat_service import ChatService
 from backend.services.position_service import PositionService
@@ -48,6 +45,10 @@ class _FakeConn:
             if fragment.lower() in query.lower():
                 return result
         return None
+
+    async def fetchval(self, query, *args):
+        # Quota counters read via fetchval — a fresh mocked org has zero usage.
+        return 0
 
     async def fetch(self, query, *args):
         return []
@@ -303,7 +304,6 @@ async def test_approval_decision_approved_fires_sourcing(monkeypatch):
         pass
 
     # Also patch the import inside record_approval_decision
-    import importlib
     import sys
     import types
 

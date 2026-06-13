@@ -5,7 +5,7 @@ Implements two-step semantic ATS scoring per docs/architecture/03_backend.md §1
 import json
 import logging
 import math
-from typing import Optional, Any
+from typing import Optional
 
 from backend.adapters.llm.factory import get_llm, get_embedding_model
 from backend.config import settings
@@ -16,7 +16,6 @@ from backend.db.repositories.candidates import CandidateRepository
 from backend.db.repositories.positions import PositionRepository
 from backend.db.repositories.pipeline_events import PipelineEventRepository
 from backend.db.repositories.notifications import NotificationRepository
-from backend.db.repositories.audit import AuditLogRepository
 
 logger = logging.getLogger(__name__)
 

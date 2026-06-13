@@ -3,7 +3,6 @@ services/ops_service.py — Operational intelligence queries.
 """
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from backend.db.connection import get_connection
 

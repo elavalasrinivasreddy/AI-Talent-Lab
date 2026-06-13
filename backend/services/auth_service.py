@@ -27,7 +27,6 @@ from backend.exceptions import (
     AccountLockedError,
     NotFoundError,
     ValidationError,
-    MagicLinkExpiredError,
     MagicLinkUsedError,
 )
 from backend.services.email_service import EmailService

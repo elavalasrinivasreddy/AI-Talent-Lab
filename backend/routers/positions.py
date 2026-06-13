@@ -5,7 +5,7 @@ All routes under /api/v1/positions/
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 import asyncpg
 
@@ -51,12 +51,10 @@ async def list_positions(
 @router.get("/pending-count")
 async def pending_count(current_user=Depends(get_current_user)):
     """Count positions pending approval for this user."""
-    from backend.db.connection import get_connection
     org_id = current_user["org_id"]
     role = current_user.get("role")
     # JWT user dict uses key "dept_id" (not "department_id"); reading the wrong key
     # made team_lead/dept_admin always fall through to the org-wide count.
-    dept_id = current_user.get("dept_id")
     
     async with get_connection() as conn:
         if role == "org_head":
@@ -264,7 +262,6 @@ async def submit_for_approval(
     except PermissionError as e:
         raise HTTPException(status_code=403, detail={"error": {"code": "FORBIDDEN", "message": str(e), "details": None}})
 
-    from backend.db.connection import get_connection
     async with get_connection() as conn:
         final_status = await conn.fetchval(
             "SELECT approval_status FROM positions WHERE id=$1 AND org_id=$2",
@@ -412,7 +409,6 @@ async def same_title_check(
     current_user=Depends(get_current_user),
 ):
     """Check if a position with the same title already exists in the org."""
-    from backend.db.connection import get_connection
     from backend.db.repositories.positions import PositionRepository as PosRepo
     async with get_connection() as conn:
         pos = await PosRepo.get(conn, position_id, current_user["org_id"])
@@ -488,7 +484,6 @@ async def get_pipeline_summary(
     Returns per-stage counts + delta_today, avg time in stage, AI confidence,
     pass-through rate, and saturation.
     """
-    from backend.db.connection import get_connection
     async with get_connection() as conn:
         pos = await conn.fetchrow(
             "SELECT id, headcount FROM positions WHERE id = $1 AND org_id = $2",

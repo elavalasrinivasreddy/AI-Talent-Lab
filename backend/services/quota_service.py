@@ -73,7 +73,8 @@ class QuotaService:
     @staticmethod
     async def get_org_plan(conn: asyncpg.Connection, org_id: int) -> str:
         row = await conn.fetchrow("SELECT plan FROM organizations WHERE id = $1", org_id)
-        return plans.normalize_plan(row["plan"] if row else None)
+        # .get() so a row without the column (e.g. a mocked conn) falls back to default.
+        return plans.normalize_plan(row.get("plan") if row else None)
 
     @staticmethod
     async def _llm_budget_for(conn: asyncpg.Connection, org_id: int, plan: str) -> float:
@@ -81,7 +82,7 @@ class QuotaService:
         row = await conn.fetchrow(
             "SELECT llm_monthly_budget_usd FROM organizations WHERE id = $1", org_id
         )
-        override = row["llm_monthly_budget_usd"] if row else None
+        override = row.get("llm_monthly_budget_usd") if row else None
         if override is not None:
             return float(override)
         return float(plans.limit_for(plan, "llm_monthly_budget_usd"))
@@ -90,7 +91,7 @@ class QuotaService:
     @staticmethod
     async def count_active_positions(conn: asyncpg.Connection, org_id: int) -> int:
         return int(await conn.fetchval(
-            f"""
+            """
             SELECT COUNT(*) FROM positions
             WHERE org_id = $1
               AND COALESCE(status, 'draft') != ALL($2::text[])

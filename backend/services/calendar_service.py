@@ -10,7 +10,6 @@ GoogleCalendarAdapter: placeholder — requires GOOGLE_CALENDAR_CREDENTIALS env 
 import logging
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

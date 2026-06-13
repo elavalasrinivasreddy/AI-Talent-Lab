@@ -8,7 +8,6 @@ entry point that routers/tests import; it carries no logic of its own and exists
 only to compose the decomposed mixins below. Add new behaviour to the relevant
 `positions/*` module, not here.
 """
-from typing import Optional
 
 from backend.services.positions.crud import PositionCRUD
 from backend.services.positions.pipeline import PositionPipeline

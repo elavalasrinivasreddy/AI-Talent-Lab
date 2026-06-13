@@ -4,8 +4,9 @@
 > Restructured 2026-06-13 into a phase-wise tracker (Phases A–F) with per-phase completion counts.
 > Older snapshots live in [`archive/`](archive/).
 >
-> **Last updated:** 2026-06-13 · **Branch:** `feature/phase2-items` · verified against code + commit log.
-> **Sprints 1–4 closed** — front door (S1), **SaaS layer/billing (S2, bug log #247–#251)**, code-review quality (S3, #228–#238), Phase-D QA (S4, #239–#246). See [`../TODO.md`](../TODO.md).
+> **Last updated:** 2026-06-13 · **Branch:** `refactor/service-decomposition` · verified against code + commit log.
+> **Sprints 1–4 closed** — front door (S1), **SaaS layer/billing (S2, bug log #247–#251)**, code-review quality (S3, #228–#238), Phase-D QA (S4, #239–#246).
+> **Sprint-closure review 2026-06-13** — adversarial review of Sprint 2 billing/quota code found 3 new bugs (#252–#254) and fixed them: `BillingService` plan-validation dead code + idempotency gap on confirm; `AuditTab` CSV injection. All items now green. See [`qa/bug_fixes_log.md`](qa/bug_fixes_log.md).
 
 ---
 
@@ -107,7 +108,7 @@ This is the gap between "product" and "business."
 | # | Item | Status | Notes |
 |---|---|---|---|
 | F1 | Landing page + pricing + demo booking | ⚠️ | **Folded into the SPA 2026-06-13** (Sprint 1 — not a separate static site): `/` + `/pricing` public routes in `frontend/src/components/Marketing/`, pricing mirrors roadmap tiers. Code done + builds clean. Needs: hosting + Calendly URL swap (in `MarketingChrome.jsx`) |
-| F2 | Billing (Razorpay) + plan/quota enforcement + **LLM spend caps per org** | ⚠️ | **Built 2026-06-13 (Sprint 2, bug log #247–#249).** Plan/quota enforcement (`services/plans.py` + `quota_service.py`, soft-warn→hard-block 402s; gates positions/seats/applications); per-org monthly **LLM budget** (COGS risk closed — `BudgetExceededError`, hard-stop in JD chat); Razorpay adapter **simulation-first** (`adapters/billing/*` + `routers/billing.py`, full checkout→invoice→plan flow works in sim). Tests: `test_quota.py`, `test_billing.py`. **Remaining before ✅:** Razorpay **KYC + live keys** (multi-week, start now) and a live pytest run (needs Docker/Postgres) |
+| F2 | Billing (Razorpay) + plan/quota enforcement + **LLM spend caps per org** | ⚠️ | **Built 2026-06-13 (Sprint 2, bug log #247–#249).** Plan/quota enforcement (`services/plans.py` + `quota_service.py`, soft-warn→hard-block 402s; gates positions/seats/applications); per-org monthly **LLM budget** (COGS risk closed — `BudgetExceededError`, hard-stop in JD chat); Razorpay adapter **simulation-first** (`adapters/billing/*` + `routers/billing.py`, full checkout→invoice→plan flow works in sim). Tests: `test_quota.py`, `test_billing.py`. **2 edge-case bugs fixed 2026-06-13 (review #252–#253):** silent plan fallback in `start_checkout` + idempotency gap in `confirm`. **Remaining before ✅:** Razorpay **KYC + live keys** (`BILLING_PROVIDER=razorpay`) and a live pytest run (needs Docker/Postgres) |
 | F3 | ToS + privacy policy pages | ⚠️ | Drafted 2026-06-13, served in-app at `/legal/*` (linked from apply consent, career page, status page). Needs: [PLACEHOLDER] fill + lawyer review |
 | F4 | Email deliverability runbook (SPF/DKIM, domain warm-up) | ❌ | Outreach lands in spam without it |
 | F5 | Self-serve onboarding (seeded demo org, first-run checklist) | ❌ | Activation target: first JD + first application ≤ 7 days |

@@ -1,6 +1,5 @@
 import asyncpg
-import json
-from typing import Optional, List, Dict
+from typing import Optional
 
 class ApplicationRepository:
     

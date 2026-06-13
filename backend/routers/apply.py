@@ -7,7 +7,6 @@ import logging
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from pydantic import BaseModel
-from typing import Optional
 
 from backend.services.apply_service import ApplyService
 from backend.services.resume_service import extract_resume_text, validate_resume_file
@@ -256,7 +255,6 @@ async def get_application_status(token: str, request: Request):
 
     from backend.db.connection import get_connection
     from backend.db.repositories.applications import ApplicationRepository
-    import json as _json
 
     app_id = context.get("application_id")
     org_id = context.get("org", {}).get("id")

@@ -2,7 +2,6 @@
 routers/chat.py – API Endpoints for the Recruiter JD Generation chat.
 Includes SSE streaming for `/stream` and endpoints to save final position.
 """
-import uuid
 from typing import Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, Request, Body, UploadFile, File
 from fastapi.responses import StreamingResponse
