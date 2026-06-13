@@ -12,7 +12,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from backend.exceptions import InsufficientPermissionsError
-from backend.services.hire_request_service import HireRequestService, _BadTransitionError
+from backend.services.hire_request_service import HireRequestService
+from backend.services.hire_requests.crud import _BadTransitionError
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
