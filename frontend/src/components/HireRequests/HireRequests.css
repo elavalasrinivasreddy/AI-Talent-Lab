@@ -671,6 +671,27 @@
   background: var(--color-bg-card);
 }
 
+/* Invalid field highlighting (set via aria-invalid on submit). */
+.hr-field input[aria-invalid="true"],
+.hr-field select[aria-invalid="true"],
+.hr-field textarea[aria-invalid="true"] {
+  border-color: var(--color-danger, #EF4444);
+}
+
+.hr-field input[aria-invalid="true"]:focus,
+.hr-field select[aria-invalid="true"]:focus,
+.hr-field textarea[aria-invalid="true"]:focus {
+  border-color: var(--color-danger, #EF4444);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+}
+
+.hr-field-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-danger, #EF4444);
+}
+
 .hr-field-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

@@ -8,6 +8,8 @@ export default function CareerBrandTab({ onPreviewUpdate }) {
     career_primary_color: '#0D9488',
     career_banner_url: '',
     career_tagline: '',
+    benefits_text: '',
+    culture_keywords: '',
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -21,6 +23,8 @@ export default function CareerBrandTab({ onPreviewUpdate }) {
         career_primary_color: org.career_primary_color || '#0D9488',
         career_banner_url: org.career_banner_url || '',
         career_tagline: org.career_tagline || '',
+        benefits_text: org.benefits_text || '',
+        culture_keywords: org.culture_keywords || '',
       })
     }).catch(() => {})
   }, [])
@@ -40,6 +44,8 @@ export default function CareerBrandTab({ onPreviewUpdate }) {
         career_primary_color: branding.career_primary_color ?? '',
         career_banner_url: branding.career_banner_url ?? '',
         career_tagline: branding.career_tagline ?? '',
+        benefits_text: branding.benefits_text ?? '',
+        culture_keywords: branding.culture_keywords ?? '',
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -123,6 +129,35 @@ export default function CareerBrandTab({ onPreviewUpdate }) {
             placeholder="Join us and build something great."
           />
           <p className="settings-hint">Shown below your org name on the career page. Max 100 characters.</p>
+        </div>
+
+        <div className="settings-field">
+          <label className="settings-label">Culture Keywords</label>
+          <input
+            className="settings-input"
+            type="text"
+            value={branding.culture_keywords || ''}
+            onChange={e => setBranding(b => ({ ...b, culture_keywords: e.target.value }))}
+            placeholder="Innovation, Collaboration, Ownership, Fast Pace"
+          />
+          <p className="settings-hint">
+            Comma-separated keywords shown as tags on the career page under "Life at {branding.name}". Leave blank to hide this section.
+          </p>
+        </div>
+
+        <div className="settings-field">
+          <label className="settings-label">Perks & Benefits</label>
+          <textarea
+            className="settings-input"
+            rows={3}
+            value={branding.benefits_text || ''}
+            onChange={e => setBranding(b => ({ ...b, benefits_text: e.target.value }))}
+            placeholder="We offer competitive salaries, flexible remote work, generous PTO, and a culture that values ownership and growth."
+            style={{ resize: 'vertical', minHeight: 80 }}
+          />
+          <p className="settings-hint">
+            A short description of your perks and culture. Shown on the career page under "Life at {branding.name}". Leave blank to hide.
+          </p>
         </div>
 
         <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
