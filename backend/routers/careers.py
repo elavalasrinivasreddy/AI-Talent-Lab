@@ -208,9 +208,11 @@ async def start_application(org_slug: str, position_id: int, req: StartApplicati
             from backend.services.quota_service import QuotaService
             await QuotaService.enforce_candidates(conn, org["id"])
             app = await conn.fetchrow(
-                "INSERT INTO candidate_applications (org_id, department_id, candidate_id, position_id, status) VALUES ($1, $2, $3, $4, 'sourced') RETURNING id",
+                "INSERT INTO candidate_applications (org_id, department_id, candidate_id, position_id, status) VALUES ($1, $2, $3, $4, 'sourced') ON CONFLICT (candidate_id, position_id) DO UPDATE SET candidate_id=EXCLUDED.candidate_id RETURNING id",
                 org["id"], pos["department_id"], candidate["id"], position_id
             )
+            if not app:
+                raise HTTPException(status_code=500, detail={"code": "APPLICATION_CREATION_FAILED", "message": "Failed to create or retrieve application."})
 
     # Generate the standard apply token
     token = generate_apply_token(

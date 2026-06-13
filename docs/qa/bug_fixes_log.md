@@ -4400,3 +4400,18 @@ Replaced the plain `INSERT INTO candidates ... RETURNING id` with an upsert patt
 - `backend/routers/careers.py`
 
 ---
+
+## 258. Race Condition in Candidate Applications Creation (`NoneType` is not subscriptable)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+Following bug 257, users encountered a nearly identical error: `TypeError: 'NoneType' object is not subscriptable` at `app["id"]` on line 217 in `backend/routers/careers.py`. This occurred for the exact same reason: a "find or create" race condition, this time for the `candidate_applications` table. Two concurrent requests for the same candidate and position both evaluate `if not app:` to true, and both try to `INSERT`. The second `INSERT` hits the `UNIQUE (candidate_id, position_id)` constraint, resulting in `app` being `None` after `fetchrow`.
+
+**Idea / Solution:**
+Applied the same upsert pattern to the application insertion query: `ON CONFLICT (candidate_id, position_id) DO UPDATE SET candidate_id=EXCLUDED.candidate_id RETURNING id`. This guarantees that the database always returns the application record ID, even if another thread inserted it milliseconds prior. Added an HTTP 500 safety check.
+
+**Files Modified:**
+- `backend/routers/careers.py`
+
+---
