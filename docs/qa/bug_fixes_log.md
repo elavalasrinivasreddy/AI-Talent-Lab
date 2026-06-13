@@ -4368,3 +4368,35 @@ Configured a deliberate lint policy in `pyproject.toml` (`[tool.ruff.lint]`): ke
 
 ---
 
+
+## 256. Public Career Page Empty Results + RLS Empty String Crash
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+The public endpoint `/api/v1/careers/{org_slug}` threw an `InvalidTextRepresentationError: invalid input syntax for type integer: ""` during SQL queries. This happened because the pool reset `app.current_org_id` to an empty string, and the legacy RLS policies tried to cast it to an integer. Even after fixing the RLS policies in the database to use `NULLIF`, the career page returned 0 results because the public route connected under the RLS-restricted app role without setting a JWT org context.
+
+**Idea / Solution:**
+1. Ran a script to update local Postgres RLS policies to use the correct `NULLIF(current_setting('app.current_org_id', true), '')::int` syntax originally introduced in migrations (which were skipped due to `IF NOT EXISTS`).
+2. Changed `get_connection()` to `get_admin_connection()` in `backend/routers/careers.py` for public endpoints (`get_career_page`, `get_position_detail`, `start_application`, `get_career_fit`). This properly bypasses RLS for these unauthenticated surfaces that rely on explicitly parameterized `WHERE org_id=$1` clauses instead of JWTs.
+
+**Files Modified:**
+- `backend/routers/careers.py` (switched to get_admin_connection)
+- Database schema (local RLS policy recreation)
+
+---
+
+## 257. Race Condition in Candidate Creation (`NoneType` is not subscriptable)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+Users encountered `TypeError: 'NoneType' object is not subscriptable` at `candidate["id"]` in `start_application` (`backend/routers/careers.py`). This was caused by a classic "find or create" race condition. If two requests for the same candidate email arrived simultaneously, both `SELECT` queries returned `None`. The first `INSERT` succeeded, but the second `INSERT` raised a `UniqueViolation` (or returned nothing if intercepted), resulting in `candidate` being `None` when accessed on the next line.
+
+**Idea / Solution:**
+Replaced the plain `INSERT INTO candidates ... RETURNING id` with an upsert pattern: `ON CONFLICT (org_id, email) DO UPDATE SET name=EXCLUDED.name RETURNING id`. This guarantees that even in the case of concurrent requests, the query returns a valid candidate record with its ID. Added a fallback 500 error check just in case it still returns `None`.
+
+**Files Modified:**
+- `backend/routers/careers.py`
+
+---

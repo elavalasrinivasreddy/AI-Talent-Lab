@@ -8,7 +8,7 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
-from backend.db.connection import get_connection
+from backend.db.connection import get_connection, get_admin_connection
 
 router = APIRouter(prefix="/api/v1/careers", tags=["Careers"])
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ async def get_career_page(
     Public career page for an organization.
     Returns org info + all open positions that have is_on_career_page=true.
     """
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         org = await conn.fetchrow(
             """
             SELECT id, name, logo_url, about_us, culture_keywords,
@@ -122,7 +122,7 @@ async def get_position_detail(org_slug: str, position_id: int):
     Public job description page for a specific open position.
     Returns full JD markdown, org context, apply info.
     """
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         org = await conn.fetchrow(
             "SELECT id, name, logo_url, about_us FROM organizations WHERE slug=$1",
             org_slug.lower()
@@ -168,7 +168,7 @@ async def start_application(org_slug: str, position_id: int, req: StartApplicati
     Creates a candidate (if new) and an application, then returns a standard apply token.
     """
     from backend.services.apply_service import generate_apply_token
-    from backend.db.connection import get_connection as gc
+    from backend.db.connection import get_admin_connection as gc
 
     async with gc() as conn:
         org = await conn.fetchrow(
@@ -191,9 +191,11 @@ async def start_application(org_slug: str, position_id: int, req: StartApplicati
         )
         if not candidate:
             candidate = await conn.fetchrow(
-                "INSERT INTO candidates (org_id, name, email, source) VALUES ($1, $2, $3, 'career_page') RETURNING id",
+                "INSERT INTO candidates (org_id, name, email, source) VALUES ($1, $2, $3, 'career_page') ON CONFLICT (org_id, email) DO UPDATE SET name=EXCLUDED.name RETURNING id",
                 org["id"], req.name, req.email
             )
+            if not candidate:
+                raise HTTPException(status_code=500, detail={"code": "CANDIDATE_CREATION_FAILED", "message": "Failed to create or retrieve candidate."})
 
         # Check if already applied
         app = await conn.fetchrow(
@@ -231,7 +233,7 @@ async def get_career_fit(
     """
     Returns ranked positions matching the fit-filter selection.
     """
-    async with get_connection() as conn:
+    async with get_admin_connection() as conn:
         org = await conn.fetchrow("SELECT id FROM organizations WHERE slug=$1", org_slug.lower())
         if not org:
             raise HTTPException(status_code=404, detail={"code": "ORG_NOT_FOUND", "message": "Organization not found"})
