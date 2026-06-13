@@ -1,13 +1,15 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { MarketingNav, MarketingFooter, BOOKING_URL } from './MarketingChrome'
 import '../../styles/marketing.css'
 
 /**
  * / — public landing page (Sprint 1, F1).
- * Front door of the sales path: landing → pricing → demo / sign-up.
- * Voice + claims mirror the auth shell pitch so the funnel feels continuous.
+ * v2: Premium redesign with CSS chat preview, scroll animations,
+ * capability badges (no fake metrics), and distinct voice from auth shell.
  */
 
+/* ── Feature data ─────────────────────────────────────────────────────── */
 const FEATURES = [
   {
     title: 'AI JD generation',
@@ -41,6 +43,71 @@ const FEATURES = [
   },
 ]
 
+const HOW_IT_WORKS = [
+  {
+    num: '1',
+    title: 'Describe your role',
+    body: 'Chat with the AI recruiter. It extracts role details, checks internal context, and writes a polished JD in minutes.',
+  },
+  {
+    num: '2',
+    title: 'AI sources & scores',
+    body: 'Background agents search candidates, parse resumes, generate match scores, and send outreach — all autonomously.',
+  },
+  {
+    num: '3',
+    title: 'You make the call',
+    body: 'Review scored candidates in a Kanban pipeline. Schedule interviews, collect panel feedback, and extend offers.',
+  },
+]
+
+const PERSONAS = [
+  {
+    emoji: '🚀',
+    title: 'Startup founders',
+    body: 'Hire your first 10 without a recruiting team. The AI handles the grunt work.',
+  },
+  {
+    emoji: '👥',
+    title: 'HR & TA leads',
+    body: 'Replace the spreadsheet-email-ATS juggle with one conversational pipeline.',
+  },
+  {
+    emoji: '🏢',
+    title: 'Growing orgs',
+    body: 'Org-scoped isolation, department controls, and audit logs for scaling teams.',
+  },
+]
+
+const CAPABILITIES = [
+  { label: '5-stage JD generation', icon: 'M9 12l2 2 4-4' },
+  { label: 'Zero-form candidate apply', icon: 'M9 12l2 2 4-4' },
+  { label: 'Full Kanban pipeline', icon: 'M9 12l2 2 4-4' },
+  { label: 'AI resume scoring', icon: 'M9 12l2 2 4-4' },
+  { label: 'Magic-link panel feedback', icon: 'M9 12l2 2 4-4' },
+]
+
+/* ── Chat conversation for hero ───────────────────────────────────────── */
+const CHAT_MESSAGES = [
+  {
+    type: 'ai',
+    text: "Hi! I'm your AI recruiter. What role are you looking to fill?",
+  },
+  {
+    type: 'user',
+    text: 'We need a Senior Backend Engineer — Python, distributed systems, 4+ years.',
+  },
+  {
+    type: 'ai',
+    text: "Got it. I've extracted the role details. Let me check your org context and benchmark against the market...",
+  },
+  {
+    type: 'ai',
+    text: '✅ JD ready — with tech stack, team fit signals, and a competitive salary band. Want me to start sourcing?',
+  },
+]
+
+/* ── Helper components ────────────────────────────────────────────────── */
 function FeatureIcon({ d }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -50,45 +117,148 @@ function FeatureIcon({ d }) {
   )
 }
 
-export default function LandingPage() {
+function CapIcon({ d }) {
   return (
-    <div className="mkt">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" strokeWidth="0" fill="none" />
+      <path d={d} />
+    </svg>
+  )
+}
+
+/**
+ * IntersectionObserver hook for scroll-triggered reveal.
+ * Elements with class `mkt-reveal` get `visible` added when in view.
+ */
+function useScrollReveal() {
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible')
+          }
+        })
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+    )
+
+    const els = container.querySelectorAll('.mkt-reveal')
+    els.forEach((el) => observer.observe(el))
+
+    return () => observer.disconnect()
+  }, [])
+
+  return containerRef
+}
+
+/* ── Main component ───────────────────────────────────────────────────── */
+export default function LandingPage() {
+  const revealRef = useScrollReveal()
+
+  return (
+    <div className="mkt" ref={revealRef}>
+      {/* Animated background orbs */}
+      <div className="mkt-orb mkt-orb--a" aria-hidden="true" />
+      <div className="mkt-orb mkt-orb--b" aria-hidden="true" />
+      <div className="mkt-orb mkt-orb--c" aria-hidden="true" />
+
       <MarketingNav />
 
       <main className="mkt-main">
-        {/* Hero */}
+        {/* ── Hero ──────────────────────────────────────────────── */}
         <section className="mkt-hero">
-          <span className="mkt-eyebrow">Conversational AI hiring platform</span>
+          <span className="mkt-eyebrow">
+            <span className="mkt-eyebrow-dot" aria-hidden="true" />
+            Conversational AI hiring platform
+          </span>
+
           <h1>
-            Hire is a verb.<br />
-            Make it your <span className="grad">favorite.</span>
+            Your next hire starts<br />
+            with a <span className="grad">conversation.</span>
           </h1>
+
           <p className="mkt-hero-sub">
-            AI sources, screens, scores, and schedules. You make the call. Together you
-            ship far more hires — without the busywork, the spreadsheets, or the ghosting.
+            Describe the role in plain language. The AI writes the JD, sources candidates,
+            scores resumes, and manages the pipeline — so you focus on the people, not the process.
           </p>
+
           <div className="mkt-hero-cta">
             <Link to="/register" className="mkt-btn mkt-btn-primary mkt-btn-lg">Start free</Link>
             <a href={BOOKING_URL} className="mkt-btn mkt-btn-ghost mkt-btn-lg">Book a demo</a>
           </div>
+
           <p className="mkt-hero-note">Free plan, no card required · 2 active positions · 50 candidates/mo</p>
 
-          <ul className="mkt-stats" aria-label="Product highlights">
-            <li><strong>200+</strong><span>Hiring teams onboard</span></li>
-            <li><strong>38d</strong><span>Avg time saved per req</span></li>
-            <li><strong>94%</strong><span>Candidate response NPS</span></li>
-          </ul>
+          {/* Capability badges (real, not fake metrics) */}
+          <div className="mkt-caps" aria-label="Platform capabilities">
+            {CAPABILITIES.map((c) => (
+              <span className="mkt-cap" key={c.label}>
+                <span className="mkt-cap-icon"><CapIcon d={c.icon} /></span>
+                {c.label}
+              </span>
+            ))}
+          </div>
+
+          {/* CSS-rendered chat preview */}
+          <div className="mkt-hero-preview" aria-label="Product preview">
+            <div className="mkt-chat-window">
+              <div className="mkt-chat-titlebar">
+                <div className="mkt-chat-dots">
+                  <span /><span /><span />
+                </div>
+                <span className="mkt-chat-title">AI Talent Lab — New Position</span>
+                <div style={{ width: 42 }} />
+              </div>
+              <div className="mkt-chat-body">
+                {CHAT_MESSAGES.map((msg, i) => (
+                  <div className={`mkt-chat-msg mkt-chat-msg--${msg.type}`} key={i}>
+                    <div className="mkt-chat-avatar">
+                      {msg.type === 'ai' ? 'AI' : 'You'}
+                    </div>
+                    <div className="mkt-chat-bubble">{msg.text}</div>
+                  </div>
+                ))}
+                <div className="mkt-chat-typing">
+                  <span /><span /><span />
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
-        {/* Features */}
+        {/* ── How it works ──────────────────────────────────────── */}
+        <section className="mkt-how" id="how">
+          <div className="mkt-section-head mkt-reveal">
+            <h2>Three steps. Zero busywork.</h2>
+            <p>From job description to hired candidate — the AI handles the heavy lifting at every stage.</p>
+          </div>
+          <div className="mkt-how-steps mkt-reveal-stagger">
+            {HOW_IT_WORKS.map((step) => (
+              <div className="mkt-how-step mkt-reveal" key={step.num}>
+                <div className="mkt-how-num">{step.num}</div>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Features ──────────────────────────────────────────── */}
         <section className="mkt-section" id="features">
-          <div className="mkt-section-head">
+          <div className="mkt-section-head mkt-reveal">
             <h2>One platform, the whole hire</h2>
             <p>From the first JD to the signed offer — every step is AI-assisted and org-scoped.</p>
           </div>
-          <div className="mkt-grid">
+          <div className="mkt-grid mkt-reveal-stagger">
             {FEATURES.map((f) => (
-              <article className="mkt-card" key={f.title}>
+              <article className="mkt-card mkt-reveal" key={f.title}>
                 <div className="mkt-card-icon"><FeatureIcon d={f.icon} /></div>
                 <h3>{f.title}</h3>
                 <p>{f.body}</p>
@@ -97,14 +267,32 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* CTA band */}
-        <section className="mkt-cta-band">
+        {/* ── Who it's for ──────────────────────────────────────── */}
+        <section className="mkt-section">
+          <div className="mkt-section-head mkt-reveal">
+            <h2>Built for teams that move fast</h2>
+            <p>Whether you're hiring your first engineer or scaling across departments.</p>
+          </div>
+          <div className="mkt-personas mkt-reveal-stagger">
+            {PERSONAS.map((p) => (
+              <div className="mkt-persona mkt-reveal" key={p.title}>
+                <span className="mkt-persona-emoji" aria-hidden="true">{p.emoji}</span>
+                <h3>{p.title}</h3>
+                <p>{p.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── CTA band ──────────────────────────────────────────── */}
+        <section className="mkt-cta-band mkt-reveal">
           <h2>See it on your own roles</h2>
-          <p>Spin up a workspace in minutes, or grab one of three founder-pilot slots.</p>
+          <p>Spin up a workspace in minutes. Early adopter orgs get 3 founder-pilot seats with priority support and extended quotas.</p>
           <div className="mkt-hero-cta">
             <Link to="/register" className="mkt-btn mkt-btn-primary mkt-btn-lg">Create a workspace</Link>
             <Link to="/pricing" className="mkt-btn mkt-btn-ghost mkt-btn-lg">See pricing</Link>
           </div>
+          <p className="mkt-cta-note">Founder-pilot slots are limited — first come, first served.</p>
         </section>
       </main>
 

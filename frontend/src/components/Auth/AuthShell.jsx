@@ -14,6 +14,25 @@ export default function AuthShell({ children, mode }) {
   return (
     <div className="auth-shell" data-mode={mode}>
       <aside className="auth-pitch">
+        <div className="auth-pitch-bg-anim" aria-hidden="true">
+          <div className="auth-pitch-track track-1">
+            <div className="auth-bg-card type-jd" />
+            <div className="auth-bg-card type-candidate" />
+            <div className="auth-bg-card type-score" />
+            <div className="auth-bg-card type-jd" />
+            <div className="auth-bg-card type-candidate" />
+            <div className="auth-bg-card type-score" />
+          </div>
+          <div className="auth-pitch-track track-2">
+            <div className="auth-bg-card type-offer" />
+            <div className="auth-bg-card type-jd" />
+            <div className="auth-bg-card type-candidate" />
+            <div className="auth-bg-card type-offer" />
+            <div className="auth-bg-card type-jd" />
+            <div className="auth-bg-card type-candidate" />
+          </div>
+        </div>
+
         <div className="auth-pitch-orb auth-pitch-orb-a" aria-hidden="true" />
         <div className="auth-pitch-orb auth-pitch-orb-b" aria-hidden="true" />
 
@@ -29,35 +48,40 @@ export default function AuthShell({ children, mode }) {
 
           <div className="auth-pitch-body">
             <h1 className="auth-pitch-h1">
-              Hire is a verb.
+              You&apos;re in the
               <br />
-              Let&apos;s make it your favorite.
+              right place.
             </h1>
             <p className="auth-pitch-sub">
-              AI sources, screens, scores and schedules. You make the call.
-              Together you ship 10× more hires — without the busywork.
+              One AI-powered workspace for your entire hiring loop —
+              from writing the JD to extending the offer. No spreadsheets,
+              no juggling tools, no ghosting.
             </p>
 
-            <ul className="auth-pitch-stats" aria-label="Product highlights">
+            <ul className="auth-pitch-caps" aria-label="What you get">
               <li>
-                <strong>200+</strong>
-                <span>Hiring teams onboard</span>
+                <span className="auth-cap-check" aria-hidden="true">✓</span>
+                <span>Chat-based JD generation in minutes</span>
               </li>
               <li>
-                <strong>38d</strong>
-                <span>Avg time saved per req</span>
+                <span className="auth-cap-check" aria-hidden="true">✓</span>
+                <span>AI sourcing, scoring &amp; outreach</span>
               </li>
               <li>
-                <strong>94%</strong>
-                <span>Candidate response NPS</span>
+                <span className="auth-cap-check" aria-hidden="true">✓</span>
+                <span>Candidate apply via chat — zero forms</span>
+              </li>
+              <li>
+                <span className="auth-cap-check" aria-hidden="true">✓</span>
+                <span>Panel feedback with magic links</span>
               </li>
             </ul>
           </div>
 
           <div className="auth-pitch-trust">
-            <span className="auth-trust-badge">SOC 2 Type II</span>
-            <span className="auth-trust-badge">GDPR + DPDP</span>
-            <span className="auth-trust-badge">ISO 27001 (in progress)</span>
+            <span className="auth-trust-badge">Designed for SOC 2</span>
+            <span className="auth-trust-badge">GDPR + DPDP ready</span>
+            <span className="auth-trust-badge">ISO 27001 aligned</span>
           </div>
         </div>
       </aside>

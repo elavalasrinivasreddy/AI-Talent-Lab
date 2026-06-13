@@ -99,7 +99,7 @@
   --radius-lg: 14px;
   --radius-xl: 18px;
   --radius-2xl: 24px;
-  --radius-full: 50%;
+  --radius-full: 9999px; /* Changed from 50% to render pill shapes correctly */
 
   /* ── Shadows ────────────────────────────────── */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.32);

@@ -4415,3 +4415,30 @@ Applied the same upsert pattern to the application insertion query: `ON CONFLICT
 - `backend/routers/careers.py`
 
 ---
+
+## 259. Fix squashed oval shapes for UI pills/chips
+
+**Problem Statement:**
+UI chips (like capabilities on the landing page or GDPR labels) were rendering as squashed ovals instead of pill shapes. This occurred because the CSS variable `--radius-full` was set to `50%`. While `50%` creates a circle for perfectly square elements, it creates a stretched ellipse for rectangular elements.
+
+**Idea / Solution:**
+Changed `--radius-full` to `9999px` in `globals.css` to force the browser to render perfect pill shapes regardless of width. Also added an inner highlight to `.mkt-cap` in `marketing.css` for a more premium glass effect.
+
+**Files Modified:**
+- `frontend/src/styles/globals.css`
+- `frontend/src/styles/marketing.css`
+
+---
+
+## 260. Fix dull "Get started" button contrast (CSS Specificity Conflict)
+
+**Problem Statement:**
+The "Get started" primary button in the marketing navigation bar looked dull because the text color was semi-transparent gray instead of bright white. This was due to a CSS specificity conflict where the `.mkt-nav-links a` selector (`0,1,1`) overrode the `.mkt-btn-primary` class (`0,1,0`).
+
+**Idea / Solution:**
+Updated the CSS selector to `.mkt-nav-links a:not(.mkt-btn)` so it exclusively targets text links and prevents applying the secondary text color to styled buttons.
+
+**Files Modified:**
+- `frontend/src/styles/marketing.css`
+
+---

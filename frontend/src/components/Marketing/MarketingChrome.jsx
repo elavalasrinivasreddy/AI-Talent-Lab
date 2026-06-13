@@ -8,7 +8,7 @@ import { LogoMark } from '../Auth/authIcons'
  * Demo bookings go through BOOKING_URL. Sprint 1 (F1) ships this as a mailto
  * placeholder; swap to the Calendly link when the 3 pilot slots are live.
  */
-export const BOOKING_URL = 'mailto:founders@aitalentlab.com?subject=AI%20Talent%20Lab%20demo'
+export const BOOKING_URL = 'mailto:founders@aitalentlab.com?subject=AI%20Talent%20Lab%20Demo%20Request&body=Hi%2C%0A%0AI%27d%20like%20to%20book%20a%20demo%20of%20AI%20Talent%20Lab.%0A%0ACompany%3A%20%0ATeam%20size%3A%20%0ACurrent%20hiring%20volume%3A%20%0ABest%20time%20to%20connect%3A%20%0A%0AThanks!'
 
 export function MarketingNav() {
   return (
@@ -39,9 +39,9 @@ export function MarketingFooter() {
         </nav>
       </div>
       <div className="mkt-trust">
-        <span className="mkt-trust-badge">SOC 2 Type II</span>
-        <span className="mkt-trust-badge">GDPR + DPDP</span>
-        <span className="mkt-trust-badge">ISO 27001 (in progress)</span>
+        <span className="mkt-trust-badge">Designed for SOC 2</span>
+        <span className="mkt-trust-badge">GDPR + DPDP ready</span>
+        <span className="mkt-trust-badge">ISO 27001 aligned</span>
       </div>
     </footer>
   )
