@@ -31,3 +31,6 @@ backend/dist/
 frontend/dist/
 .gstack/
 NAME.jpg
+
+# Testing coverage
+.coverage
