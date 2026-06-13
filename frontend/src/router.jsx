@@ -40,6 +40,8 @@ const CandidateLogin = lazy(() => import('./pages/CandidatePortal/CandidateLogin
 const CandidateDashboard = lazy(() => import('./pages/CandidatePortal/CandidateDashboard'))
 const PreEvaluationPage = lazy(() => import('./pages/CandidatePortal/PreEvaluationPage'))
 const PositionsListPage    = lazy(() => import('./components/Positions/PositionsListPage'))
+const LandingPage          = lazy(() => import('./components/Marketing/LandingPage'))
+const PricingPage          = lazy(() => import('./components/Marketing/PricingPage'))
 
 // ── Shared fallback ──────────────────────────────────────────────────────────
 const PageLoading = (
@@ -137,7 +139,12 @@ function AppLayout() {
 // ── Router ──────────────────────────────────────
 
 export const router = createBrowserRouter([
-  // Public routes
+  // Marketing — public front door, visible to everyone (logged in or not).
+  // Kept outside PublicGuard so authenticated users can still browse / and /pricing.
+  { path: '/', element: <Suspense fallback={PageLoading}><LandingPage /></Suspense> },
+  { path: '/pricing', element: <Suspense fallback={PageLoading}><PricingPage /></Suspense> },
+
+  // Auth routes — redirect already-authenticated users into the app
   {
     element: <PublicGuard />,
     children: [
@@ -253,6 +260,6 @@ export const router = createBrowserRouter([
   { path: '/candidate/login', element: <Suspense fallback={PageLoading}><CandidateLogin /></Suspense> },
   { path: '/candidate/dashboard', element: <Suspense fallback={PageLoading}><CandidateDashboard /></Suspense> },
 
-  // Catch-all
-  { path: '*', element: <Navigate to="/login" replace /> },
+  // Catch-all — unknown paths land on the marketing front door
+  { path: '*', element: <Navigate to="/" replace /> },
 ])

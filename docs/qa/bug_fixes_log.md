@@ -3923,3 +3923,25 @@ Replaced the native prompt with the existing `ConfirmModal`, extended with an op
 **Files Modified:**
 - `frontend/src/components/common/ConfirmModal.jsx` (added optional `children` slot)
 - `frontend/src/components/Positions/tabs/PipelineTab.jsx` (state + ConfirmModal wiring; removed `window.prompt`)
+
+---
+
+## 229. Test Suite — Filled 5 Stub Endpoint Suites + Rate-Limiter Throttled Tests (Q1)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+Five backend test files (`test_positions.py`, `test_interviews.py`, `test_talent_pool.py`, `test_settings.py`, `test_dashboard.py`) were empty stubs (`# TODO: Implement`), leaving those routers untested (Q1). Separately, once real tests were added, running them together surfaced a latent test-infra bug: the auth routes carry a `10 requests / minute / IP` slowapi limit, and because every test registers/logs in from the same loopback IP, the 11th+ auth call returned `429 Too Many Requests` at fixture setup — failing later tests non-deterministically and making the suite order-dependent.
+
+**Idea / Solution:**
+Implemented real tests for all five suites against the verified endpoint contracts — auth enforcement (401 without token) plus fresh-org happy-path response shapes; `test_settings` additionally does a create→list department round-trip (exercising `require_org_head`, since the first registered user is an `org_head`). Added a session-scoped, autouse `disable_rate_limiter` fixture in `conftest.py` that flips `limiter.enabled = False` for the test session (restored on teardown). No test asserts rate-limit behavior, so disabling it globally is safe and makes the suite order-independent — also hardening the pre-existing suites against the same throttling. Result: 26 tests pass.
+
+**Files Modified:**
+- `backend/tests/test_positions.py`
+- `backend/tests/test_interviews.py`
+- `backend/tests/test_talent_pool.py`
+- `backend/tests/test_settings.py`
+- `backend/tests/test_dashboard.py`
+- `backend/tests/conftest.py` (added `disable_rate_limiter` session fixture)
+
+---

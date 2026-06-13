@@ -16,10 +16,10 @@
 
 *A prospect's path is: landing page → demo → security questions → invoice. Close gaps in that order.*
 
-- [x] **Landing page + pricing page + demo-booking link** (F1) — done 2026-06-13 → `landing/` (static single page + pricing section). **Open:** host it; swap `BOOKING_URL` mailto → Calendly (3 spots, see `landing/README.md`).
+- [x] **Landing page + pricing page + demo-booking link** (F1) — done 2026-06-13; **folded into the SPA 2026-06-13** (decided: not a separate static site — avoids the ToS/Privacy content fork). Public routes now live in `frontend/src/components/Marketing/`: `/` → `LandingPage.jsx`, `/pricing` → `PricingPage.jsx`, shared `MarketingChrome.jsx` (nav/footer), styles in `src/styles/marketing.css` (globals.css tokens only). Router: `/` + `/pricing` are public (outside `PublicGuard`), catch-all now → `/`. Pricing tiers mirror `docs/product/03_roadmap.md` (Starter ₹0 / Professional ₹4,999 / Business ₹14,999) + founder-pilot callout. **Open:** swap `BOOKING_URL` mailto → Calendly (3 spots) in `MarketingChrome.jsx`; SEO is client-rendered (revisit prerender/SSR only if SEO becomes a channel).
 - [x] **ToS + Privacy Policy pages** (F3) — done 2026-06-13 → `landing/terms.html` + `privacy.html`; copies served in-app at `/legal/*` (`frontend/public/legal/`); linked from apply consent screen, apply footer, career page, status page (`VITE_MARKETING_URL` switches links to the hosted site). **Open:** fill [PLACEHOLDERS] + lawyer review, then remove draft banners.
 - [x] **Security one-pager** — done 2026-06-13 → [docs/product/07_security_one_pager.md](product/07_security_one_pager.md), claims code-traced against STATUS.md/RLS docs.
-- [ ] **Repo hygiene** (F8/E5) — local README already says Postgres (GitHub copy is the stale one); `.gitignore` hardened 2026-06-13 (`*.sqlite`, `uploads/`). **Remaining (run locally):** `git rm --cached backend/db/talent_lab.sqlite && git rm -r --cached backend/db/chroma` → commit → push.
+- [x] **Repo hygiene** (F8/E5) — done 2026-06-13. README/Postgres aligned, `.gitignore` hardened (`*.sqlite`, `uploads/`), tracked sqlite/chroma artifacts removed from the index.
 - [ ] **Demo video (3 min)** from [DEMO_GUIDE.md](DEMO_GUIDE.md) — *deferred by decision 2026-06-13; plan later.*
 
 ## Sprint 2 — Make it chargeable + safe to operate (the "SaaS layer")
@@ -32,7 +32,7 @@
 
 ## Sprint 3 — Code review queue (quality gaps)
 
-- [ ] **Fill the 5 stub test files** (Q1) — priority order: `test_positions.py`, `test_interviews.py`, `test_talent_pool.py`, `test_settings.py`, `test_dashboard.py`. Delete any you decide not to write — no empty stubs. *~2–3 days*
+- [x] **Fill the 5 stub test files** (Q1) — done 2026-06-13. All 5 written against verified endpoint contracts (auth-required + happy-path shapes for a fresh org; settings includes a create→list round-trip). First local run: 15 passed; remaining 11 were auth rate-limit (429) at fixture setup, not assertion failures — fixed by a session-scoped `disable_rate_limiter` fixture in `conftest.py` (no test asserts 429; this also hardens the existing suite against order-dependent throttling). **Run locally** (needs Docker for testcontainers Postgres): `pytest backend/tests/test_positions.py test_interviews.py test_talent_pool.py test_settings.py test_dashboard.py`.
 - [ ] **Kill the two DOM hacks** (E2/E3/D2) — bias-fix `window.acceptBiasFix` + injected HTML in `FinalJDCard.jsx:355` → React components; `window.prompt` in `PipelineTab.jsx:237` → existing `ConfirmModal`. *~1 day*
 - [ ] **Dead-file sweep** (E4) — delete `frontend/src/utils/candidates.py`, `frontend/tests/example.spec.ts`, `Dashboard/legacy/` (confirm unused), clean `old_frontend/` + `old_backend/` out of the working folder. *~1 hour*
 - [ ] **First frontend unit tests** (Q3) — `utils/api.js` (auth header, 401 handling, error normalization), then `useDashboardData.js`, `HireRequests/helpers.js`. *~1 day*
@@ -76,4 +76,6 @@ Business API application — both have multi-week lead times and cost nothing to
 
 *(Move finished items here with date + commit, so STATUS.md updates stay easy.)*
 
-- **2026-06-13** — Sprint 1: landing site (`landing/`), ToS + Privacy drafts (landing + in-app `/legal/*` + consent/footer links), security one-pager (`docs/product/07_security_one_pager.md`), `.gitignore` hardening. STATUS.md F1/F3/F8 updated. Demo video deferred. *(commit: pending push)*
+- **2026-06-13** — Sprint 1: landing site, ToS + Privacy drafts (in-app `/legal/*` + consent/footer links), security one-pager (`docs/product/07_security_one_pager.md`), `.gitignore` hardening, repo hygiene (sqlite/chroma untracked). STATUS.md F1/F3/F8 updated. Demo video deferred. *(commit: pending push)*
+- **2026-06-13** — Sprint 1 (F1) **landing folded into the SPA** (was a separate static site): `/` + `/pricing` public routes in `frontend/src/components/Marketing/` (`LandingPage.jsx`, `PricingPage.jsx`, `MarketingChrome.jsx`, `styles/marketing.css`); router catch-all → `/`. Pricing mirrors roadmap tiers. JSX bundles clean via esbuild.
+- **2026-06-13** — Sprint 3 (Q1): filled all 5 stub backend tests (`test_positions/_interviews/_talent_pool/_settings/_dashboard.py`) against verified contracts; `py_compile` clean, pytest pending local Docker run.

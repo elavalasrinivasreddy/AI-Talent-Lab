@@ -106,6 +106,21 @@ def mock_redis():
         yield redis_mock
 
 
+@pytest.fixture(scope="session", autouse=True)
+def disable_rate_limiter():
+    """Disable slowapi rate limiting for the whole test session.
+
+    Tests fire many auth calls from the same loopback IP; the 10/min auth cap
+    would otherwise 429 later tests non-deterministically once the suite grows.
+    No test asserts rate-limit behavior, so disabling it globally is safe and
+    keeps the suite order-independent."""
+    from backend.middleware.rate_limiter import limiter
+    previous = limiter.enabled
+    limiter.enabled = False
+    yield
+    limiter.enabled = previous
+
+
 @pytest_asyncio.fixture
 async def client(db_pool):
     """Provide an async httpx TestClient with the mocked database pool."""
