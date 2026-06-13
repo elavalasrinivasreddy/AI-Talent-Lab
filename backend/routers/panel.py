@@ -5,14 +5,26 @@ All routes under /api/v1/panel/
 """
 import logging
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from pydantic import BaseModel
 from typing import Optional
 
 from backend.services.interview_service import PanelFeedbackService
 from backend.middleware.rate_limiter import limiter
 
-router = APIRouter(prefix="/api/v1/panel", tags=["Panel Feedback"])
+async def set_panel_org_context(token: str):
+    """Dependency to set tenant context for magic link routes to bypass RLS issues."""
+    try:
+        from backend.services.interview_service import verify_panel_token
+        from backend.db.connection import set_org_context, reset_org_context
+        payload = verify_panel_token(token)
+        ctx = set_org_context(payload["org_id"])
+        yield
+        reset_org_context(ctx)
+    except Exception:
+        yield
+
+router = APIRouter(prefix="/api/v1/panel", tags=["Panel Feedback"], dependencies=[Depends(set_panel_org_context)])
 logger = logging.getLogger(__name__)
 
 
