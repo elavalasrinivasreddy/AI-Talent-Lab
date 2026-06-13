@@ -44,6 +44,7 @@ export default function HireRequestForm({ mode }) {
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const [depts, setDepts] = useState([])
 
   const fetchDepts = useCallback(async () => {
@@ -91,15 +92,63 @@ export default function HireRequestForm({ mode }) {
     return () => { cancelled = true }
   }, [id, isEdit])
 
-  const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
+  // Map a field key to the DOM id of its input, so we can focus the first
+  // invalid field on a failed submit.
+  const FIELD_IDS = {
+    role_name: 'hr-role',
+    headcount: 'hr-headcount',
+    experience_min: 'hr-emin',
+    experience_max: 'hr-emax',
+    comp_min: 'hr-cmin',
+    comp_max: 'hr-cmax',
+  }
+
+  const set = (k, v) => {
+    setForm(prev => ({ ...prev, [k]: v }))
+    // Clear a field's error the moment the user starts fixing it.
+    setFieldErrors(prev => {
+      if (!prev[k]) return prev
+      const next = { ...prev }
+      delete next[k]
+      return next
+    })
+  }
+
+  // Pure validation — returns a {field: message} map (empty == valid).
+  const validate = (f) => {
+    const errs = {}
+    if (!f.role_name.trim()) errs.role_name = 'Role title is required.'
+    const hc = Number(f.headcount)
+    if (f.headcount === '' || Number.isNaN(hc) || hc < 1) errs.headcount = 'Headcount must be at least 1.'
+    const eMin = toNum(f.experience_min)
+    const eMax = toNum(f.experience_max)
+    if (eMin != null && eMin < 0) errs.experience_min = 'Cannot be negative.'
+    if (eMax != null && eMax < 0) errs.experience_max = 'Cannot be negative.'
+    if (eMin != null && eMax != null && eMin > eMax) errs.experience_max = 'Max experience must be ≥ min.'
+    const cMin = toNum(f.comp_min)
+    const cMax = toNum(f.comp_max)
+    if (cMin != null && cMin < 0) errs.comp_min = 'Cannot be negative.'
+    if (cMax != null && cMax < 0) errs.comp_max = 'Cannot be negative.'
+    if (cMin != null && cMax != null && cMin > cMax) errs.comp_max = 'Max comp must be ≥ min.'
+    return errs
+  }
 
   const submit = async (e) => {
     e.preventDefault()
     setError('')
-    if (!form.role_name.trim()) {
-      setError('Role name is required.')
+    const errs = validate(form)
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs)
+      setError('Please fix the highlighted fields before submitting.')
+      // Focus the first invalid field (in form order).
+      const firstKey = Object.keys(FIELD_IDS).find(k => errs[k])
+      if (firstKey) {
+        const el = document.getElementById(FIELD_IDS[firstKey])
+        if (el) el.focus()
+      }
       return
     }
+    setFieldErrors({})
     setSaving(true)
     try {
       const payload = {
@@ -188,7 +237,12 @@ export default function HireRequestForm({ mode }) {
                 autoFocus
                 maxLength={200}
                 required
+                aria-invalid={!!fieldErrors.role_name}
+                aria-describedby={fieldErrors.role_name ? 'hr-role-err' : undefined}
               />
+              {fieldErrors.role_name && (
+                <p id="hr-role-err" className="hr-field-error">{fieldErrors.role_name}</p>
+              )}
             </div>
 
             {user?.role === 'org_head' && (
@@ -219,7 +273,12 @@ export default function HireRequestForm({ mode }) {
                   type="number" min={1} max={100}
                   value={form.headcount}
                   onChange={e => set('headcount', e.target.value)}
+                  aria-invalid={!!fieldErrors.headcount}
+                  aria-describedby={fieldErrors.headcount ? 'hr-headcount-err' : undefined}
                 />
+                {fieldErrors.headcount && (
+                  <p id="hr-headcount-err" className="hr-field-error">{fieldErrors.headcount}</p>
+                )}
               </div>
               <div className="hr-field">
                 <label htmlFor="hr-priority">Priority</label>
@@ -268,7 +327,12 @@ export default function HireRequestForm({ mode }) {
                   value={form.experience_min}
                   onChange={e => set('experience_min', e.target.value)}
                   placeholder="3"
+                  aria-invalid={!!fieldErrors.experience_min}
+                  aria-describedby={fieldErrors.experience_min ? 'hr-emin-err' : undefined}
                 />
+                {fieldErrors.experience_min && (
+                  <p id="hr-emin-err" className="hr-field-error">{fieldErrors.experience_min}</p>
+                )}
               </div>
               <div className="hr-field">
                 <label htmlFor="hr-emax">Max experience (years)</label>
@@ -277,7 +341,12 @@ export default function HireRequestForm({ mode }) {
                   value={form.experience_max}
                   onChange={e => set('experience_max', e.target.value)}
                   placeholder="8"
+                  aria-invalid={!!fieldErrors.experience_max}
+                  aria-describedby={fieldErrors.experience_max ? 'hr-emax-err' : undefined}
                 />
+                {fieldErrors.experience_max && (
+                  <p id="hr-emax-err" className="hr-field-error">{fieldErrors.experience_max}</p>
+                )}
               </div>
             </div>
 
@@ -289,7 +358,12 @@ export default function HireRequestForm({ mode }) {
                   value={form.comp_min}
                   onChange={e => set('comp_min', e.target.value)}
                   placeholder="30"
+                  aria-invalid={!!fieldErrors.comp_min}
+                  aria-describedby={fieldErrors.comp_min ? 'hr-cmin-err' : undefined}
                 />
+                {fieldErrors.comp_min && (
+                  <p id="hr-cmin-err" className="hr-field-error">{fieldErrors.comp_min}</p>
+                )}
               </div>
               <div className="hr-field">
                 <label htmlFor="hr-cmax">Comp max (LPA)</label>
@@ -298,7 +372,12 @@ export default function HireRequestForm({ mode }) {
                   value={form.comp_max}
                   onChange={e => set('comp_max', e.target.value)}
                   placeholder="55"
+                  aria-invalid={!!fieldErrors.comp_max}
+                  aria-describedby={fieldErrors.comp_max ? 'hr-cmax-err' : undefined}
                 />
+                {fieldErrors.comp_max && (
+                  <p id="hr-cmax-err" className="hr-field-error">{fieldErrors.comp_max}</p>
+                )}
               </div>
             </div>
           </section>

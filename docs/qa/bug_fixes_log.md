@@ -4445,14 +4445,25 @@ Updated the CSS selector to `.mkt-nav-links a:not(.mkt-btn)` so it exclusively t
 
 ---
 
-## 48. Public Candidate Portal 404 & E2E Failure
+## 261. Public Candidate Portal 404 & E2E Failure
 **Symptom:** The Playwright E2E test `public candidate status portal shows the timeline` failed because the status endpoint returned a 404 Not Found.
 **Root Cause:** The public, unauthenticated routes in `routers/status.py` and `routers/apply.py` were using `get_connection()`, which strictly enforces Row-Level Security (RLS) policies based on `org_id` context. Since public magic link tokens do not carry an authenticated dashboard session context, the RLS policies hid the database rows.
 **Fix:** Modified the public unauthenticated routes in `backend/routers/status.py` and `backend/routers/apply.py` to use `get_admin_connection()` instead, bypassing RLS and allowing secure magic link tokens to fetch the required candidate and application data successfully.
 
 ---
 
-## 51. Pytest Core Loop DB Connection Race Condition
+## 262. Pytest Core Loop DB Connection Race Condition
 **Symptom:** The test `test_pre_evaluation_get_submit_and_surfaces_in_status` in `test_candidate_core_loop.py` failed with `RuntimeError: Event loop is closed` and `asyncpg.exceptions._base.InterfaceError: cannot perform operation: another operation is in progress`.
 **Root Cause:** The `seeded_app` fixture and test methods were generating raw, unmanaged database connections using `asyncpg.connect()` rather than leveraging the pytest session `db_pool`. Furthermore, the internal test configuration only patched the application-level `_pool`, leaving `_admin_pool` to dynamically generate a new connection pool that was orphaned from the test loop lifecycle, causing conflicts when the event loop closed.
 **Fix:** Updated `conftest.py` to ensure both `db_conn._pool` and `db_conn._admin_pool` map strictly to the managed pytest `db_pool` fixture. Refactored the core loop test to accept the `db_pool` fixture directly and execute its database setup/teardown transactions using `async with db_pool.acquire() as conn:`.
+
+---
+
+## 263. Fix Magic Link 400 Bad Request (Postgres RLS)
+**Symptom:** Candidate magic links (for apply and panel feedback) resulted in a "72 hours link expired" error on the frontend, accompanied by a 400 Bad Request ("Application not found") in the backend terminal logs.
+**Root Cause:** The public, unauthenticated routes in `routers/apply.py` and `routers/panel.py` were correctly parsing the JWT magic links but were not setting the required PostgreSQL `app.current_org_id` configuration on the connection. As a result, the database enforced Row-Level Security (RLS) by returning 0 rows, causing the backend services to assume the application or interview didn't exist.
+**Fix:** Created dependencies (`set_apply_org_context` and `set_panel_org_context`) in the apply and panel routers that decode the magic link's `org_id` and securely inject it into the database connection context using `set_org_context()` for the lifecycle of the request. This restores RLS visibility to the specific tenant's records while maintaining complete data isolation.
+
+**Files Modified:**
+- `backend/routers/apply.py`
+- `backend/routers/panel.py`
