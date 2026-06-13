@@ -73,7 +73,7 @@ The 2026-06-11 audit ([snapshot](archive/2026-06-11_PRODUCT_STATUS.md)) found 4 
 | Architecture debt (SQL→repositories, god-object split, stub repos) | ✅ | CRITICAL-03, HIGH-04, HIGH-05 all done |
 | Deployment configs (X-Forwarded-For, `ENCRYPTION_KEY`) | ⚠️ | Deferred to production environment setup — do in Phase F |
 
-## Phase D — Phase-2 features · 1 ✅ / 6 ⚠️ / 5 ❌
+## Phase D — Phase-2 features · 5 ✅ / 2 ⚠️ / 5 ❌
 
 From [`product/03_roadmap.md`](product/03_roadmap.md) §4:
 
@@ -81,11 +81,11 @@ From [`product/03_roadmap.md`](product/03_roadmap.md) §4:
 |---|---|---|---|
 | 12 | JD chat interactive refinement | ✅ | Shipped (commits `099cdd0`–`62fe99e`) |
 | 1 | Google Calendar OAuth (real) | ⚠️ | Mock done; needs OAuth client + adapter |
-| 2 | Career page branding | ⚠️ | Built, needs QA (see Phase B) |
+| 2 | Career page branding | ✅ | QA'd 2026-06-13 (code-trace): settings→PATCH `/settings/org` (gated `require_org_head`)→`OrgRepository`→DB cols→careers GET→`CareerPage` applies color/banner/tagline. Minor: cleared fields can't reset (PATCH `exclude_none`); silent save errors. See [reviews/2026-06-13_sprint4_qa.md](reviews/2026-06-13_sprint4_qa.md) |
 | 3 | Video intro frontend | ⚠️ | Backend done |
-| 6 | GDPR data export (Art. 20) | ⚠️ | Backend endpoint exists; no frontend |
-| 7 | Audit log UI | ⚠️ | Built (2026-06-12); needs QA |
-| 8 | team_lead dashboard | ⚠️ | Wired in DashboardPage; needs QA |
+| 6 | GDPR data export (Art. 20) | ✅ | Built 2026-06-13 (Sprint 4): `Settings → Data export` tab (`DataExportTab.jsx`, was a placeholder) → standalone SAR export via `gdprApi.exportCandidateData` → talent-pool lookup helper + by-ID, structured summary + copy/download JSON. Admin-gated. (Deletion-context export remains in the GDPR/DPDP tab.) |
+| 7 | Audit log UI | ✅ | QA'd 2026-06-13 (code-trace): `AuditTab`→GET `/settings/audit-logs` (gated `require_org_head`)→`AuditService.get_logs` returns `{total, logs[]}`; response shape matches consumer; debounced search + pagination + CSV(page). Minor: UI exposes search only, not the user_id/action filter params backend supports. See QA review doc |
+| 8 | team_lead dashboard | ✅ | QA'd 2026-06-13 (code-trace): `DashboardPage` role-routes `team_lead`→`TeamLeadDashboard` fed by `useDashboardData`; `lanes.{now,next,pulse}` shape matches all consumers; File-Hire-Request CTA→`/hire-requests/new`; onboarding empty-state handled. See QA review doc |
 | 9 | Multi-approver relay | ⚠️ | dept_admin tier shipped; finance/CEO tiers + `approval_chain` remain |
 | 4 | WhatsApp integration | ❌ | **Promoted — India wedge, rank #5 in [validation brief](product/05_market_validation.md) §6** |
 | 5 | Self-scheduling links | ❌ | Blocked by calendar integration |

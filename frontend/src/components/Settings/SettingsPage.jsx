@@ -30,6 +30,7 @@ import SecurityTab from './tabs/SecurityTab'
 import PrivacyTab from './tabs/PrivacyTab'
 import CareerBrandTab from './tabs/CareerBrandTab'
 import AuditTab from './tabs/AuditTab'
+import DataExportTab from './tabs/DataExportTab'
 import SourcingTab from './tabs/SourcingTab'
 import '../../styles/settings.css'
 
@@ -83,7 +84,7 @@ const RAIL_GROUPS = [
       { key: 'security', icon: 'lock', label: 'Security', adminOnly: true },
       
       { key: 'audit', icon: 'clock', label: 'Audit log', orgHeadOnly: true },
-      { key: 'export', icon: 'download', label: 'Data export', adminOnly: true, phase: 2 },
+      { key: 'export', icon: 'download', label: 'Data export', adminOnly: true },
     ],
   },
 ]
@@ -109,7 +110,7 @@ const SECTION_COMPONENTS = {
   'security': SecurityTab,
   
   'audit': AuditTab,
-  'export': () => <PlaceholderSection title="Data Export" desc="GDPR Article 20 data portability — export candidate and org data." icon="download" phase={2} />,
+  'export': DataExportTab,
 }
 
 export default function SettingsPage() {
