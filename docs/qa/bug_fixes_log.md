@@ -4093,4 +4093,133 @@ Replaced with `datetime.now(timezone.utc).replace(tzinfo=None)` — a non-deprec
 
 ---
 
+## 239. Sprint 4 QA — Career-Page Branding (Phase D#2) + 2 Polish Fixes
+**Date:** 2026-06-13
+**Status:** Fixed (QA ✅ by code-trace; live walk still recommended)
+
+**Problem Statement:**
+Career-page branding was built-but-never-QA'd. Code-trace verified the full path: `CareerBrandTab` → PATCH/GET `/settings/org` (gated `require_org_head`) → `OrgRepository` → DB columns (`career_primary_color/_banner_url/_tagline`, migration L826-829) → public `/careers/{slug}` → `CareerPage` applies color/banner/tagline. Two minor issues found: (1) cleared fields couldn't be reset because the PATCH used `exclude_none` and the tab sent `null`; (2) save errors were swallowed (`catch {}`).
+
+**Idea / Solution:**
+`CareerBrandTab` now sends empty strings (`?? ''`) instead of `null` so a cleared field actually resets, and surfaces failures via a `Toast`. STATUS Phase D #2 → ✅.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/CareerBrandTab.jsx` (reset-to-empty, error Toast)
+- `docs/STATUS.md`, `docs/reviews/2026-06-13_sprint4_qa.md`
+
+---
+
+## 240. Sprint 4 QA — Audit-Log UI (Phase D#7) + Action Filter
+**Date:** 2026-06-13
+**Status:** Fixed (QA ✅ by code-trace)
+
+**Problem Statement:**
+Audit-log UI built-but-never-QA'd. Code-trace verified `AuditTab` → GET `/settings/audit-logs` (gated `require_org_head`) → `AuditService.get_logs` returns `{total, logs[]}`; row fields match the table; debounced search + pagination + per-page CSV all wired. Finding: the UI exposed only free-text search, not the `action`/`user_id` filter params the backend already supports.
+
+**Idea / Solution:**
+Added an Action filter `<select>` (options accumulated across loads) that passes the backend `action` param. STATUS Phase D #7 → ✅.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/AuditTab.jsx` (action filter)
+- `docs/STATUS.md`
+
+---
+
+## 241. Sprint 4 QA — team_lead Dashboard (Phase D#8)
+**Date:** 2026-06-13
+**Status:** Verified ✅ (code-trace)
+
+**Problem Statement:**
+team_lead dashboard built-but-never-QA'd. Code-trace verified `DashboardPage` role-routes `team_lead` → `TeamLeadDashboard`, fed by `useDashboardData`; `lanes.{now,next,pulse}` shape matches all consumers; File-Hire-Request CTA → `/hire-requests/new`; onboarding empty-state handled. No defects found.
+
+**Idea / Solution:**
+No code change required. STATUS Phase D #8 → ✅.
+
+**Files Modified:**
+- `docs/STATUS.md`, `docs/reviews/2026-06-13_sprint4_qa.md`
+
+---
+
+## 242. GDPR SAR Data-Export UI (Phase D#6)
+**Date:** 2026-06-13
+**Status:** Built
+
+**Problem Statement:**
+Backend `GET /gdpr/export/{candidate_id}` existed but the Settings → Data export tab was a placeholder, so an admin could not run a standalone Subject Access Request for an arbitrary candidate (only deletion-request-linked exports in the GDPR/DPDP tab worked).
+
+**Idea / Solution:**
+New `DataExportTab` — export by candidate ID plus an org-scoped talent-pool lookup helper, structured summary (counts per section), and copy/download JSON. Wired into `SettingsPage` (placeholder removed, `phase:2` flag dropped). Admin-gated.
+
+**Files Modified:**
+- `frontend/src/components/Settings/tabs/DataExportTab.jsx` (new)
+- `frontend/src/components/Settings/SettingsPage.jsx` (import + registry)
+- `docs/STATUS.md`
+
+---
+
+## 243. Video Intro — Post-Submission Add-on (Phase D#3)
+**Date:** 2026-06-13
+**Status:** Built ⚠️ — automated gate cleared (suite 133 passed incl. `test_video_intro`, `npm run build` clean); only a live click-through remains
+
+**Problem Statement:**
+The candidate upload UI, `/upload-video` storage, recruiter `<video>` player, and `get_with_application` data plumbing all existed, but the apply step machine never emitted `step: "video_intro"`, so the whole feature was unreachable.
+
+**Idea / Solution:**
+Wired as a **post-submission add-on** (chosen to avoid touching completion side-effects = zero risk of lost applications): `_step_complete` now invites an optional video and sets `video_offer`; `ApplyPage` shows the existing upload card at `step === 'completion'` (skip is local; `sendMessage` already no-ops at completion). Added unit test `tests/test_video_intro.py` locking the contract. Recruiter player already live via `get_with_application` (needs `position_id` context). **Not yet ✅** — needs the backend suite run + a live walk (stack can't boot in the dev sandbox).
+
+**Files Modified:**
+- `backend/agents/candidate_chat.py` (completion message + `video_offer`)
+- `frontend/src/components/Apply/ApplyPage.jsx` (optional video card at completion)
+- `backend/tests/test_video_intro.py` (new)
+- `docs/STATUS.md`
+
+---
+
+## 244. Onboarding First-Run Scaffold (F5)
+**Date:** 2026-06-13
+**Status:** Built (scaffold)
+
+**Problem Statement:**
+The empty dashboard showed only a single-CTA hero; no guided first-run checklist (F5).
+
+**Idea / Solution:**
+New `OnboardingChecklist` — role-aware steps (HR/admin vs team_lead), a progress bar, and a primary "publish your first job" / "file your first hire request" step with deep links. Rendered from `TodaysBriefing`'s onboarding branch. Deferred (per F5): seeded demo-org dev tool (`/dev/seed-core-loop` exists) and richer per-step completion detection — finalize after the first pilot.
+
+**Files Modified:**
+- `frontend/src/components/Dashboard/OnboardingChecklist.jsx` (new)
+- `frontend/src/components/Dashboard/TodaysBriefing.jsx` (use checklist)
+
+---
+
+## 245. Design-Token Doc Reconciliation (D1)
+**Date:** 2026-06-13
+**Status:** Fixed
+
+**Problem Statement:**
+`docs/design/00_design_system.md` documented an old shorthand token vocabulary (`--p`, `--bg-0..4`, `--tx-*`, `--ps-*`, `--r-*`, `--s-*`, `--sh-*`, `--ff/--fm`) that never existed in `globals.css` (which uses `--color-*`, `--space-*`, `--radius-*`, `--shadow-*`). The doc itself flagged the drift.
+
+**Idea / Solution:**
+Rewrote every token table to the real `globals.css` names (no code churn). Noted tokens absent from CSS (`--color-stage-hold`, LangGraph `--st-*`) and the resolved reconciliation note. `globals.css` remains the value source of truth.
+
+**Files Modified:**
+- `docs/design/00_design_system.md`
+
+---
+
+## 246. A11y Pass — Apply Chat + Career Page (D4)
+**Date:** 2026-06-13
+**Status:** Fixed (7 issues); open items logged
+
+**Problem Statement:**
+No accessibility audit on the two candidate-facing surfaces. Static axe/WCAG review found unlabeled form controls, an unlabeled apply modal, an icon-only close button, and a silent typing indicator.
+
+**Idea / Solution:**
+Applied 7 fixes: `aria-label` on the chat composer textarea + both hidden file inputs; `role="status"` on the typing indicator; `role="dialog"`/`aria-modal`/`aria-labelledby` on the career apply modal; `aria-label="Close"` on its close button; `htmlFor`/`id` on the modal Name/Email fields. Open items (user-brand-color contrast, modal focus trap, decorative-emoji `aria-hidden`) + a live-axe-core E2E recipe logged in the review doc. Note: this is a static audit — axe-core couldn't run live (no bootable stack).
+
+**Files Modified:**
+- `frontend/src/components/Apply/ApplyPage.jsx`, `frontend/src/components/Careers/CareerPage.jsx`
+- `docs/reviews/2026-06-13_sprint4_a11y.md` (new)
+
+---
+
 

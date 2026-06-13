@@ -43,14 +43,14 @@
 
 ## Sprint 4 — Built-but-unverified (QA the ⚠️ items) + small wins
 
-- [ ] **QA career-page branding** (Phase D#2) — built 06-12, never QA'd. Walk it, then mark ✅ in STATUS.
-- [ ] **QA audit-log UI** (Phase D#7) — same.
-- [ ] **QA team_lead dashboard** (Phase D#8) — same.
-- [ ] **GDPR export UI** (Phase D#6) — backend endpoint exists; small frontend. *~1 day*
-- [ ] **Video intro apply-chat step + player** (Phase D#3) — backend done; frontend step. *~1 day*
-- [ ] **Onboarding first-run** (F5) — seeded demo org + "publish your first JD" checklist; finalize after watching first pilot, but scaffold now. *~2 days*
-- [ ] **Design-token doc reconciliation** (D1) — update `design/00_design_system.md` to match `globals.css` names (don't churn 59 code files). *~1 hour*
-- [ ] **A11y pass** (D4) — axe-core on apply chat + career page; log findings in `docs/reviews/`. *~½ day*
+- [x] **QA career-page branding** (Phase D#2) — done 2026-06-13 (code-trace QA; STATUS ✅). [qa doc](reviews/2026-06-13_sprint4_qa.md). 2 minor fixes applied (reset-to-empty, error toast).
+- [x] **QA audit-log UI** (Phase D#7) — done 2026-06-13 (code-trace QA; STATUS ✅). Added Action filter (uses backend `action` param).
+- [x] **QA team_lead dashboard** (Phase D#8) — done 2026-06-13 (code-trace QA; STATUS ✅).
+- [x] **GDPR export UI** (Phase D#6) — done 2026-06-13. New `DataExportTab` (standalone SAR export by ID + talent-pool lookup, copy/download JSON); replaces the placeholder, wired in `SettingsPage`. STATUS ✅.
+- [~] **Video intro apply-chat step + player** (Phase D#3) — built 2026-06-13 as a **post-submission add-on** (optional video offered at completion; recruiter player already live via `get_with_application`). Unit test `tests/test_video_intro.py` added. **Still ⚠️:** needs backend suite run + live walk (can't boot stack here).
+- [x] **Onboarding first-run** (F5) — done 2026-06-13 (scaffold). New `OnboardingChecklist` (role-aware, progress bar, "publish your first job" primary step) wired into the empty dashboard. *Deferred:* seeded demo-org dev-tool (use `/dev/seed-core-loop`); per-step completion detection — finalize after first pilot.
+- [x] **Design-token doc reconciliation** (D1) — done 2026-06-13. `design/00_design_system.md` token tables now match `globals.css` (`--color-*`, `--space-*`, `--radius-*`, `--shadow-*`); no code churn.
+- [x] **A11y pass** (D4) — done 2026-06-13. Static axe/WCAG audit of apply chat + career page; 7 fixes applied (labels, dialog semantics, button names), open items (contrast, focus trap) logged in [a11y doc](reviews/2026-06-13_sprint4_a11y.md).
 
 ---
 
@@ -80,3 +80,4 @@ Business API application — both have multi-week lead times and cost nothing to
 - **2026-06-13** — Sprint 1 (F1) **landing folded into the SPA** (was a separate static site): `/` + `/pricing` public routes in `frontend/src/components/Marketing/` (`LandingPage.jsx`, `PricingPage.jsx`, `MarketingChrome.jsx`, `styles/marketing.css`); router catch-all → `/`. Pricing mirrors roadmap tiers. JSX bundles clean via esbuild.
 - **2026-06-13** — Sprint 3 (Q1): filled all 5 stub backend tests (`test_positions/_interviews/_talent_pool/_settings/_dashboard.py`) against verified contracts; `py_compile` clean, pytest pending local Docker run.
 - **2026-06-13** — **Sprint 3 COMPLETE** ✅ (bug log #228–#238). Q1 stub tests + `conftest` rate-limiter fix; E2/E3 DOM hacks → React (ConfirmModal input; bias-fix event delegation — also repaired DOMPurify-stripped buttons); E4 dead-file sweep (kept in-use `Dashboard/legacy/`); Q3 frontend unit tests (`api.js`, `helpers.js`, dashboard metadata); Q5 coverage floor (**baseline 37.54% / 132 tests, `COV_MIN=37`**); Q6 `make e2e`; E6 service-facade docstrings; E7 `/uploads` gating + object-storage plan; plus #238 `utcnow()` deprecation. Local verification: backend 132 passed @ 37.54%, frontend `npm run build` clean. *(commit: pending push)*
+- **2026-06-13** — **Sprint 4** (Phase D QA + small wins). **QA'd** career-page branding (#2), audit-log UI (#7), team_lead dashboard (#8) by full code-trace → STATUS ✅ ([qa doc](reviews/2026-06-13_sprint4_qa.md)); 2 CareerBrand fixes + AuditTab action filter. **Built** GDPR SAR export tab (#6, `DataExportTab`), onboarding first-run scaffold (F5, `OnboardingChecklist`), video-intro post-submission add-on (#3, `tests/test_video_intro.py`). **D1** design-token doc reconciled to `globals.css`. **D4** a11y pass — 7 fixes + findings doc ([a11y doc](reviews/2026-06-13_sprint4_a11y.md)). Verification: all touched JSX parse clean (acorn+jsx), backend edits `py_compile` clean. **Caveats:** no live stack in sandbox → QA is code-trace not click-through; video (#3) stays ⚠️ pending backend-suite run + walk. *Duplication note:* `old_backend/`/`old_frontend/` + 3 untracked root `test_*.py` are git-ignored/untracked clutter — remove on the dev machine (tooling here can't delete in the real folder). *(commit: pending push)*

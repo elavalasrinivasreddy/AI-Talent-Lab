@@ -468,18 +468,19 @@ export default function CareerPage() {
 
       {showApplyModal && (
         <div className="modal show" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="modal-content" style={{ width: '100%', maxWidth: '400px' }}>
+          <div className="modal-content" style={{ width: '100%', maxWidth: '400px' }} role="dialog" aria-modal="true" aria-labelledby="apply-modal-title">
             <div className="modal-header">
-              <h3 className="modal-title">Apply for {activePosition?.role_name}</h3>
-              <button onClick={() => setShowApplyModal(false)}>
+              <h3 className="modal-title" id="apply-modal-title">Apply for {activePosition?.role_name}</h3>
+              <button onClick={() => setShowApplyModal(false)} aria-label="Close">
                 <Icon name="x" size={20} />
               </button>
             </div>
             <div className="modal-body">
               <form onSubmit={submitApplication}>
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Full Name</label>
+                  <label htmlFor="apply-name" style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Full Name</label>
                   <input
+                    id="apply-name"
                     type="text"
                     required
                     value={applyForm.name}
@@ -488,8 +489,9 @@ export default function CareerPage() {
                   />
                 </div>
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Email Address</label>
+                  <label htmlFor="apply-email" style={{ display: 'block', marginBottom: '8px', fontWeight: 500 }}>Email Address</label>
                   <input
+                    id="apply-email"
                     type="email"
                     required
                     value={applyForm.email}
