@@ -64,9 +64,10 @@ async def db_pool():
     """Provide an isolated database pool per test and prevent lifespan interference."""
     pool = await asyncpg.create_pool(_test_db_url, min_size=1, max_size=5)
     
-    # Patch the global pool in backend.db.connection to use this test pool
+    # Patch the global pools in backend.db.connection to use this test pool
     import backend.db.connection as db_conn
     db_conn._pool = pool
+    db_conn._admin_pool = pool
 
     # Prevent lifespan from re-running migrations or closing our test pool
     with patch("backend.main.init_db", new=AsyncMock()), patch("backend.main.close_pool", new=AsyncMock()):
@@ -75,6 +76,7 @@ async def db_pool():
     # Only close after the test is completely done
     await pool.close()
     db_conn._pool = None
+    db_conn._admin_pool = None
 
 @pytest_asyncio.fixture
 async def db_conn(db_pool):

@@ -4449,3 +4449,10 @@ Updated the CSS selector to `.mkt-nav-links a:not(.mkt-btn)` so it exclusively t
 **Symptom:** The Playwright E2E test `public candidate status portal shows the timeline` failed because the status endpoint returned a 404 Not Found.
 **Root Cause:** The public, unauthenticated routes in `routers/status.py` and `routers/apply.py` were using `get_connection()`, which strictly enforces Row-Level Security (RLS) policies based on `org_id` context. Since public magic link tokens do not carry an authenticated dashboard session context, the RLS policies hid the database rows.
 **Fix:** Modified the public unauthenticated routes in `backend/routers/status.py` and `backend/routers/apply.py` to use `get_admin_connection()` instead, bypassing RLS and allowing secure magic link tokens to fetch the required candidate and application data successfully.
+
+---
+
+## 51. Pytest Core Loop DB Connection Race Condition
+**Symptom:** The test `test_pre_evaluation_get_submit_and_surfaces_in_status` in `test_candidate_core_loop.py` failed with `RuntimeError: Event loop is closed` and `asyncpg.exceptions._base.InterfaceError: cannot perform operation: another operation is in progress`.
+**Root Cause:** The `seeded_app` fixture and test methods were generating raw, unmanaged database connections using `asyncpg.connect()` rather than leveraging the pytest session `db_pool`. Furthermore, the internal test configuration only patched the application-level `_pool`, leaving `_admin_pool` to dynamically generate a new connection pool that was orphaned from the test loop lifecycle, causing conflicts when the event loop closed.
+**Fix:** Updated `conftest.py` to ensure both `db_conn._pool` and `db_conn._admin_pool` map strictly to the managed pytest `db_pool` fixture. Refactored the core loop test to accept the `db_pool` fixture directly and execute its database setup/teardown transactions using `async with db_pool.acquire() as conn:`.
