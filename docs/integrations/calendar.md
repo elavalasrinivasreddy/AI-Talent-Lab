@@ -1,8 +1,90 @@
 # Calendar Integration Guide — Developer Documentation
 
-> **Version 1.0**
+> **Version 1.1** — updated 2026-06-13.
 > Complete setup guide for Google Calendar & Outlook integration.
 > Covers API credentials, OAuth2 flow, permissions, and testing.
+>
+> **The real `GoogleCalendarAdapter` is now implemented** (`backend/services/calendar_service.py`).
+> It activates from env vars alone — no in-app OAuth screen is required to test.
+> Until valid credentials are supplied it falls back to the mock adapter with a
+> warning, so scheduling never crashes. Start at **§0** to switch it on.
+
+---
+
+## 0. Quick start — turn the real adapter on (no app UI needed)
+
+The adapter reads its credentials from env vars. Two credential shapes are
+auto-detected from the JSON you supply in `GOOGLE_CALENDAR_CREDENTIALS`:
+
+| Your account type | Use this | How to get it |
+|---|---|---|
+| **Individual Gmail** (your case) | An **authorized-user token** (has a `refresh_token`) | Run the helper script below — §0.2 |
+| **Google Workspace** (team) | A **service account** with domain-wide delegation | §2.1 + set `GOOGLE_CALENDAR_SUBJECT` to the user to impersonate |
+
+### 0.1 Install the client libraries (once)
+
+```bash
+pip install google-api-python-client google-auth google-auth-oauthlib
+# (already added to backend/requirements.txt)
+```
+
+### 0.2 Generate a token from an individual Gmail
+
+1. In Google Cloud Console create an **OAuth client ID** of type **Desktop app**
+   (Console → APIs & Services → Credentials → Create credentials → OAuth client ID
+   → Desktop app). Download the JSON — call it `oauth_client.json`.
+   *(First time only: enable the **Google Calendar API**, and on the OAuth consent
+   screen add your own Gmail under "Test users" so consent is allowed.)*
+2. Run the helper (opens a browser, you sign in + consent once):
+
+   ```bash
+   python scripts/google_calendar_setup.py oauth_client.json
+   ```
+
+   It writes `google_calendar_token.json` (this is the file that holds the
+   long-lived `refresh_token` — keep it secret, never commit it).
+
+### 0.3 Point the backend at it
+
+```bash
+# .env
+CALENDAR_PROVIDER=google
+GOOGLE_CALENDAR_CREDENTIALS=/abs/path/to/google_calendar_token.json   # path OR inline JSON
+GOOGLE_CALENDAR_ID=primary                # or a specific calendar id
+GOOGLE_CALENDAR_TIMEZONE=Asia/Kolkata     # event times are written in this tz
+# GOOGLE_CALENDAR_SUBJECT=user@yourco.com # service-account delegation only
+```
+
+Restart the backend. On the first scheduling call you should see
+`Google Calendar adapter activated` in the logs. If you instead see
+`...could not be activated (...); falling back to MockCalendarAdapter`, the
+message tells you exactly what's wrong (missing file, bad JSON, libs not
+installed).
+
+### 0.4 Individual-Gmail limitation (important)
+
+A personal Gmail can only read **its own** free/busy and create events on **its
+own** calendar. So with an individual account, `GOOGLE_CALENDAR_ID=primary`
+checks *your* availability and books on *your* calendar — perfect for testing the
+end-to-end flow (freebusy → slot list → event with a real Meet link → invite
+email). Reading *other panelists'* real free/busy needs Google Workspace +
+domain-wide delegation (§2). The adapter handles both; only the data scope differs.
+
+### 0.5 What the adapter does (matches the live code)
+
+`GoogleCalendarAdapter` is a drop-in for the same interface the app already uses:
+
+- `get_free_slots(panelist_emails, duration_minutes, days_ahead)` → runs a
+  `freebusy().query()` over the same working-hour slot grid as the mock, marks
+  each slot busy/free by overlapping it with each panelist's busy intervals.
+- `create_event(title, start, duration_minutes, attendee_emails, description)` →
+  `events().insert()` with `conferenceData` (auto Google Meet link),
+  `sendUpdates="all"`, and email/popup reminders; returns `meeting_link`,
+  `event_id`, `html_link`.
+
+> Note: §2.4 below is the *original design sketch* (a per-org OAuth token store
+> with a different method shape). The shipped adapter uses the env-var approach
+> in this section instead — it's simpler to test and needs no new DB columns.
 
 ---
 

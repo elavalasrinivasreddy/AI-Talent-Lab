@@ -7,6 +7,7 @@
 > **Last updated:** 2026-06-13 · **Branch:** `refactor/service-decomposition` · verified against code + commit log.
 > **Sprints 1–4 closed** — front door (S1), **SaaS layer/billing (S2, bug log #247–#251)**, code-review quality (S3, #228–#238), Phase-D QA (S4, #239–#246).
 > **Sprint-closure review 2026-06-13** — adversarial review of Sprint 2 billing/quota code found 3 new bugs (#252–#254) and fixed them: `BillingService` plan-validation dead code + idempotency gap on confirm; `AuditTab` CSV injection. All items now green. See [`qa/bug_fixes_log.md`](qa/bug_fixes_log.md).
+> **Phase B/C/D reconciliation 2026-06-13 (S5)** — code-traced the open items: (1) **Real LLM token streaming was already live** (it had been mis-marked ❌) — promoted to ✅; (2) **GoogleCalendarAdapter implemented** (real freebusy + Meet-link events; env-var activated, honest mock fallback) — awaits the owner's OAuth credentials to go live; (3) **Multi-approver relay is single-tier only** — finance/CEO chain confirmed *not* built and deferred by decision; (4) **Hire-request form polished** (inline validation + a11y); (5) Phase C closed (CI + deploy config done). De-duplicated: Phase B and Phase D were tracking the same Calendar/Branding/Video items — **Phase B is now the single source of truth**, Phase D rows cross-reference it.
 
 ---
 
@@ -21,9 +22,9 @@ See [`product/05_market_validation.md`](product/05_market_validation.md) for the
 | Phase | Scope | ✅ Done | ⚠️ Partial | ❌ Not started | Progress |
 |---|---|---|---|---|---|
 | **A** | Core MVP (foundation) | 24 | 0 | 0 | ████████ 100% |
-| **B** | Extended features | 8 | 2 | 1 | ██████░░ ~82% |
-| **C** | Hardening & audit closure | 24 | 1 | 0 | ███████░ ~98% |
-| **D** | Phase-2 features | 1 | 6 | 5 | ███░░░░░ ~33% |
+| **B** | Extended features | 9 | 2 | 0 | ███████░ ~91% |
+| **C** | Hardening & audit closure | 25 | 0 | 0 | ████████ 100% |
+| **D** | Phase-2 features | 7 | 3 | 2 | ██████░░ ~71% |
 | **E** | Phase-3 features | 0 | 0 | 9 | ░░░░░░░░ 0% |
 | **F** | SaaS launch readiness ← **active** | 2 | 5 | 2 | ████░░░░ ~45% |
 
@@ -48,16 +49,19 @@ covered by the backend suite + Playwright core-loop E2E. Highlights:
 - ✅ Notifications, AI interview kit, career page, debrief generator
 - ✅ v3 redesign: **19/19 surfaces** to spec (teal `#0D9488` + Plus Jakarta Sans) — per-page banners in [`design/pages/`](design/pages/)
 
-## Phase B — Extended features · 8 ✅ / 2 ⚠️ / 1 ❌
+## Phase B — Extended features · 9 ✅ / 2 ⚠️ / 0 ❌
+
+> **Single source of truth for Calendar / Branding / Video.** Phase D #1/#2/#3 are the
+> same three features (historical duplication) — they now cross-reference these rows.
 
 | Item | Status | Notes |
 |---|---|---|
 | Pipeline grid+Kanban, GDPR/DPDP flow, status portal, AI copilot bar, hiring notes, analytics deep-dive, approval workflow, talent-pool contact status | ✅ | See [`product/02_features.md`](product/02_features.md) §2 |
-| Video introduction upload | ⚠️ | Backend + DB done; apply-chat step + player UI pending |
-| Calendar integration | ⚠️ | `MockCalendarAdapter` only; real Google OAuth pending — [guide](integrations/calendar.md) |
-| Career page custom branding | ❌→⚠️ | UI built + settings wired (2026-06-12) but **needs QA** before ✅ |
+| Video introduction upload | ⚠️ | Frontend built 2026-06-13 (post-submission add-on) + recruiter player live; **only a ~2-min live click-through remains** before ✅ (= Phase D #3) |
+| Calendar integration | ⚠️ | **Real `GoogleCalendarAdapter` implemented 2026-06-13** (freebusy → slot grid + `events.insert` with auto Meet link; env-var activated via `CALENDAR_PROVIDER=google` + `GOOGLE_CALENDAR_CREDENTIALS`; falls back to mock with a clear log if creds absent). **Remaining:** owner supplies OAuth creds + one live test. Helper: `scripts/google_calendar_setup.py`; [guide §0](integrations/calendar.md) (= Phase D #1) |
+| Career page custom branding | ✅ | UI built + settings wired (2026-06-12); QA'd 2026-06-13 by code-trace (= Phase D #2) |
 
-## Phase C — Hardening & audit closure · ~98%
+## Phase C — Hardening & audit closure · 100%
 
 The 2026-06-11 audit ([snapshot](archive/2026-06-11_PRODUCT_STATUS.md)) found 4 P0s + 14 P1s. All closed:
 
@@ -68,30 +72,32 @@ The 2026-06-11 audit ([snapshot](archive/2026-06-11_PRODUCT_STATUS.md)) found 4 
 | P0-3 GDPR cross-tenant deletion | ✅ | org-scope check + rate limit · `90e6413` |
 | P0-4 Collusion detection dead | ✅ | `_answer_similarity` fixed · `90e6413` |
 | P1-1…14 (emails, reminders, round-result UI, portal fields, real embeddings, …) | ✅ | commits `982efaa`, `778d882`, `e47acf9` |
-| Test net | ⚠️ | **2026-06-13 (Sprint 3):** 5 stub files filled → **132 backend tests green @ 37.54% coverage** (`pytest-cov`, floor `COV_MIN=37`, `make coverage`); first **frontend unit tests** added (`api.js`, `HireRequests/helpers.js`, dashboard metadata, `npm test`); **`make e2e`** one-command runner. **Remaining:** CI pipeline (F9). Bug log #228, #232–#235 |
+| Test net | ✅ | **2026-06-13 (Sprint 3):** 5 stub files filled → **132 backend tests green @ 37.54% coverage** (`pytest-cov`, floor `COV_MIN=37`, `make coverage`); first **frontend unit tests** added (`api.js`, `HireRequests/helpers.js`, dashboard metadata, `npm test`); **`make e2e`** one-command runner. CI pipeline shipped under **F9** (now ✅) — this row is closed. Bug log #228, #232–#235 |
 | Code-review cleanup (2026-06-13, Sprint 3) | ✅ | 2 DOM hacks → React (E2/E3 — `window.prompt`→ConfirmModal, bias-fix globals→event delegation, also repaired DOMPurify-stripped buttons); dead-file sweep (E4); service facades documented (E6); `/uploads` env-gated + object-storage plan (E7); `utcnow()` deprecation. Bug log #229–#231, #236–#238 |
 | Error monitoring | ✅ | Sentry: backend API + Celery + frontend |
 | Architecture debt (SQL→repositories, god-object split, stub repos) | ✅ | CRITICAL-03, HIGH-04, HIGH-05 all done |
-| Deployment configs (X-Forwarded-For, `ENCRYPTION_KEY`) | ⚠️ | Deferred to production environment setup — do in Phase F |
+| Deployment configs (X-Forwarded-For, `ENCRYPTION_KEY`) | ✅ | Config/code complete 2026-06-13 (Sprint 2): documented in [architecture/production_config.md](architecture/production_config.md). Live cutover (staging/backups/uptime) is hosting-dependent and tracked under **F6** — not a code gap |
 
-## Phase D — Phase-2 features · 5 ✅ / 2 ⚠️ / 5 ❌
+## Phase D — Phase-2 features · 7 ✅ / 3 ⚠️ / 2 ❌
 
-From [`product/03_roadmap.md`](product/03_roadmap.md) §4:
+From [`product/03_roadmap.md`](product/03_roadmap.md) §4.
+**Note:** #1 Calendar, #2 Branding and #3 Video are the same features tracked in **Phase B** —
+Phase B holds the authoritative status; these rows mirror it.
 
 | # | Feature | Status | Notes |
 |---|---|---|---|
 | 12 | JD chat interactive refinement | ✅ | Shipped (commits `099cdd0`–`62fe99e`) |
-| 1 | Google Calendar OAuth (real) | ⚠️ | Mock done; needs OAuth client + adapter |
+| 1 | Google Calendar OAuth (real) | ⚠️ | **Adapter now implemented** (2026-06-13) — see Phase B "Calendar integration". Needs owner's OAuth creds + a live test to flip ✅ |
 | 2 | Career page branding | ✅ | QA'd 2026-06-13 (code-trace): settings→PATCH `/settings/org` (gated `require_org_head`)→`OrgRepository`→DB cols→careers GET→`CareerPage` applies color/banner/tagline. Minor: cleared fields can't reset (PATCH `exclude_none`); silent save errors. See [reviews/2026-06-13_sprint4_qa.md](reviews/2026-06-13_sprint4_qa.md) |
 | 3 | Video intro frontend | ⚠️ | Built 2026-06-13 (Sprint 4) as a **post-submission add-on** (decision: avoids touching the apply completion state machine — zero risk of lost applications). `_step_complete` now offers an optional video + sets `video_offer`; `ApplyPage` shows the upload card at `completion` (skip is local; `/upload-video` unchanged). Recruiter player already live via `get_with_application` (needs `position_id` context — plain `get()` path doesn't surface it yet). Unit test `tests/test_video_intro.py` locks the contract. **Automated gate cleared 2026-06-13:** backend suite 133 passed (incl. this test), coverage 37.62% > floor; `npm run build` clean. **Only remaining before ✅:** a ~2-min live click-through of the optional-video card + recruiter player. |
 | 6 | GDPR data export (Art. 20) | ✅ | Built 2026-06-13 (Sprint 4): `Settings → Data export` tab (`DataExportTab.jsx`, was a placeholder) → standalone SAR export via `gdprApi.exportCandidateData` → talent-pool lookup helper + by-ID, structured summary + copy/download JSON. Admin-gated. (Deletion-context export remains in the GDPR/DPDP tab.) |
 | 7 | Audit log UI | ✅ | QA'd 2026-06-13 (code-trace): `AuditTab`→GET `/settings/audit-logs` (gated `require_org_head`)→`AuditService.get_logs` returns `{total, logs[]}`; response shape matches consumer; debounced search + pagination + CSV(page). Minor: UI exposes search only, not the user_id/action filter params backend supports. See QA review doc |
 | 8 | team_lead dashboard | ✅ | QA'd 2026-06-13 (code-trace): `DashboardPage` role-routes `team_lead`→`TeamLeadDashboard` fed by `useDashboardData`; `lanes.{now,next,pulse}` shape matches all consumers; File-Hire-Request CTA→`/hire-requests/new`; onboarding empty-state handled. See QA review doc |
-| 9 | Multi-approver relay | ⚠️ | dept_admin tier shipped; finance/CEO tiers + `approval_chain` remain |
+| 9 | Multi-approver relay | ⚠️ | **Single-tier only** (code-traced `services/hire_requests/approvals.py` 2026-06-13): one `dept_admin`/`org_head` approval → HR pickup. There is **no** finance/CEO chain and **no** `approval_chain` table/sequencing. **Decision 2026-06-13: deferred** — current single-tier approval is sufficient; multi-tier relay to be added only if a pilot needs it |
 | 4 | WhatsApp integration | ❌ | **Promoted — India wedge, rank #5 in [validation brief](product/05_market_validation.md) §6** |
 | 5 | Self-scheduling links | ❌ | Blocked by calendar integration |
-| 10 | Hire-request wizard polish | ❌ | P2 |
-| 11 | Real LLM token streaming | ❌ | P2 |
+| 10 | Hire-request wizard polish | ✅ | Done 2026-06-13: inline per-field validation (role required, headcount ≥ 1, experience/comp min≤max, no negatives), `aria-invalid` highlighting + field-level messages, auto-focus to first invalid field, errors clear on edit. `HireRequestForm.jsx`; esbuild-clean |
+| 11 | Real LLM token streaming | ✅ | **Was already live — corrected from ❌ 2026-06-13.** `run_drafting_final` streams via `llm.astream()` → `token_queue` → `jd_token` SSE; `ChatContext.jsx` renders incrementally; covered by `tests/test_phase2_actions.py` |
 
 ## Phase E — Phase-3 features · 0/9
 
@@ -128,7 +134,7 @@ This is the gap between "product" and "business."
 1. **F1 + F3 + F4** — the "front door" batch (~week; F8 repo hygiene ✅ done, F1/F3 dev done — just hosting + lawyer review left). Then start **25 discovery calls** (India SMB beachhead — [validation brief](product/05_market_validation.md) §4).
 2. **F2 billing + quotas** — ✅ built in simulation (Sprint 2). Left before a paid pilot: Razorpay **KYC + live keys** (`BILLING_PROVIDER=razorpay`) and a live pytest run.
 3. **F5 onboarding** — built from watching the first pilots, not before.
-4. QA the six Phase-D ⚠️ items as pilots touch them; promote to ✅ only with a test.
+4. **Calendar go-live** — owner supplies Google OAuth creds (run `scripts/google_calendar_setup.py`, see [guide §0](integrations/calendar.md)), then one live test flips Calendar (Phase B / D#1) to ✅. The other Phase-D ⚠️ items (video click-through, multi-approver relay) get promoted only when a pilot needs them.
 5. **No new features unless a pilot customer is blocked without it** (rule from the 90-day plan).
 
 ---

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -14,42 +14,39 @@ export default function CareerPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Fit Finder state
-  const [fitFilters, setFitFilters] = useState({
-    function: '',
-    exp: '',
-    values: []
-  })
+  const [fitFilters, setFitFilters] = useState({ function: '', exp: '', values: [] })
   const [positions, setPositions] = useState([])
+  // Stores the initial unfiltered list — used to derive departments and work style stat
+  const [orgPositions, setOrgPositions] = useState([])
   const [loadingFit, setLoadingFit] = useState(false)
 
-  // Single position state
   const [activePosition, setActivePosition] = useState(null)
   const [loadingPosition, setLoadingPosition] = useState(false)
   const [applying, setApplying] = useState(false)
-  
-  // Apply Modal state
+
   const [showApplyModal, setShowApplyModal] = useState(false)
   const [applyForm, setApplyForm] = useState({ name: '', email: '' })
-  
-  // Toast state
   const [toast, setToast] = useState(null)
 
-  // Testimonials mock data
-  const testimonials = [
-    {
-      quote: "The ownership I have here is unmatched. If you see a problem, you have the agency to solve it.",
-      author: "Sarah Chen",
-      role: "Lead Engineer",
-      avatar: "SC"
-    },
-    {
-      quote: "We don't just talk about work-life balance, we enforce it. It's refreshing.",
-      author: "Marcus Webb",
-      role: "Product Designer",
-      avatar: "MW"
-    }
-  ]
+  // Derive function filter chips from actual departments in this org
+  const functionChips = useMemo(() => {
+    const depts = [...new Set(orgPositions.map(p => p.department).filter(Boolean))]
+    return depts.length > 0 ? [...depts, 'All'] : ['Engineering', 'Design', 'Product', 'Sales', 'All']
+  }, [orgPositions])
+
+  // Derive the most common work type across open roles (replaces hardcoded "Remote")
+  const workType = useMemo(() => {
+    const types = orgPositions.map(p => p.work_type).filter(Boolean)
+    if (!types.length) return 'Flexible'
+    const counts = types.reduce((acc, t) => ({ ...acc, [t]: (acc[t] || 0) + 1 }), {})
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]
+  }, [orgPositions])
+
+  // Exclude the currently viewed position from the "Other Open Roles" list
+  const otherPositions = useMemo(
+    () => positionId ? positions.filter(p => String(p.id) !== String(positionId)) : positions,
+    [positions, positionId]
+  )
 
   useEffect(() => {
     fetchOrgAndFit()
@@ -65,7 +62,6 @@ export default function CareerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positionId])
 
-  // Refetch when filters change
   useEffect(() => {
     if (org) {
       fetchFitMatches()
@@ -76,12 +72,9 @@ export default function CareerPage() {
   const fetchOrgAndFit = async () => {
     try {
       setLoading(true)
-      // We can use the regular endpoint just to get org data
       const res = await api.get(`/careers/${orgSlug}`)
       setOrg(res.data.org)
-      
-      // Then fetch the fit matches
-      await fetchFitMatches(res.data.org.slug || orgSlug)
+      await fetchFitMatches(res.data.org.slug || orgSlug, true)
     } catch (err) {
       console.error(err)
       setError(err.response?.data?.error?.message || 'Failed to load career page')
@@ -90,16 +83,20 @@ export default function CareerPage() {
     }
   }
 
-  const fetchFitMatches = async (slug = orgSlug) => {
+  const fetchFitMatches = async (slug = orgSlug, isInitial = false) => {
     try {
       setLoadingFit(true)
       const params = new URLSearchParams()
       if (fitFilters.function) params.append('function', fitFilters.function)
       if (fitFilters.exp) params.append('exp', fitFilters.exp)
       if (fitFilters.values.length > 0) params.append('values', fitFilters.values.join(','))
-      
+
       const res = await api.get(`/careers/${slug}/fit?${params.toString()}`)
       setPositions(res.data.positions)
+      // On initial load (no filters), capture full list for deriving filter options and stats
+      if (isInitial) {
+        setOrgPositions(res.data.positions)
+      }
     } catch (err) {
       console.error('Fit fetch error:', err)
     } finally {
@@ -120,14 +117,11 @@ export default function CareerPage() {
     }
   }
 
-  const handleApplyClick = () => {
-    setShowApplyModal(true)
-  }
+  const handleApplyClick = () => setShowApplyModal(true)
 
   const submitApplication = async (e) => {
     e.preventDefault()
     if (!applyForm.name || !applyForm.email) return
-
     try {
       setApplying(true)
       const res = await api.post(`/careers/${orgSlug}/positions/${positionId}/apply`, {
@@ -150,12 +144,37 @@ export default function CareerPage() {
   const handleValueToggle = (val) => {
     setFitFilters(prev => {
       const isSelected = prev.values.includes(val)
-      if (isSelected) {
-        return { ...prev, values: prev.values.filter(v => v !== val) }
-      } else {
-        return { ...prev, values: [...prev.values, val] }
-      }
+      return isSelected
+        ? { ...prev, values: prev.values.filter(v => v !== val) }
+        : { ...prev, values: [...prev.values, val] }
     })
+  }
+
+  const formatExpRange = (min, max) => {
+    if (min != null && max != null) return `${min}–${max} yrs exp`
+    if (min != null) return `${min}+ yrs exp`
+    if (max != null) return `Up to ${max} yrs`
+    return null
+  }
+
+  const formatWorkType = (type) => {
+    const map = { remote: 'Remote', hybrid: 'Hybrid', onsite: 'On-site', on_site: 'On-site', in_office: 'In Office' }
+    return map[type?.toLowerCase()] || (type ? type.charAt(0).toUpperCase() + type.slice(1) : null)
+  }
+
+  const formatEmploymentType = (type) => {
+    const map = { full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract', internship: 'Internship', temporary: 'Temporary', freelance: 'Freelance' }
+    return map[type?.toLowerCase()] || (type ? type.charAt(0).toUpperCase() + type.slice(1) : null)
+  }
+
+  const formatRelativeDate = (dateStr) => {
+    if (!dateStr) return null
+    const days = Math.floor((Date.now() - new Date(dateStr)) / 86400000)
+    if (days === 0) return 'Posted today'
+    if (days === 1) return 'Posted yesterday'
+    if (days < 30) return `Posted ${days}d ago`
+    if (days < 60) return 'Posted 1 month ago'
+    return `Posted ${Math.floor(days / 30)} months ago`
   }
 
   if (loading) {
@@ -189,45 +208,39 @@ export default function CareerPage() {
   }
 
   const brandColor = org.career_primary_color || 'var(--color-primary)'
-  
+  const cultureKeywords = org.culture_keywords
+    ? org.culture_keywords.split(',').map(k => k.trim()).filter(Boolean)
+    : []
+  const hasCultureSection = org.benefits_text || cultureKeywords.length > 0
+
   return (
     <div className="cp-container">
       {toast && (
-        <Toast 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={() => setToast(null)} 
-        />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
-      
-      <div style={{ position: 'absolute', top: 24, left: 24, zIndex: 10 }}>
-        <Link 
-          to="/careers" 
-          style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 8, 
-            color: 'rgba(255,255,255,0.8)', 
-            textDecoration: 'none', 
-            fontSize: 14,
-            background: 'rgba(0,0,0,0.3)',
-            padding: '8px 12px',
-            borderRadius: 8,
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255,255,255,0.1)'
-          }}
-        >
+
+      {/* Top breadcrumb navigation */}
+      <div className="cp-breadcrumb-bar">
+        <Link to="/careers" className="cp-breadcrumb-btn">
           <Icon name="arrow-left" size={16} />
           Explore Companies
         </Link>
+        {positionId && (
+          <>
+            <span className="cp-breadcrumb-sep">/</span>
+            <Link to={`/careers/${orgSlug}`} className="cp-breadcrumb-btn">
+              {org.name} Open Roles
+            </Link>
+          </>
+        )}
       </div>
 
       {/* 1. HERO SECTION */}
-      <div 
-        className="cp-hero" 
+      <div
+        className="cp-hero"
         style={{
-          background: org.career_banner_url 
-            ? `linear-gradient(to bottom, rgba(15,15,19,0.5), rgba(15,15,19,1)), url(${org.career_banner_url})` 
+          background: org.career_banner_url
+            ? `linear-gradient(to bottom, rgba(15,15,19,0.5), rgba(15,15,19,1)), url(${org.career_banner_url})`
             : `linear-gradient(135deg, ${brandColor}40, rgba(15,15,19,1))`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -240,16 +253,14 @@ export default function CareerPage() {
           ) : (
             <div className="cp-hero-logo-placeholder">{org.name.charAt(0)}</div>
           )}
-          
           <h1 className="cp-hero-title">{org.career_tagline || `Join ${org.name}`}</h1>
-          
           {org.about_us && (
             <p className="cp-hero-desc">{org.about_us}</p>
           )}
         </div>
       </div>
 
-      {/* 2. STATS STRIP */}
+      {/* 2. STATS STRIP — hidden on position detail view */}
       {!positionId && (
         <div className="cp-stats-strip">
           <div className="cp-stat-item">
@@ -261,17 +272,17 @@ export default function CareerPage() {
             <div className="cp-stat-label">Headquarters</div>
           </div>
           <div className="cp-stat-item">
-            <div className="cp-stat-val">Remote</div>
+            <div className="cp-stat-val">{workType}</div>
             <div className="cp-stat-label">Work Style</div>
           </div>
           <div className="cp-stat-item">
-            <div className="cp-stat-val" style={{ color: brandColor }}>{positions.length}</div>
+            <div className="cp-stat-val" style={{ color: brandColor }}>{orgPositions.length}</div>
             <div className="cp-stat-label">Open Roles</div>
           </div>
         </div>
       )}
 
-      {/* 3. POSITION DETAIL OR FIT FINDER SECTION */}
+      {/* 3. POSITION DETAIL OR FIT FINDER */}
       {positionId ? (
         <div className="cp-position-detail">
           {loadingPosition ? (
@@ -290,10 +301,22 @@ export default function CareerPage() {
                   <span>•</span>
                   <span>{activePosition.location}</span>
                   <span>•</span>
-                  <span>{activePosition.work_type}</span>
+                  <span>{formatWorkType(activePosition.work_type)}</span>
+                  {activePosition.employment_type && (
+                    <>
+                      <span>•</span>
+                      <span>{formatEmploymentType(activePosition.employment_type)}</span>
+                    </>
+                  )}
+                  {(activePosition.experience_min != null || activePosition.experience_max != null) && (
+                    <>
+                      <span>•</span>
+                      <span>{formatExpRange(activePosition.experience_min, activePosition.experience_max)}</span>
+                    </>
+                  )}
                 </div>
-                <button 
-                  className="cp-apply-btn-main" 
+                <button
+                  className="cp-apply-btn-main"
                   style={{ backgroundColor: brandColor }}
                   onClick={handleApplyClick}
                   disabled={applying}
@@ -301,12 +324,10 @@ export default function CareerPage() {
                   {applying ? 'Starting chat...' : 'Apply via chat'} <Icon name="arrow-right" size={16} />
                 </button>
               </div>
-              
+
               <div className="cp-position-content">
                 <div className="cp-jd-markdown markdown-body">
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                  >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {activePosition.jd_markdown}
                   </ReactMarkdown>
                 </div>
@@ -325,31 +346,44 @@ export default function CareerPage() {
             <h2>Find your fit</h2>
             <p>Tell us what you're looking for, and we'll match you with the right team.</p>
           </div>
-          
+
           <div className="cp-fit-questions">
-            {/* Q1: Function */}
+            {/* Q1: Function — free-text search so any role/industry can find their fit */}
             <div className="cp-fit-q">
               <label>What do you do?</label>
-              <div className="cp-chips">
-                {['Engineering', 'Design', 'Product', 'Sales', 'All'].map(f => (
-                  <button 
-                    key={f}
-                    className={`cp-chip ${fitFilters.function === f ? 'active' : ''}`}
-                    style={fitFilters.function === f ? { background: `${brandColor}30`, borderColor: brandColor, color: brandColor } : {}}
-                    onClick={() => setFitFilters(p => ({ ...p, function: f === 'All' ? '' : f }))}
-                  >
-                    {f}
-                  </button>
-                ))}
+              <div className="cp-function-search">
+                <input
+                  type="text"
+                  className="cp-function-input"
+                  placeholder="e.g. Marketing, Civil Engineering, Data Entry, Finance…"
+                  value={fitFilters.function}
+                  onChange={e => setFitFilters(p => ({ ...p, function: e.target.value }))}
+                />
+                {/* Quick picks: show actual departments that exist in this org */}
+                {functionChips.length > 1 && (
+                  <div className="cp-chips" style={{ marginTop: 10 }}>
+                    <span className="cp-chips-label">Quick pick:</span>
+                    {functionChips.map(f => (
+                      <button
+                        key={f}
+                        className={`cp-chip ${fitFilters.function === f ? 'active' : ''}`}
+                        style={fitFilters.function === f ? { background: `${brandColor}30`, borderColor: brandColor, color: brandColor } : {}}
+                        onClick={() => setFitFilters(p => ({ ...p, function: p.function === f || f === 'All' ? '' : f }))}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-            
+
             {/* Q2: Experience */}
             <div className="cp-fit-q">
               <label>Experience level</label>
               <div className="cp-chips">
                 {['0-3 yrs', '3-7 yrs', '7+ yrs'].map(e => (
-                  <button 
+                  <button
                     key={e}
                     className={`cp-chip ${fitFilters.exp === e ? 'active' : ''}`}
                     style={fitFilters.exp === e ? { background: `${brandColor}30`, borderColor: brandColor, color: brandColor } : {}}
@@ -360,13 +394,13 @@ export default function CareerPage() {
                 ))}
               </div>
             </div>
-            
+
             {/* Q3: Values */}
             <div className="cp-fit-q">
               <label>What matters most?</label>
               <div className="cp-chips">
                 {['Ownership', 'Stability', 'Mentorship', 'Impact', 'Fast Pace'].map(v => (
-                  <button 
+                  <button
                     key={v}
                     className={`cp-chip ${fitFilters.values.includes(v) ? 'active' : ''}`}
                     style={fitFilters.values.includes(v) ? { background: `${brandColor}30`, borderColor: brandColor, color: brandColor } : {}}
@@ -381,86 +415,112 @@ export default function CareerPage() {
         </div>
       )}
 
-      {/* 4. MATCHING ROLES */}
+      {/* 4. ROLES SECTION */}
       <div className="cp-roles-section">
         <h3 className="cp-roles-title">
-          {positionId ? 'Other Open Roles' : (loadingFit ? 'Finding matches...' : `Open Roles (${positions.length})`)}
+          {positionId
+            ? `Other Open Roles at ${org.name}`
+            : (loadingFit ? 'Finding matches...' : `Open Roles (${positions.length})`)}
         </h3>
-        
-        <div className="cp-roles-grid">
-          {positions.map(pos => (
-            <Link to={`/careers/${orgSlug}/positions/${pos.id}`} key={pos.id} className="cp-job-card" style={{ '--hover-color': brandColor }}>
-              <div className="cp-job-header">
-                <div className="cp-job-main">
-                  <h4>{pos.role_name}</h4>
-                  <div className="cp-job-meta">
-                    <span>{pos.department || 'General'}</span>
-                    <span>•</span>
-                    <span>{pos.location}</span>
-                    <span>•</span>
-                    <span>{pos.work_type}</span>
-                  </div>
-                </div>
-                
-                {pos.fit_score > 0 && (
-                  <div className="cp-job-match" style={{ color: brandColor, backgroundColor: `${brandColor}20` }}>
-                    {pos.fit_score}% Match
-                  </div>
-                )}
-              </div>
-              
-              <div className="cp-job-pitch">
-                <p>"{pos.jd_pitch || 'Join our team and help us build the future of our industry. We are looking for passionate individuals.'}"</p>
-              </div>
-              
-              <div className="cp-job-footer">
-                <div className="cp-job-why">
-                  <strong>Why this team:</strong> {pos.team_pitch || 'Fast moving, high impact.'}
-                </div>
-                <div className="cp-job-cta" style={{ backgroundColor: brandColor, color: '#fff' }}>
-                  Apply via chat <Icon name="arrow-right" size={14} />
-                </div>
-              </div>
+
+        {/* When on JD view and no other roles exist, show a focused empty state */}
+        {positionId && otherPositions.length === 0 ? (
+          <div className="cp-no-roles">
+            <Icon name="briefcase" size={32} />
+            <p>No other open roles at {org.name} right now.</p>
+            <Link to="/careers" style={{ color: brandColor, fontWeight: 500 }}>
+              Explore other companies
             </Link>
-          ))}
-          
-          {!loadingFit && positions.length === 0 && (
-            <div className="cp-no-roles">
-              <Icon name="search" size={32} />
-              <p>No open roles match these criteria right now.</p>
-              <button onClick={() => setFitFilters({ function: '', exp: '', values: [] })}>
-                Clear filters
-              </button>
+          </div>
+        ) : (
+          <div className="cp-roles-grid">
+            {otherPositions.map(pos => {
+              const expRange = formatExpRange(pos.experience_min, pos.experience_max)
+              const empType = formatEmploymentType(pos.employment_type)
+              const workTypeFmt = formatWorkType(pos.work_type)
+              const postedDate = formatRelativeDate(pos.created_at)
+              return (
+                <Link
+                  to={`/careers/${orgSlug}/positions/${pos.id}`}
+                  key={pos.id}
+                  className="cp-job-card"
+                  style={{ '--hover-color': brandColor }}
+                >
+                  <div className="cp-job-header">
+                    <div className="cp-job-main">
+                      <h4>{pos.role_name}</h4>
+                      <div className="cp-job-meta">
+                        {pos.department && <span>{pos.department}</span>}
+                        {pos.department && <span>•</span>}
+                        <span>{pos.location}</span>
+                        <span>•</span>
+                        <span>{workTypeFmt}</span>
+                      </div>
+                    </div>
+
+                    {pos.fit_score > 0 && (
+                      <div className="cp-job-match" style={{ color: brandColor, backgroundColor: `${brandColor}20` }}>
+                        {pos.fit_score}% Match
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="cp-job-footer">
+                    <div className="cp-job-badges">
+                      {empType && <span className="cp-job-badge">{empType}</span>}
+                      {expRange && <span className="cp-job-badge">{expRange}</span>}
+                      {postedDate && <span className="cp-job-badge cp-job-badge--muted">{postedDate}</span>}
+                    </div>
+                    <div className="cp-job-cta" style={{ backgroundColor: brandColor, color: '#fff' }}>
+                      View role <Icon name="arrow-right" size={14} />
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+
+            {!loadingFit && !positionId && positions.length === 0 && (
+              <div className="cp-no-roles">
+                <Icon name="search" size={32} />
+                <p>No open roles match these criteria right now.</p>
+                <button onClick={() => setFitFilters({ function: '', exp: '', values: [] })}>
+                  Clear filters
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 5. CULTURE SECTION — only shown when org has real data; never shows placeholder text */}
+      {hasCultureSection && (
+        <div className="cp-culture-section">
+          <h3>Life at {org.name}</h3>
+          {org.benefits_text && (
+            <p className="cp-culture-text">{org.benefits_text}</p>
+          )}
+          {cultureKeywords.length > 0 && (
+            <div className="cp-culture-chips">
+              {cultureKeywords.map(kw => (
+                <span
+                  key={kw}
+                  className="cp-culture-chip"
+                  style={{ borderColor: `${brandColor}60`, color: brandColor, backgroundColor: `${brandColor}10` }}
+                >
+                  {kw}
+                </span>
+              ))}
             </div>
           )}
         </div>
-      </div>
-
-      {/* 5. TESTIMONIALS */}
-      <div className="cp-testimonials-section">
-        <h3>Life at {org.name}</h3>
-        <div className="cp-testimonials-grid">
-          {testimonials.map((t, idx) => (
-            <div key={idx} className="cp-testimonial-card">
-              <p className="cp-testimonial-quote">"{t.quote}"</p>
-              <div className="cp-testimonial-author">
-                <div className="cp-testimonial-avatar">{t.avatar}</div>
-                <div>
-                  <div className="cp-testimonial-name">{t.author}</div>
-                  <div className="cp-testimonial-role">{t.role}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
 
       <footer className="cp-footer">
         <div>Powered by AI Talent Lab</div>
         <div>
-          <a href={TERMS_URL} target="_blank" rel="noopener">Terms</a>
+          <a href={TERMS_URL} target="_blank" rel="noopener noreferrer">Terms</a>
           {' · '}
-          <a href={PRIVACY_URL} target="_blank" rel="noopener">Privacy</a>
+          <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer">Privacy</a>
           {' · '}
           <Link to="/">Platform</Link>
         </div>
@@ -500,21 +560,21 @@ export default function CareerPage() {
                   />
                 </div>
                 <div className="modal-footer" style={{ marginTop: '24px', borderTop: 'none', padding: 0 }}>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowApplyModal(false)}
                     disabled={applying}
                     style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
                   >
                     Cancel
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={applying}
-                    style={{ 
-                      padding: '8px 16px', 
-                      borderRadius: '8px', 
-                      backgroundColor: brandColor, 
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      backgroundColor: brandColor,
                       color: '#fff',
                       display: 'flex',
                       alignItems: 'center',

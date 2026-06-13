@@ -5,7 +5,7 @@ All routes under /api/v1/apply/
 """
 import logging
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Request
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request, Depends
 from pydantic import BaseModel
 
 from backend.services.apply_service import ApplyService
@@ -13,7 +13,19 @@ from backend.services.resume_service import extract_resume_text, validate_resume
 from backend.services.gdpr_service import GDPRService
 from backend.middleware.rate_limiter import limiter
 
-router = APIRouter(prefix="/api/v1/apply", tags=["Apply"])
+async def set_apply_org_context(token: str):
+    """Dependency to set tenant context for magic link routes to bypass RLS issues."""
+    try:
+        from backend.services.apply_service import verify_apply_token
+        from backend.db.connection import set_org_context, reset_org_context
+        payload = verify_apply_token(token)
+        ctx = set_org_context(payload["org_id"])
+        yield
+        reset_org_context(ctx)
+    except Exception:
+        yield
+
+router = APIRouter(prefix="/api/v1/apply", tags=["Apply"], dependencies=[Depends(set_apply_org_context)])
 logger = logging.getLogger(__name__)
 
 
