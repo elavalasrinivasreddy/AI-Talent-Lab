@@ -9,6 +9,7 @@ import { DualFunnel } from './DualFunnel'
 import { BottleneckRadar } from './BottleneckRadar'
 import { RecruiterLeaderboard } from './RecruiterLeaderboard'
 import OpsTab from './OpsTab'
+import ExploreTab from './explore/ExploreTab'
 import './AnalyticsPage.css'
 
 const PERIODS = [
@@ -56,23 +57,27 @@ export default function AnalyticsPage() {
             <p className="analytics-subtitle">
               {tab === 'roi'
                 ? 'AI contribution, pipeline health, and team throughput'
-                : 'Task health, LLM cost, and JD generation metrics'}
+                : tab === 'ops'
+                ? 'Task health, LLM cost, and JD generation metrics'
+                : 'Build your own charts — pick metrics, axes, and date ranges, then save dashboards'}
             </p>
           </div>
-          <div className="analytics-header-right">
-            <div className="analytics-period-switcher">
-              {PERIODS.map(p => (
-                <button
-                  key={p.value}
-                  type="button"
-                  className={`analytics-period-btn${period === p.value ? ' active' : ''}`}
-                  onClick={() => setPeriod(p.value)}
-                >
-                  {p.label}
-                </button>
-              ))}
+          {tab !== 'explore' && (
+            <div className="analytics-header-right">
+              <div className="analytics-period-switcher">
+                {PERIODS.map(p => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    className={`analytics-period-btn${period === p.value ? ' active' : ''}`}
+                    onClick={() => setPeriod(p.value)}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
         
         <div className="analytics-page-tabs">
@@ -89,6 +94,13 @@ export default function AnalyticsPage() {
             onClick={() => setTab('ops')}
           >
             System Health
+          </button>
+          <button
+            type="button"
+            className={`analytics-page-tab${tab === 'explore' ? ' active' : ''}`}
+            onClick={() => setTab('explore')}
+          >
+            Explore
           </button>
         </div>
       </div>
@@ -119,8 +131,10 @@ export default function AnalyticsPage() {
             </div>
           </>
         )
-      ) : (
+      ) : tab === 'ops' ? (
         <OpsTab period={period} />
+      ) : (
+        <ExploreTab />
       )}
     </div>
   )
