@@ -4467,3 +4467,50 @@ Updated the CSS selector to `.mkt-nav-links a:not(.mkt-btn)` so it exclusively t
 **Files Modified:**
 - `backend/routers/apply.py`
 - `backend/routers/panel.py`
+
+---
+
+## 264. Self-Serve Analytics + Scheduled Insight Reports (Initiative Tracker)
+**Date:** 2026-06-14
+**Status:** 📋 Planned — implementation pending user approval (no product code changed yet)
+**Plan:** `docs/plans/2026-06-14-self-serve-analytics.md`
+
+> Living tracker for the analytics initiative. **Update this single entry's checklist before each commit** as steps land (per request 2026-06-14). True bug-style fixes within it (e.g. the hardcoded radar values) may also get their own numbered entries.
+
+**Problem Statement:**
+The `/analytics` page exposes only two fixed dashboards (Agent ROI, System Health) with no org-/dept-level self-serve analytics, no user customization (axis/metric/date-range/filters), and no exported or scheduled reporting. Separately, the **Agent ROI** tab's bottleneck radar renders two **hardcoded** values — `ai_accept: 0.7` and `retention: 0.8` (`backend/services/dashboard_service.py:597-600`) — that are not real data. (System Health was audited and reads entirely real data via `ops_service.py` — no fix needed there.)
+
+**Idea / Solution:**
+Add a third **"Explore"** tab (keeping both existing tabs) — a drag-and-drop dashboard builder backed by a safe in-code **metric/dimension registry + query engine** (no raw SQL from the client; org/dept RLS always enforced server-side) — plus **user-scheduled PDF/HTML reports with AI-written insights** delivered via Celery + Resend. Fix the two hardcoded radar values in place. Full design in the plan doc.
+
+**Progress (tick + commit at each step):**
+- [x] Architecture/implementation plan written (`docs/plans/2026-06-14-self-serve-analytics.md`)
+- [x] P2 · Fix radar `ai_accept` → copilot-derived rate (`dashboard_service.py:get_bottleneck_radar`)
+- [x] P2 · Replace hardcoded `retention` axis → real **Match Quality** (avg `skill_match_score`); synced `BottleneckRadar.jsx` axis key/label/tooltip
+- [ ] P2 · Add `dept_id` scoping to agent-roi / bottleneck-radar endpoints (deferred — optional)
+- [x] P1 · Migration: `dashboards` table + RLS registration (`db/migrations.py`). *(report_* tables deferred to P4.)*
+- [x] P1 · Metric/dimension registry — 4 datasets (applications/interviews/positions/llm) (`services/analytics/registry.py`)
+- [x] P1 · Query engine + safety suite (`services/analytics/query_engine.py`) — 23/23 checks pass (org guard, dept pin, injection→params, role gating, allowlists, placeholder 1:1)
+- [x] P1 · Endpoints: `/catalog`, `/query`, `/query/batch`, dashboards CRUD (`routers/analytics.py`, `models/analytics.py`, `db/repositories/dashboards.py`, registered in `main.py`)
+- [x] P3 · Explore tab UI — **zero new deps** (inline-SVG charts + native drag-and-drop, no react-grid-layout/recharts): `components/Analytics/explore/*` + `analyticsApi` in `utils/api.js`; wired as 3rd tab in `AnalyticsPage.jsx` (roi/ops kept)
+- [x] P3 · Dashboards CRUD (create/list/get/update/delete, scope + ownership rules). *Preset seeding: deferred — first-run ships a populated default board client-side instead.*
+- [ ] P4 · `report_schedules` CRUD + `ScheduleDialog` — **not in this delivery (scheduled reports = next phase)**
+- [ ] P4 · Celery dispatcher + `render_and_send_report` + AI insights + Resend send — **next phase**
+- [x] Verify · backend: registry+engine+router+repo compile; 23/23 engine safety checks; UPDATE placeholder wiring checked. ⚠️ Frontend build (`npm run build`) to be run by user — no new deps added so it should build as-is.
+
+**Round 2 (post-feedback 2026-06-14):**
+- [x] R2 · Dept-admin now **dept-scoped** (new `CROSS_DEPT_ROLES = org_head/platform_admin`); org_head stays org-wide + can pick a dept. 6/6 dept checks pass; non-int `department_id` rejected. (`query_engine._dept_clause`, `registry`, `routers/analytics` dept-dropdown gating)
+- [x] R2 · Widgets **auto-size by chart type** (`charts.autoSize`); removed the width/height button rows — compact width-cycle in edit mode only (`WidgetCard.jsx`, `explore.css`)
+- [x] R2 · **NL "Ask AI" widget builder** — `services/analytics/nl_builder.py` + `POST /analytics/nl-widget` + `explore/AskBar.jsx`. LLM constrained to the catalog; the returned spec is validated by the query engine (so it can't invent columns/escape tenant isolation); ambiguous → clarifying question. Compiles + prompt/JSON-parse verified.
+**Round 3 (post-feedback 2026-06-14):**
+- [x] R3 · Explore now opens in **View mode** (first-run populated board no longer forces Edit) (`ExploreTab`)
+- [x] R3 · **Ask AI** moved to a persistent **right-side panel** (history visible) instead of a toggle button (`AskBar.jsx`, `explore.css` `.exp-layout`/`.exp-aside`)
+- [x] R3 · Fixed toolbar button text wrapping (`white-space:nowrap`); "+ Add widget"
+- [x] R3 · **Grid lines** added to bar/line/area/time_series/histogram/scatter (5 lines); pie intentionally clean (`charts.jsx`)
+- [x] R3 · **Scheduler (Phase 4)** — `report_schedules` table+RLS, `ReportScheduleRepository` (+`compute_next_run`, 5/5 cadence checks), `report_service` (HTML report + AI insights, scope-aware, compiles), `/analytics/schedules` CRUD + `run-now`, Celery `report_dispatch` (dispatcher + render/send) + 15-min beat entry, Resend send. Frontend `ScheduleDialog` with **confirmation step** + Schedule button.
+- [ ] R3 · PDF attachment (currently inline HTML email) — optional follow-up (needs Resend attachment support / WeasyPrint).
+
+**Files (to be updated as work lands):**
+- `docs/plans/2026-06-14-self-serve-analytics.md` (new — the plan)
+- `docs/qa/bug_fixes_log.md` (this tracker)
+- _(implementation files appended per step)_

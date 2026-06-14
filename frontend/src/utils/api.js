@@ -197,6 +197,25 @@ export const dashboardApi = {
   getJDStats: (period = 'quarter') => _get(`/dashboard/ops/jd?period=${period}`),
 }
 
+// ── Self-serve analytics (Explore tab) ──────────────────────────────────────────
+
+export const analyticsApi = {
+  getCatalog: () => _get('/analytics/catalog'),
+  nlWidget: (query, history) => _post('/analytics/nl-widget', { query, history }),
+  runQuery: (spec, signal) => _post('/analytics/query', spec, signal),
+  runBatch: (items, signal) => _post('/analytics/query/batch', { items }, signal),
+  listDashboards: () => _get('/analytics/dashboards'),
+  getDashboard: (id) => _get(`/analytics/dashboards/${id}`),
+  createDashboard: (body) => _post('/analytics/dashboards', body),
+  updateDashboard: (id, body) => _fetch('PUT', `/analytics/dashboards/${id}`, body),
+  deleteDashboard: (id) => _delete(`/analytics/dashboards/${id}`),
+  listSchedules: (dashboardId) => _get(`/analytics/dashboards/${dashboardId}/schedules`),
+  createSchedule: (body) => _post('/analytics/schedules', body),
+  updateSchedule: (id, body) => _fetch('PUT', `/analytics/schedules/${id}`, body),
+  deleteSchedule: (id) => _delete(`/analytics/schedules/${id}`),
+  runScheduleNow: (id) => _post(`/analytics/schedules/${id}/run-now`),
+}
+
 // ── Notifications ─────────────────────────────────────────────────────────────
 
 export const notificationsApi = {
