@@ -447,6 +447,8 @@ ALTER TABLE interview_kits          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE interview_panel         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pre_evaluations         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE candidate_consents      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE dashboards              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE report_schedules        ENABLE ROW LEVEL SECURITY;
 """
 
 # Tables that have org_id directly
@@ -468,6 +470,8 @@ RLS_TABLES_WITH_ORG_ID = [
     "interview_kits",
     "pre_evaluations",
     "candidate_consents",
+    "dashboards",
+    "report_schedules",
 ]
 
 # Tables that don't have org_id directly (need join-based or skip RLS policy)
@@ -1264,6 +1268,54 @@ async def run_migrations(conn) -> None:
     CREATE INDEX IF NOT EXISTS idx_invoices_org ON invoices(org_id, created_at DESC);
     """)
     logger.info("  invoices table ensured.")
+
+    # ── Self-serve analytics: saved dashboards (the "Explore" tab) ──
+    # Widgets + grid layout are stored as JSON text (consistent with the codebase's
+    # TEXT-JSON convention, e.g. chat_sessions.graph_state). The query engine never
+    # reads these as SQL — they are specs the client replays against /analytics/query.
+    await conn.execute("""
+    CREATE TABLE IF NOT EXISTS dashboards (
+        id             SERIAL PRIMARY KEY,
+        org_id         INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        department_id  INTEGER REFERENCES departments(id),
+        owner_user_id  INTEGER NOT NULL REFERENCES users(id),
+        name           TEXT NOT NULL,
+        description    TEXT,
+        scope          TEXT NOT NULL DEFAULT 'private',   -- private | dept | org
+        is_preset      BOOLEAN NOT NULL DEFAULT FALSE,
+        layout         TEXT NOT NULL DEFAULT '[]',        -- react-grid-layout positions
+        widgets        TEXT NOT NULL DEFAULT '[]',        -- [{key,title,spec}, ...]
+        created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at     TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_dashboards_org ON dashboards(org_id, department_id);
+    """)
+    logger.info("  dashboards table ensured.")
+
+    # ── Scheduled analytics reports (Explore tab → Schedule) ──
+    await conn.execute("""
+    CREATE TABLE IF NOT EXISTS report_schedules (
+        id            SERIAL PRIMARY KEY,
+        org_id        INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        dashboard_id  INTEGER NOT NULL REFERENCES dashboards(id) ON DELETE CASCADE,
+        created_by    INTEGER NOT NULL REFERENCES users(id),
+        name          TEXT NOT NULL,
+        cadence       TEXT NOT NULL DEFAULT 'weekly',   -- daily | every_12h | weekly | monthly
+        hour          SMALLINT NOT NULL DEFAULT 8,      -- hour of day (0-23)
+        weekday       SMALLINT,                          -- 0=Mon .. 6=Sun (weekly)
+        recipients    TEXT NOT NULL DEFAULT '[]',        -- JSON array of email addresses
+        date_window   TEXT NOT NULL DEFAULT 'last_30_days',
+        format        TEXT NOT NULL DEFAULT 'html',      -- html | pdf
+        enabled       BOOLEAN NOT NULL DEFAULT TRUE,
+        next_run_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+        last_run_at   TIMESTAMP,
+        last_status   TEXT,
+        created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_report_sched_due ON report_schedules(enabled, next_run_at);
+    CREATE INDEX IF NOT EXISTS idx_report_sched_org ON report_schedules(org_id, dashboard_id);
+    """)
+    logger.info("  report_schedules table ensured.")
 
     # Enable RLS
     logger.info("  Enabling Row-Level Security...")

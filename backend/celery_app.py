@@ -34,6 +34,7 @@ celery_app = Celery(
         "backend.tasks.auth_cleanup",
         "backend.tasks.hire_request_locks",
         "backend.tasks.rejection_task",
+        "backend.tasks.report_dispatch",
     ],
 )
 
@@ -84,5 +85,9 @@ celery_app.conf.beat_schedule = {
     "release-stale-review-locks": {
         "task": "backend.tasks.hire_request_locks.release_stale_review_locks",
         "schedule": 300.0,  # every 5 minutes
+    },
+    "dispatch-due-reports": {
+        "task": "backend.tasks.report_dispatch.dispatch_due_reports",
+        "schedule": 900.0,  # every 15 minutes — emails any due scheduled analytics reports
     },
 }
