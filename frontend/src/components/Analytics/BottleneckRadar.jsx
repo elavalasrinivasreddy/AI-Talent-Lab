@@ -9,7 +9,7 @@ export function BottleneckRadar({ current, previous }) {
     { key: 'interview',  label: 'Interview Speed' },
     { key: 'offer',      label: 'Offer Accept' },
     { key: 'ai_accept',  label: 'AI Accept' },
-    { key: 'retention',  label: 'Retention' },
+    { key: 'quality',    label: 'Match Quality' },
   ]
 
   const size = 300
@@ -45,8 +45,8 @@ export function BottleneckRadar({ current, previous }) {
           <strong>Screening:</strong> % of applicants passing screening<br />
           <strong>Interview Speed:</strong> Speed of interview phase (faster = better)<br />
           <strong>Offer Accept:</strong> Interview-to-hire conversion rate<br />
-          <strong>AI Accept:</strong> AI Copilot suggestions accepted<br />
-          <strong>Retention:</strong> Post-hire retention rate
+          <strong>AI Accept:</strong> AI Copilot suggestions acted on (not dismissed)<br />
+          <strong>Match Quality:</strong> Avg ATS/skill-match score of sourced candidates
         </div>
       </div>
 

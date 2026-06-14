@@ -545,7 +545,7 @@ class DashboardService:
 
     @staticmethod
     async def get_bottleneck_radar(org_id: int, period: str = "quarter") -> dict:
-        """6-axis radar: Sourcing, Screening, Interview speed, Offer, AI Accept, Retention."""
+        """6-axis radar: Sourcing, Screening, Interview speed, Offer, AI Accept, Match Quality."""
         _now = datetime.now(timezone.utc).replace(tzinfo=None)
         period_days = {"week": 7, "month": 30, "quarter": 90, "year": 365}.get(period, 90)
         cutoff = _now - timedelta(days=period_days)
@@ -583,8 +583,26 @@ class DashboardService:
                     "SELECT COUNT(*) FROM candidate_applications WHERE org_id=$1 AND status IN ('selected','hired') AND created_at BETWEEN $2 AND $3",
                     org_id, start, end,
                 )
+                # Match quality: avg ATS/skill-match score of candidates surfaced this period.
+                avg_match = await conn.fetchval(
+                    """SELECT AVG(skill_match_score) FROM candidate_applications
+                       WHERE org_id=$1 AND created_at BETWEEN $2 AND $3
+                         AND skill_match_score IS NOT NULL""",
+                    org_id, start, end,
+                )
+                # AI Copilot acceptance: suggestions acted on (not dismissed) vs. total surfaced.
+                copilot_total = await conn.fetchval(
+                    "SELECT COUNT(*) FROM copilot_suggestions WHERE org_id=$1 AND created_at BETWEEN $2 AND $3",
+                    org_id, start, end,
+                )
+                copilot_acted = await conn.fetchval(
+                    """SELECT COUNT(*) FROM copilot_suggestions
+                       WHERE org_id=$1 AND created_at BETWEEN $2 AND $3 AND NOT is_dismissed""",
+                    org_id, start, end,
+                )
 
             sourced_n = sourced or 0
+            copilot_n = copilot_total or 0
             return {
                 # Sourcing: normalize to 100 candidates as a healthy target
                 "sourcing": min(1.0, sourced_n / 100),
@@ -594,10 +612,12 @@ class DashboardService:
                 "interview": round(max(0.0, 1.0 - ((avg_days_to_interview or 15.0) / 30.0)), 2),
                 # Offer: interview→hire conversion
                 "offer": round((selected_n or 0) / max(interview_n or 1, 1), 2),
-                # AI Accept: placeholder until copilot accept rate is tracked
-                "ai_accept": 0.7,
-                # Retention: placeholder until 90-day post-hire data is available
-                "retention": 0.8,
+                # AI Accept: real Copilot acceptance rate (acted-on / suggested) for the period.
+                # No suggestions yet → 0.0 (no activity) rather than a fabricated value.
+                "ai_accept": round((copilot_acted or 0) / copilot_n, 2) if copilot_n else 0.0,
+                # Match Quality: avg skill-match score (0..1) of candidates surfaced. Replaces the
+                # former hardcoded "retention" axis — no 90-day post-hire data exists in the schema.
+                "quality": round(min(1.0, float(avg_match) / 100.0), 2) if avg_match is not None else 0.0,
             }
 
         current = await compute_axes(cutoff, _now)
