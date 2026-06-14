@@ -27,6 +27,7 @@ from backend.routers import chat as chat_router
 from backend.routers import positions as positions_router
 from backend.routers import candidates as candidates_router
 from backend.routers import dashboard as dashboard_router
+from backend.routers import analytics as analytics_router
 from backend.routers import notifications as notifications_router
 from backend.routers import apply as apply_router
 from backend.routers import interviews as interviews_router
@@ -122,6 +123,7 @@ app.include_router(chat_router.router)
 app.include_router(positions_router.router)
 app.include_router(candidates_router.router)
 app.include_router(dashboard_router.router)
+app.include_router(analytics_router.router)   # Self-serve analytics — Explore tab
 app.include_router(notifications_router.router)
 app.include_router(apply_router.router)   # Public — no auth (magic link)
 app.include_router(interviews_router.router)
