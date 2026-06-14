@@ -19,6 +19,12 @@
   max-width: 1280px;
 }
 
+/* Explore is a full-width workspace (grid + right-rail assistant), so it uses the
+   whole content area instead of the centred 1280px column the other tabs use. */
+.analytics-page.analytics-page-wide {
+  max-width: none;
+}
+
 .analytics-header {
   display: flex;
   justify-content: space-between;

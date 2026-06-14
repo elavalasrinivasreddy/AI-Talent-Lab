@@ -49,7 +49,7 @@ export default function AnalyticsPage() {
   }, [period])
 
   return (
-    <div className="analytics-page">
+    <div className={`analytics-page${tab === 'explore' ? ' analytics-page-wide' : ''}`}>
       <div className="analytics-header-container">
         <div className="analytics-header">
           <div>

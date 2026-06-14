@@ -4508,6 +4508,7 @@ Add a third **"Explore"** tab (keeping both existing tabs) — a drag-and-drop d
 - [x] R3 · Fixed toolbar button text wrapping (`white-space:nowrap`); "+ Add widget"
 - [x] R3 · **Grid lines** added to bar/line/area/time_series/histogram/scatter (5 lines); pie intentionally clean (`charts.jsx`)
 - [x] R3 · **Scheduler (Phase 4)** — `report_schedules` table+RLS, `ReportScheduleRepository` (+`compute_next_run`, 5/5 cadence checks), `report_service` (HTML report + AI insights, scope-aware, compiles), `/analytics/schedules` CRUD + `run-now`, Celery `report_dispatch` (dispatcher + render/send) + 15-min beat entry, Resend send. Frontend `ScheduleDialog` with **confirmation step** + Schedule button.
+- [x] R3 · Full-width Explore layout — `.analytics-page` 1280px cap was squeezing the grid + chat; added `.analytics-page-wide` (max-width:none) for the Explore tab only so the Ask AI panel becomes a true right column and the right-edge gap is used. Agent ROI / System Health stay centered. (`AnalyticsPage.jsx`, `AnalyticsPage.css`)
 - [ ] R3 · PDF attachment (currently inline HTML email) — optional follow-up (needs Resend attachment support / WeasyPrint).
 
 **Files (to be updated as work lands):**
