@@ -1,15 +1,11 @@
 """
-Unit test for the optional post-submission video intro (Sprint 4, Phase D#3).
+Unit tests for the redesigned apply-chat flow
+(see docs/decisions/apply-chat-flow-redesign.md).
 
-Guards the contract that finishing the apply chat:
-  - sets step == "completion" (so POST /apply/{token}/message auto-completes the
-    application: status→applied, confirmation email, ATS dispatch),
-  - flags video_offer = True (the video is an optional post-submission add-on),
-  - invites the optional video in the completion message while making clear the
-    application is already submitted.
-
-This locks the design decision that abandoning/skipping the video never affects
-the already-submitted application. Deterministic — no DB, no live LLM.
+Flow: greeting → interest → screening_questions → resume_upload → video_intro → completion.
+The application is submitted at resume upload (ApplyService.handle_resume_upload);
+the video intro is an optional post-submission add-on. These are deterministic
+controller-level tests — no DB, no live LLM.
 """
 from unittest.mock import patch, MagicMock
 
@@ -18,24 +14,54 @@ import pytest
 from backend.agents.candidate_chat import CandidateChatController
 
 
-@pytest.mark.asyncio
-async def test_step_complete_offers_optional_video():
+def _controller(state, questions=None):
+    if questions is None:
+        questions = [{"field_key": "current_ctc", "label": "Current CTC"}]
     with patch("backend.agents.candidate_chat.get_llm", return_value=MagicMock()):
-        state = {"step": "screening_questions"}
-        context = {
+        return CandidateChatController(state, {
             "position": {"role_name": "Backend Engineer"},
             "org": {"name": "Acme"},
             "candidate": {"name": "Jordan"},
-        }
-        controller = CandidateChatController(state, context)
-        message, new_state = await controller._step_complete()
+            "screening_questions": questions,
+        })
 
-    # Application is considered submitted at this step (drives auto-complete).
-    assert new_state["step"] == "completion"
-    # Optional add-on is offered.
-    assert new_state.get("video_offer") is True
-    # Message invites the optional video and frames the application as already in.
+
+@pytest.mark.asyncio
+async def test_interest_starts_configured_screening_questions():
+    """After 'yes', the bot asks the head's configured questions — no built-ins."""
+    controller = _controller({"step": "interest"})
+    message, new_state = await controller.process_message("yes, interested")
+    assert new_state["step"] == "screening_questions"
+    assert "Current CTC" in message
+    # Built-in profiling prompts must be gone.
+    assert "current role and company" not in message.lower()
+
+
+@pytest.mark.asyncio
+async def test_interest_with_no_questions_skips_to_resume():
+    controller = _controller({"step": "interest"}, questions=[])
+    message, new_state = await controller.process_message("yes")
+    assert new_state["step"] == "resume_upload"
+    assert "resume" in message.lower()
+
+
+@pytest.mark.asyncio
+async def test_screening_completion_advances_to_resume_not_completion():
+    """The last screening answer is captured by field_key and the bot then asks
+    for the resume (submission happens at resume upload, not here)."""
+    state = {"step": "screening_questions", "screening_index": 1, "screening_responses": {}}
+    controller = _controller(state)
+    message, new_state = await controller.process_message("25 LPA")
+    assert new_state["step"] == "resume_upload"
+    assert "resume" in message.lower()
+    assert new_state["screening_responses"]["current_ctc"] == "25 LPA"
+
+
+@pytest.mark.asyncio
+async def test_video_step_reminder_frames_app_as_submitted():
+    controller = _controller({"step": "video_intro"})
+    message, new_state = await controller.process_message("hi")
     lower = message.lower()
-    assert "video" in lower
-    assert "optional" in lower
     assert "submitted" in lower
+    assert "video" in lower
+    assert new_state["step"] == "video_intro"

@@ -1,8 +1,12 @@
 """
 agents/candidate_chat.py – Linear candidate application chat controller.
-Per docs/design/pages/05_jd_chat.md Part 2 — 8-step flow:
-  greeting → interest → current_role → experience → compensation →
-  notice_period → resume_upload → screening_questions → completion
+Flow (see docs/decisions/apply-chat-flow-redesign.md):
+  greeting → interest → screening_questions → resume_upload → video_intro → completion
+
+There are no built-in profiling questions. The hiring head's configured screening
+questions are the single source of truth; the application is submitted right after
+the resume upload (see ApplyService.handle_resume_upload), and the video intro is
+an optional post-submission add-on.
 """
 import logging
 from typing import Optional
@@ -15,12 +19,9 @@ logger = logging.getLogger(__name__)
 STEPS = [
     "greeting",
     "interest",
-    "current_role",
-    "experience",
-    "compensation",
-    "notice_period",
-    "resume_upload",
     "screening_questions",
+    "resume_upload",
+    "video_intro",
     "completion",
 ]
 
@@ -68,25 +69,18 @@ class CandidateChatController:
         elif step == "interest":
             return await self._step_interest(user_message)
 
-        elif step == "current_role":
-            return await self._step_current_role(user_message)
-
-        elif step == "experience":
-            return await self._step_experience(user_message)
-
-        elif step == "compensation":
-            return await self._step_compensation(user_message)
-
-        elif step == "notice_period":
-            return await self._step_notice_period(user_message)
-
-        elif step == "resume_upload":
-            # Resume upload handled separately via file endpoint
-            # If user sends a message without uploading, remind them
-            return await self._step_resume_reminder(user_message)
-
         elif step == "screening_questions":
             return await self._step_screening(user_message)
+
+        elif step == "resume_upload":
+            # Resume upload handled separately via the file endpoint.
+            # If the candidate sends a message without uploading, remind them.
+            return await self._step_resume_reminder(user_message)
+
+        elif step == "video_intro":
+            # Video is optional and handled via the upload-video endpoint / skip
+            # button. A text message here just nudges toward the buttons.
+            return await self._step_video_reminder(user_message)
 
         elif step == "completion":
             return "Your application has already been submitted. Good luck! 🍀", self.state
@@ -134,123 +128,68 @@ class CandidateChatController:
                 self.state
             )
 
-        # Interested → start the short profiling sequence
-        self.state["step"] = "current_role"
+        # Interested → ask the head's configured screening questions. If none are
+        # configured, skip straight to the resume upload.
+        questions = self.context.get("screening_questions", [])
+        if questions:
+            self.state["step"] = "screening_questions"
+            self.state["screening_index"] = 0
+            return await self._step_screening(None)
 
-        return (
-            "Wonderful! Let's get started.\n\n"
-            "First, what's your **current role and company**? "
-            "(e.g. \"Senior Backend Engineer at Acme\")",
-            self.state
-        )
-
-    async def _step_current_role(self, user_message: str) -> tuple[str, dict]:
-        """Capture current title + company, then ask about experience."""
-        answer = (user_message or "").strip()
-        # Naive split on " at " — store the whole thing as title if no split.
-        if " at " in answer.lower():
-            title, _, company = answer.partition(" at ")
-            self.state["current_title"] = title.strip()
-            self.state["current_company"] = company.strip()
-        else:
-            self.state["current_title"] = answer
-            self.state["current_company"] = None
-
-        self.state["step"] = "experience"
-        return (
-            "Thanks! How many **years of experience** do you have overall, and how "
-            "many are directly relevant to this role?",
-            self.state
-        )
-
-    async def _step_experience(self, user_message: str) -> tuple[str, dict]:
-        """Capture experience (stored as free text), then ask compensation."""
-        self.state["experience_years"] = (user_message or "").strip()
-        self.state["step"] = "compensation"
-        return (
-            "Got it. What's your **current and expected compensation** (CTC)? "
-            "Feel free to say \"prefer not to say\" if you'd rather skip this.",
-            self.state
-        )
-
-    async def _step_compensation(self, user_message: str) -> tuple[str, dict]:
-        """Capture compensation (or a decline), then ask notice period."""
-        answer = (user_message or "").strip()
-        decline_kw = ["prefer not", "skip", "rather not", "decline", "n/a", "later"]
-        if any(kw in answer.lower() for kw in decline_kw):
-            self.state["compensation_declined"] = True
-        else:
-            self.state["compensation_current"] = answer
-        self.state["step"] = "notice_period"
-        return (
-            "No problem. Lastly — what's your **notice period / availability** to start?",
-            self.state
-        )
-
-    async def _step_notice_period(self, user_message: str) -> tuple[str, dict]:
-        """Capture notice period, then move to resume upload."""
-        self.state["notice_period"] = (user_message or "").strip()
         self.state["step"] = "resume_upload"
+        return self._resume_prompt("Wonderful! Let's get started.\n\n")
+
+    def _resume_prompt(self, prefix: str = "") -> tuple[str, dict]:
+        """Shared resume-upload prompt. Sets step to resume_upload by convention
+        of the caller (caller must set self.state['step'] = 'resume_upload')."""
         return (
-            "Perfect — almost done!\n\n"
-            "Please share your latest resume. "
-            "You can upload a **PDF or Word document** (max 5MB).",
-            self.state
+            f"{prefix}Please share your latest resume — a "
+            "**PDF or Word document** (max 5MB) — using the button below. 📎",
+            self.state,
         )
 
-    async def _step_resume_reminder(self, user_message: str) -> tuple[str, dict]:
+    async def _step_resume_reminder(self, user_message: Optional[str]) -> tuple[str, dict]:
         """Remind candidate to upload resume if they message without uploading."""
         return (
-            "Please upload your resume to continue — you can upload a PDF or DOCX file using the button below. 📎",
+            "Please upload your resume to continue — use the button below to upload "
+            "a PDF or DOCX file. 📎",
             self.state
         )
 
-    async def _step_screening(self, user_message: str) -> tuple[str, dict]:
-        """Ask screening questions one at a time."""
+    async def _step_video_reminder(self, user_message: Optional[str]) -> tuple[str, dict]:
+        """Nudge toward the optional video buttons. The application is already
+        submitted at this point, so there is nothing left to capture here."""
+        return (
+            "Your application is already submitted ✅ — you can add an optional video "
+            "intro with the button below, or you're all done. Good luck! 🍀",
+            self.state
+        )
+
+    async def _step_screening(self, user_message: Optional[str]) -> tuple[str, dict]:
+        """Ask the configured screening questions one at a time, then move to
+        resume upload once they're all answered."""
         questions = self.context.get("screening_questions", [])
         idx = self.state.get("screening_index", 0)
 
         if not self.state.get("screening_responses"):
             self.state["screening_responses"] = {}
 
-        # Save previous answer if there was a question being asked
-        if idx > 0 and questions:
+        # Save the previous answer (keyed by the question's field_key) if one was
+        # being asked. idx==0 means we haven't asked anything yet (first entry).
+        if 0 < idx <= len(questions):
             prev_q = questions[idx - 1]
             self.state["screening_responses"][prev_q.get("field_key")] = user_message
 
-        # Check if more questions remain
+        # More questions remain?
         if idx < len(questions):
             q = questions[idx]
             self.state["screening_index"] = idx + 1
             label = q.get("label") or q.get("question", "")
-            return f"One more question — {label}", self.state
-        else:
-            # All questions done → completion
-            return await self._step_complete()
+            if idx == 0:
+                return f"Great — just a few quick questions.\n\n**{label}**", self.state
+            return f"Thanks! **{label}**", self.state
 
-    async def _step_complete(self) -> tuple[str, dict]:
-        """Final completion message."""
-        pos = self.context.get("position", {})
-        org = self.context.get("org", {})
-        role_name = pos.get("role_name", "the role")
-        org_name = org.get("name", "the company")
-
-        self.state["step"] = "completion"
-        # Application is fully submitted here (the /message endpoint auto-completes on
-        # step == "completion": status→applied, confirmation email, ATS dispatch). The
-        # video intro below is a purely optional post-submission add-on — skipping or
-        # abandoning it never affects the submitted application.
-        self.state["video_offer"] = True
-        return (
-            f"That's everything! 🎉\n\n"
-            f"Your application for **{role_name}** at **{org_name}** has been submitted.\n\n"
-            f"Here's what to expect next:\n"
-            f"• Our hiring team will review your profile shortly\n"
-            f"• If shortlisted, you'll receive an email with interview details\n"
-            f"• We'll keep you updated at each stage\n\n"
-            f"📹 **Optional:** want to stand out? Record a short 30–60s video intro using "
-            f"the button below — it's completely optional and your application is already in.\n\n"
-            f"Good luck! 🍀",
-            self.state
-        )
+        # All screening questions answered → ask for the resume.
+        self.state["step"] = "resume_upload"
+        return self._resume_prompt("Thanks — almost done!\n\n")
 

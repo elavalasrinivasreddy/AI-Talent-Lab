@@ -224,6 +224,14 @@ async def upload_video_intro(token: str, request: Request, file: UploadFile = Fi
     async with get_admin_connection() as conn:
         await ApplicationRepository.record_video_intro(conn, app_id, org_id, video_url)
 
+    # Safety net: the application is normally submitted at resume upload, but if
+    # that submission failed, ensure it's submitted now. Idempotent — a no-op if
+    # already applied.
+    try:
+        await ApplyService.complete_application(token)
+    except Exception as e:
+        logger.warning(f"Ensure-complete after video upload failed: {e}")
+
     return {
         "ok": True,
         "response": "Thanks for sharing your intro! The hiring team will review it alongside your application.",

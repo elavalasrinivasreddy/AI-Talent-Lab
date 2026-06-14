@@ -11,7 +11,7 @@ from typing import Optional
 import jwt
 
 from backend.config import settings
-from backend.db.connection import get_connection
+from backend.db.connection import get_connection, get_admin_connection
 from backend.db.repositories.pipeline_events import PipelineEventRepository
 from backend.db.repositories.notifications import NotificationRepository
 from backend.agents.candidate_chat import CandidateChatController
@@ -53,6 +53,75 @@ def verify_apply_token(token: str) -> dict:
         raise ValueError("Token expired")
     except jwt.InvalidTokenError as e:
         raise ValueError(f"Invalid token: {e}")
+
+
+# ── Screening field detection ─────────────────────────────────────────────────
+# Screening questions are configured by the hiring head with a free-text field_key
+# (the "name"). There are no longer built-in profiling questions, so we detect a
+# few well-known fields by keyword to keep feeding the structured features that
+# depend on them: encrypted compensation and experience-based ATS scoring.
+# Detection is best-effort — an unmatched question is just stored as a plain
+# screening response. "compensation" deliberately omits the bare "comp" token so a
+# "company" field_key is not misread as compensation.
+_SCREENING_FIELD_PATTERNS = {
+    "compensation": ("ctc", "compensation", "salary", "remuneration", "package", "wage"),
+    "experience": ("experience", "yoe", "years of"),
+    "notice_period": ("notice", "availability", "available", "joining"),
+    "current_role": ("company", "organization", "organisation", "employer",
+                     "current role", "current title", "designation"),
+}
+
+
+def classify_screening_field(field_key: str, label: str = "") -> Optional[str]:
+    """Return the structured slot a screening question maps to, or None.
+    Matches keywords against field_key + label (case-insensitive)."""
+    hay = f"{field_key or ''} {label or ''}".lower()
+    for slot, keywords in _SCREENING_FIELD_PATTERNS.items():
+        if any(kw in hay for kw in keywords):
+            return slot
+    return None
+
+
+def _extract_int(text: str) -> Optional[int]:
+    """Pull the first integer out of free text (e.g. '7 years' → 7)."""
+    import re
+    m = re.search(r"\d+", text or "")
+    return int(m.group()) if m else None
+
+
+def map_screening_to_structured(screening_responses: dict, label_by_key: dict) -> dict:
+    """Map configured screening answers (keyed by field_key) into the structured
+    fields used by encryption + ATS. Returns a dict with optional keys:
+    compensation_current, compensation_expected, experience_total,
+    experience_years_int, notice_period, current_title, current_company."""
+    out: dict = {}
+    for fkey, answer in (screening_responses or {}).items():
+        if answer in (None, ""):
+            continue
+        label = label_by_key.get(fkey, "")
+        slot = classify_screening_field(fkey, label)
+        hay = f"{fkey} {label}".lower()
+        if slot == "compensation":
+            if "expect" in hay:
+                out["compensation_expected"] = answer
+            else:
+                out.setdefault("compensation_current", answer)
+        elif slot == "experience":
+            out.setdefault("experience_total", answer)
+            n = _extract_int(str(answer))
+            if n is not None:
+                out.setdefault("experience_years_int", n)
+        elif slot == "notice_period":
+            out.setdefault("notice_period", answer)
+        elif slot == "current_role":
+            a = str(answer)
+            if " at " in a.lower():
+                title, _, company = a.partition(" at ")
+                out.setdefault("current_title", title.strip())
+                out.setdefault("current_company", company.strip())
+            else:
+                out.setdefault("current_title", a)
+    return out
 
 
 # ── Apply Service ─────────────────────────────────────────────────────────────
@@ -206,20 +275,24 @@ class ApplyService:
         # Process message through the chat controller
         controller = CandidateChatController(session_state, context)
 
-        if not session_state.get("step") or session_state.get("step") == "greeting":
-            # First message — run greeting first, then process the user's message
-            greeting, session_state = await controller.process_message(None)
-            # Save greeting
-            await ApplyService._append_message(session_id, "assistant", greeting, session_state)
-            ai_response = greeting
+        is_greeting = not session_state.get("step") or session_state.get("step") == "greeting"
+        if is_greeting:
+            # First message — produce the greeting. The frontend sends a '__init__'
+            # sentinel here, not a real user turn, so it must NOT be persisted.
+            ai_response, session_state = await controller.process_message(None)
         else:
             ai_response, session_state = await controller.process_message(user_message)
 
         # Save user message and AI response — non-fatal: warn candidate if DB write fails
         session_warning = None
         try:
-            await ApplyService._append_message(session_id, "user", user_message, None)
-            await ApplyService._append_message(session_id, "assistant", ai_response, session_state)
+            if is_greeting:
+                # Only persist the greeting once; skip the '__init__' user turn so
+                # restored sessions don't show a duplicate greeting + '__init__' bubble.
+                await ApplyService._append_message(session_id, "assistant", ai_response, session_state)
+            else:
+                await ApplyService._append_message(session_id, "user", user_message, None)
+                await ApplyService._append_message(session_id, "assistant", ai_response, session_state)
         except Exception as e:
             logger.warning(f"Session persistence failed for session {session_id}: {e}")
             session_warning = (
@@ -246,7 +319,12 @@ class ApplyService:
         token: str, resume_text: str, filename: str, resume_links: Optional[dict] = None
     ) -> dict:
         """
-        Process a resume upload: store text, generate embedding, advance step.
+        Process a resume upload, then SUBMIT the application.
+
+        Resume is the last required input (screening questions are asked before it),
+        so the application is submitted here. The optional video intro that follows
+        is a post-submission add-on. Submitting at this point means a tab close at
+        the video step can never lose a resume-complete application.
         """
         from backend.services.candidate_service import generate_resume_embedding
         import json as _json
@@ -277,26 +355,38 @@ class ApplyService:
                 candidate_id, org_id
             )
 
-        # Advance session to screening_questions
+        # Advance session to the optional video step and mark resume uploaded.
         session_state, session_id = await ApplyService._get_or_create_session(
             application_id, candidate_id, org_id
         )
-        session_state["step"] = "screening_questions"
+        session_state["step"] = "video_intro"
         session_state["resume_uploaded"] = True
-        session_state["screening_index"] = 0
 
-        # Load screening questions to decide next step
+        # Submit the application now (resume + screening answers are all captured).
+        submitted = True
+        try:
+            await ApplyService.complete_application(token)
+        except Exception as e:
+            logger.error(f"Application submission after resume upload failed "
+                         f"(application {application_id}): {e}", exc_info=True)
+            submitted = False
+
         context = await ApplyService._load_context(application_id, org_id)
-        questions = context.get("screening_questions", [])
+        role_name = (context or {}).get("position", {}).get("role_name", "this role")
+        org_name = (context or {}).get("org", {}).get("name", "the company")
 
-        if questions:
-            first_q = questions[0]
-            ai_response = f"✅ Resume received! Thank you.\n\nOne more question — {first_q.get('label', '')}"
-            session_state["screening_index"] = 1
+        if submitted:
+            ai_response = (
+                f"✅ Your application for **{role_name}** at **{org_name}** has been "
+                f"submitted — thank you!\n\n"
+                f"📹 **Optional:** want to stand out? Add a short 30–60s video intro "
+                f"with the button below, or you're all done. Good luck! 🍀"
+            )
         else:
-            # No screening questions → completion
-            controller = CandidateChatController(session_state, context)
-            ai_response, session_state = await controller._step_complete()
+            ai_response = (
+                "✅ Resume received! We hit a snag finalizing your submission, but "
+                "your answers are saved — please refresh and we'll complete it."
+            )
 
         session_warning = None
         try:
@@ -312,6 +402,7 @@ class ApplyService:
         result = {
             "response": ai_response,
             "step": session_state.get("step"),
+            "submitted": submitted,
         }
         if session_warning:
             result["session_warning"] = session_warning
@@ -328,7 +419,22 @@ class ApplyService:
         candidate_id = payload["candidate_id"]
         org_id = payload["org_id"]
 
+        # Load screening question labels for field detection (own connection).
+        context = await ApplyService._load_context(application_id, org_id)
+        label_by_key = {
+            q.get("field_key"): (q.get("label") or "")
+            for q in (context or {}).get("screening_questions", [])
+        }
+
         async with get_connection() as conn:
+            # Idempotency: if already submitted, do NOT re-run ATS / email / notifications.
+            existing = await conn.fetchrow(
+                "SELECT status FROM candidate_applications WHERE id=$1 AND org_id=$2",
+                application_id, org_id,
+            )
+            if existing and existing.get("status") == "applied":
+                return {"completed": True, "already_submitted": True}
+
             # Get session state for screening_responses
             session = await conn.fetchrow(
                 "SELECT * FROM candidate_sessions WHERE application_id=$1",
@@ -339,21 +445,22 @@ class ApplyService:
                 raw = session.get("session_state") or "{}"
                 session_state = json.loads(raw) if isinstance(raw, str) else raw
 
+            # Raw configured answers, keyed by field_key. Promote well-known fields
+            # (compensation / experience / notice / role) into structured slots.
+            raw_responses = session_state.get("screening_responses", {}) or {}
+            mapped = map_screening_to_structured(raw_responses, label_by_key)
+
             screening_responses = {
-                "compensation_current": session_state.get("compensation_current"),
-                "compensation_expected": session_state.get("compensation_expected"),
-                "compensation_declined": session_state.get("compensation_declined", False),
-                "notice_period": session_state.get("notice_period"),
-                "experience_total": session_state.get("experience_years"),
-                "experience_relevant": session_state.get("relevant_experience_years"),
-                **session_state.get("screening_responses", {}),
+                "notice_period": mapped.get("notice_period"),
+                "experience_total": mapped.get("experience_total"),
+                **raw_responses,
             }
 
-            # Build encrypted CTC blob
+            # Build encrypted CTC blob from detected compensation answers.
             compensation_payload = json.dumps({
-                "current": session_state.get("compensation_current"),
-                "expected": session_state.get("compensation_expected"),
-                "declined": session_state.get("compensation_declined", False),
+                "current": mapped.get("compensation_current"),
+                "expected": mapped.get("compensation_expected"),
+                "declined": False,
             })
             compensation_enc = encrypt_field(compensation_payload, settings.ENCRYPTION_KEY)
 
@@ -370,13 +477,21 @@ class ApplyService:
                 compensation_enc,
             )
 
-            # Update candidate if role changed
-            if session_state.get("current_title"):
+            # Promote detected candidate fields: role/company + experience (for ATS).
+            if mapped.get("current_title") or mapped.get("experience_years_int") is not None:
                 await conn.execute(
-                    "UPDATE candidates SET current_title=$1, current_company=$2, updated_at=NOW() WHERE id=$3",
-                    session_state.get("current_title"),
-                    session_state.get("current_company"),
-                    candidate_id
+                    """
+                    UPDATE candidates SET
+                        current_title=COALESCE($1::text, current_title),
+                        current_company=COALESCE($2::text, current_company),
+                        experience_years=COALESCE($3::int, experience_years),
+                        updated_at=NOW()
+                    WHERE id=$4
+                    """,
+                    mapped.get("current_title"),
+                    mapped.get("current_company"),
+                    mapped.get("experience_years_int"),
+                    candidate_id,
                 )
 
             # Mark session as completed
@@ -529,7 +644,7 @@ class ApplyService:
     async def _get_or_create_session(
         application_id: int, candidate_id: int, org_id: int
     ) -> tuple[dict, int]:
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             session = await conn.fetchrow(
                 "SELECT * FROM candidate_sessions WHERE application_id=$1",
                 application_id
@@ -556,7 +671,7 @@ class ApplyService:
     async def _append_message(
         session_id: int, role: str, content: str, new_state: Optional[dict]
     ) -> None:
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             row = await conn.fetchrow(
                 "SELECT messages, session_state FROM candidate_sessions WHERE id=$1",
                 session_id
@@ -581,7 +696,7 @@ class ApplyService:
 
     @staticmethod
     async def _save_session(session_id: int, state: dict) -> None:
-        async with get_connection() as conn:
+        async with get_admin_connection() as conn:
             await conn.execute(
                 "UPDATE candidate_sessions SET session_state=$1 WHERE id=$2",
                 json.dumps(state), session_id

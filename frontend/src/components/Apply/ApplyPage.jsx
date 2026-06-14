@@ -134,7 +134,9 @@ export default function ApplyPage() {
         setStep(data.step || step)
       }
       if (data.session_warning) setSessionWarning(data.session_warning)
-      if (data.completed) setPageState('completed')
+      // Note: we intentionally do NOT flip to the "completed" screen mid-session.
+      // Submission happens at resume upload; the video step stays in-chat. A
+      // revisit/refresh shows the "Already Applied" screen via loadContext.
       if (data.not_interested) setStep('declined')
     } catch (e) {
       setMessages(prev => [...prev, {
@@ -230,7 +232,7 @@ export default function ApplyPage() {
   const pos = context?.position || {}
   const org = context?.org || {}
   const candidate = context?.candidate || {}
-  const isInputDisabled = step === 'completion' || step === 'declined' || sending
+  const isInputDisabled = step === 'completion' || step === 'declined' || step === 'video_intro' || sending
   const showResumeUpload = step === 'resume_upload'
 
   return (
@@ -369,7 +371,12 @@ export default function ApplyPage() {
             <button
               className="apply-upload-btn"
               style={{ background: 'transparent', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.1)', marginTop: 6 }}
-              onClick={() => setVideoState('skipped')}
+              onClick={async () => {
+                setVideoState('skipped')
+                // App is already submitted at resume; this is an idempotent safety
+                // net in case the resume-time submission failed.
+                try { await fetch(`${API_BASE}/${token}/complete`, { method: 'POST' }) } catch { /* best-effort */ }
+              }}
             >
               No thanks — I'll skip the video
             </button>
@@ -456,26 +463,26 @@ export default function ApplyPage() {
 
 // ── Sub-components ─────────────────────────────────────────────────────────
 
-const APPLY_STEPS = [
-  { id: 'greeting', label: 'Welcome' },
-  { id: 'interest', label: 'Interest' },
-  { id: 'current_role', label: 'Questions' },
-  { id: 'experience', label: 'Questions' },
-  { id: 'notice_period', label: 'Questions' },
-  { id: 'screening_q', label: 'Questions' },
-  { id: 'resume_upload', label: 'Resume' },
-  { id: 'confirmation', label: 'Review' },
-  { id: 'completion', label: 'Complete' },
-]
+// Maps each backend step string → progress bucket index (0-5 into PROGRESS_LABELS).
+// Backend step strings are emitted by CandidateChatController (backend/agents/
+// candidate_chat.py) and ApplyService.handle_resume_upload. Keep this in sync:
+// a step missing here silently snaps the progress bar back to "Step 1 of 6"
+// (which is what made `compensation` and `screening_questions` look like a reset).
+export const STEP_PROGRESS = {
+  greeting: 0,
+  interest: 1,
+  screening_questions: 2,
+  resume_upload: 3,
+  video_intro: 4,
+  completion: 5,
+  declined: 0,
+}
 
-const PROGRESS_LABELS = ['Welcome', 'Interest', 'Questions', 'Resume', 'Review', 'Complete']
+const PROGRESS_LABELS = ['Welcome', 'Interest', 'Questions', 'Resume', 'Video', 'Done']
 
 function ApplyProgress({ step }) {
-  // Map current step id → PROGRESS_LABELS index
-  const stepObj = APPLY_STEPS.find(s => s.id === step)
-  const currentLabel = stepObj?.label || 'Welcome'
-  const currentIdx = PROGRESS_LABELS.indexOf(currentLabel)
-  const progress = currentIdx >= 0 ? currentIdx : 0
+  // Map the backend step string → PROGRESS_LABELS index. Unknown steps stay at 0.
+  const progress = STEP_PROGRESS[step] ?? 0
 
   // Human-readable fraction: 1-based, capped at total
   const totalSteps = PROGRESS_LABELS.length
